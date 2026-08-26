@@ -1,0 +1,11 @@
+{
+  "class": "Monk",
+  "features": {
+    "1": [
+      { "name": "Bonus Unarmed Strike", "description": "You can make an Unarmed Strike as a Bonus Action." }
+    ],
+    "2": [
+      { "name": "Flurry of Blows", "description": "You can expend 1 Focus Point to make two Unarmed Strikes as a Bonus Action." }
+    ]
+  }
+}

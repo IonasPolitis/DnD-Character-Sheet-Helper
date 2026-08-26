@@ -1,0 +1,15 @@
+{
+      "Barbarian": "barbarian",
+      "Bard": "bard",
+      "Blood Hunter": "blood-hunter",
+      "Cleric": "cleric",
+      "Druid": "druid",
+      "Fighter": "fighter",
+      "Monk": "monk",
+      "Paladin": "paladin",
+      "Ranger": "ranger",
+      "Rogue": "rogue",
+      "Sorcerer": "sorcerer",
+      "Warlock": "warlock",
+      "Wizard" :  "wizard"
+}

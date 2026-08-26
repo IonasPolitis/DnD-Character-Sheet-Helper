@@ -1,0 +1,81 @@
+.dnd-error-window {
+    border: 2px solid #e74c3c;
+    background-color: rgba(231, 76, 60, 0.1);
+    color: #e74c3c;
+    padding: 12px 16px;
+    border-radius: 8px;
+    margin: 10px 0;
+    font-weight: 500;
+}
+.dnd-error-window strong {
+    display: block;
+    margin-bottom: 5px;
+    font-size: 1.1em;
+}
+
+/* --- D&D Plugin Theme Variables --- */
+:root {
+    /* Backgrounds */
+    --dnd-bg-primary: #1e1e24; /* Main window background */
+    --dnd-bg-secondary: #2b2b36;
+    --dnd-bg-tertiary: #383847;
+    --dnd-bg-hover: #3a3b4c;
+    --dnd-bg-darker: #15151a;
+    --dnd-bg-group: #22222a;
+
+    /* Text */
+    --dnd-text-primary: #e0e0e0;
+    --dnd-text-secondary: #a3a3b5;
+    --dnd-text-sublabel: #888899;
+    --dnd-text-bright: #ffffff;
+    --dnd-text-muted: #666677;
+    --dnd-text-group: #cccccc;
+
+    /* Borders */
+    --dnd-border-primary: #40404f; /* Thin outline from screenshot */
+    --dnd-border-active: #5c5c6e;
+    --dnd-border-focus: #7a7a92;
+
+    /* Accents */
+    --dnd-accent-teal: #4db6ac;
+    --dnd-accent-red: #e57373;
+    --dnd-accent-purple: #ba68c8;
+}
+
+/* --- Main Window Container --- */
+.dnd-features-window {
+    width: 100%;
+    height: auto;
+    border: 1px solid var(--dnd-border-primary);
+    background-color: var(--dnd-bg-primary);
+    color: var(--dnd-text-primary);
+    border-radius: 6px;
+    padding: 16px;
+    margin: 10px 0;
+    font-family: var(--font-text); /* Inherits Obsidian's default font */
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* --- Settings: Draggable List --- */
+.dnd-draggable-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 12px;
+}
+.dnd-draggable-item {
+    background-color: var(--dnd-bg-tertiary);
+    border: 1px solid var(--dnd-border-primary);
+    color: var(--dnd-text-primary);
+    padding: 10px 16px;
+    border-radius: 6px;
+    cursor: grab;
+    font-weight: 500;
+    transition: background-color 0.2s ease;
+}
+.dnd-draggable-item:active {
+    cursor: grabbing;
+}
+.dnd-draggable-item:hover {
+    background-color: var(--dnd-bg-hover);
+}
