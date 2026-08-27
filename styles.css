@@ -1,48 +1,37 @@
-.dnd-error-window {
-    border: 2px solid #e74c3c;
-    background-color: rgba(231, 76, 60, 0.1);
-    color: #e74c3c;
-    padding: 12px 16px;
-    border-radius: 8px;
-    margin: 10px 0;
-    font-weight: 500;
-}
-.dnd-error-window strong {
-    display: block;
-    margin-bottom: 5px;
-    font-size: 1.1em;
-}
-
-/* --- D&D Plugin Theme Variables --- */
+/* ==========================================
+   1. THEME VARIABLES
+   ========================================== */
 :root {
     /* Backgrounds */
-    --dnd-bg-primary: #1e1e24; /* Main window background */
-    --dnd-bg-secondary: #2b2b36;
-    --dnd-bg-tertiary: #383847;
-    --dnd-bg-hover: #3a3b4c;
-    --dnd-bg-darker: #15151a;
-    --dnd-bg-group: #22222a;
+    --dnd-bg-primary: #262A36; /* Synced with DnD_UI_Toolkit */
+    --dnd-bg-secondary: #323748;
+    --dnd-bg-tertiary: #3A4055;
+    --dnd-bg-hover: #363B4A;
+    --dnd-bg-darker: #303440;
+    --dnd-bg-group: #2D334A;
 
     /* Text */
-    --dnd-text-primary: #e0e0e0;
-    --dnd-text-secondary: #a3a3b5;
-    --dnd-text-sublabel: #888899;
+    --dnd-text-primary: #E0E0E0;
+    --dnd-text-secondary: #A0A0D0;
+    --dnd-text-sublabel: #A0C7D0;
     --dnd-text-bright: #ffffff;
-    --dnd-text-muted: #666677;
-    --dnd-text-group: #cccccc;
+    --dnd-text-muted: #B8B8D0;
+    --dnd-text-group: #B8C4FF;
 
     /* Borders */
-    --dnd-border-primary: #40404f; /* Thin outline from screenshot */
-    --dnd-border-active: #5c5c6e;
-    --dnd-border-focus: #7a7a92;
+    --dnd-border-primary: #383E54;
+    --dnd-border-active: #6D7CBA;
+    --dnd-border-focus: #000000;
 
     /* Accents */
-    --dnd-accent-teal: #4db6ac;
-    --dnd-accent-red: #e57373;
-    --dnd-accent-purple: #ba68c8;
+    --dnd-accent-teal: #64D8CB;
+    --dnd-accent-red: #E57373;
+    --dnd-accent-purple: #B29DDB;
 }
 
-/* --- Main Window Container --- */
+/* ==========================================
+   2. MAIN CONTAINERS
+   ========================================== */
 .dnd-features-window {
     width: 100%;
     height: auto;
@@ -56,13 +45,54 @@
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
-/* --- Settings: Draggable List --- */
+.dnd-error-window {
+    border: 2px solid #e74c3c;
+    background-color: rgba(231, 76, 60, 0.1);
+    color: #e74c3c;
+    padding: 12px 16px;
+    border-radius: 8px;
+    margin: 10px 0;
+    font-weight: 500;
+}
+
+.dnd-error-window strong {
+    display: block;
+    margin-bottom: 5px;
+    font-size: 1.1em;
+}
+
+/* ==========================================
+   3. FEATURE TYPOGRAPHY & BADGES
+   ========================================== */
+.dnd-feature-title {
+    display: flex;
+    align-items: center; /* Vertically centers the badge with the text */
+    margin-bottom: 4px;
+    color: var(--dnd-text-bright);
+    font-weight: bold;
+}
+
+.dnd-level-badge {
+    background-color: var(--dnd-bg-tertiary);
+    color: var(--dnd-accent-purple); 
+    padding: 2px 10px;
+    border-radius: 12px; /* Gives it the rounded pill shape */
+    font-size: 0.85em;
+    font-weight: normal;
+    margin-right: 10px;
+    display: inline-block;
+}
+
+/* ==========================================
+   4. SETTINGS UI
+   ========================================== */
 .dnd-draggable-list {
     display: flex;
     flex-direction: column;
     gap: 8px;
     margin-top: 12px;
 }
+
 .dnd-draggable-item {
     background-color: var(--dnd-bg-tertiary);
     border: 1px solid var(--dnd-border-primary);
@@ -73,9 +103,19 @@
     font-weight: 500;
     transition: background-color 0.2s ease;
 }
+
 .dnd-draggable-item:active {
     cursor: grabbing;
 }
+
 .dnd-draggable-item:hover {
     background-color: var(--dnd-bg-hover);
+}
+
+/* ==========================================
+   5. UTILITIES
+   ========================================== */
+/* Remove the margin from the very last feature block to fix bottom padding */
+.dnd-features-window > div > div:last-child {
+    margin-bottom: 0 !important;
 }

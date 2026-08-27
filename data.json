@@ -1,0 +1,31 @@
+{
+  "combineClassSubclass": false,
+  "sectionOrder": [
+    "Class",
+    "Subclass",
+    "Race",
+    "Background",
+    "Extra"
+  ],
+  "themeChoice": "default",
+  "customColors": {
+    "--dnd-bg-primary": "#1e1e24",
+    "--dnd-bg-secondary": "#2b2b36",
+    "--dnd-bg-tertiary": "#383847",
+    "--dnd-bg-hover": "#3a3b4c",
+    "--dnd-bg-darker": "#15151a",
+    "--dnd-bg-group": "#22222a",
+    "--dnd-text-primary": "#e0e0e0",
+    "--dnd-text-secondary": "#a3a3b5",
+    "--dnd-text-sublabel": "#888899",
+    "--dnd-text-bright": "#ffffff",
+    "--dnd-text-muted": "#666677",
+    "--dnd-text-group": "#cccccc",
+    "--dnd-border-primary": "#40404f",
+    "--dnd-border-active": "#5c5c6e",
+    "--dnd-border-focus": "#7a7a92",
+    "--dnd-accent-teal": "#4db6ac",
+    "--dnd-accent-red": "#e57373",
+    "--dnd-accent-purple": "#ba68c8"
+  }
+}

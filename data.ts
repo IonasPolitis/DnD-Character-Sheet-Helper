@@ -1,6 +1,14 @@
-import classesMap from './classes.json';
-import monkData from './monk.json';
-// You will import the rest of your JSON files here as you create them! (e.g., import fighterData from './fighter.json')
+// --- Upper Routers ---
+import classesMap from './rulebook/classes.json';
+
+// --- Class Data ---
+import monkData from './rulebook/classes/monk.json';
+import monkSubclassesData from './rulebook/classes/monk-subclasses.json';
+
+// --- (Future Imports will go here) ---
+// import racesMap from './rulebook/races.json';
+// import backgroundsMap from './rulebook/backgrounds.json';
+// import luckyFeatData from './rulebook/feats/lucky.json';
 
 // We map the string from classes.json to the actual imported JSON object
 const classDataRegistry: Record<string, any> = {
@@ -16,4 +24,17 @@ export function getClassData(className: string) {
 
     // 2. Return the actual data object
     return classDataRegistry[internalId];
+}
+
+// Map the router string from the class JSON to the actual subclass file
+const subclassDataRegistry: Record<string, any> = {
+    "monk-subclasses": monkSubclassesData,
+};
+
+export function getSubclassData(subclassFile: string, subclassName: string) {
+    const fileData = subclassDataRegistry[subclassFile];
+    if (!fileData) return null;
+    
+    // Return the specific subclass object (e.g., "Warrior of Mercy")
+    return fileData[subclassName];
 }

@@ -24,7 +24,7 @@ __export(main_exports, {
 module.exports = __toCommonJS(main_exports);
 var import_obsidian = require("obsidian");
 
-// classes.json
+// rulebook/classes.json
 var classes_default = {
   Barbarian: "barbarian",
   Bard: "bard",
@@ -41,15 +41,25 @@ var classes_default = {
   Wizard: "wizard"
 };
 
-// monk.json
+// rulebook/classes/monk.json
 var monk_default = {
   class: "Monk",
+  subclassFile: "monk-subclasses",
   features: {
     "1": [
       { name: "Bonus Unarmed Strike", description: "You can make an Unarmed Strike as a Bonus Action." }
     ],
     "2": [
       { name: "Flurry of Blows", description: "You can expend 1 Focus Point to make two Unarmed Strikes as a Bonus Action." }
+    ]
+  }
+};
+
+// rulebook/classes/monk-subclasses.json
+var monk_subclasses_default = {
+  "Warrior of Mercy": {
+    "3": [
+      { name: "Hand of Healing", description: "You can expend 1 Focus Point..." }
     ]
   }
 };
@@ -64,31 +74,39 @@ function getClassData(className) {
   if (!internalId) return null;
   return classDataRegistry[internalId];
 }
+var subclassDataRegistry = {
+  "monk-subclasses": monk_subclasses_default
+};
+function getSubclassData(subclassFile, subclassName) {
+  const fileData = subclassDataRegistry[subclassFile];
+  if (!fileData) return null;
+  return fileData[subclassName];
+}
 
 // main.ts
 var DEFAULT_SETTINGS = {
-  combineClassSubclass: true,
+  combineClassSubclass: false,
   sectionOrder: ["Class", "Subclass", "Race", "Background", "Extra"],
   themeChoice: "default",
   customColors: {
-    "--dnd-bg-primary": "#1e1e24",
-    "--dnd-bg-secondary": "#2b2b36",
-    "--dnd-bg-tertiary": "#383847",
-    "--dnd-bg-hover": "#3a3b4c",
-    "--dnd-bg-darker": "#15151a",
-    "--dnd-bg-group": "#22222a",
-    "--dnd-text-primary": "#e0e0e0",
-    "--dnd-text-secondary": "#a3a3b5",
-    "--dnd-text-sublabel": "#888899",
+    "--dnd-bg-primary": "#262A36",
+    "--dnd-bg-secondary": "#323748",
+    "--dnd-bg-tertiary": "#3A4055",
+    "--dnd-bg-hover": "#363B4A",
+    "--dnd-bg-darker": "#303440",
+    "--dnd-bg-group": "#2D334A",
+    "--dnd-text-primary": "#E0E0E0",
+    "--dnd-text-secondary": "#A0A0D0",
+    "--dnd-text-sublabel": "#A0C7D0",
     "--dnd-text-bright": "#ffffff",
-    "--dnd-text-muted": "#666677",
-    "--dnd-text-group": "#cccccc",
-    "--dnd-border-primary": "#40404f",
-    "--dnd-border-active": "#5c5c6e",
-    "--dnd-border-focus": "#7a7a92",
-    "--dnd-accent-teal": "#4db6ac",
-    "--dnd-accent-red": "#e57373",
-    "--dnd-accent-purple": "#ba68c8"
+    "--dnd-text-muted": "#B8B8D0",
+    "--dnd-text-group": "#B8C4FF",
+    "--dnd-border-primary": "#383E54",
+    "--dnd-border-active": "#6D7CBA",
+    "--dnd-border-focus": "#000",
+    "--dnd-accent-teal": "#64D8CB",
+    "--dnd-accent-red": "#E57373",
+    "--dnd-accent-purple": "#B29DDB"
   }
 };
 var DnDFeaturesPlugin = class extends import_obsidian.Plugin {
@@ -122,77 +140,160 @@ var DnDFeaturesPlugin = class extends import_obsidian.Plugin {
     }
   }
   async processDnDBlock(source, el, ctx) {
-    let blockData;
-    try {
-      blockData = (0, import_obsidian.parseYaml)(source);
-    } catch (error) {
-      el.createEl("p", { text: "Error: Invalid format in dnd-features block.", cls: "dnd-error" });
-      return;
-    }
-    const fileCache = this.app.metadataCache.getCache(ctx.sourcePath);
-    const frontmatter = fileCache?.frontmatter || {};
-    const resolveValue = (val) => {
-      if (typeof val === "string" && val.startsWith("frontmatter.")) {
-        const key = val.replace("frontmatter.", "");
-        return frontmatter[key];
-      }
-      return val;
-    };
-    const level = resolveValue(blockData.level);
-    const dndClass = resolveValue(blockData.class);
-    const subclass = resolveValue(blockData.subclass);
-    const classLevels = resolveValue(blockData["class-levels"]);
-    const race = resolveValue(blockData.race);
-    const background = resolveValue(blockData.background);
-    const extraFeats = resolveValue(blockData["extra-feats"]);
-    if (Array.isArray(dndClass) && Array.isArray(classLevels)) {
-      const totalClassLevels = classLevels.reduce((sum, current) => sum + current, 0);
-      if (totalClassLevels !== level) {
-        const errorBox = el.createDiv({ cls: "dnd-error-window" });
-        errorBox.createEl("strong", { text: "D&D Features Plugin Error:" });
-        errorBox.createEl("p", {
-          text: `The sum of class-levels (${totalClassLevels}) does not match the total level (${level}).`
-        });
+    const renderChild = new import_obsidian.MarkdownRenderChild(el);
+    ctx.addChild(renderChild);
+    const renderContent = () => {
+      el.empty();
+      let blockData;
+      try {
+        blockData = (0, import_obsidian.parseYaml)(source);
+      } catch (error) {
+        el.createEl("p", { text: "Error: Invalid format in dnd-features block.", cls: "dnd-error" });
         return;
       }
-    }
-    const dndWindow = el.createDiv({ cls: "dnd-features-window" });
-    const classArray = Array.isArray(dndClass) ? dndClass : [dndClass];
-    dndWindow.createEl("h3", {
-      text: `Character Features: Level ${level}`,
-      attr: { style: "margin-top: 0; color: var(--dnd-text-bright);" }
-    });
-    this.settings.sectionOrder.forEach((sectionName) => {
-      if (this.settings.combineClassSubclass && sectionName === "Subclass") return;
-      const sectionDiv = dndWindow.createDiv({ cls: `dnd-section-${sectionName.toLowerCase()}` });
-      if (sectionName === "Class" && dndClass) {
-        classArray.forEach((className, index) => {
-          const currentClassLevel = Array.isArray(classLevels) ? classLevels[index] : level;
-          sectionDiv.createEl("h4", {
-            text: `${className} Features (Level ${currentClassLevel})`,
-            attr: { style: "color: var(--dnd-accent-teal); border-bottom: 1px solid var(--dnd-border-primary); padding-bottom: 4px; margin-bottom: 8px; margin-top: 12px;" }
+      const fileCache = this.app.metadataCache.getCache(ctx.sourcePath);
+      const frontmatter = fileCache?.frontmatter || {};
+      const resolveValue = (val) => {
+        if (typeof val === "string" && val.startsWith("frontmatter.")) {
+          const key = val.replace("frontmatter.", "");
+          return frontmatter[key];
+        }
+        return val;
+      };
+      const level = resolveValue(blockData.level);
+      const dndClass = resolveValue(blockData.class);
+      const subclass = resolveValue(blockData.subclass);
+      const classLevels = resolveValue(blockData["class-levels"]);
+      const race = resolveValue(blockData.race);
+      const background = resolveValue(blockData.background);
+      const extraFeats = resolveValue(blockData["extra-feats"]);
+      const parsedLevel = Number(level) || 0;
+      if (Array.isArray(dndClass) && dndClass.length > 1) {
+        if (!Array.isArray(classLevels) || classLevels.length !== dndClass.length) {
+          const errorBox = el.createDiv({ cls: "dnd-error-window" });
+          errorBox.createEl("strong", { text: "D&D Features Plugin Error:" });
+          errorBox.createEl("p", {
+            text: `You have multiple classes listed, but the "class-levels" variable is missing or is invalid. Please provide a level for each class.`
           });
-          const classData = getClassData(className);
-          if (!classData || !classData.features) {
-            sectionDiv.createEl("p", { text: `Data for ${className} not found.`, attr: { style: "color: var(--dnd-accent-red);" } });
-            return;
-          }
-          for (let i = 1; i <= currentClassLevel; i++) {
-            const levelFeatures = classData.features[i.toString()];
-            if (levelFeatures && levelFeatures.length > 0) {
-              levelFeatures.forEach((feature) => {
-                const featureBlock = sectionDiv.createDiv({ attr: { style: "margin-bottom: 8px;" } });
-                featureBlock.createEl("strong", { text: feature.name, attr: { style: "color: var(--dnd-text-bright);" } });
-                featureBlock.createEl("span", { text: ` - ${feature.description}`, attr: { style: "color: var(--dnd-text-secondary);" } });
+          return;
+        }
+        const totalClassLevels = classLevels.reduce((sum, current) => sum + Number(current), 0);
+        if (totalClassLevels !== parsedLevel) {
+          const errorBox = el.createDiv({ cls: "dnd-error-window" });
+          errorBox.createEl("strong", { text: "D&D Features Plugin Error:" });
+          errorBox.createEl("p", {
+            text: `The sum of class-levels (${totalClassLevels}) does not match the total level (${parsedLevel}).`
+          });
+          return;
+        }
+      }
+      const classArray = Array.isArray(dndClass) ? dndClass : [dndClass];
+      const rawSubclassArray = Array.isArray(subclass) ? subclass : subclass ? [subclass] : [];
+      const subclassArray = classArray.map((_, i) => rawSubclassArray[i] || null);
+      this.settings.sectionOrder.forEach((sectionName) => {
+        if (sectionName === "Class" && !dndClass) return;
+        if (sectionName === "Subclass" && (!subclass || this.settings.combineClassSubclass || Number(level) < 3)) return;
+        if (sectionName === "Race" && !race) return;
+        if (sectionName === "Background" && !background) return;
+        if (sectionName === "Extra" && !extraFeats) return;
+        let sectionTitle = `${sectionName} Features:`;
+        if (sectionName === "Class" && this.settings.combineClassSubclass && subclass) sectionTitle = "Class & Subclass Features:";
+        if (sectionName === "Race") sectionTitle = "Race Traits:";
+        if (sectionName === "Background") sectionTitle = "Background Feat:";
+        el.createEl("h3", {
+          text: sectionTitle,
+          attr: { style: "color: var(--dnd-text-primary); margin-bottom: 8px; margin-top: 24px; font-weight: 600;" }
+        });
+        const sectionWindow = el.createDiv({ cls: "dnd-features-window" });
+        const sectionDiv = sectionWindow.createDiv({ cls: `dnd-section-${sectionName.toLowerCase()}` });
+        if (sectionName === "Class") {
+          classArray.forEach((className, index) => {
+            const currentClassLevel = Array.isArray(classLevels) && classLevels.length > index ? Number(classLevels[index]) : Number(level);
+            if (classArray.length > 1) {
+              sectionDiv.createEl("h4", {
+                text: `${className} Features (Level ${currentClassLevel})`,
+                attr: { style: "color: var(--dnd-accent-teal); border-bottom: 1px solid var(--dnd-border-primary); padding-bottom: 4px; margin-bottom: 12px; margin-top: 0;" }
               });
             }
-          }
-        });
-      } else if (sectionName === "Race" && race) {
-        sectionDiv.createEl("h4", { text: "Racial Traits", attr: { style: "color: var(--dnd-accent-purple); border-bottom: 1px solid var(--dnd-border-primary); padding-bottom: 4px;" } });
-        sectionDiv.createEl("p", { text: `Loading traits for ${race}...`, attr: { style: "color: var(--dnd-text-secondary);" } });
-      }
-    });
+            const classData = getClassData(className);
+            if (!classData || !classData.features) {
+              sectionDiv.createEl("p", { text: `Data for ${className} not found.`, attr: { style: "color: var(--dnd-accent-red);" } });
+              return;
+            }
+            for (let i = 1; i <= currentClassLevel; i++) {
+              const levelFeatures = classData.features[i.toString()];
+              if (levelFeatures && levelFeatures.length > 0) {
+                levelFeatures.forEach((feature) => {
+                  const featureBlock = sectionDiv.createDiv({ attr: { style: "margin-bottom: 14px;" } });
+                  const titleContainer = featureBlock.createDiv({ cls: "dnd-feature-title" });
+                  titleContainer.createEl("span", {
+                    text: `Lvl ${i}`,
+                    cls: "dnd-level-badge"
+                  });
+                  titleContainer.createEl("span", {
+                    text: feature.name,
+                    attr: { style: "color: var(--dnd-text-bright);" }
+                  });
+                  featureBlock.createEl("div", {
+                    text: feature.description,
+                    attr: { style: "color: var(--dnd-text-primary); line-height: 1.5; margin-top: 4px;" }
+                  });
+                });
+              }
+              if (this.settings.combineClassSubclass && subclassArray[index] && classData.subclassFile) {
+                const subclassName = subclassArray[index];
+                const subclassData = getSubclassData(classData.subclassFile, subclassName);
+                const subLevelFeatures = subclassData ? subclassData[i.toString()] : null;
+                if (subLevelFeatures && subLevelFeatures.length > 0) {
+                  subLevelFeatures.forEach((feature) => {
+                    const featureBlock = sectionDiv.createDiv({ attr: { style: "margin-bottom: 14px;" } });
+                    const titleContainer = featureBlock.createDiv({ cls: "dnd-feature-title" });
+                    titleContainer.createEl("span", { text: `Lvl ${i}`, cls: "dnd-level-badge", attr: { style: "background-color: var(--dnd-bg-group);" } });
+                    titleContainer.createEl("span", { text: feature.name, attr: { style: "color: var(--dnd-text-bright);" } });
+                    featureBlock.createEl("div", { text: feature.description, attr: { style: "color: var(--dnd-text-primary); line-height: 1.5; margin-top: 4px;" } });
+                  });
+                }
+              }
+            }
+          });
+        } else if (sectionName === "Subclass") {
+          classArray.forEach((className, index) => {
+            const currentClassLevel = Array.isArray(classLevels) ? classLevels[index] : level;
+            const subclassName = subclassArray[index];
+            const classData = getClassData(className);
+            if (subclassName && classData && classData.subclassFile) {
+              if (classArray.length > 1) {
+                sectionDiv.createEl("h4", { text: `${subclassName} Features`, attr: { style: "color: var(--dnd-accent-teal); border-bottom: 1px solid var(--dnd-border-primary); padding-bottom: 4px; margin-bottom: 12px; margin-top: 0;" } });
+              }
+              const subclassData = getSubclassData(classData.subclassFile, subclassName);
+              if (!subclassData) return;
+              for (let i = 1; i <= currentClassLevel; i++) {
+                const subLevelFeatures = subclassData[i.toString()];
+                if (subLevelFeatures && subLevelFeatures.length > 0) {
+                  subLevelFeatures.forEach((feature) => {
+                    const featureBlock = sectionDiv.createDiv({ attr: { style: "margin-bottom: 14px;" } });
+                    const titleContainer = featureBlock.createDiv({ cls: "dnd-feature-title" });
+                    titleContainer.createEl("span", { text: `Lvl ${i}`, cls: "dnd-level-badge" });
+                    titleContainer.createEl("span", { text: feature.name, attr: { style: "color: var(--dnd-text-bright);" } });
+                    featureBlock.createEl("div", { text: feature.description, attr: { style: "color: var(--dnd-text-primary); line-height: 1.5; margin-top: 4px;" } });
+                  });
+                }
+              }
+            }
+          });
+        } else if (sectionName === "Race") {
+          sectionDiv.createEl("p", { text: `Loading traits for ${race}...`, attr: { style: "color: var(--dnd-text-secondary);" } });
+        }
+      });
+    };
+    renderContent();
+    renderChild.registerEvent(
+      this.app.metadataCache.on("changed", (file) => {
+        if (file.path === ctx.sourcePath) {
+          renderContent();
+        }
+      })
+    );
   }
 };
 var DnDSettingsTab = class extends import_obsidian.PluginSettingTab {

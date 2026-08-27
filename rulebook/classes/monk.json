@@ -1,5 +1,6 @@
 {
   "class": "Monk",
+  "subclassFile": "monk-subclasses",
   "features": {
     "1": [
       { "name": "Bonus Unarmed Strike", "description": "You can make an Unarmed Strike as a Bonus Action." }
