@@ -1,5 +1,5 @@
 import { App, Plugin, PluginSettingTab, Setting, MarkdownPostProcessorContext, parseYaml, MarkdownRenderChild } from 'obsidian';
-import { getClassData, getSubclassData } from './data';
+import { getClassData, getSubclassData, getBackgroundFeat } from './data';
 
 // 1. Define the shape of our settings
 interface DnDPluginSettings {
@@ -107,32 +107,32 @@ export default class DnDFeaturesPlugin extends Plugin {
             const extraFeats = resolveValue(blockData['extra-feats']);
 
             // 5. Validate Multiclassing Levels & Ensure Numbers
-        const parsedLevel = Number(level) || 0; // Force total level to be a number
-        
-        // If the user has multiple classes listed, we must strictly validate the class-levels
-        if (Array.isArray(dndClass) && dndClass.length > 1) {
-            
-            // Error Check 1: Is the class-levels array missing or the wrong size?
-            if (!Array.isArray(classLevels) || classLevels.length !== dndClass.length) {
-                const errorBox = el.createDiv({ cls: "dnd-error-window" });
-                errorBox.createEl("strong", { text: "D&D Features Plugin Error:" });
-                errorBox.createEl("p", { 
-                    text: `You have multiple classes listed, but the "class-levels" variable is missing or is invalid. Please provide a level for each class.` 
-                });
-                return; // Stop rendering features
+            const parsedLevel = Number(level) || 0; // Force total level to be a number
+
+            // If the user has multiple classes listed, we must strictly validate the class-levels
+            if (Array.isArray(dndClass) && dndClass.length > 1) {
+
+                // Error Check 1: Is the class-levels array missing or the wrong size?
+                if (!Array.isArray(classLevels) || classLevels.length !== dndClass.length) {
+                    const errorBox = el.createDiv({ cls: "dnd-error-window" });
+                    errorBox.createEl("strong", { text: "D&D Features Plugin Error:" });
+                    errorBox.createEl("p", {
+                        text: `You have multiple classes listed, but the "class-levels" variable is missing or is invalid. Please provide a level for each class.`
+                    });
+                    return; // Stop rendering features
+                }
+
+                // Error Check 2: Does the math add up?
+                const totalClassLevels = classLevels.reduce((sum, current) => sum + Number(current), 0);
+                if (totalClassLevels !== parsedLevel) {
+                    const errorBox = el.createDiv({ cls: "dnd-error-window" });
+                    errorBox.createEl("strong", { text: "D&D Features Plugin Error:" });
+                    errorBox.createEl("p", {
+                        text: `The sum of class-levels (${totalClassLevels}) does not match the total level (${parsedLevel}).`
+                    });
+                    return; // Stop rendering features
+                }
             }
-            
-            // Error Check 2: Does the math add up?
-            const totalClassLevels = classLevels.reduce((sum, current) => sum + Number(current), 0);
-            if (totalClassLevels !== parsedLevel) {
-                const errorBox = el.createDiv({ cls: "dnd-error-window" });
-                errorBox.createEl("strong", { text: "D&D Features Plugin Error:" });
-                errorBox.createEl("p", { 
-                    text: `The sum of class-levels (${totalClassLevels}) does not match the total level (${parsedLevel}).` 
-                });
-                return; // Stop rendering features
-            }
-        }
 
             // 6. Setup the Registry Lookup (Preparation for Data Fetching)
             const classArray = Array.isArray(dndClass) ? dndClass : [dndClass];
@@ -144,12 +144,12 @@ export default class DnDFeaturesPlugin extends Plugin {
             this.settings.sectionOrder.forEach((sectionName) => {
 
                 // 1. CONDITIONAL RENDERING: Skip this section entirely if the user didn't provide the variable
-            if (sectionName === "Class" && !dndClass) return;
-            // Hide Subclass if missing, combined, OR if the total level is below 3 (D&D 2024 Rules)
-            if (sectionName === "Subclass" && (!subclass || this.settings.combineClassSubclass || Number(level) < 3)) return;
-            if (sectionName === "Race" && !race) return;
-            if (sectionName === "Background" && !background) return;
-            if (sectionName === "Extra" && !extraFeats) return;
+                if (sectionName === "Class" && !dndClass) return;
+                // Hide Subclass if missing, combined, OR if the total level is below 3 (D&D 2024 Rules)
+                if (sectionName === "Subclass" && (!subclass || this.settings.combineClassSubclass || Number(level) < 3)) return;
+                if (sectionName === "Race" && !race) return;
+                if (sectionName === "Background" && !background) return;
+                if (sectionName === "Extra" && !extraFeats) return;
 
                 // Determine the dynamic header title for this section
                 let sectionTitle = `${sectionName} Features:`;
@@ -170,10 +170,10 @@ export default class DnDFeaturesPlugin extends Plugin {
                 // Render Class Section
                 if (sectionName === "Class") {
                     classArray.forEach((className, index) => {
-                        // Ensure we are pulling the correct level for this specific class, and treat it as a number!
-                    const currentClassLevel = (Array.isArray(classLevels) && classLevels.length > index) 
-                        ? Number(classLevels[index]) 
-                        : Number(level);
+                        // Priority Check: If single-class, use the total level. If multiclass, use the specific class level.
+                        const currentClassLevel = (classArray.length > 1 && Array.isArray(classLevels) && classLevels.length > index)
+                            ? Number(classLevels[index])
+                            : Number(level);
 
                         // 2. MULTICLASS HEADER LOGIC: Only render the inner class title if there are multiple classes
                         if (classArray.length > 1) {
@@ -276,6 +276,30 @@ export default class DnDFeaturesPlugin extends Plugin {
                 // Placeholder for other sections (Race, Background, etc.)
                 else if (sectionName === "Race") {
                     sectionDiv.createEl("p", { text: `Loading traits for ${race}...`, attr: { style: "color: var(--dnd-text-secondary);" } });
+                }
+
+                // Render Background Section
+                else if (sectionName === "Background") {
+                    const featData = getBackgroundFeat(background);
+
+                    if (featData) {
+                        const featureBlock = sectionDiv.createDiv({ attr: { style: "margin-bottom: 14px;" } });
+                        const titleContainer = featureBlock.createDiv({ cls: "dnd-feature-title" });
+
+                        // Reusing the badge CSS for a clean "Origin Feat" label
+                        titleContainer.createEl("span", { text: "Origin Feat", cls: "dnd-level-badge" });
+                        titleContainer.createEl("span", { text: featData.name, attr: { style: "color: var(--dnd-text-bright);" } });
+
+                        featureBlock.createEl("div", {
+                            text: featData.description,
+                            attr: { style: "color: var(--dnd-text-primary); line-height: 1.5; margin-top: 4px;" }
+                        });
+                    } else {
+                        sectionDiv.createEl("p", {
+                            text: `Data for background "${background}" not found.`,
+                            attr: { style: "color: var(--dnd-accent-red);" }
+                        });
+                    }
                 }
             });
         }; // <-- This closes our new renderContent() function

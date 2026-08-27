@@ -4,9 +4,10 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-      "dev": "esbuild main.ts --bundle --watch --format=cjs --external:obsidian --outfile=main.js",
-      "build": "esbuild main.ts --bundle --format=cjs --external:obsidian --outfile=main.js"
-    },
+    "generate": "node generate-registry.js",
+    "dev": "npm run generate && esbuild main.ts --bundle --watch --format=cjs --external:obsidian --outfile=main.js",
+    "build": "npm run generate && esbuild main.ts --bundle --format=cjs --external:obsidian --outfile=main.js"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/IonasPolitis/DnD_Character_Features.git"

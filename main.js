@@ -41,18 +41,10 @@ var classes_default = {
   Wizard: "wizard"
 };
 
-// rulebook/classes/monk.json
-var monk_default = {
-  class: "Monk",
-  subclassFile: "monk-subclasses",
-  features: {
-    "1": [
-      { name: "Bonus Unarmed Strike", description: "You can make an Unarmed Strike as a Bonus Action." }
-    ],
-    "2": [
-      { name: "Flurry of Blows", description: "You can expend 1 Focus Point to make two Unarmed Strikes as a Bonus Action." }
-    ]
-  }
+// rulebook/backgrounds.json
+var backgrounds_default = {
+  Wayfarer: "lucky",
+  Acolyte: "magic-initiate-cleric"
 };
 
 // rulebook/classes/monk-subclasses.json
@@ -64,23 +56,57 @@ var monk_subclasses_default = {
   }
 };
 
-// data.ts
-var classDataRegistry = {
-  "monk": monk_default
-  // "fighter": fighterData,
+// rulebook/classes/monk.json
+var monk_default = {
+  class: "Monk",
+  subclassFile: "monk-subclasses",
+  features: {
+    "1": [
+      { name: "Bonus Unarmed Strike", description: "You can make an Unarmed Strike as a Bonus Action." }
+    ],
+    "2": [
+      { name: "Flurry of Blows", description: "You can expend 1 Focus Point to make two Unarmed Strikes as a Bonus Action." },
+      { name: "Patient Defense", description: "You can take the Disengage action as a Bonus Action. Alternatively, you can expend 1 Focus Point to take both the Disengage and the Dodge actions as a Bonus Action." },
+      { name: "Step of the Wind", description: "You can take the Dash action as a Bonus Action. Alternatively, you can expend 1 Focus Point to take both the Disengage and Dash actions as a Bonus Action, and your jump distance is doubled for the turn." }
+    ],
+    "4": [
+      { name: "Slow Fall", description: "You can take a Reaction when you fall to reduce any damage you take from the fall by an amount equal to five times your Monk level." }
+    ]
+  }
 };
-function getClassData(className) {
-  const internalId = classes_default[className];
-  if (!internalId) return null;
-  return classDataRegistry[internalId];
-}
-var subclassDataRegistry = {
+
+// rulebook/feats/lucky.json
+var lucky_default = {
+  name: "Lucky",
+  description: "You have a number of Luck Points equal to your Proficiency Bonus and can spend the points on the benefits below. You regain your expended Luck Points when you finish a Long Rest.\n \u2022 Advatages: When you roll a d20 for a D20 Test, you can spend 1 Luck Point to give yourself Advantage on the roll.\n \u2022 Disadvantage: When a creature rolls a d20 for an attack roll against you, you can spend 1 Luck Point to impose Disadvantage on that roll."
+};
+
+// registry.ts
+var classRegistry = {
+  "monk": monk_default
+};
+var subclassRegistry = {
   "monk-subclasses": monk_subclasses_default
 };
+var featRegistry = {
+  "lucky": lucky_default
+};
+
+// data.ts
+function getClassData(className) {
+  const classFile = classes_default[className];
+  if (!classFile) return null;
+  return classRegistry[classFile];
+}
 function getSubclassData(subclassFile, subclassName) {
-  const fileData = subclassDataRegistry[subclassFile];
+  const fileData = subclassRegistry[subclassFile];
   if (!fileData) return null;
   return fileData[subclassName];
+}
+function getBackgroundFeat(backgroundName) {
+  const featId = backgrounds_default[backgroundName];
+  if (!featId) return null;
+  return featRegistry[featId];
 }
 
 // main.ts
@@ -208,7 +234,7 @@ var DnDFeaturesPlugin = class extends import_obsidian.Plugin {
         const sectionDiv = sectionWindow.createDiv({ cls: `dnd-section-${sectionName.toLowerCase()}` });
         if (sectionName === "Class") {
           classArray.forEach((className, index) => {
-            const currentClassLevel = Array.isArray(classLevels) && classLevels.length > index ? Number(classLevels[index]) : Number(level);
+            const currentClassLevel = classArray.length > 1 && Array.isArray(classLevels) && classLevels.length > index ? Number(classLevels[index]) : Number(level);
             if (classArray.length > 1) {
               sectionDiv.createEl("h4", {
                 text: `${className} Features (Level ${currentClassLevel})`,
@@ -283,6 +309,23 @@ var DnDFeaturesPlugin = class extends import_obsidian.Plugin {
           });
         } else if (sectionName === "Race") {
           sectionDiv.createEl("p", { text: `Loading traits for ${race}...`, attr: { style: "color: var(--dnd-text-secondary);" } });
+        } else if (sectionName === "Background") {
+          const featData = getBackgroundFeat(background);
+          if (featData) {
+            const featureBlock = sectionDiv.createDiv({ attr: { style: "margin-bottom: 14px;" } });
+            const titleContainer = featureBlock.createDiv({ cls: "dnd-feature-title" });
+            titleContainer.createEl("span", { text: "Origin Feat", cls: "dnd-level-badge" });
+            titleContainer.createEl("span", { text: featData.name, attr: { style: "color: var(--dnd-text-bright);" } });
+            featureBlock.createEl("div", {
+              text: featData.description,
+              attr: { style: "color: var(--dnd-text-primary); line-height: 1.5; margin-top: 4px;" }
+            });
+          } else {
+            sectionDiv.createEl("p", {
+              text: `Data for background "${background}" not found.`,
+              attr: { style: "color: var(--dnd-accent-red);" }
+            });
+          }
         }
       });
     };

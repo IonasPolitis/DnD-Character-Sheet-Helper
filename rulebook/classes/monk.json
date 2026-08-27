@@ -6,7 +6,12 @@
       { "name": "Bonus Unarmed Strike", "description": "You can make an Unarmed Strike as a Bonus Action." }
     ],
     "2": [
-      { "name": "Flurry of Blows", "description": "You can expend 1 Focus Point to make two Unarmed Strikes as a Bonus Action." }
+      { "name": "Flurry of Blows", "description": "You can expend 1 Focus Point to make two Unarmed Strikes as a Bonus Action." },
+      { "name": "Patient Defense", "description": "You can take the Disengage action as a Bonus Action. Alternatively, you can expend 1 Focus Point to take both the Disengage and the Dodge actions as a Bonus Action." },
+      { "name": "Step of the Wind", "description": "You can take the Dash action as a Bonus Action. Alternatively, you can expend 1 Focus Point to take both the Disengage and Dash actions as a Bonus Action, and your jump distance is doubled for the turn." }
+    ],
+    "4": [
+      { "name": "Slow Fall", "description": "You can take a Reaction when you fall to reduce any damage you take from the fall by an amount equal to five times your Monk level." }
     ]
   }
 }

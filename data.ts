@@ -1,40 +1,32 @@
-// --- Upper Routers ---
-import classesMap from './rulebook/classes.json';
+// Import everything from our new auto-generated file
+import { 
+    classRegistry, 
+    subclassRegistry, 
+    featRegistry, 
+    classesMap, 
+    backgroundsMap 
+} from './registry';
 
-// --- Class Data ---
-import monkData from './rulebook/classes/monk.json';
-import monkSubclassesData from './rulebook/classes/monk-subclasses.json';
-
-// --- (Future Imports will go here) ---
-// import racesMap from './rulebook/races.json';
-// import backgroundsMap from './rulebook/backgrounds.json';
-// import luckyFeatData from './rulebook/feats/lucky.json';
-
-// We map the string from classes.json to the actual imported JSON object
-const classDataRegistry: Record<string, any> = {
-    "monk": monkData,
-    // "fighter": fighterData,
-};
-
+// --- Logic for Fetching Core Class Data ---
 export function getClassData(className: string) {
-    // 1. Find the internal ID from classes.json (e.g., "Monk" -> "monk")
-    const internalId = (classesMap as Record<string, string>)[className];
+    const classFile = (classesMap as Record<string, string>)[className];
+    if (!classFile) return null;
     
-    if (!internalId) return null;
-
-    // 2. Return the actual data object
-    return classDataRegistry[internalId];
+    return classRegistry[classFile];
 }
 
-// Map the router string from the class JSON to the actual subclass file
-const subclassDataRegistry: Record<string, any> = {
-    "monk-subclasses": monkSubclassesData,
-};
-
+// --- Logic for Fetching Subclass Data ---
 export function getSubclassData(subclassFile: string, subclassName: string) {
-    const fileData = subclassDataRegistry[subclassFile];
+    const fileData = subclassRegistry[subclassFile];
     if (!fileData) return null;
     
-    // Return the specific subclass object (e.g., "Warrior of Mercy")
     return fileData[subclassName];
+}
+
+// --- Logic for Fetching Background Feats ---
+export function getBackgroundFeat(backgroundName: string) {
+    const featId = (backgroundsMap as Record<string, string>)[backgroundName];
+    if (!featId) return null;
+    
+    return featRegistry[featId];
 }

@@ -113,9 +113,22 @@
 }
 
 /* ==========================================
-   5. UTILITIES
+   5. UTILITIES & FEATURE FORMATTING
    ========================================== */
-/* Remove the margin from the very last feature block to fix bottom padding */
+/* Add a visual separator (divider) between feature blocks */
+.dnd-features-window > div > div {
+    border-bottom: 1px solid var(--dnd-border-primary);
+    padding-bottom: 14px; /* Space between text and the line */
+}
+
+/* Target the description text to support multi-line \n characters */
+.dnd-features-window > div > div > div:last-child {
+    white-space: pre-wrap;
+}
+
+/* Remove the margin and border from the very last feature block */
 .dnd-features-window > div > div:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
     margin-bottom: 0 !important;
 }
