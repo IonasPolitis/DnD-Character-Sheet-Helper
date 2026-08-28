@@ -1,7 +1,7 @@
 {
-	"id": "dnd-character-features-plugin",
-	"name": "D&D Character Features Plugin",
-	"version": "0.0.1",
+	"id": "dnd-character-sheet-helper-plugin",
+	"name": "D&D Character Sheet Helper Plugin",
+	"version": "1.0.0",
 	"minAppVersion": "1.15.0",
 	"description": "Renders D&D 5.5e character features from frontmatter properties.",
 	"author": "Ionas Politis",
