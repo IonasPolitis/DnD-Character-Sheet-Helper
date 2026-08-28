@@ -121,11 +121,6 @@
     padding-bottom: 14px; /* Space between text and the line */
 }
 
-/* Target the description text to support multi-line \n characters */
-.dnd-features-window > div > div > div:last-child {
-    white-space: pre-wrap;
-}
-
 /* Remove the margin and border from the very last feature block */
 .dnd-features-window > div > div:last-child {
     border-bottom: none;
@@ -169,6 +164,22 @@
     color: var(--dnd-text-bright); 
     line-height: 1.5;
     margin-top: 4px;
+}
+
+/* Strip Obsidian's default bulky margins from rendered markdown paragraphs */
+.dnd-feature-desc p {
+    margin-top: 0.5em;
+    margin-bottom: 0.5em;
+}
+
+/* Remove the top margin from the very first paragraph so it sits flush with the title */
+.dnd-feature-desc p:first-child {
+    margin-top: 0;
+}
+
+/* Remove the bottom margin from the very last paragraph to prevent extra padding at the bottom of the box */
+.dnd-feature-desc p:last-child {
+    margin-bottom: 0;
 }
 
 .dnd-error-text {

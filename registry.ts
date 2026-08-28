@@ -8,6 +8,8 @@ import backgroundsMap from './rulebook/backgrounds.json';
 import racesMap from './rulebook/races.json';
 import class_monksubclasses from './rulebook/classes/monk-subclasses.json';
 import class_monk from './rulebook/classes/monk.json';
+import class_paladin from './rulebook/classes/paladin.json';
+import feat_abilityscoreimprovement from './rulebook/feats/ability-score-improvement.json';
 import feat_lucky from './rulebook/feats/lucky.json';
 import race_orc from './rulebook/races/orc.json';
 
@@ -15,6 +17,7 @@ export { classesMap, backgroundsMap, racesMap };
 
 export const classRegistry: Record<string, any> = {
     "monk": class_monk,
+    "paladin": class_paladin,
 };
 
 export const subclassRegistry: Record<string, any> = {
@@ -22,6 +25,7 @@ export const subclassRegistry: Record<string, any> = {
 };
 
 export const featRegistry: Record<string, any> = {
+    "ability-score-improvement": feat_abilityscoreimprovement,
     "lucky": feat_lucky,
 };
 export const raceRegistry: Record<string, any> = {

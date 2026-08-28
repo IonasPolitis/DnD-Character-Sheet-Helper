@@ -1,4 +1,4 @@
-import { App, Plugin, PluginSettingTab, Setting, MarkdownPostProcessorContext, parseYaml, MarkdownRenderChild } from 'obsidian';
+import { App, Plugin, PluginSettingTab, Setting, MarkdownPostProcessorContext, parseYaml, MarkdownRenderChild, MarkdownRenderer } from 'obsidian';
 import { getClassData, getSubclassData, getBackgroundFeat, getRaceData, getExtraFeat } from './data';
 
 // 1. Define the shape of our settings
@@ -12,7 +12,7 @@ interface DnDPluginSettings {
 // 2. Set the default values
 const DEFAULT_SETTINGS: DnDPluginSettings = {
     combineClassSubclass: false,
-    sectionOrder: ["Class", "Subclass", "Race", "Background", "Extra"],
+    sectionOrder: ["Class", "Subclass", "Race", "Background", "Extra Feats"],
     themeChoice: "default",
     customColors: {
         "--dnd-bg-primary": "#262A36", "--dnd-bg-secondary": "#323748", "--dnd-bg-tertiary": "#3A4055",
@@ -140,6 +140,49 @@ export default class DnDFeaturesPlugin extends Plugin {
             const rawSubclassArray = Array.isArray(subclass) ? subclass : (subclass ? [subclass] : []);
             const subclassArray = classArray.map((_, i) => rawSubclassArray[i] || null);
 
+            // 7. PRE-PASS: Gather all auto-granted feats from classes and subclasses
+            // Start with the feats the user manually typed in the frontmatter
+            let finalExtraFeats = Array.isArray(extraFeats) ? [...extraFeats] : (extraFeats ? [extraFeats] : []);
+
+            if (dndClass) {
+                classArray.forEach((className, index) => {
+                    const currentClassLevel = (classArray.length > 1 && Array.isArray(classLevels) && classLevels.length > index)
+                        ? Number(classLevels[index])
+                        : Number(level);
+
+                    const classData = getClassData(className);
+                    if (classData && classData.features) {
+                        for (let i = 1; i <= currentClassLevel; i++) {
+                            const levelFeatures = classData.features[i.toString()];
+                            
+                            // Check core class for granted feats
+                            if (levelFeatures) {
+                                levelFeatures.forEach((feature: any) => {
+                                    if (feature.grantedFeats && Array.isArray(feature.grantedFeats)) {
+                                        finalExtraFeats.push(...feature.grantedFeats);
+                                    }
+                                });
+                            }
+                            
+                            // Check subclass for granted feats just in case!
+                            if (classData.subclassFile && subclassArray[index]) {
+                                const subclassData = getSubclassData(classData.subclassFile, subclassArray[index]);
+                                const subLevelFeatures = subclassData ? subclassData[i.toString()] : null;
+                                if (subLevelFeatures) {
+                                    subLevelFeatures.forEach((feature: any) => {
+                                        if (feature.grantedFeats && Array.isArray(feature.grantedFeats)) {
+                                            finalExtraFeats.push(...feature.grantedFeats);
+                                        }
+                                    });
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+            // Remove any duplicates (e.g., if two classes somehow grant the exact same feat)
+            finalExtraFeats = [...new Set(finalExtraFeats)];
+
             // Loop through the user's custom section order
             this.settings.sectionOrder.forEach((sectionName) => {
 
@@ -149,13 +192,15 @@ export default class DnDFeaturesPlugin extends Plugin {
                 if (sectionName === "Subclass" && (!subclass || this.settings.combineClassSubclass || Number(level) < 3)) return;
                 if (sectionName === "Race" && !race) return;
                 if (sectionName === "Background" && !background) return;
-                if (sectionName === "Extra" && !extraFeats) return;
+                // Display the window if the user manually added feats OR if the class auto-granted one
+                if (sectionName === "Extra Feats" && finalExtraFeats.length === 0) return;
 
                 // Determine the dynamic header title for this section
                 let sectionTitle = `${sectionName} Features:`;
                 if (sectionName === "Class" && this.settings.combineClassSubclass && subclass) sectionTitle = "Class & Subclass Features:";
                 if (sectionName === "Race") sectionTitle = "Race Traits:";
                 if (sectionName === "Background") sectionTitle = "Background Feat:";
+                if (sectionName === "Extra Feats") sectionTitle = "Extra Feats:";
 
                 // Create the Header Title using our new CSS class
                 el.createEl("h3", { text: sectionTitle, cls: "dnd-section-header" });
@@ -191,7 +236,8 @@ export default class DnDFeaturesPlugin extends Plugin {
 
                                     titleContainer.createEl("span", { text: feature.badge ? feature.badge : `Lvl ${i}`, cls: "dnd-level-badge" });
                                     titleContainer.createEl("span", { text: feature.name, cls: "dnd-feature-name" });
-                                    featureBlock.createEl("div", { text: feature.description, cls: "dnd-feature-desc" });
+                                    const descDiv = featureBlock.createDiv({ cls: "dnd-feature-desc" });
+                                    MarkdownRenderer.render(this.app, feature.description, descDiv, ctx.sourcePath, renderChild);
                                 });
                             }
 
@@ -207,7 +253,8 @@ export default class DnDFeaturesPlugin extends Plugin {
 
                                         titleContainer.createEl("span", { text: feature.badge ? feature.badge : `Lvl ${i}`, cls: "dnd-level-badge dnd-badge-combined" });
                                         titleContainer.createEl("span", { text: feature.name, cls: "dnd-feature-name" });
-                                        featureBlock.createEl("div", { text: feature.description, cls: "dnd-feature-desc" });
+                                        const descDiv = featureBlock.createDiv({ cls: "dnd-feature-desc" });
+                                    MarkdownRenderer.render(this.app, feature.description, descDiv, ctx.sourcePath, renderChild);
                                     });
                                 }
                             }
@@ -239,7 +286,8 @@ export default class DnDFeaturesPlugin extends Plugin {
 
                                         titleContainer.createEl("span", { text: feature.badge ? feature.badge : `Lvl ${i}`, cls: "dnd-level-badge" });
                                         titleContainer.createEl("span", { text: feature.name, cls: "dnd-feature-name" });
-                                        featureBlock.createEl("div", { text: feature.description, cls: "dnd-feature-desc" });
+                                        const descDiv = featureBlock.createDiv({ cls: "dnd-feature-desc" });
+                                    MarkdownRenderer.render(this.app, feature.description, descDiv, ctx.sourcePath, renderChild);
                                     });
                                 }
                             }
@@ -279,11 +327,9 @@ export default class DnDFeaturesPlugin extends Plugin {
                     }
                 }
                 // Render Extra Feats Section
-                else if (sectionName === "Extra") {
-                    // Force the input into an array so we can loop through multiple feats seamlessly
-                    const featsArray = Array.isArray(extraFeats) ? extraFeats : [extraFeats];
-
-                    featsArray.forEach((featId: string) => {
+                else if (sectionName === "Extra Feats") {
+                    // We now use our pre-processed master list instead of the raw variable
+                    finalExtraFeats.forEach((featId: string) => {
                         const featData = getExtraFeat(featId);
 
                         if (featData) {

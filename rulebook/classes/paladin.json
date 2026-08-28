@@ -1,0 +1,13 @@
+{
+      "class": "Paladin",
+      "subclassFile": "paladin-subclasses",
+      "features": {
+            "4": [
+                  {
+                        "name": "Ability Score Improvement",
+                        "description": "You gain the Ability Score Improvement feat or another feat of your choice.",
+                        "grantedFeats": ["ability-score-improvement"]
+                  }
+            ]
+      }
+}

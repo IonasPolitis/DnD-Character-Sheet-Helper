@@ -62,7 +62,7 @@ var monk_subclasses_default = {
       { name: "Hand of Healing", description: "As a Magic action, you can expend 1 Focus Point to touch a creature and restore a number of Hit Points equal to a roll of your Martial Arts die plus your Wisdom modifier.\nWhen you use your Flurry of Blows, you can replace one of the Unarmed Strikes with a use of this feature without expending a Focus Point for the healing." }
     ],
     "6": [
-      { name: "Physician's Touch", description: "Your Hand of Harm and Hand of Healing improve, as detailed below.\n \u2022 Hand of Harm:\nWhen you use Hand of Harm on a creature, you can also give that creature the Poisoned condition until the end of your next turn.\n \u2022 Hand of Healing:\nWhen you use Hand of Healing, you can also end one of the following conditions on the creature you heal: Blinded, Deafened, Paralyzed, Poisoned, or Stunned." }
+      { name: "Physician's Touch", description: "Your Hand of Harm and Hand of Healing improve, as detailed below.\n \u2022 **Hand of Harm**:\nWhen you use Hand of Harm on a creature, you can also give that creature the Poisoned condition until the end of your next turn.\n \u2022 **Hand of Healing**:\nWhen you use Hand of Healing, you can also end one of the following conditions on the creature you heal: Blinded, Deafened, Paralyzed, Poisoned, or Stunned." }
     ],
     "11": [
       { name: "Flury of Healing and Harm", description: "When you use Flurry of Blows, you can replace each of the Unarmed Strikes w ith a use of Hand of Healing without expending Focus Points for the healing.\n  In addition, when you make an Unarmed Strike with Flur ry of Blows and deal damage, you can use Hand of Harm with that strike without expending a Focus Point for Hand of Harm. You ca n still use Hand of Harm only once per turn.\n  You can use these benefits a total number oftimes equal to your Wisdom modifier (minimum of once). You regain all expended uses when you finish a Long Rest." }
@@ -73,7 +73,7 @@ var monk_subclasses_default = {
   },
   "Warrior of Shadow": {
     "3": [
-      { name: "Shadow Arts", description: "You have learned to draw on the power of the Shadowfell, gaining the following benefits.\n \u2022 Darkness: You can expend 1 Focus Point to cast the Darkness spell without spell components. You can see within the spell's area when you cast it with this feature. While the spell persists, you can move its area of Darkness to a space within 60 feet of yourself at the start of each of your turns.\n \u2022 Darkvision: You gain Darkvision with a range of 60 feet. If you already have Darkvision, its range increases by 60 feet.\n \u2022 Shadowy Figments: You know the Minor Illusion spell. Wisdom is your spellcasting ability for it." }
+      { name: "Shadow Arts", description: "You have learned to draw on the power of the Shadowfell, gaining the following benefits.\n \u2022 **Darkness**: You can expend 1 Focus Point to cast the Darkness spell without spell components. You can see within the spell's area when you cast it with this feature. While the spell persists, you can move its area of Darkness to a space within 60 feet of yourself at the start of each of your turns.\n \u2022 **Darkvision**: You gain Darkvision with a range of 60 feet. If you already have Darkvision, its range increases by 60 feet.\n \u2022 **Shadowy Figments**: You know the Minor Illusion spell. Wisdom is your spellcasting ability for it." }
     ],
     "6": [
       { name: "Shadow Step", description: "While entirely within Dim Light or Darkness, you can use a Bonus Action to teleport up to 60 feet to an unoccupied space you can see that is also in Dim Light or Darkness. You then have Advantage on the next melee attack you make before the end of the current turn." }
@@ -87,7 +87,7 @@ var monk_subclasses_default = {
   },
   "Warrior of the Element": {
     "3": [
-      { name: "Elemental Attunment", description: "At the start of your turn, you can expend l Focus Point to imbue yourself with elemental energy. The energy lasts for 10 minutes or until you have the Incapacitated condition. You gain the following benefits while this feature is active.\n \u2022 Reach: When you make an Unarmed Strike, your reach is 10 feet greater than normal, as elemental energy extends from you.\n \u2022 Elemental Strikes: Whenever you hit with your Unarmed Strike, you can cause it to deal your choice of Acid, Cold, Fire, Lightning, or Thunder damage rather than its normal damage type. When you deal one of these types with it, you can also force the target to make a Strength saving throw. On a failed save, you can move the target up to 10 feet toward or away from you, as elemental energy swirls around it.\n \u2022 Manipulate Elements: You know the Elementalism spell. Wisdom is your spellcasting ability for it." }
+      { name: "Elemental Attunment", description: "At the start of your turn, you can expend l Focus Point to imbue yourself with elemental energy. The energy lasts for 10 minutes or until you have the Incapacitated condition. You gain the following benefits while this feature is active.\n \u2022 **Reach**: When you make an Unarmed Strike, your reach is 10 feet greater than normal, as elemental energy extends from you.\n \u2022 **Elemental Strikes**: Whenever you hit with your Unarmed Strike, you can cause it to deal your choice of Acid, Cold, Fire, Lightning, or Thunder damage rather than its normal damage type. When you deal one of these types with it, you can also force the target to make a Strength saving throw. On a failed save, you can move the target up to 10 feet toward or away from you, as elemental energy swirls around it.\n \u2022 **Manipulate Elements**: You know the Elementalism spell. Wisdom is your spellcasting ability for it." }
     ],
     "6": [
       { name: "Elemental Burst", description: "As a Magic action, you can expend 2 Focus Points to cause elemental energy to burst in a 20-foot-radius Sphere centered on a point within 120 feet of yourself. Choose a damage type: Acid, Cold, Fire, Lightning, or Thunder.\n  Each creature in the Sphere must make a Dexterity saving throw. On a failed save, a creature takes damage of the chosen type equal to three rolls of your Martial Arts die. On a successful save, a creature takes half as much damage." }
@@ -96,12 +96,12 @@ var monk_subclasses_default = {
       { name: "Stride of the Element", description: "While your Elemental Attunement is active, you also have a Fly Speed and a Swim Speed equal to your Speed." }
     ],
     "17": [
-      { name: "Elemental Epitome", description: "While your Elemental Attunement is active, you also gain the following benefits:\n \u2022 Damage Resistance: You gain Resistance to one of the following damage types of your choice: Acid, Cold, Fire, Lightning, or Thunder. At the start of each of your turns, you can change this choice.\n \u2022 Destructive Stride: When you use your Step of the Wind, your speed increases by 20 feet until the end o the turn.  For that duration, any creature of your choice takes damage equal to one roll of your Martial Arts die when you enter a space within 5 feet of it. The damage type is your choice of Acid, Cold, Fire, Lightning, or Thunder. A creature can take this damage only once per turn.\n \u2022 Empowered Strikes: Once on each of your turns, you can deal extra damage to a target equal to one roll of your Martial Arts die when you hit it with an Unarmed Strike. The extra damage is the same type dealt by that strike." }
+      { name: "Elemental Epitome", description: "While your Elemental Attunement is active, you also gain the following benefits:\n \u2022 **Damage Resistance**: You gain Resistance to one of the following damage types of your choice: Acid, Cold, Fire, Lightning, or Thunder. At the start of each of your turns, you can change this choice.\n \u2022 **Destructive Stride**: When you use your Step of the Wind, your speed increases by 20 feet until the end o the turn.  For that duration, any creature of your choice takes damage equal to one roll of your Martial Arts die when you enter a space within 5 feet of it. The damage type is your choice of Acid, Cold, Fire, Lightning, or Thunder. A creature can take this damage only once per turn.\n \u2022 **Empowered Strikes**: Once on each of your turns, you can deal extra damage to a target equal to one roll of your Martial Arts die when you hit it with an Unarmed Strike. The extra damage is the same type dealt by that strike." }
     ]
   },
   "Warrior of the Open Hand": {
     "3": [
-      { name: "Open Hand Technique", description: " \u2022 Addle: The target can't make Opportunity Attacks until the start of its next turn.\n \u2022 Push: The target must succeed on a Strength saving throw or be pushed up to 15 feet away from you.\n \u2022 Topple: The target must succeed on a Dexterity saving throw or have the Prone condition." }
+      { name: "Open Hand Technique", description: " \u2022 **Addle**: The target can't make Opportunity Attacks until the start of its next turn.\n \u2022 **Push**: The target must succeed on a Strength saving throw or be pushed up to 15 feet away from you.\n \u2022 **Topple**: The target must succeed on a Dexterity saving throw or have the Prone condition." }
     ],
     "6": [
       { name: "Wholeness of Body", description: "You gain the ability to heal yourself. As a Bonus Action, you can roll your Martial Arts die. You regain a number of Hit Points equal to the number rolled plus your Wisdom modifier (minimum of 1 Hit Point regained).\n  You can use this feature a number of times equal to your Wisdom modifier (minimum of once), and you regain all expended uses when you finish a Long Rest." }
@@ -121,51 +121,123 @@ var monk_default = {
   subclassFile: "monk-subclasses",
   features: {
     "1": [
-      { name: "Bonus Unarmed Strike", description: "You can make an Unarmed Strike as a Bonus Action." }
+      {
+        name: "Bonus Unarmed Strike",
+        description: "You can make an Unarmed Strike as a Bonus Action."
+      }
     ],
     "2": [
-      { name: "Flurry of Blows", description: "You can expend 1 Focus Point to make two Unarmed Strikes as a Bonus Action." },
-      { name: "Patient Defense", description: "You can take the Disengage action as a Bonus Action. Alternatively, you can expend 1 Focus Point to take both the Disengage and the Dodge actions as a Bonus Action." },
-      { name: "Step of the Wind", description: "You can take the Dash action as a Bonus Action. Alternatively, you can expend 1 Focus Point to take both the Disengage and Dash actions as a Bonus Action, and your jump distance is doubled for the turn." }
+      {
+        name: "Flurry of Blows",
+        description: "You can expend 1 Focus Point to make two Unarmed Strikes as a Bonus Action."
+      },
+      {
+        name: "Patient Defense",
+        description: "You can take the Disengage action as a Bonus Action. Alternatively, you can expend 1 Focus Point to take both the Disengage and the Dodge actions as a Bonus Action."
+      },
+      {
+        name: "Step of the Wind",
+        description: "You can take the Dash action as a Bonus Action. Alternatively, you can expend 1 Focus Point to take both the Disengage and Dash actions as a Bonus Action, and your jump distance is doubled for the turn."
+      }
     ],
     "4": [
-      { name: "Slow Fall", description: "You can take a Reaction when you fall to reduce any damage you take from the fall by an amount equal to five times your Monk level." }
+      {
+        name: "Slow Fall",
+        description: "You can take a Reaction when you fall to reduce any damage you take from the fall by an amount equal to five times your Monk level."
+      }
     ],
     "5": [
-      { name: "Stunning Strike", description: "Once per turn when you hit a creature with a Monk weapon or an Unarmed Strike, you can expend 1 Focus Point to attempt a stunning strike. The target must make a Constitution saving throw. On a failed save, the target has the Stunned condition until the start of your next turn. On a successful save, the target's Speed is halved until the start of your next turn, and the next attack roll made against the target before then has Advantage." }
+      {
+        name: "Stunning Strike",
+        description: "Once per turn when you hit a creature with a Monk weapon or an Unarmed Strike, you can expend 1 Focus Point to attempt a stunning strike. The target must make a Constitution saving throw. On a failed save, the target has the Stunned condition until the start of your next turn. On a successful save, the target's Speed is halved until the start of your next turn, and the next attack roll made against the target before then has Advantage."
+      }
     ],
     "6": [
-      { name: "Empowered Strikes", description: "Whenever you deal damage with your Unarmed Strike, it can deal your choice of Force damage or its normal damage type." }
+      {
+        name: "Empowered Strikes",
+        description: "Whenever you deal damage with your Unarmed Strike, it can deal your choice of Force damage or its normal damage type."
+      }
     ],
     "7": [
-      { name: "Evasion", description: "When you're subjected to an effect that allows you to make a Dexterity saving throw to take only half damage, you instead take no damage if you succeed on the saving throw and only half damage if you fail.\n You don't benefit from this feature if you have the Incapacitated condition." }
+      {
+        name: "Evasion",
+        description: "When you're subjected to an effect that allows you to make a Dexterity saving throw to take only half damage, you instead take no damage if you succeed on the saving throw and only half damage if you fail.\n You don't benefit from this feature if you have the Incapacitated condition."
+      }
     ],
     "9": [
-      { name: "Acrobatic Movement", description: "While you aren't wearing armor or wielding a Shield, you gain the ability to move along vertical surfaces and across liquids on your turn without falling during the movement." }
+      {
+        name: "Acrobatic Movement",
+        description: "While you aren't wearing armor or wielding a Shield, you gain the ability to move along vertical surfaces and across liquids on your turn without falling during the movement."
+      }
     ],
     "10": [
-      { name: "Heightened Focus", description: "Your Flurry of Blows, Patient Defense, and Step of the Wind gain the following benefits:\n \u2022 Flurry of Blows: You can expend 1 Focus Point to use Flurry of Blows and make three Unarmed Strikes with it instead of two.\n \u2022 Patient Defense: When you expend a Focus Point to use Patient Defense, you gain a number of Temporary Hit Points equal to two rolls of your Martial Arts die.\n \u2022 Step of the Wind: When you expend a Focus Point to use Step of the Wind, you can choose a willing creature within 5 feet of yourself that is Large or smaller. You move the creature with you until the end of your turn. The creature's movement doesn't provoke Opportunity Attacks." },
-      { name: "Self-Restoration", description: "Through sheer force of will, you can remove one of the following conditions from yourself at the end of each of your turns: Charmed, Frightened, or Poisoned.\n  In addition, forgoing food and drink doesn't give you levels of Exhaustion." }
+      {
+        name: "Heightened Focus",
+        description: "Your Flurry of Blows, Patient Defense, and Step of the Wind gain the following benefits:\n \u2022 **Flurry of Blows**: You can expend 1 Focus Point to use Flurry of Blows and make three Unarmed Strikes with it instead of two.\n \u2022 **Patient Defense**: When you expend a Focus Point to use Patient Defense, you gain a number of Temporary Hit Points equal to two rolls of your Martial Arts die.\n \u2022 **Step of the Wind**: When you expend a Focus Point to use Step of the Wind, you can choose a willing creature within 5 feet of yourself that is Large or smaller. You move the creature with you until the end of your turn. The creature's movement doesn't provoke Opportunity Attacks."
+      },
+      {
+        name: "Self-Restoration",
+        description: "Through sheer force of will, you can remove one of the following conditions from yourself at the end of each of your turns: Charmed, Frightened, or Poisoned.\n  In addition, forgoing food and drink doesn't give you levels of Exhaustion."
+      }
     ],
     "13": [
-      { name: "Deflect Energy", description: "You can now use your Deflect Attacks feature against attacks that deal any damage type, not just Bludgeoning, Piercing, or Slashing." }
+      {
+        name: "Deflect Energy",
+        description: "You can now use your Deflect Attacks feature against attacks that deal any damage type, not just Bludgeoning, Piercing, or Slashing."
+      }
     ],
     "14": [
-      { name: "Disciplined Survivor", description: "Your physical and mental discipline grant you proficiency in all saving throws.\n  Additionally, whenever you make a saving throw and fail, you can expend 1 Focus Point to reroll it, and you must use the new roll." }
+      {
+        name: "Disciplined Survivor",
+        description: "Your physical and mental discipline grant you proficiency in all saving throws.\n  Additionally, whenever you make a saving throw and fail, you can expend 1 Focus Point to reroll it, and you must use the new roll."
+      }
     ],
     "15": [
-      { name: "Perfect Focus", description: "When you roll Initiative and don't use Uncanny Metabolism, you regain expended Focus Points until you have 4 if you have 3 or fewer." }
+      {
+        name: "Perfect Focus",
+        description: "When you roll Initiative and don't use Uncanny Metabolism, you regain expended Focus Points until you have 4 if you have 3 or fewer."
+      }
     ],
     "18": [
-      { name: "Superior Defense", description: "At the start of your turn, you can expend 3 Focus Points to bolster yourself against harm for 1 minute or until you have the Incapacitated condition. During that time, you have Resistance to all damage except Force damage." }
+      {
+        name: "Superior Defense",
+        description: "At the start of your turn, you can expend 3 Focus Points to bolster yourself against harm for 1 minute or until you have the Incapacitated condition. During that time, you have Resistance to all damage except Force damage."
+      }
     ],
     "19": [
-      { name: "Epic Boon", description: "You gain an Epic Boon feat (see chapter 5) or another feat of your choice for which you qualify. Boon of Irresistible Offense is recommended." }
+      {
+        name: "Epic Boon",
+        description: "You gain an Epic Boon feat (see chapter 5) or another feat of your choice for which you qualify. Boon of Irresistible Offense is recommended."
+      }
     ],
     "20": [
-      { name: "Body and Mind", description: "You have developed your body and mind to new heights. Your Dexterity and Wisdom scores increase by 4, to a maximum of 25." }
+      {
+        name: "Body and Mind",
+        description: "You have developed your body and mind to new heights. Your Dexterity and Wisdom scores increase by 4, to a maximum of 25."
+      }
     ]
   }
+};
+
+// rulebook/classes/paladin.json
+var paladin_default = {
+  class: "Paladin",
+  subclassFile: "paladin-subclasses",
+  features: {
+    "4": [
+      {
+        name: "Ability Score Improvement",
+        description: "You gain the Ability Score Improvement feat or another feat of your choice.",
+        grantedFeats: ["ability-score-improvement"]
+      }
+    ]
+  }
+};
+
+// rulebook/feats/ability-score-improvement.json
+var ability_score_improvement_default = {
+  name: "Ability Score Improvement",
+  description: "Increase one ability score of your choice by 2, or increase two ability scores of your choice by 1. This feat can't increase an ability score above 20."
 };
 
 // rulebook/feats/lucky.json
@@ -177,7 +249,7 @@ var lucky_default = {
 // rulebook/races/orc.json
 var orc_default = {
   traits: [
-    { name: "Adrenaline Rush", description: "You can take the Dash action as a Bonus Action. When you do so, you gain Temporary Hit Points equal to your Proficiency Bonus.\n  You can use this trait a number of times equal to your Proficiency Bonus, and you regain all ex- pended uses when you finish a Short or Long Rest." },
+    { name: "Adrenaline Rush", description: "You can take the Dash action as a Bonus Action. When you do so, you gain Temporary Hit Points equal to your Proficiency Bonus.\n  You can use this trait a number of times equal to your Proficiency Bonus, and you regain all expended uses when you finish a Short or Long Rest." },
     { name: "Darkvision", description: "You have Darkvision with a range of 120 feet." },
     { name: "Relentless Endurance", description: "When you are reduced to 0 Hit Points but not killed outright, you can drop to 1 Hit Point instead. Once you use this trait, you can't do so again until you finish a Long Rest." }
   ]
@@ -185,12 +257,14 @@ var orc_default = {
 
 // registry.ts
 var classRegistry = {
-  "monk": monk_default
+  "monk": monk_default,
+  "paladin": paladin_default
 };
 var subclassRegistry = {
   "monk-subclasses": monk_subclasses_default
 };
 var featRegistry = {
+  "ability-score-improvement": ability_score_improvement_default,
   "lucky": lucky_default
 };
 var raceRegistry = {
@@ -199,8 +273,10 @@ var raceRegistry = {
 
 // data.ts
 function getIgnoreCase(registry, searchKey) {
-  if (!searchKey || typeof searchKey !== "string") return null;
-  const realKey = Object.keys(registry).find((k) => k.toLowerCase() === searchKey.toLowerCase());
+  if (!registry || !searchKey) return null;
+  const normalizedKey = Array.isArray(searchKey) ? searchKey[0] : searchKey;
+  if (typeof normalizedKey !== "string") return null;
+  const realKey = Object.keys(registry).find((k) => k.toLowerCase() === normalizedKey.toLowerCase());
   return realKey ? registry[realKey] : null;
 }
 function getClassData(className) {
@@ -230,7 +306,7 @@ function getExtraFeat(featName) {
 // main.ts
 var DEFAULT_SETTINGS = {
   combineClassSubclass: false,
-  sectionOrder: ["Class", "Subclass", "Race", "Background", "Extra"],
+  sectionOrder: ["Class", "Subclass", "Race", "Background", "Extra Feats"],
   themeChoice: "default",
   customColors: {
     "--dnd-bg-primary": "#262A36",
@@ -334,16 +410,48 @@ var DnDFeaturesPlugin = class extends import_obsidian.Plugin {
       const classArray = Array.isArray(dndClass) ? dndClass : [dndClass];
       const rawSubclassArray = Array.isArray(subclass) ? subclass : subclass ? [subclass] : [];
       const subclassArray = classArray.map((_, i) => rawSubclassArray[i] || null);
+      let finalExtraFeats = Array.isArray(extraFeats) ? [...extraFeats] : extraFeats ? [extraFeats] : [];
+      if (dndClass) {
+        classArray.forEach((className, index) => {
+          const currentClassLevel = classArray.length > 1 && Array.isArray(classLevels) && classLevels.length > index ? Number(classLevels[index]) : Number(level);
+          const classData = getClassData(className);
+          if (classData && classData.features) {
+            for (let i = 1; i <= currentClassLevel; i++) {
+              const levelFeatures = classData.features[i.toString()];
+              if (levelFeatures) {
+                levelFeatures.forEach((feature) => {
+                  if (feature.grantedFeats && Array.isArray(feature.grantedFeats)) {
+                    finalExtraFeats.push(...feature.grantedFeats);
+                  }
+                });
+              }
+              if (classData.subclassFile && subclassArray[index]) {
+                const subclassData = getSubclassData(classData.subclassFile, subclassArray[index]);
+                const subLevelFeatures = subclassData ? subclassData[i.toString()] : null;
+                if (subLevelFeatures) {
+                  subLevelFeatures.forEach((feature) => {
+                    if (feature.grantedFeats && Array.isArray(feature.grantedFeats)) {
+                      finalExtraFeats.push(...feature.grantedFeats);
+                    }
+                  });
+                }
+              }
+            }
+          }
+        });
+      }
+      finalExtraFeats = [...new Set(finalExtraFeats)];
       this.settings.sectionOrder.forEach((sectionName) => {
         if (sectionName === "Class" && !dndClass) return;
         if (sectionName === "Subclass" && (!subclass || this.settings.combineClassSubclass || Number(level) < 3)) return;
         if (sectionName === "Race" && !race) return;
         if (sectionName === "Background" && !background) return;
-        if (sectionName === "Extra" && !extraFeats) return;
+        if (sectionName === "Extra Feats" && finalExtraFeats.length === 0) return;
         let sectionTitle = `${sectionName} Features:`;
         if (sectionName === "Class" && this.settings.combineClassSubclass && subclass) sectionTitle = "Class & Subclass Features:";
         if (sectionName === "Race") sectionTitle = "Race Traits:";
         if (sectionName === "Background") sectionTitle = "Background Feat:";
+        if (sectionName === "Extra Feats") sectionTitle = "Extra Feats:";
         el.createEl("h3", { text: sectionTitle, cls: "dnd-section-header" });
         const sectionWindow = el.createDiv({ cls: "dnd-features-window" });
         const sectionDiv = sectionWindow.createDiv({ cls: `dnd-section-${sectionName.toLowerCase()}` });
@@ -366,7 +474,8 @@ var DnDFeaturesPlugin = class extends import_obsidian.Plugin {
                   const titleContainer = featureBlock.createDiv({ cls: "dnd-feature-title" });
                   titleContainer.createEl("span", { text: feature.badge ? feature.badge : `Lvl ${i}`, cls: "dnd-level-badge" });
                   titleContainer.createEl("span", { text: feature.name, cls: "dnd-feature-name" });
-                  featureBlock.createEl("div", { text: feature.description, cls: "dnd-feature-desc" });
+                  const descDiv = featureBlock.createDiv({ cls: "dnd-feature-desc" });
+                  import_obsidian.MarkdownRenderer.render(this.app, feature.description, descDiv, ctx.sourcePath, renderChild);
                 });
               }
               if (this.settings.combineClassSubclass && subclassArray[index] && classData.subclassFile) {
@@ -379,7 +488,8 @@ var DnDFeaturesPlugin = class extends import_obsidian.Plugin {
                     const titleContainer = featureBlock.createDiv({ cls: "dnd-feature-title" });
                     titleContainer.createEl("span", { text: feature.badge ? feature.badge : `Lvl ${i}`, cls: "dnd-level-badge dnd-badge-combined" });
                     titleContainer.createEl("span", { text: feature.name, cls: "dnd-feature-name" });
-                    featureBlock.createEl("div", { text: feature.description, cls: "dnd-feature-desc" });
+                    const descDiv = featureBlock.createDiv({ cls: "dnd-feature-desc" });
+                    import_obsidian.MarkdownRenderer.render(this.app, feature.description, descDiv, ctx.sourcePath, renderChild);
                   });
                 }
               }
@@ -404,7 +514,8 @@ var DnDFeaturesPlugin = class extends import_obsidian.Plugin {
                     const titleContainer = featureBlock.createDiv({ cls: "dnd-feature-title" });
                     titleContainer.createEl("span", { text: feature.badge ? feature.badge : `Lvl ${i}`, cls: "dnd-level-badge" });
                     titleContainer.createEl("span", { text: feature.name, cls: "dnd-feature-name" });
-                    featureBlock.createEl("div", { text: feature.description, cls: "dnd-feature-desc" });
+                    const descDiv = featureBlock.createDiv({ cls: "dnd-feature-desc" });
+                    import_obsidian.MarkdownRenderer.render(this.app, feature.description, descDiv, ctx.sourcePath, renderChild);
                   });
                 }
               }
@@ -434,9 +545,8 @@ var DnDFeaturesPlugin = class extends import_obsidian.Plugin {
           } else {
             sectionDiv.createEl("p", { text: `Data for background "${background}" not found.`, cls: "dnd-error-text" });
           }
-        } else if (sectionName === "Extra") {
-          const featsArray = Array.isArray(extraFeats) ? extraFeats : [extraFeats];
-          featsArray.forEach((featId) => {
+        } else if (sectionName === "Extra Feats") {
+          finalExtraFeats.forEach((featId) => {
             const featData = getExtraFeat(featId);
             if (featData) {
               const featureBlock = sectionDiv.createDiv({ cls: "dnd-feature-block" });

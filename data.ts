@@ -10,12 +10,20 @@ import {
 } from './registry';
 
 // --- Helper: Case-Insensitive Lookup ---
-// This function searches a dictionary for a key, ignoring capitalization.
-function getIgnoreCase(registry: Record<string, any>, searchKey: string) {
-    if (!searchKey || typeof searchKey !== 'string') return null;
+// This function searches a dictionary for a key, ignoring capitalization and safely handling Obsidian lists.
+function getIgnoreCase(registry: Record<string, any>, searchKey: any) {
+    // Safety check in case a registry or key is completely missing
+    if (!registry || !searchKey) return null;
+    
+    // Obsidian properties often format single items as lists (arrays). 
+    // If searchKey is an array (like ["Orc"]), we extract the first item ("Orc").
+    const normalizedKey = Array.isArray(searchKey) ? searchKey[0] : searchKey;
+    
+    // If it is still not a string after normalizing, abort safely
+    if (typeof normalizedKey !== 'string') return null;
     
     // Find a key in the registry where the lowercase versions match perfectly
-    const realKey = Object.keys(registry).find(k => k.toLowerCase() === searchKey.toLowerCase());
+    const realKey = Object.keys(registry).find(k => k.toLowerCase() === normalizedKey.toLowerCase());
     
     // If we found a match, return the data using the correct case key
     return realKey ? registry[realKey] : null;
