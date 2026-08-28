@@ -132,3 +132,56 @@
     padding-bottom: 0;
     margin-bottom: 0 !important;
 }
+
+/* ==========================================
+   6. TYPOGRAPHY & COMPONENT CLASSES
+   ========================================== */
+.dnd-section-header {
+    color: var(--dnd-text-primary);
+    margin-bottom: 8px;
+    margin-top: 24px;
+    font-weight: 600;
+}
+
+.dnd-class-header {
+    color: var(--dnd-accent-teal);
+    border-bottom: 1px solid var(--dnd-border-primary);
+    padding-bottom: 4px;
+    margin-bottom: 12px;
+    margin-top: 0;
+}
+
+.dnd-feature-block {
+    margin-bottom: 14px;
+}
+
+.dnd-badge-combined {
+    background-color: var(--dnd-bg-group);
+}
+
+.dnd-feature-name {
+    /* Swapped from bright to primary based on your previous request! */
+    color: var(--dnd-text-primary); 
+}
+
+.dnd-feature-desc {
+    /* Swapped from primary to bright! */
+    color: var(--dnd-text-bright); 
+    line-height: 1.5;
+    margin-top: 4px;
+}
+
+.dnd-error-text {
+    color: var(--dnd-accent-red);
+}
+
+/* Settings UI Spacing */
+.dnd-settings-header {
+    margin-top: 2rem;
+}
+
+.dnd-settings-subgroup {
+    margin-top: 1rem;
+    margin-bottom: 0.5rem;
+    color: var(--text-accent);
+}

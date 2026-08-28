@@ -1,5 +1,5 @@
 import { App, Plugin, PluginSettingTab, Setting, MarkdownPostProcessorContext, parseYaml, MarkdownRenderChild } from 'obsidian';
-import { getClassData, getSubclassData, getBackgroundFeat } from './data';
+import { getClassData, getSubclassData, getBackgroundFeat, getRaceData, getExtraFeat } from './data';
 
 // 1. Define the shape of our settings
 interface DnDPluginSettings {
@@ -157,70 +157,44 @@ export default class DnDFeaturesPlugin extends Plugin {
                 if (sectionName === "Race") sectionTitle = "Race Traits:";
                 if (sectionName === "Background") sectionTitle = "Background Feat:";
 
-                // Create the Header Title (font=5 / h5) outside the window
-                el.createEl("h3", {
-                    text: sectionTitle,
-                    attr: { style: "color: var(--dnd-text-primary); margin-bottom: 8px; margin-top: 24px; font-weight: 600;" }
-                });
+                // Create the Header Title using our new CSS class
+                el.createEl("h3", { text: sectionTitle, cls: "dnd-section-header" });
 
-                // Create the window box specifically for this section
                 const sectionWindow = el.createDiv({ cls: "dnd-features-window" });
                 const sectionDiv = sectionWindow.createDiv({ cls: `dnd-section-${sectionName.toLowerCase()}` });
 
                 // Render Class Section
                 if (sectionName === "Class") {
                     classArray.forEach((className, index) => {
-                        // Priority Check: If single-class, use the total level. If multiclass, use the specific class level.
                         const currentClassLevel = (classArray.length > 1 && Array.isArray(classLevels) && classLevels.length > index)
                             ? Number(classLevels[index])
                             : Number(level);
 
-                        // 2. MULTICLASS HEADER LOGIC: Only render the inner class title if there are multiple classes
                         if (classArray.length > 1) {
-                            sectionDiv.createEl("h4", {
-                                text: `${className} Features (Level ${currentClassLevel})`,
-                                attr: { style: "color: var(--dnd-accent-teal); border-bottom: 1px solid var(--dnd-border-primary); padding-bottom: 4px; margin-bottom: 12px; margin-top: 0;" }
-                            });
+                            sectionDiv.createEl("h4", { text: `${className} Features (Level ${currentClassLevel})`, cls: "dnd-class-header" });
                         }
 
                         const classData = getClassData(className);
 
                         if (!classData || !classData.features) {
-                            sectionDiv.createEl("p", { text: `Data for ${className} not found.`, attr: { style: "color: var(--dnd-accent-red);" } });
+                            sectionDiv.createEl("p", { text: `Data for ${className} not found.`, cls: "dnd-error-text" });
                             return;
                         }
 
-                        // Iterate from Level 1 up to the current level
                         for (let i = 1; i <= currentClassLevel; i++) {
                             const levelFeatures = classData.features[i.toString()];
 
                             if (levelFeatures && levelFeatures.length > 0) {
                                 levelFeatures.forEach((feature: any) => {
-                                    const featureBlock = sectionDiv.createDiv({ attr: { style: "margin-bottom: 14px;" } });
-
-                                    // 3. BADGE UI: Wrap the badge and title in our flexbox container
+                                    const featureBlock = sectionDiv.createDiv({ cls: "dnd-feature-block" });
                                     const titleContainer = featureBlock.createDiv({ cls: "dnd-feature-title" });
 
-                                    titleContainer.createEl("span", {
-                                        text: `Lvl ${i}`,
-                                        cls: "dnd-level-badge"
-                                    });
-
-                                    // Explicitly enforce the bright text color for the feature name
-                                    titleContainer.createEl("span", {
-                                        text: feature.name,
-                                        attr: { style: "color: var(--dnd-text-bright);" }
-                                    });
-
-                                    // Change the description color from secondary to primary
-                                    featureBlock.createEl("div", {
-                                        text: feature.description,
-                                        attr: { style: "color: var(--dnd-text-primary); line-height: 1.5; margin-top: 4px;" }
-                                    });
+                                    titleContainer.createEl("span", { text: feature.badge ? feature.badge : `Lvl ${i}`, cls: "dnd-level-badge" });
+                                    titleContainer.createEl("span", { text: feature.name, cls: "dnd-feature-name" });
+                                    featureBlock.createEl("div", { text: feature.description, cls: "dnd-feature-desc" });
                                 });
                             }
 
-                            // --- SUBCLASS RENDERING (COMBINED MODE) ---
                             if (this.settings.combineClassSubclass && subclassArray[index] && classData.subclassFile) {
                                 const subclassName = subclassArray[index];
                                 const subclassData = getSubclassData(classData.subclassFile, subclassName);
@@ -228,12 +202,12 @@ export default class DnDFeaturesPlugin extends Plugin {
 
                                 if (subLevelFeatures && subLevelFeatures.length > 0) {
                                     subLevelFeatures.forEach((feature: any) => {
-                                        const featureBlock = sectionDiv.createDiv({ attr: { style: "margin-bottom: 14px;" } });
+                                        const featureBlock = sectionDiv.createDiv({ cls: "dnd-feature-block" });
                                         const titleContainer = featureBlock.createDiv({ cls: "dnd-feature-title" });
 
-                                        titleContainer.createEl("span", { text: `Lvl ${i}`, cls: "dnd-level-badge", attr: { style: "background-color: var(--dnd-bg-group);" } });
-                                        titleContainer.createEl("span", { text: feature.name, attr: { style: "color: var(--dnd-text-bright);" } });
-                                        featureBlock.createEl("div", { text: feature.description, attr: { style: "color: var(--dnd-text-primary); line-height: 1.5; margin-top: 4px;" } });
+                                        titleContainer.createEl("span", { text: feature.badge ? feature.badge : `Lvl ${i}`, cls: "dnd-level-badge dnd-badge-combined" });
+                                        titleContainer.createEl("span", { text: feature.name, cls: "dnd-feature-name" });
+                                        featureBlock.createEl("div", { text: feature.description, cls: "dnd-feature-desc" });
                                     });
                                 }
                             }
@@ -241,7 +215,7 @@ export default class DnDFeaturesPlugin extends Plugin {
                     });
                 }
 
-                // Render Subclass Section (If not combined)
+                // Render Subclass Section
                 else if (sectionName === "Subclass") {
                     classArray.forEach((className, index) => {
                         const currentClassLevel = Array.isArray(classLevels) ? classLevels[index] : level;
@@ -250,7 +224,7 @@ export default class DnDFeaturesPlugin extends Plugin {
 
                         if (subclassName && classData && classData.subclassFile) {
                             if (classArray.length > 1) {
-                                sectionDiv.createEl("h4", { text: `${subclassName} Features`, attr: { style: "color: var(--dnd-accent-teal); border-bottom: 1px solid var(--dnd-border-primary); padding-bottom: 4px; margin-bottom: 12px; margin-top: 0;" } });
+                                sectionDiv.createEl("h4", { text: `${subclassName} Features`, cls: "dnd-class-header" });
                             }
 
                             const subclassData = getSubclassData(classData.subclassFile, subclassName);
@@ -260,12 +234,12 @@ export default class DnDFeaturesPlugin extends Plugin {
                                 const subLevelFeatures = subclassData[i.toString()];
                                 if (subLevelFeatures && subLevelFeatures.length > 0) {
                                     subLevelFeatures.forEach((feature: any) => {
-                                        const featureBlock = sectionDiv.createDiv({ attr: { style: "margin-bottom: 14px;" } });
+                                        const featureBlock = sectionDiv.createDiv({ cls: "dnd-feature-block" });
                                         const titleContainer = featureBlock.createDiv({ cls: "dnd-feature-title" });
 
-                                        titleContainer.createEl("span", { text: `Lvl ${i}`, cls: "dnd-level-badge" });
-                                        titleContainer.createEl("span", { text: feature.name, attr: { style: "color: var(--dnd-text-bright);" } });
-                                        featureBlock.createEl("div", { text: feature.description, attr: { style: "color: var(--dnd-text-primary); line-height: 1.5; margin-top: 4px;" } });
+                                        titleContainer.createEl("span", { text: feature.badge ? feature.badge : `Lvl ${i}`, cls: "dnd-level-badge" });
+                                        titleContainer.createEl("span", { text: feature.name, cls: "dnd-feature-name" });
+                                        featureBlock.createEl("div", { text: feature.description, cls: "dnd-feature-desc" });
                                     });
                                 }
                             }
@@ -273,33 +247,57 @@ export default class DnDFeaturesPlugin extends Plugin {
                     });
                 }
 
-                // Placeholder for other sections (Race, Background, etc.)
+                // Render Race Section
                 else if (sectionName === "Race") {
-                    sectionDiv.createEl("p", { text: `Loading traits for ${race}...`, attr: { style: "color: var(--dnd-text-secondary);" } });
+                    const raceData = getRaceData(race);
+                    if (raceData && raceData.traits) {
+                        raceData.traits.forEach((trait: any) => {
+                            const featureBlock = sectionDiv.createDiv({ cls: "dnd-feature-block" });
+                            const titleContainer = featureBlock.createDiv({ cls: "dnd-feature-title" });
+
+                            titleContainer.createEl("span", { text: trait.badge ? trait.badge : "Trait", cls: "dnd-level-badge" });
+                            titleContainer.createEl("span", { text: trait.name, cls: "dnd-feature-name" });
+                            featureBlock.createEl("div", { text: trait.description, cls: "dnd-feature-desc" });
+                        });
+                    } else {
+                        sectionDiv.createEl("p", { text: `Data for race "${race}" not found.`, cls: "dnd-error-text" });
+                    }
                 }
 
                 // Render Background Section
                 else if (sectionName === "Background") {
                     const featData = getBackgroundFeat(background);
-
                     if (featData) {
-                        const featureBlock = sectionDiv.createDiv({ attr: { style: "margin-bottom: 14px;" } });
+                        const featureBlock = sectionDiv.createDiv({ cls: "dnd-feature-block" });
                         const titleContainer = featureBlock.createDiv({ cls: "dnd-feature-title" });
 
-                        // Reusing the badge CSS for a clean "Origin Feat" label
                         titleContainer.createEl("span", { text: "Origin Feat", cls: "dnd-level-badge" });
-                        titleContainer.createEl("span", { text: featData.name, attr: { style: "color: var(--dnd-text-bright);" } });
-
-                        featureBlock.createEl("div", {
-                            text: featData.description,
-                            attr: { style: "color: var(--dnd-text-primary); line-height: 1.5; margin-top: 4px;" }
-                        });
+                        titleContainer.createEl("span", { text: featData.name, cls: "dnd-feature-name" });
+                        featureBlock.createEl("div", { text: featData.description, cls: "dnd-feature-desc" });
                     } else {
-                        sectionDiv.createEl("p", {
-                            text: `Data for background "${background}" not found.`,
-                            attr: { style: "color: var(--dnd-accent-red);" }
-                        });
+                        sectionDiv.createEl("p", { text: `Data for background "${background}" not found.`, cls: "dnd-error-text" });
                     }
+                }
+                // Render Extra Feats Section
+                else if (sectionName === "Extra") {
+                    // Force the input into an array so we can loop through multiple feats seamlessly
+                    const featsArray = Array.isArray(extraFeats) ? extraFeats : [extraFeats];
+
+                    featsArray.forEach((featId: string) => {
+                        const featData = getExtraFeat(featId);
+
+                        if (featData) {
+                            const featureBlock = sectionDiv.createDiv({ cls: "dnd-feature-block" });
+                            const titleContainer = featureBlock.createDiv({ cls: "dnd-feature-title" });
+
+                            // We use a generic "Feat" badge, but allow custom badge overrides from the JSON!
+                            titleContainer.createEl("span", { text: featData.badge ? featData.badge : "Feat", cls: "dnd-level-badge" });
+                            titleContainer.createEl("span", { text: featData.name, cls: "dnd-feature-name" });
+                            featureBlock.createEl("div", { text: featData.description, cls: "dnd-feature-desc" });
+                        } else {
+                            sectionDiv.createEl("p", { text: `Data for extra feat "${featId}" not found.`, cls: "dnd-error-text" });
+                        }
+                    });
                 }
             });
         }; // <-- This closes our new renderContent() function
@@ -346,7 +344,7 @@ class DnDSettingsTab extends PluginSettingTab {
                 }));
 
         // Draggable List for Section Order
-        containerEl.createEl('h3', { text: 'Section Render Order', cls: 'setting-item-name', attr: { style: 'margin-top: 2rem;' } });
+        containerEl.createEl('h3', { text: 'Section Render Order', cls: 'setting-item-name dnd-settings-header' });
         containerEl.createEl('p', { text: 'Drag and drop the sections below to change their display order. If "Combine Class and Subclass" is enabled, the Subclass block will be hidden.', cls: 'setting-item-description' });
 
         const listContainer = containerEl.createDiv({ cls: 'dnd-draggable-list' });
@@ -402,7 +400,7 @@ class DnDSettingsTab extends PluginSettingTab {
         });
 
         // --- Theme Engine UI ---
-        containerEl.createEl('h3', { text: 'Appearance & Theming', cls: 'setting-item-name', attr: { style: 'margin-top: 2rem;' } });
+        containerEl.createEl('h3', { text: 'Appearance & Theming', cls: 'setting-item-name dnd-settings-header' });
 
         new Setting(containerEl)
             .setName('Theme Selection')
@@ -432,7 +430,7 @@ class DnDSettingsTab extends PluginSettingTab {
 
             // Dynamically generate color pickers
             for (const [groupName, variables] of Object.entries(colorGroups)) {
-                containerEl.createEl('h4', { text: groupName, attr: { style: 'margin-top: 1rem; margin-bottom: 0.5rem; color: var(--text-accent);' } });
+                containerEl.createEl('h4', { text: groupName, cls: 'dnd-settings-subgroup' });
 
                 variables.forEach((variable) => {
                     const cleanName = variable.replace('--dnd-', '').replace(/-/g, ' '); // E.g., "--dnd-bg-primary" becomes "bg primary"
