@@ -18,6 +18,8 @@ extra-feats: $list$
 ```
 ````
 
+Any of the variables (except for *level*) can be omitted and only the variables with a value will be used and displayed.
+
 The variable *class-levels* is used when you have multiple classes on your character and the plugin needs to know how many levels does each class have. *The order of the levels should be the same as the class order*. The rest of the variables should be self-explanatory.
 
 This plugin also supports custom rules by adding the path of your custom Rulebook inside your Obsidian Vault. All text supports the markdown format as well. This is the folder structure used and what the plugin expects:
