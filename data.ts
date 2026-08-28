@@ -1,4 +1,3 @@
-// Import everything from our new auto-generated file
 import { 
     classRegistry, 
     subclassRegistry, 
@@ -8,6 +7,8 @@ import {
     backgroundsMap,
     racesMap
 } from './registry';
+
+import { App, normalizePath } from 'obsidian';
 
 // --- Helper: Case-Insensitive Lookup ---
 // This function searches a dictionary for a key, ignoring capitalization and safely handling Obsidian lists.
@@ -29,40 +30,156 @@ function getIgnoreCase(registry: Record<string, any>, searchKey: any) {
     return realKey ? registry[realKey] : null;
 }
 
-// --- Logic for Fetching Core Class Data ---
-export function getClassData(className: string) {
-    const classFile = getIgnoreCase(classesMap as Record<string, string>, className);
-    if (!classFile) return null;
+// Define a quick interface so TypeScript knows what our settings look like
+interface FetchSettings { customRulebookPath: string; customRulebookPriority: boolean; }
+
+// --- Helper: Read Custom JSON File ---
+async function readCustomJson(app: App, fullPath: string) {
+    const adapter = app.vault.adapter;
+    if (await adapter.exists(fullPath)) {
+        try {
+            const fileContent = await adapter.read(fullPath);
+            return JSON.parse(fileContent);
+        } catch (e) {
+            console.error(`D&D Plugin: Failed to parse custom file at ${fullPath}`, e);
+            return null;
+        }
+    }
+    return null;
+}
+
+// --- Helper: Custom Router Lookup ---
+// Reads the custom router file (e.g., classes.json) to find the mapped filename
+async function getCustomMappedName(app: App, basePath: string, routerFile: string, searchKey: string) {
+    const routerPath = normalizePath(`${basePath}/${routerFile}`);
+    const routerData = await readCustomJson(app, routerPath);
     
-    // Double safety: Ignores capitalization on the actual filename lookup!
-    return getIgnoreCase(classRegistry, classFile);
+    if (!routerData) return null;
+    return getIgnoreCase(routerData, searchKey);
+}
+
+// --- Logic for Fetching Core Class Data ---// --- Logic for Fetching Core Class Data ---
+export async function getClassData(app: App, settings: FetchSettings, className: string) {
+    const fetchNative = () => {
+        const classFile = getIgnoreCase(classesMap as Record<string, string>, className);
+        return classFile ? getIgnoreCase(classRegistry, classFile) : null;
+    };
+    
+    const fetchCustom = async () => {
+        if (!settings.customRulebookPath) return null;
+        const customFileId = await getCustomMappedName(app, settings.customRulebookPath, 'classes.json', className);
+        if (!customFileId) return null;
+        return await readCustomJson(app, normalizePath(`${settings.customRulebookPath}/classes/${customFileId}.json`));
+    };
+
+    if (settings.customRulebookPath) {
+        if (settings.customRulebookPriority) {
+            // Custom Priority ON: Check Custom -> Check Native
+            return (await fetchCustom()) || fetchNative();
+        } else {
+            // Custom Priority OFF: Check Native -> Check Custom
+            return fetchNative() || (await fetchCustom());
+        }
+    }
+    // No custom path set: Native only
+    return fetchNative();
 }
 
 // --- Logic for Fetching Subclass Data ---
-export function getSubclassData(subclassFile: string, subclassName: string) {
-    const fileData = getIgnoreCase(subclassRegistry, subclassFile);
-    if (!fileData) return null;
+export async function getSubclassData(app: App, settings: FetchSettings, subclassFile: string, subclassName: string) {
+    const fetchNative = () => {
+        const fileData = getIgnoreCase(subclassRegistry, subclassFile);
+        return fileData ? getIgnoreCase(fileData, subclassName) : null;
+    };
     
-    return getIgnoreCase(fileData, subclassName);
+    const fetchCustom = async () => {
+        if (!settings.customRulebookPath) return null;
+        // Subclasses are stored directly inside the class file
+        const fileData = await readCustomJson(app, normalizePath(`${settings.customRulebookPath}/classes/${subclassFile}.json`));
+        return fileData ? getIgnoreCase(fileData, subclassName) : null;
+    };
+
+    if (settings.customRulebookPath) {
+        if (settings.customRulebookPriority) {
+            return (await fetchCustom()) || fetchNative();
+        } else {
+            return fetchNative() || (await fetchCustom());
+        }
+    }
+    return fetchNative();
 }
 
 // --- Logic for Fetching Background Feats ---
-export function getBackgroundFeat(backgroundName: string) {
-    const featId = getIgnoreCase(backgroundsMap as Record<string, string>, backgroundName);
-    if (!featId) return null;
+export async function getBackgroundFeat(app: App, settings: FetchSettings, backgroundName: string) {
+    const fetchNative = () => {
+        const featId = getIgnoreCase(backgroundsMap as Record<string, string>, backgroundName);
+        return featId ? getIgnoreCase(featRegistry, featId) : null;
+    };
     
-    return getIgnoreCase(featRegistry, featId);
+    const fetchCustom = async () => {
+        if (!settings.customRulebookPath) return null;
+        const featId = await getCustomMappedName(app, settings.customRulebookPath, 'backgrounds.json', backgroundName);
+        if (!featId) return null;
+        return await readCustomJson(app, normalizePath(`${settings.customRulebookPath}/feats/${featId}.json`));
+    };
+
+    if (settings.customRulebookPath) {
+        if (settings.customRulebookPriority) {
+            return (await fetchCustom()) || fetchNative();
+        } else {
+            return fetchNative() || (await fetchCustom());
+        }
+    }
+    return fetchNative();
 }
 
 // --- Logic for Fetching Race Traits ---
-export function getRaceData(raceName: string) {
-    const raceId = getIgnoreCase(racesMap as Record<string, string>, raceName);
-    if (!raceId) return null;
+export async function getRaceData(app: App, settings: FetchSettings, raceName: string) {
+    const fetchNative = () => {
+        const raceId = getIgnoreCase(racesMap as Record<string, string>, raceName);
+        return raceId ? getIgnoreCase(raceRegistry, raceId) : null;
+    };
     
-    return getIgnoreCase(raceRegistry, raceId);
+    const fetchCustom = async () => {
+        if (!settings.customRulebookPath) return null;
+        const raceId = await getCustomMappedName(app, settings.customRulebookPath, 'races.json', raceName);
+        if (!raceId) return null;
+        return await readCustomJson(app, normalizePath(`${settings.customRulebookPath}/races/${raceId}.json`));
+    };
+
+    if (settings.customRulebookPath) {
+        if (settings.customRulebookPriority) {
+            return (await fetchCustom()) || fetchNative();
+        } else {
+            return fetchNative() || (await fetchCustom());
+        }
+    }
+    return fetchNative();
 }
 
 // --- Logic for Fetching Extra Feats ---
-export function getExtraFeat(featName: string) {
-    return getIgnoreCase(featRegistry, featName);
+export async function getExtraFeat(app: App, settings: FetchSettings, featName: string) {
+    const safeName = Array.isArray(featName) ? featName[0] : featName;
+    if (typeof safeName !== 'string') return null;
+
+    // Move featId UP so both Native and Custom fetchers can use the slugified name!
+    const featId = safeName.toLowerCase().replace(/\s+/g, '-');
+
+    // Bug Fix: fetchNative now correctly searches using featId instead of the raw safeName
+    const fetchNative = () => getIgnoreCase(featRegistry, featId);
+    
+    const fetchCustom = async () => {
+        if (!settings.customRulebookPath) return null;
+        // Feats don't have a router in your structure, so we look them up by formatting the name directly
+        return await readCustomJson(app, normalizePath(`${settings.customRulebookPath}/feats/${featId}.json`));
+    };
+
+    if (settings.customRulebookPath) {
+        if (settings.customRulebookPriority) {
+            return (await fetchCustom()) || fetchNative();
+        } else {
+            return fetchNative() || (await fetchCustom());
+        }
+    }
+    return fetchNative();
 }

@@ -7,6 +7,8 @@ interface DnDPluginSettings {
     sectionOrder: string[];
     themeChoice: "default" | "custom";
     customColors: Record<string, string>; // Stores our 18 variables as key-value pairs
+    customRulebookPath: string;           // Path to the user's homebrew folder
+    customRulebookPriority: boolean;      // If true, homebrew overwrites native data
 }
 
 // 2. Set the default values
@@ -14,7 +16,10 @@ const DEFAULT_SETTINGS: DnDPluginSettings = {
     combineClassSubclass: false,
     sectionOrder: ["Class", "Subclass", "Race", "Background", "Extra Feats"],
     themeChoice: "default",
+    customRulebookPath: "",
+    customRulebookPriority: false,
     customColors: {
+        // ... (Keep all your existing color variables here exactly as they are) ...
         "--dnd-bg-primary": "#262A36", "--dnd-bg-secondary": "#323748", "--dnd-bg-tertiary": "#3A4055",
         "--dnd-bg-hover": "#363B4A", "--dnd-bg-darker": "#303440", "--dnd-bg-group": "#2D334A",
         "--dnd-text-primary": "#E0E0E0", "--dnd-text-secondary": "#A0A0D0", "--dnd-text-sublabel": "#A0C7D0",
@@ -31,6 +36,9 @@ export default class DnDFeaturesPlugin extends Plugin {
     async onload() {
         // Load settings from disk
         await this.loadSettings();
+
+        // Apply custom colors immediately on startup!
+        this.applyTheme();
 
         // Register the settings tab we built
         this.addSettingTab(new DnDSettingsTab(this.app, this));
@@ -72,15 +80,18 @@ export default class DnDFeaturesPlugin extends Plugin {
         ctx.addChild(renderChild);
 
         // 2. Wrap our entire rendering logic into a reusable function
-        const renderContent = () => {
-            el.empty(); // Clear the container before re-drawing
+        const renderContent = async () => {
+            // Create a temporary wrapper to prevent UI flickering while awaiting data
+            const wrapper = document.createElement('div');
 
             // Parse the user's code block using Obsidian's built-in YAML parser
             let blockData;
             try {
                 blockData = parseYaml(source);
             } catch (error) {
-                el.createEl("p", { text: "Error: Invalid format in dnd-features block.", cls: "dnd-error" });
+                wrapper.createEl("p", { text: "Error: Invalid format in dnd-features block.", cls: "dnd-error" });
+                el.empty();
+                el.appendChild(wrapper);
                 return;
             }
 
@@ -114,22 +125,26 @@ export default class DnDFeaturesPlugin extends Plugin {
 
                 // Error Check 1: Is the class-levels array missing or the wrong size?
                 if (!Array.isArray(classLevels) || classLevels.length !== dndClass.length) {
-                    const errorBox = el.createDiv({ cls: "dnd-error-window" });
+                    const errorBox = wrapper.createDiv({ cls: "dnd-error-window" });
                     errorBox.createEl("strong", { text: "D&D Features Plugin Error:" });
                     errorBox.createEl("p", {
                         text: `You have multiple classes listed, but the "class-levels" variable is missing or is invalid. Please provide a level for each class.`
                     });
+                    el.empty();
+                    el.appendChild(wrapper);
                     return; // Stop rendering features
                 }
 
                 // Error Check 2: Does the math add up?
                 const totalClassLevels = classLevels.reduce((sum, current) => sum + Number(current), 0);
                 if (totalClassLevels !== parsedLevel) {
-                    const errorBox = el.createDiv({ cls: "dnd-error-window" });
+                    const errorBox = wrapper.createDiv({ cls: "dnd-error-window" });
                     errorBox.createEl("strong", { text: "D&D Features Plugin Error:" });
                     errorBox.createEl("p", {
                         text: `The sum of class-levels (${totalClassLevels}) does not match the total level (${parsedLevel}).`
                     });
+                    el.empty();
+                    el.appendChild(wrapper);
                     return; // Stop rendering features
                 }
             }
@@ -141,21 +156,22 @@ export default class DnDFeaturesPlugin extends Plugin {
             const subclassArray = classArray.map((_, i) => rawSubclassArray[i] || null);
 
             // 7. PRE-PASS: Gather all auto-granted feats from classes and subclasses
-            // Start with the feats the user manually typed in the frontmatter
             let finalExtraFeats = Array.isArray(extraFeats) ? [...extraFeats] : (extraFeats ? [extraFeats] : []);
 
             if (dndClass) {
-                classArray.forEach((className, index) => {
+                // Changed from forEach to a standard for-loop so we can await the data!
+                for (let index = 0; index < classArray.length; index++) {
+                    const className = classArray[index];
                     const currentClassLevel = (classArray.length > 1 && Array.isArray(classLevels) && classLevels.length > index)
                         ? Number(classLevels[index])
                         : Number(level);
 
-                    const classData = getClassData(className);
+                    // Await the new async fetcher and pass app/settings
+                    const classData = await getClassData(this.app, this.settings, className);
+
                     if (classData && classData.features) {
                         for (let i = 1; i <= currentClassLevel; i++) {
                             const levelFeatures = classData.features[i.toString()];
-                            
-                            // Check core class for granted feats
                             if (levelFeatures) {
                                 levelFeatures.forEach((feature: any) => {
                                     if (feature.grantedFeats && Array.isArray(feature.grantedFeats)) {
@@ -163,10 +179,10 @@ export default class DnDFeaturesPlugin extends Plugin {
                                     }
                                 });
                             }
-                            
-                            // Check subclass for granted feats just in case!
+
                             if (classData.subclassFile && subclassArray[index]) {
-                                const subclassData = getSubclassData(classData.subclassFile, subclassArray[index]);
+                                // Await subclass data as well
+                                const subclassData = await getSubclassData(this.app, this.settings, classData.subclassFile, subclassArray[index]);
                                 const subLevelFeatures = subclassData ? subclassData[i.toString()] : null;
                                 if (subLevelFeatures) {
                                     subLevelFeatures.forEach((feature: any) => {
@@ -178,22 +194,19 @@ export default class DnDFeaturesPlugin extends Plugin {
                             }
                         }
                     }
-                });
+                }
             }
-            // Remove any duplicates (e.g., if two classes somehow grant the exact same feat)
             finalExtraFeats = [...new Set(finalExtraFeats)];
 
-            // Loop through the user's custom section order
-            this.settings.sectionOrder.forEach((sectionName) => {
-
+            // Loop through the user's custom section order using a for...of loop to support async/await
+            for (const sectionName of this.settings.sectionOrder) {
                 // 1. CONDITIONAL RENDERING: Skip this section entirely if the user didn't provide the variable
-                if (sectionName === "Class" && !dndClass) return;
-                // Hide Subclass if missing, combined, OR if the total level is below 3 (D&D 2024 Rules)
-                if (sectionName === "Subclass" && (!subclass || this.settings.combineClassSubclass || Number(level) < 3)) return;
-                if (sectionName === "Race" && !race) return;
-                if (sectionName === "Background" && !background) return;
-                // Display the window if the user manually added feats OR if the class auto-granted one
-                if (sectionName === "Extra Feats" && finalExtraFeats.length === 0) return;
+                // Notice how we use 'continue' now instead of 'return' so we don't break the async loop!
+                if (sectionName === "Class" && !dndClass) continue;
+                if (sectionName === "Subclass" && (!subclass || this.settings.combineClassSubclass || Number(level) < 3)) continue;
+                if (sectionName === "Race" && !race) continue;
+                if (sectionName === "Background" && !background) continue;
+                if (sectionName === "Extra Feats" && finalExtraFeats.length === 0) continue;
 
                 // Determine the dynamic header title for this section
                 let sectionTitle = `${sectionName} Features:`;
@@ -202,15 +215,16 @@ export default class DnDFeaturesPlugin extends Plugin {
                 if (sectionName === "Background") sectionTitle = "Background Feat:";
                 if (sectionName === "Extra Feats") sectionTitle = "Extra Feats:";
 
-                // Create the Header Title using our new CSS class
-                el.createEl("h3", { text: sectionTitle, cls: "dnd-section-header" });
+                /// Create the Header Title using our new CSS class on the wrapper
+                wrapper.createEl("h3", { text: sectionTitle, cls: "dnd-section-header" });
 
-                const sectionWindow = el.createDiv({ cls: "dnd-features-window" });
+                const sectionWindow = wrapper.createDiv({ cls: "dnd-features-window" });
                 const sectionDiv = sectionWindow.createDiv({ cls: `dnd-section-${sectionName.toLowerCase()}` });
 
                 // Render Class Section
                 if (sectionName === "Class") {
-                    classArray.forEach((className, index) => {
+                    for (let index = 0; index < classArray.length; index++) {
+                        const className = classArray[index];
                         const currentClassLevel = (classArray.length > 1 && Array.isArray(classLevels) && classLevels.length > index)
                             ? Number(classLevels[index])
                             : Number(level);
@@ -219,11 +233,12 @@ export default class DnDFeaturesPlugin extends Plugin {
                             sectionDiv.createEl("h4", { text: `${className} Features (Level ${currentClassLevel})`, cls: "dnd-class-header" });
                         }
 
-                        const classData = getClassData(className);
+                        // Added await and passed this.app, this.settings
+                        const classData = await getClassData(this.app, this.settings, className);
 
                         if (!classData || !classData.features) {
                             sectionDiv.createEl("p", { text: `Data for ${className} not found.`, cls: "dnd-error-text" });
-                            return;
+                            continue;
                         }
 
                         for (let i = 1; i <= currentClassLevel; i++) {
@@ -236,6 +251,7 @@ export default class DnDFeaturesPlugin extends Plugin {
 
                                     titleContainer.createEl("span", { text: feature.badge ? feature.badge : `Lvl ${i}`, cls: "dnd-level-badge" });
                                     titleContainer.createEl("span", { text: feature.name, cls: "dnd-feature-name" });
+
                                     const descDiv = featureBlock.createDiv({ cls: "dnd-feature-desc" });
                                     MarkdownRenderer.render(this.app, feature.description, descDiv, ctx.sourcePath, renderChild);
                                 });
@@ -243,7 +259,8 @@ export default class DnDFeaturesPlugin extends Plugin {
 
                             if (this.settings.combineClassSubclass && subclassArray[index] && classData.subclassFile) {
                                 const subclassName = subclassArray[index];
-                                const subclassData = getSubclassData(classData.subclassFile, subclassName);
+                                // Added await and passed this.app, this.settings
+                                const subclassData = await getSubclassData(this.app, this.settings, classData.subclassFile, subclassName);
                                 const subLevelFeatures = subclassData ? subclassData[i.toString()] : null;
 
                                 if (subLevelFeatures && subLevelFeatures.length > 0) {
@@ -253,29 +270,34 @@ export default class DnDFeaturesPlugin extends Plugin {
 
                                         titleContainer.createEl("span", { text: feature.badge ? feature.badge : `Lvl ${i}`, cls: "dnd-level-badge dnd-badge-combined" });
                                         titleContainer.createEl("span", { text: feature.name, cls: "dnd-feature-name" });
+
                                         const descDiv = featureBlock.createDiv({ cls: "dnd-feature-desc" });
-                                    MarkdownRenderer.render(this.app, feature.description, descDiv, ctx.sourcePath, renderChild);
+                                        MarkdownRenderer.render(this.app, feature.description, descDiv, ctx.sourcePath, renderChild);
                                     });
                                 }
                             }
                         }
-                    });
+                    }
                 }
 
                 // Render Subclass Section
                 else if (sectionName === "Subclass") {
-                    classArray.forEach((className, index) => {
+                    for (let index = 0; index < classArray.length; index++) {
+                        const className = classArray[index];
                         const currentClassLevel = Array.isArray(classLevels) ? classLevels[index] : level;
                         const subclassName = subclassArray[index];
-                        const classData = getClassData(className);
+
+                        // Added await and passed this.app, this.settings
+                        const classData = await getClassData(this.app, this.settings, className);
 
                         if (subclassName && classData && classData.subclassFile) {
                             if (classArray.length > 1) {
                                 sectionDiv.createEl("h4", { text: `${subclassName} Features`, cls: "dnd-class-header" });
                             }
 
-                            const subclassData = getSubclassData(classData.subclassFile, subclassName);
-                            if (!subclassData) return;
+                            // Added await and passed this.app, this.settings
+                            const subclassData = await getSubclassData(this.app, this.settings, classData.subclassFile, subclassName);
+                            if (!subclassData) continue;
 
                             for (let i = 1; i <= currentClassLevel; i++) {
                                 const subLevelFeatures = subclassData[i.toString()];
@@ -286,27 +308,30 @@ export default class DnDFeaturesPlugin extends Plugin {
 
                                         titleContainer.createEl("span", { text: feature.badge ? feature.badge : `Lvl ${i}`, cls: "dnd-level-badge" });
                                         titleContainer.createEl("span", { text: feature.name, cls: "dnd-feature-name" });
+
                                         const descDiv = featureBlock.createDiv({ cls: "dnd-feature-desc" });
-                                    MarkdownRenderer.render(this.app, feature.description, descDiv, ctx.sourcePath, renderChild);
+                                        MarkdownRenderer.render(this.app, feature.description, descDiv, ctx.sourcePath, renderChild);
                                     });
                                 }
                             }
                         }
-                    });
+                    }
                 }
 
                 // Render Race Section
                 else if (sectionName === "Race") {
-                    const raceData = getRaceData(race);
+                    const raceData = await getRaceData(this.app, this.settings, race);
                     if (raceData && raceData.traits) {
-                        raceData.traits.forEach((trait: any) => {
+                        for (const trait of raceData.traits) {
                             const featureBlock = sectionDiv.createDiv({ cls: "dnd-feature-block" });
                             const titleContainer = featureBlock.createDiv({ cls: "dnd-feature-title" });
 
                             titleContainer.createEl("span", { text: trait.badge ? trait.badge : "Trait", cls: "dnd-level-badge" });
                             titleContainer.createEl("span", { text: trait.name, cls: "dnd-feature-name" });
-                            featureBlock.createEl("div", { text: trait.description, cls: "dnd-feature-desc" });
-                        });
+
+                            const descDiv = featureBlock.createDiv({ cls: "dnd-feature-desc" });
+                            await MarkdownRenderer.render(this.app, trait.description, descDiv, ctx.sourcePath, renderChild);
+                        }
                     } else {
                         sectionDiv.createEl("p", { text: `Data for race "${race}" not found.`, cls: "dnd-error-text" });
                     }
@@ -314,38 +339,47 @@ export default class DnDFeaturesPlugin extends Plugin {
 
                 // Render Background Section
                 else if (sectionName === "Background") {
-                    const featData = getBackgroundFeat(background);
+                    const featData = await getBackgroundFeat(this.app, this.settings, background);
                     if (featData) {
                         const featureBlock = sectionDiv.createDiv({ cls: "dnd-feature-block" });
                         const titleContainer = featureBlock.createDiv({ cls: "dnd-feature-title" });
 
                         titleContainer.createEl("span", { text: "Origin Feat", cls: "dnd-level-badge" });
                         titleContainer.createEl("span", { text: featData.name, cls: "dnd-feature-name" });
-                        featureBlock.createEl("div", { text: featData.description, cls: "dnd-feature-desc" });
+
+                        const descDiv = featureBlock.createDiv({ cls: "dnd-feature-desc" });
+                        await MarkdownRenderer.render(this.app, featData.description, descDiv, ctx.sourcePath, renderChild);
                     } else {
                         sectionDiv.createEl("p", { text: `Data for background "${background}" not found.`, cls: "dnd-error-text" });
                     }
                 }
+
                 // Render Extra Feats Section
                 else if (sectionName === "Extra Feats") {
-                    // We now use our pre-processed master list instead of the raw variable
-                    finalExtraFeats.forEach((featId: string) => {
-                        const featData = getExtraFeat(featId);
+                    // Changed to a for...of loop so it properly respects the await command!
+                    for (const featId of finalExtraFeats) {
+                        // Ensure featId is a string before passing it
+                        const safeFeatId = typeof featId === 'string' ? featId : String(featId);
+                        const featData = await getExtraFeat(this.app, this.settings, safeFeatId);
 
                         if (featData) {
                             const featureBlock = sectionDiv.createDiv({ cls: "dnd-feature-block" });
                             const titleContainer = featureBlock.createDiv({ cls: "dnd-feature-title" });
 
-                            // We use a generic "Feat" badge, but allow custom badge overrides from the JSON!
                             titleContainer.createEl("span", { text: featData.badge ? featData.badge : "Feat", cls: "dnd-level-badge" });
                             titleContainer.createEl("span", { text: featData.name, cls: "dnd-feature-name" });
-                            featureBlock.createEl("div", { text: featData.description, cls: "dnd-feature-desc" });
+
+                            const descDiv = featureBlock.createDiv({ cls: "dnd-feature-desc" });
+                            MarkdownRenderer.render(this.app, featData.description, descDiv, ctx.sourcePath, renderChild);
                         } else {
-                            sectionDiv.createEl("p", { text: `Data for extra feat "${featId}" not found.`, cls: "dnd-error-text" });
+                            sectionDiv.createEl("p", { text: `Data for extra feat "${safeFeatId}" not found.`, cls: "dnd-error-text" });
                         }
-                    });
+                    }
                 }
-            });
+            } // <-- This closes the sectionName loop perfectly!
+            // Now that all async fetching and rendering is 100% complete, push it to the screen!
+            el.empty();
+            el.appendChild(wrapper);
         }; // <-- This closes our new renderContent() function
 
         // 3. Initial Render
@@ -387,6 +421,31 @@ class DnDSettingsTab extends PluginSettingTab {
                     this.plugin.settings.combineClassSubclass = value;
                     await this.plugin.saveSettings();
                     this.display(); // Visually refresh the settings tab to hide/show Subclass
+                }));
+
+        // --- Custom Rulebook Settings ---
+        containerEl.createEl('h3', { text: 'Homebrew & Custom Data', cls: 'setting-item-name dnd-settings-header' });
+        containerEl.createEl('p', { text: 'Add your own custom JSON files to expand or overwrite the native rulebook.', cls: 'setting-item-description' });
+
+        new Setting(containerEl)
+            .setName('Custom Rulebook Folder Path')
+            .setDesc('Enter the path to your custom rulebook folder within your vault (e.g., "TTRPG/My Rulebook"). Leave blank to disable.')
+            .addText(text => text
+                .setPlaceholder('Folder path...')
+                .setValue(this.plugin.settings.customRulebookPath)
+                .onChange(async (value) => {
+                    this.plugin.settings.customRulebookPath = value;
+                    await this.plugin.saveSettings();
+                }));
+
+        new Setting(containerEl)
+            .setName('Custom Rulebook Priority')
+            .setDesc('If enabled, custom homebrew files will completely overwrite native files with the same name. If disabled, native files take priority.')
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.customRulebookPriority)
+                .onChange(async (value) => {
+                    this.plugin.settings.customRulebookPriority = value;
+                    await this.plugin.saveSettings();
                 }));
 
         // Draggable List for Section Order

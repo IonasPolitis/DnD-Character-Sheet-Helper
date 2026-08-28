@@ -22,7 +22,7 @@ __export(main_exports, {
   default: () => DnDFeaturesPlugin
 });
 module.exports = __toCommonJS(main_exports);
-var import_obsidian = require("obsidian");
+var import_obsidian2 = require("obsidian");
 
 // rulebook/classes.json
 var classes_default = {
@@ -256,7 +256,7 @@ var ability_score_improvement_default = {
 // rulebook/feats/alert.json
 var alert_default = {
   name: "Alert",
-  description: "**Initiative Proficiency**: When you roll Initiative, you can add your Proficiency Bonus to the roll.\n**Initiative Swap**: Immediately after you roll Initiative, you can swap your Initiative with the Initiative of one willing ally in the same combat. You can't make this swap if you or the ally has the Incapacitated condition."
+  description: " \u2022 **Initiative Proficiency**:\nWhen you roll Initiative, you can add your Proficiency Bonus to the roll.\n \u2022 **Initiative Swap**:\nImmediately after you roll Initiative, you can swap your Initiative with the Initiative of one willing ally in the same combat. You can't make this swap if you or the ally has the Incapacitated condition."
 };
 
 // rulebook/feats/crafter.json
@@ -372,6 +372,7 @@ var raceRegistry = {
 };
 
 // data.ts
+var import_obsidian = require("obsidian");
 function getIgnoreCase(registry, searchKey) {
   if (!registry || !searchKey) return null;
   const normalizedKey = Array.isArray(searchKey) ? searchKey[0] : searchKey;
@@ -379,28 +380,121 @@ function getIgnoreCase(registry, searchKey) {
   const realKey = Object.keys(registry).find((k) => k.toLowerCase() === normalizedKey.toLowerCase());
   return realKey ? registry[realKey] : null;
 }
-function getClassData(className) {
-  const classFile = getIgnoreCase(classes_default, className);
-  if (!classFile) return null;
-  return getIgnoreCase(classRegistry, classFile);
+async function readCustomJson(app, fullPath) {
+  const adapter = app.vault.adapter;
+  if (await adapter.exists(fullPath)) {
+    try {
+      const fileContent = await adapter.read(fullPath);
+      return JSON.parse(fileContent);
+    } catch (e) {
+      console.error(`D&D Plugin: Failed to parse custom file at ${fullPath}`, e);
+      return null;
+    }
+  }
+  return null;
 }
-function getSubclassData(subclassFile, subclassName) {
-  const fileData = getIgnoreCase(subclassRegistry, subclassFile);
-  if (!fileData) return null;
-  return getIgnoreCase(fileData, subclassName);
+async function getCustomMappedName(app, basePath, routerFile, searchKey) {
+  const routerPath = (0, import_obsidian.normalizePath)(`${basePath}/${routerFile}`);
+  const routerData = await readCustomJson(app, routerPath);
+  if (!routerData) return null;
+  return getIgnoreCase(routerData, searchKey);
 }
-function getBackgroundFeat(backgroundName) {
-  const featId = getIgnoreCase(backgrounds_default, backgroundName);
-  if (!featId) return null;
-  return getIgnoreCase(featRegistry, featId);
+async function getClassData(app, settings, className) {
+  const fetchNative = () => {
+    const classFile = getIgnoreCase(classes_default, className);
+    return classFile ? getIgnoreCase(classRegistry, classFile) : null;
+  };
+  const fetchCustom = async () => {
+    if (!settings.customRulebookPath) return null;
+    const customFileId = await getCustomMappedName(app, settings.customRulebookPath, "classes.json", className);
+    if (!customFileId) return null;
+    return await readCustomJson(app, (0, import_obsidian.normalizePath)(`${settings.customRulebookPath}/classes/${customFileId}.json`));
+  };
+  if (settings.customRulebookPath) {
+    if (settings.customRulebookPriority) {
+      return await fetchCustom() || fetchNative();
+    } else {
+      return fetchNative() || await fetchCustom();
+    }
+  }
+  return fetchNative();
 }
-function getRaceData(raceName) {
-  const raceId = getIgnoreCase(races_default, raceName);
-  if (!raceId) return null;
-  return getIgnoreCase(raceRegistry, raceId);
+async function getSubclassData(app, settings, subclassFile, subclassName) {
+  const fetchNative = () => {
+    const fileData = getIgnoreCase(subclassRegistry, subclassFile);
+    return fileData ? getIgnoreCase(fileData, subclassName) : null;
+  };
+  const fetchCustom = async () => {
+    if (!settings.customRulebookPath) return null;
+    const fileData = await readCustomJson(app, (0, import_obsidian.normalizePath)(`${settings.customRulebookPath}/classes/${subclassFile}.json`));
+    return fileData ? getIgnoreCase(fileData, subclassName) : null;
+  };
+  if (settings.customRulebookPath) {
+    if (settings.customRulebookPriority) {
+      return await fetchCustom() || fetchNative();
+    } else {
+      return fetchNative() || await fetchCustom();
+    }
+  }
+  return fetchNative();
 }
-function getExtraFeat(featName) {
-  return getIgnoreCase(featRegistry, featName);
+async function getBackgroundFeat(app, settings, backgroundName) {
+  const fetchNative = () => {
+    const featId = getIgnoreCase(backgrounds_default, backgroundName);
+    return featId ? getIgnoreCase(featRegistry, featId) : null;
+  };
+  const fetchCustom = async () => {
+    if (!settings.customRulebookPath) return null;
+    const featId = await getCustomMappedName(app, settings.customRulebookPath, "backgrounds.json", backgroundName);
+    if (!featId) return null;
+    return await readCustomJson(app, (0, import_obsidian.normalizePath)(`${settings.customRulebookPath}/feats/${featId}.json`));
+  };
+  if (settings.customRulebookPath) {
+    if (settings.customRulebookPriority) {
+      return await fetchCustom() || fetchNative();
+    } else {
+      return fetchNative() || await fetchCustom();
+    }
+  }
+  return fetchNative();
+}
+async function getRaceData(app, settings, raceName) {
+  const fetchNative = () => {
+    const raceId = getIgnoreCase(races_default, raceName);
+    return raceId ? getIgnoreCase(raceRegistry, raceId) : null;
+  };
+  const fetchCustom = async () => {
+    if (!settings.customRulebookPath) return null;
+    const raceId = await getCustomMappedName(app, settings.customRulebookPath, "races.json", raceName);
+    if (!raceId) return null;
+    return await readCustomJson(app, (0, import_obsidian.normalizePath)(`${settings.customRulebookPath}/races/${raceId}.json`));
+  };
+  if (settings.customRulebookPath) {
+    if (settings.customRulebookPriority) {
+      return await fetchCustom() || fetchNative();
+    } else {
+      return fetchNative() || await fetchCustom();
+    }
+  }
+  return fetchNative();
+}
+async function getExtraFeat(app, settings, featName) {
+  const safeName = Array.isArray(featName) ? featName[0] : featName;
+  if (typeof safeName !== "string") return null;
+  const featId = safeName.toLowerCase().replace(/\s+/g, "-");
+  const fetchNative = () => getIgnoreCase(featRegistry, featId);
+  const fetchCustom = async () => {
+    if (!settings.customRulebookPath) return null;
+    return await readCustomJson(app, (0, import_obsidian.normalizePath)(`${settings.customRulebookPath}/feats/${featId}.json`));
+  };
+  if (settings.customRulebookPath) {
+    if (settings.customRulebookPriority) {
+      return await fetchCustom() || fetchNative();
+    } else {
+      return fetchNative() || await fetchCustom();
+    }
+  }
+  return fetchNative();
 }
 
 // main.ts
@@ -408,7 +502,10 @@ var DEFAULT_SETTINGS = {
   combineClassSubclass: false,
   sectionOrder: ["Class", "Subclass", "Race", "Background", "Extra Feats"],
   themeChoice: "default",
+  customRulebookPath: "",
+  customRulebookPriority: false,
   customColors: {
+    // ... (Keep all your existing color variables here exactly as they are) ...
     "--dnd-bg-primary": "#262A36",
     "--dnd-bg-secondary": "#323748",
     "--dnd-bg-tertiary": "#3A4055",
@@ -429,11 +526,12 @@ var DEFAULT_SETTINGS = {
     "--dnd-accent-purple": "#B29DDB"
   }
 };
-var DnDFeaturesPlugin = class extends import_obsidian.Plugin {
+var DnDFeaturesPlugin = class extends import_obsidian2.Plugin {
   // Add the settings property
   settings;
   async onload() {
     await this.loadSettings();
+    this.applyTheme();
     this.addSettingTab(new DnDSettingsTab(this.app, this));
     this.registerMarkdownCodeBlockProcessor(
       "dnd-features",
@@ -460,15 +558,17 @@ var DnDFeaturesPlugin = class extends import_obsidian.Plugin {
     }
   }
   async processDnDBlock(source, el, ctx) {
-    const renderChild = new import_obsidian.MarkdownRenderChild(el);
+    const renderChild = new import_obsidian2.MarkdownRenderChild(el);
     ctx.addChild(renderChild);
-    const renderContent = () => {
-      el.empty();
+    const renderContent = async () => {
+      const wrapper = document.createElement("div");
       let blockData;
       try {
-        blockData = (0, import_obsidian.parseYaml)(source);
+        blockData = (0, import_obsidian2.parseYaml)(source);
       } catch (error) {
-        el.createEl("p", { text: "Error: Invalid format in dnd-features block.", cls: "dnd-error" });
+        wrapper.createEl("p", { text: "Error: Invalid format in dnd-features block.", cls: "dnd-error" });
+        el.empty();
+        el.appendChild(wrapper);
         return;
       }
       const fileCache = this.app.metadataCache.getCache(ctx.sourcePath);
@@ -490,20 +590,24 @@ var DnDFeaturesPlugin = class extends import_obsidian.Plugin {
       const parsedLevel = Number(level) || 0;
       if (Array.isArray(dndClass) && dndClass.length > 1) {
         if (!Array.isArray(classLevels) || classLevels.length !== dndClass.length) {
-          const errorBox = el.createDiv({ cls: "dnd-error-window" });
+          const errorBox = wrapper.createDiv({ cls: "dnd-error-window" });
           errorBox.createEl("strong", { text: "D&D Features Plugin Error:" });
           errorBox.createEl("p", {
             text: `You have multiple classes listed, but the "class-levels" variable is missing or is invalid. Please provide a level for each class.`
           });
+          el.empty();
+          el.appendChild(wrapper);
           return;
         }
         const totalClassLevels = classLevels.reduce((sum, current) => sum + Number(current), 0);
         if (totalClassLevels !== parsedLevel) {
-          const errorBox = el.createDiv({ cls: "dnd-error-window" });
+          const errorBox = wrapper.createDiv({ cls: "dnd-error-window" });
           errorBox.createEl("strong", { text: "D&D Features Plugin Error:" });
           errorBox.createEl("p", {
             text: `The sum of class-levels (${totalClassLevels}) does not match the total level (${parsedLevel}).`
           });
+          el.empty();
+          el.appendChild(wrapper);
           return;
         }
       }
@@ -512,9 +616,10 @@ var DnDFeaturesPlugin = class extends import_obsidian.Plugin {
       const subclassArray = classArray.map((_, i) => rawSubclassArray[i] || null);
       let finalExtraFeats = Array.isArray(extraFeats) ? [...extraFeats] : extraFeats ? [extraFeats] : [];
       if (dndClass) {
-        classArray.forEach((className, index) => {
+        for (let index = 0; index < classArray.length; index++) {
+          const className = classArray[index];
           const currentClassLevel = classArray.length > 1 && Array.isArray(classLevels) && classLevels.length > index ? Number(classLevels[index]) : Number(level);
-          const classData = getClassData(className);
+          const classData = await getClassData(this.app, this.settings, className);
           if (classData && classData.features) {
             for (let i = 1; i <= currentClassLevel; i++) {
               const levelFeatures = classData.features[i.toString()];
@@ -526,7 +631,7 @@ var DnDFeaturesPlugin = class extends import_obsidian.Plugin {
                 });
               }
               if (classData.subclassFile && subclassArray[index]) {
-                const subclassData = getSubclassData(classData.subclassFile, subclassArray[index]);
+                const subclassData = await getSubclassData(this.app, this.settings, classData.subclassFile, subclassArray[index]);
                 const subLevelFeatures = subclassData ? subclassData[i.toString()] : null;
                 if (subLevelFeatures) {
                   subLevelFeatures.forEach((feature) => {
@@ -538,33 +643,34 @@ var DnDFeaturesPlugin = class extends import_obsidian.Plugin {
               }
             }
           }
-        });
+        }
       }
       finalExtraFeats = [...new Set(finalExtraFeats)];
-      this.settings.sectionOrder.forEach((sectionName) => {
-        if (sectionName === "Class" && !dndClass) return;
-        if (sectionName === "Subclass" && (!subclass || this.settings.combineClassSubclass || Number(level) < 3)) return;
-        if (sectionName === "Race" && !race) return;
-        if (sectionName === "Background" && !background) return;
-        if (sectionName === "Extra Feats" && finalExtraFeats.length === 0) return;
+      for (const sectionName of this.settings.sectionOrder) {
+        if (sectionName === "Class" && !dndClass) continue;
+        if (sectionName === "Subclass" && (!subclass || this.settings.combineClassSubclass || Number(level) < 3)) continue;
+        if (sectionName === "Race" && !race) continue;
+        if (sectionName === "Background" && !background) continue;
+        if (sectionName === "Extra Feats" && finalExtraFeats.length === 0) continue;
         let sectionTitle = `${sectionName} Features:`;
         if (sectionName === "Class" && this.settings.combineClassSubclass && subclass) sectionTitle = "Class & Subclass Features:";
         if (sectionName === "Race") sectionTitle = "Race Traits:";
         if (sectionName === "Background") sectionTitle = "Background Feat:";
         if (sectionName === "Extra Feats") sectionTitle = "Extra Feats:";
-        el.createEl("h3", { text: sectionTitle, cls: "dnd-section-header" });
-        const sectionWindow = el.createDiv({ cls: "dnd-features-window" });
+        wrapper.createEl("h3", { text: sectionTitle, cls: "dnd-section-header" });
+        const sectionWindow = wrapper.createDiv({ cls: "dnd-features-window" });
         const sectionDiv = sectionWindow.createDiv({ cls: `dnd-section-${sectionName.toLowerCase()}` });
         if (sectionName === "Class") {
-          classArray.forEach((className, index) => {
+          for (let index = 0; index < classArray.length; index++) {
+            const className = classArray[index];
             const currentClassLevel = classArray.length > 1 && Array.isArray(classLevels) && classLevels.length > index ? Number(classLevels[index]) : Number(level);
             if (classArray.length > 1) {
               sectionDiv.createEl("h4", { text: `${className} Features (Level ${currentClassLevel})`, cls: "dnd-class-header" });
             }
-            const classData = getClassData(className);
+            const classData = await getClassData(this.app, this.settings, className);
             if (!classData || !classData.features) {
               sectionDiv.createEl("p", { text: `Data for ${className} not found.`, cls: "dnd-error-text" });
-              return;
+              continue;
             }
             for (let i = 1; i <= currentClassLevel; i++) {
               const levelFeatures = classData.features[i.toString()];
@@ -575,12 +681,12 @@ var DnDFeaturesPlugin = class extends import_obsidian.Plugin {
                   titleContainer.createEl("span", { text: feature.badge ? feature.badge : `Lvl ${i}`, cls: "dnd-level-badge" });
                   titleContainer.createEl("span", { text: feature.name, cls: "dnd-feature-name" });
                   const descDiv = featureBlock.createDiv({ cls: "dnd-feature-desc" });
-                  import_obsidian.MarkdownRenderer.render(this.app, feature.description, descDiv, ctx.sourcePath, renderChild);
+                  import_obsidian2.MarkdownRenderer.render(this.app, feature.description, descDiv, ctx.sourcePath, renderChild);
                 });
               }
               if (this.settings.combineClassSubclass && subclassArray[index] && classData.subclassFile) {
                 const subclassName = subclassArray[index];
-                const subclassData = getSubclassData(classData.subclassFile, subclassName);
+                const subclassData = await getSubclassData(this.app, this.settings, classData.subclassFile, subclassName);
                 const subLevelFeatures = subclassData ? subclassData[i.toString()] : null;
                 if (subLevelFeatures && subLevelFeatures.length > 0) {
                   subLevelFeatures.forEach((feature) => {
@@ -589,23 +695,24 @@ var DnDFeaturesPlugin = class extends import_obsidian.Plugin {
                     titleContainer.createEl("span", { text: feature.badge ? feature.badge : `Lvl ${i}`, cls: "dnd-level-badge dnd-badge-combined" });
                     titleContainer.createEl("span", { text: feature.name, cls: "dnd-feature-name" });
                     const descDiv = featureBlock.createDiv({ cls: "dnd-feature-desc" });
-                    import_obsidian.MarkdownRenderer.render(this.app, feature.description, descDiv, ctx.sourcePath, renderChild);
+                    import_obsidian2.MarkdownRenderer.render(this.app, feature.description, descDiv, ctx.sourcePath, renderChild);
                   });
                 }
               }
             }
-          });
+          }
         } else if (sectionName === "Subclass") {
-          classArray.forEach((className, index) => {
+          for (let index = 0; index < classArray.length; index++) {
+            const className = classArray[index];
             const currentClassLevel = Array.isArray(classLevels) ? classLevels[index] : level;
             const subclassName = subclassArray[index];
-            const classData = getClassData(className);
+            const classData = await getClassData(this.app, this.settings, className);
             if (subclassName && classData && classData.subclassFile) {
               if (classArray.length > 1) {
                 sectionDiv.createEl("h4", { text: `${subclassName} Features`, cls: "dnd-class-header" });
               }
-              const subclassData = getSubclassData(classData.subclassFile, subclassName);
-              if (!subclassData) return;
+              const subclassData = await getSubclassData(this.app, this.settings, classData.subclassFile, subclassName);
+              if (!subclassData) continue;
               for (let i = 1; i <= currentClassLevel; i++) {
                 const subLevelFeatures = subclassData[i.toString()];
                 if (subLevelFeatures && subLevelFeatures.length > 0) {
@@ -615,51 +722,57 @@ var DnDFeaturesPlugin = class extends import_obsidian.Plugin {
                     titleContainer.createEl("span", { text: feature.badge ? feature.badge : `Lvl ${i}`, cls: "dnd-level-badge" });
                     titleContainer.createEl("span", { text: feature.name, cls: "dnd-feature-name" });
                     const descDiv = featureBlock.createDiv({ cls: "dnd-feature-desc" });
-                    import_obsidian.MarkdownRenderer.render(this.app, feature.description, descDiv, ctx.sourcePath, renderChild);
+                    import_obsidian2.MarkdownRenderer.render(this.app, feature.description, descDiv, ctx.sourcePath, renderChild);
                   });
                 }
               }
             }
-          });
+          }
         } else if (sectionName === "Race") {
-          const raceData = getRaceData(race);
+          const raceData = await getRaceData(this.app, this.settings, race);
           if (raceData && raceData.traits) {
-            raceData.traits.forEach((trait) => {
+            for (const trait of raceData.traits) {
               const featureBlock = sectionDiv.createDiv({ cls: "dnd-feature-block" });
               const titleContainer = featureBlock.createDiv({ cls: "dnd-feature-title" });
               titleContainer.createEl("span", { text: trait.badge ? trait.badge : "Trait", cls: "dnd-level-badge" });
               titleContainer.createEl("span", { text: trait.name, cls: "dnd-feature-name" });
-              featureBlock.createEl("div", { text: trait.description, cls: "dnd-feature-desc" });
-            });
+              const descDiv = featureBlock.createDiv({ cls: "dnd-feature-desc" });
+              await import_obsidian2.MarkdownRenderer.render(this.app, trait.description, descDiv, ctx.sourcePath, renderChild);
+            }
           } else {
             sectionDiv.createEl("p", { text: `Data for race "${race}" not found.`, cls: "dnd-error-text" });
           }
         } else if (sectionName === "Background") {
-          const featData = getBackgroundFeat(background);
+          const featData = await getBackgroundFeat(this.app, this.settings, background);
           if (featData) {
             const featureBlock = sectionDiv.createDiv({ cls: "dnd-feature-block" });
             const titleContainer = featureBlock.createDiv({ cls: "dnd-feature-title" });
             titleContainer.createEl("span", { text: "Origin Feat", cls: "dnd-level-badge" });
             titleContainer.createEl("span", { text: featData.name, cls: "dnd-feature-name" });
-            featureBlock.createEl("div", { text: featData.description, cls: "dnd-feature-desc" });
+            const descDiv = featureBlock.createDiv({ cls: "dnd-feature-desc" });
+            await import_obsidian2.MarkdownRenderer.render(this.app, featData.description, descDiv, ctx.sourcePath, renderChild);
           } else {
             sectionDiv.createEl("p", { text: `Data for background "${background}" not found.`, cls: "dnd-error-text" });
           }
         } else if (sectionName === "Extra Feats") {
-          finalExtraFeats.forEach((featId) => {
-            const featData = getExtraFeat(featId);
+          for (const featId of finalExtraFeats) {
+            const safeFeatId = typeof featId === "string" ? featId : String(featId);
+            const featData = await getExtraFeat(this.app, this.settings, safeFeatId);
             if (featData) {
               const featureBlock = sectionDiv.createDiv({ cls: "dnd-feature-block" });
               const titleContainer = featureBlock.createDiv({ cls: "dnd-feature-title" });
               titleContainer.createEl("span", { text: featData.badge ? featData.badge : "Feat", cls: "dnd-level-badge" });
               titleContainer.createEl("span", { text: featData.name, cls: "dnd-feature-name" });
-              featureBlock.createEl("div", { text: featData.description, cls: "dnd-feature-desc" });
+              const descDiv = featureBlock.createDiv({ cls: "dnd-feature-desc" });
+              import_obsidian2.MarkdownRenderer.render(this.app, featData.description, descDiv, ctx.sourcePath, renderChild);
             } else {
-              sectionDiv.createEl("p", { text: `Data for extra feat "${featId}" not found.`, cls: "dnd-error-text" });
+              sectionDiv.createEl("p", { text: `Data for extra feat "${safeFeatId}" not found.`, cls: "dnd-error-text" });
             }
-          });
+          }
         }
-      });
+      }
+      el.empty();
+      el.appendChild(wrapper);
     };
     renderContent();
     renderChild.registerEvent(
@@ -671,7 +784,7 @@ var DnDFeaturesPlugin = class extends import_obsidian.Plugin {
     );
   }
 };
-var DnDSettingsTab = class extends import_obsidian.PluginSettingTab {
+var DnDSettingsTab = class extends import_obsidian2.PluginSettingTab {
   plugin;
   constructor(app, plugin) {
     super(app, plugin);
@@ -681,10 +794,20 @@ var DnDSettingsTab = class extends import_obsidian.PluginSettingTab {
     const { containerEl } = this;
     containerEl.empty();
     containerEl.createEl("h2", { text: "D&D 5.5e Features Settings" });
-    new import_obsidian.Setting(containerEl).setName("Combine Class and Subclass Features").setDesc("If enabled, subclass features will be mixed chronologically into the main class section.").addToggle((toggle) => toggle.setValue(this.plugin.settings.combineClassSubclass).onChange(async (value) => {
+    new import_obsidian2.Setting(containerEl).setName("Combine Class and Subclass Features").setDesc("If enabled, subclass features will be mixed chronologically into the main class section.").addToggle((toggle) => toggle.setValue(this.plugin.settings.combineClassSubclass).onChange(async (value) => {
       this.plugin.settings.combineClassSubclass = value;
       await this.plugin.saveSettings();
       this.display();
+    }));
+    containerEl.createEl("h3", { text: "Homebrew & Custom Data", cls: "setting-item-name dnd-settings-header" });
+    containerEl.createEl("p", { text: "Add your own custom JSON files to expand or overwrite the native rulebook.", cls: "setting-item-description" });
+    new import_obsidian2.Setting(containerEl).setName("Custom Rulebook Folder Path").setDesc('Enter the path to your custom rulebook folder within your vault (e.g., "TTRPG/My Rulebook"). Leave blank to disable.').addText((text) => text.setPlaceholder("Folder path...").setValue(this.plugin.settings.customRulebookPath).onChange(async (value) => {
+      this.plugin.settings.customRulebookPath = value;
+      await this.plugin.saveSettings();
+    }));
+    new import_obsidian2.Setting(containerEl).setName("Custom Rulebook Priority").setDesc("If enabled, custom homebrew files will completely overwrite native files with the same name. If disabled, native files take priority.").addToggle((toggle) => toggle.setValue(this.plugin.settings.customRulebookPriority).onChange(async (value) => {
+      this.plugin.settings.customRulebookPriority = value;
+      await this.plugin.saveSettings();
     }));
     containerEl.createEl("h3", { text: "Section Render Order", cls: "setting-item-name dnd-settings-header" });
     containerEl.createEl("p", { text: 'Drag and drop the sections below to change their display order. If "Combine Class and Subclass" is enabled, the Subclass block will be hidden.', cls: "setting-item-description" });
@@ -724,7 +847,7 @@ var DnDSettingsTab = class extends import_obsidian.PluginSettingTab {
       });
     });
     containerEl.createEl("h3", { text: "Appearance & Theming", cls: "setting-item-name dnd-settings-header" });
-    new import_obsidian.Setting(containerEl).setName("Theme Selection").setDesc("Choose between the default layout colors or create your own custom palette.").addDropdown((drop) => drop.addOption("default", "Default Dark Theme").addOption("custom", "Custom Colors").setValue(this.plugin.settings.themeChoice).onChange(async (value) => {
+    new import_obsidian2.Setting(containerEl).setName("Theme Selection").setDesc("Choose between the default layout colors or create your own custom palette.").addDropdown((drop) => drop.addOption("default", "Default Dark Theme").addOption("custom", "Custom Colors").setValue(this.plugin.settings.themeChoice).onChange(async (value) => {
       this.plugin.settings.themeChoice = value;
       this.plugin.applyTheme();
       await this.plugin.saveSettings();
@@ -742,7 +865,7 @@ var DnDSettingsTab = class extends import_obsidian.PluginSettingTab {
         containerEl.createEl("h4", { text: groupName, cls: "dnd-settings-subgroup" });
         variables.forEach((variable) => {
           const cleanName = variable.replace("--dnd-", "").replace(/-/g, " ");
-          new import_obsidian.Setting(containerEl).setName(cleanName.charAt(0).toUpperCase() + cleanName.slice(1)).addColorPicker((color) => color.setValue(this.plugin.settings.customColors[variable]).onChange(async (value) => {
+          new import_obsidian2.Setting(containerEl).setName(cleanName.charAt(0).toUpperCase() + cleanName.slice(1)).addColorPicker((color) => color.setValue(this.plugin.settings.customColors[variable]).onChange(async (value) => {
             this.plugin.settings.customColors[variable] = value;
             this.plugin.applyTheme();
             await this.plugin.saveSettings();

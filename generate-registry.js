@@ -38,15 +38,16 @@ if (fs.existsSync(path.join(rulebookDir, 'races.json'))) {
 
 // 2. Generate Imports for Sub-folders
 classes.forEach(c => {
-    const safeName = c.replace(/-/g, ''); // Removes dashes so JavaScript doesn't break
+    // Upgraded Regex: Strips ALL non-alphanumeric characters so JavaScript never breaks
+    const safeName = c.replace(/[^a-zA-Z0-9]/g, ''); 
     out += `import class_${safeName} from './rulebook/classes/${c}.json';\n`;
 });
 feats.forEach(f => {
-    const safeName = f.replace(/-/g, '');
+    const safeName = f.replace(/[^a-zA-Z0-9]/g, '');
     out += `import feat_${safeName} from './rulebook/feats/${f}.json';\n`;
 });
 races.forEach(r => {
-    const safeName = r.replace(/-/g, '');
+    const safeName = r.replace(/[^a-zA-Z0-9]/g, '');
     out += `import race_${safeName} from './rulebook/races/${r}.json';\n`;
 });
 
@@ -55,25 +56,25 @@ out += `\nexport { classesMap, backgroundsMap, racesMap };\n\n`;
 // 3. Generate the Registry Maps
 out += `export const classRegistry: Record<string, any> = {\n`;
 classes.forEach(c => {
-    if (!c.includes('subclass')) out += `    "${c}": class_${c.replace(/-/g, '')},\n`;
+    if (!c.includes('subclass')) out += `    "${c}": class_${c.replace(/[^a-zA-Z0-9]/g, '')},\n`;
 });
 out += `};\n\n`;
 
 out += `export const subclassRegistry: Record<string, any> = {\n`;
 classes.forEach(c => {
-    if (c.includes('subclass')) out += `    "${c}": class_${c.replace(/-/g, '')},\n`;
+    if (c.includes('subclass')) out += `    "${c}": class_${c.replace(/[^a-zA-Z0-9]/g, '')},\n`;
 });
 out += `};\n\n`;
 
 out += `export const featRegistry: Record<string, any> = {\n`;
 feats.forEach(f => {
-    out += `    "${f}": feat_${f.replace(/-/g, '')},\n`;
+    out += `    "${f}": feat_${f.replace(/[^a-zA-Z0-9]/g, '')},\n`;
 });
 out += `};\n`;
 
 out += `export const raceRegistry: Record<string, any> = {\n`;
 races.forEach(r => {
-    out += `    "${r}": race_${r.replace(/-/g, '')},\n`;
+    out += `    "${r}": race_${r.replace(/[^a-zA-Z0-9]/g, '')},\n`;
 });
 out += `};\n`;
 
