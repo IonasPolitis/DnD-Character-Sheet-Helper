@@ -10,7 +10,19 @@ import class_monksubclasses from './rulebook/classes/monk-subclasses.json';
 import class_monk from './rulebook/classes/monk.json';
 import class_paladin from './rulebook/classes/paladin.json';
 import feat_abilityscoreimprovement from './rulebook/feats/ability-score-improvement.json';
+import feat_alert from './rulebook/feats/alert.json';
+import feat_crafter from './rulebook/feats/crafter.json';
+import feat_healer from './rulebook/feats/healer.json';
 import feat_lucky from './rulebook/feats/lucky.json';
+import feat_magicinitiatecleric from './rulebook/feats/magic-initiate-cleric.json';
+import feat_magicinitiatedruid from './rulebook/feats/magic-initiate-druid.json';
+import feat_magicinitiatewizard from './rulebook/feats/magic-initiate-wizard.json';
+import feat_musician from './rulebook/feats/musician.json';
+import feat_savageattacker from './rulebook/feats/savage-attacker.json';
+import feat_skilled from './rulebook/feats/skilled.json';
+import feat_tavernbrawler from './rulebook/feats/tavern-brawler.json';
+import feat_tough from './rulebook/feats/tough.json';
+import race_halforc from './rulebook/races/half-orc.json';
 import race_orc from './rulebook/races/orc.json';
 
 export { classesMap, backgroundsMap, racesMap };
@@ -26,8 +38,20 @@ export const subclassRegistry: Record<string, any> = {
 
 export const featRegistry: Record<string, any> = {
     "ability-score-improvement": feat_abilityscoreimprovement,
+    "alert": feat_alert,
+    "crafter": feat_crafter,
+    "healer": feat_healer,
     "lucky": feat_lucky,
+    "magic-initiate-cleric": feat_magicinitiatecleric,
+    "magic-initiate-druid": feat_magicinitiatedruid,
+    "magic-initiate-wizard": feat_magicinitiatewizard,
+    "musician": feat_musician,
+    "savage-attacker": feat_savageattacker,
+    "skilled": feat_skilled,
+    "tavern-brawler": feat_tavernbrawler,
+    "tough": feat_tough,
 };
 export const raceRegistry: Record<string, any> = {
+    "half-orc": race_halforc,
     "orc": race_orc,
 };

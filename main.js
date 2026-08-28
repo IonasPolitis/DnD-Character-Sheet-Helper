@@ -43,15 +43,36 @@ var classes_default = {
 
 // rulebook/backgrounds.json
 var backgrounds_default = {
-  Wayfarer: "lucky",
-  Acolyte: "magic-initiate-cleric"
+  Acolyte: "magic-initiate-cleric",
+  Artisan: "crafter",
+  Charlatan: "skilled",
+  Criminal: "alert",
+  Entertainer: "musician",
+  Farmer: "tough",
+  Guard: "alert",
+  Guide: "magic-initiate-druid",
+  Hermit: "healer",
+  Merchant: "lucky",
+  Noble: "skilled",
+  Sage: "magic-initiate-wizard",
+  Sailor: "tavern-brawler",
+  Soldier: "savage-attacker",
+  Wayfarer: "lucky"
 };
 
 // rulebook/races.json
 var races_default = {
-  Orc: "orc",
+  Aasimar: "aasimar",
+  Dragonborn: "dragonborn",
+  Dwarf: "dwarf",
   Elf: "elf",
-  Human: "human"
+  Gnome: "gnome",
+  Goliath: "goliath",
+  Halfling: "halfling",
+  Human: "human",
+  Orc: "orc",
+  "Half-Orc": "half-orc",
+  Tiefling: "tiefling"
 };
 
 // rulebook/classes/monk-subclasses.json
@@ -128,16 +149,8 @@ var monk_default = {
     ],
     "2": [
       {
-        name: "Flurry of Blows",
-        description: "You can expend 1 Focus Point to make two Unarmed Strikes as a Bonus Action."
-      },
-      {
-        name: "Patient Defense",
-        description: "You can take the Disengage action as a Bonus Action. Alternatively, you can expend 1 Focus Point to take both the Disengage and the Dodge actions as a Bonus Action."
-      },
-      {
-        name: "Step of the Wind",
-        description: "You can take the Dash action as a Bonus Action. Alternatively, you can expend 1 Focus Point to take both the Disengage and Dash actions as a Bonus Action, and your jump distance is doubled for the turn."
+        name: "Monk's Focus",
+        description: " \u2022 **Flurry of Blows**:\nYou can expend 1 Focus Point to make two Unarmed Strikes as a Bonus Action.\n \u2022 **Patient Defense**:\nYou can take the Disengage action as a Bonus Action. Alternatively, you can expend 1 Focus Point to take both the Disengage and the Dodge actions as a Bonus Action.\n \u2022 **Step of the Wind**:\nYou can take the Dash action as a Bonus Action. Alternatively, you can expend 1 Focus Point to take both the Disengage and Dash actions as a Bonus Action, and your jump distance is doubled for the turn."
       }
     ],
     "4": [
@@ -240,10 +253,85 @@ var ability_score_improvement_default = {
   description: "Increase one ability score of your choice by 2, or increase two ability scores of your choice by 1. This feat can't increase an ability score above 20."
 };
 
+// rulebook/feats/alert.json
+var alert_default = {
+  name: "Alert",
+  description: "**Initiative Proficiency**: When you roll Initiative, you can add your Proficiency Bonus to the roll.\n**Initiative Swap**: Immediately after you roll Initiative, you can swap your Initiative with the Initiative of one willing ally in the same combat. You can't make this swap if you or the ally has the Incapacitated condition."
+};
+
+// rulebook/feats/crafter.json
+var crafter_default = {
+  name: "Crafter",
+  description: "**Tool Proficiency**: You gain proficiency with three different Ar tisan's Tools of your choice from the Fast Crafting table.\n**Discount**: Whenever you buy a nonmagical item, you r eceive a 20 percent discount on it.\n**Fast Crafting**: When you finish a Long Rest, you can craft one piece of gear from the Fast Crafting table, provided you have the Artisan's Tools associated with that item and h ave proficiency w ith those tools. The item lasts until you finish another Long Rest, at which point the item fa lls apart."
+};
+
+// rulebook/feats/healer.json
+var healer_default = {
+  name: "Healer",
+  description: "**Battle Medic**: If you have a Healer's Kit, you can expend one use of it and tend to a creature within 5 feet of yourself as a Utilize action. That creature can expend one of its Hit Point Dice, and you then roll that die. The creature regains a number of Hit Points equal to the roll plus your Proficiency Bonus.\n**Healing Rerolls**: Whenever you roll a die to determine the number of Hit Points you restore with a spell or with this feat's Battle Medic benefit, you can reroll the die if it rolls a 1, and you must use the new roll."
+};
+
 // rulebook/feats/lucky.json
 var lucky_default = {
   name: "Lucky",
   description: "You have a number of Luck Points equal to your Proficiency Bonus and can spend the points on the benefits below. You regain your expended Luck Points when you finish a Long Rest.\n \u2022 Advatages: When you roll a d20 for a D20 Test, you can spend 1 Luck Point to give yourself Advantage on the roll.\n \u2022 Disadvantage: When a creature rolls a d20 for an attack roll against you, you can spend 1 Luck Point to impose Disadvantage on that roll."
+};
+
+// rulebook/feats/magic-initiate-cleric.json
+var magic_initiate_cleric_default = {
+  name: "<Feat_Name>",
+  description: "<Feat_Description>"
+};
+
+// rulebook/feats/magic-initiate-druid.json
+var magic_initiate_druid_default = {
+  name: "<Feat_Name>",
+  description: "<Feat_Description>"
+};
+
+// rulebook/feats/magic-initiate-wizard.json
+var magic_initiate_wizard_default = {
+  name: "<Feat_Name>",
+  description: "<Feat_Description>"
+};
+
+// rulebook/feats/musician.json
+var musician_default = {
+  name: "Musician",
+  description: "**Encouraging Song**: As you finish a Short or Long Rest, you can play a song on a Musical Instrument with which you have proficiency and give Heroic Inspiration to allies who hear the song. The number of allies you can affect in this way equals your Proficiency Bonus."
+};
+
+// rulebook/feats/savage-attacker.json
+var savage_attacker_default = {
+  name: "Savage Attacker",
+  description: "You've trained to deal particularly damaging strikes. Once per turn when you hit a target with a weapon, you can roll the weapon's damage dice twice and use either roll against the target."
+};
+
+// rulebook/feats/skilled.json
+var skilled_default = {
+  name: "Skilled",
+  description: "You gain proficiency in any combination of three skills or tools of your choice."
+};
+
+// rulebook/feats/tavern-brawler.json
+var tavern_brawler_default = {
+  name: "Tavern Brawler",
+  description: "**Enhanced Unarmed Strike**: When you hit with your Unarmed Strike and deal damage, you can deal Bludgeoning damage equal to ld4 plus your Strength modifier instead of the normal damage of an Unarmed Strike\n**Damage Rerolls**: Whenever you roll a damage die for your Unarmed Strike, you can reroll the die if it rolls a 1, and you must use the new roll.\n**Improvised Weaponry**: You have proficiency with improvised weapons.\n**Push**: When you hit a creature with an Unarmed Strike as part of the Attack action on your turn, you can deal damage to the target and also push it 5 feet away from you. You can use this benefit only once per turn."
+};
+
+// rulebook/feats/tough.json
+var tough_default = {
+  name: "Tough",
+  description: "Your Hit Point maximum increases by an amount equal to twice your character level when you gain this feat. Whenever you gain a character level thereafter, your Hit Point maximum increases by an additional 2 Hit Points."
+};
+
+// rulebook/races/half-orc.json
+var half_orc_default = {
+  traits: [
+    { name: "Adrenaline Rush", description: "You can take the Dash action as a Bonus Action. When you do so, you gain Temporary Hit Points equal to your Proficiency Bonus.\n  You can use this trait a number of times equal to your Proficiency Bonus, and you regain all expended uses when you finish a Short or Long Rest." },
+    { name: "Darkvision", description: "You have Darkvision with a range of 120 feet." },
+    { name: "Relentless Endurance", description: "When you are reduced to 0 Hit Points but not killed outright, you can drop to 1 Hit Point instead. Once you use this trait, you can't do so again until you finish a Long Rest." }
+  ]
 };
 
 // rulebook/races/orc.json
@@ -265,9 +353,21 @@ var subclassRegistry = {
 };
 var featRegistry = {
   "ability-score-improvement": ability_score_improvement_default,
-  "lucky": lucky_default
+  "alert": alert_default,
+  "crafter": crafter_default,
+  "healer": healer_default,
+  "lucky": lucky_default,
+  "magic-initiate-cleric": magic_initiate_cleric_default,
+  "magic-initiate-druid": magic_initiate_druid_default,
+  "magic-initiate-wizard": magic_initiate_wizard_default,
+  "musician": musician_default,
+  "savage-attacker": savage_attacker_default,
+  "skilled": skilled_default,
+  "tavern-brawler": tavern_brawler_default,
+  "tough": tough_default
 };
 var raceRegistry = {
+  "half-orc": half_orc_default,
   "orc": orc_default
 };
 

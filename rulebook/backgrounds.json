@@ -1,4 +1,17 @@
 {
-  "Wayfarer": "lucky",
-  "Acolyte": "magic-initiate-cleric"
+      "Acolyte": "magic-initiate-cleric",
+      "Artisan": "crafter",
+      "Charlatan": "skilled",
+      "Criminal": "alert",
+      "Entertainer": "musician",
+      "Farmer": "tough",
+      "Guard": "alert",
+      "Guide": "magic-initiate-druid",
+      "Hermit": "healer",
+      "Merchant": "lucky",
+      "Noble": "skilled",
+      "Sage": "magic-initiate-wizard",
+      "Sailor": "tavern-brawler",
+      "Soldier": "savage-attacker",
+      "Wayfarer": "lucky"
 }
