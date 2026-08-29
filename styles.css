@@ -182,6 +182,20 @@
     margin-bottom: 0;
 }
 
+/* Ensure all rendered Markdown tables stretch to full card width */
+.dnd-feature-desc table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 8px 0;
+}
+
+/* Optional: Ensure balanced cell padding and alignment across themes */
+.dnd-feature-desc th,
+.dnd-feature-desc td {
+    text-align: left;
+    padding: 6px 10px;
+}
+
 .dnd-error-text {
     color: var(--dnd-accent-red);
 }
