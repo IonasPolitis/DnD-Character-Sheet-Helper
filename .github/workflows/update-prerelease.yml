@@ -1,4 +1,4 @@
-name: Build and Update Pre-Release
+name: Build and Update Beta-Release
 
 on:
   push:
@@ -28,7 +28,7 @@ jobs:
       - name: Build Project
         run: npm run build
 
-      - name: Update Tag and Pre-Release
+      - name: Update Tag and Beta-Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -66,7 +66,7 @@ jobs:
           git push -f origin $TAG_NAME
 
           # 5. Create release if missing, or update if it exists
-          gh release view $TAG_NAME >/dev/null 2>&1 || gh release create $TAG_NAME --prerelease --title "Beta Build ($TAG_NAME)" --notes "Automated beta build"
+          gh release view $TAG_NAME >/dev/null 2>&1 || gh release create $TAG_NAME --title "Beta Release ($TAG_NAME)" --notes "Automated beta build"
 
           # 6. Upload assets
           gh release upload $TAG_NAME main.js styles.css manifest.json --clobber
