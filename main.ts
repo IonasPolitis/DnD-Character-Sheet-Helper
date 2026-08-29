@@ -92,6 +92,23 @@ export default class DnDFeaturesPlugin extends Plugin {
         }
     }
 
+    // --- Helper: Safely Render Markdown and Fix Spacing ---
+    async renderDndMarkdown(text: string, container: HTMLElement, sourcePath: string, component: MarkdownRenderChild) {
+        if (!text) return;
+        
+        // 1. Trim trailing newlines that cause empty invisible <p> tags
+        const cleanText = text.trim();
+        
+        // 2. Render the markdown securely
+        await MarkdownRenderer.render(this.app, cleanText, container, sourcePath, component);
+        
+        // 3. Strip the bottom margin from the very last child to eliminate dead space!
+        const lastChild = container.lastElementChild as HTMLElement;
+        if (lastChild) {
+            lastChild.style.marginBottom = '0';
+        }
+    }
+
     async processDnDBlock(source: string, el: HTMLElement, ctx: MarkdownPostProcessorContext) {
         // 1. Create a Render Child to manage the lifecycle and reactivity
         const renderChild = new MarkdownRenderChild(el);
@@ -264,7 +281,7 @@ export default class DnDFeaturesPlugin extends Plugin {
                             const levelFeatures = classData.features[i.toString()];
 
                             if (levelFeatures && levelFeatures.length > 0) {
-                                levelFeatures.forEach((feature: any) => {
+                                for (const feature of levelFeatures) {
                                     const featureBlock = sectionDiv.createDiv({ cls: "dnd-feature-block" });
                                     const titleContainer = featureBlock.createDiv({ cls: "dnd-feature-title" });
 
@@ -272,8 +289,8 @@ export default class DnDFeaturesPlugin extends Plugin {
                                     titleContainer.createEl("span", { text: feature.name, cls: "dnd-feature-name" });
 
                                     const descDiv = featureBlock.createDiv({ cls: "dnd-feature-desc" });
-                                    MarkdownRenderer.render(this.app, feature.description, descDiv, ctx.sourcePath, renderChild);
-                                });
+                                    await this.renderDndMarkdown(feature.description, descDiv, ctx.sourcePath, renderChild);
+                                }
                             }
 
                             if (this.settings.combineClassSubclass && subclassArray[index] && classData.subclassFile) {
@@ -283,7 +300,7 @@ export default class DnDFeaturesPlugin extends Plugin {
                                 const subLevelFeatures = subclassData ? subclassData[i.toString()] : null;
 
                                 if (subLevelFeatures && subLevelFeatures.length > 0) {
-                                    subLevelFeatures.forEach((feature: any) => {
+                                    for (const feature of subLevelFeatures) {
                                         const featureBlock = sectionDiv.createDiv({ cls: "dnd-feature-block" });
                                         const titleContainer = featureBlock.createDiv({ cls: "dnd-feature-title" });
 
@@ -291,8 +308,8 @@ export default class DnDFeaturesPlugin extends Plugin {
                                         titleContainer.createEl("span", { text: feature.name, cls: "dnd-feature-name" });
 
                                         const descDiv = featureBlock.createDiv({ cls: "dnd-feature-desc" });
-                                        MarkdownRenderer.render(this.app, feature.description, descDiv, ctx.sourcePath, renderChild);
-                                    });
+                                        await this.renderDndMarkdown(feature.description, descDiv, ctx.sourcePath, renderChild);
+                                    }
                                 }
                             }
                         }
@@ -321,7 +338,7 @@ export default class DnDFeaturesPlugin extends Plugin {
                             for (let i = 1; i <= currentClassLevel; i++) {
                                 const subLevelFeatures = subclassData[i.toString()];
                                 if (subLevelFeatures && subLevelFeatures.length > 0) {
-                                    subLevelFeatures.forEach((feature: any) => {
+                                    for (const feature of subLevelFeatures) {
                                         const featureBlock = sectionDiv.createDiv({ cls: "dnd-feature-block" });
                                         const titleContainer = featureBlock.createDiv({ cls: "dnd-feature-title" });
 
@@ -329,8 +346,8 @@ export default class DnDFeaturesPlugin extends Plugin {
                                         titleContainer.createEl("span", { text: feature.name, cls: "dnd-feature-name" });
 
                                         const descDiv = featureBlock.createDiv({ cls: "dnd-feature-desc" });
-                                        MarkdownRenderer.render(this.app, feature.description, descDiv, ctx.sourcePath, renderChild);
-                                    });
+                                        await this.renderDndMarkdown(feature.description, descDiv, ctx.sourcePath, renderChild);
+                                    }
                                 }
                             }
                         }
@@ -363,7 +380,7 @@ export default class DnDFeaturesPlugin extends Plugin {
                             titleContainer.createEl("span", { text: trait.name, cls: "dnd-feature-name" });
 
                             const descDiv = featureBlock.createDiv({ cls: "dnd-feature-desc" });
-                            await MarkdownRenderer.render(this.app, trait.description, descDiv, ctx.sourcePath, renderChild);
+                            await this.renderDndMarkdown(trait.description, descDiv, ctx.sourcePath, renderChild);
                         }
                     } else {
                         sectionDiv.createEl("p", { text: `Data for race "${race}" not found.`, cls: "dnd-error-text" });
@@ -381,7 +398,7 @@ export default class DnDFeaturesPlugin extends Plugin {
                         titleContainer.createEl("span", { text: featData.name, cls: "dnd-feature-name" });
 
                         const descDiv = featureBlock.createDiv({ cls: "dnd-feature-desc" });
-                        await MarkdownRenderer.render(this.app, featData.description, descDiv, ctx.sourcePath, renderChild);
+                        await this.renderDndMarkdown(featData.description, descDiv, ctx.sourcePath, renderChild);
                     } else {
                         sectionDiv.createEl("p", { text: `Data for background "${background}" not found.`, cls: "dnd-error-text" });
                     }
@@ -403,7 +420,7 @@ export default class DnDFeaturesPlugin extends Plugin {
                             titleContainer.createEl("span", { text: featData.name, cls: "dnd-feature-name" });
 
                             const descDiv = featureBlock.createDiv({ cls: "dnd-feature-desc" });
-                            MarkdownRenderer.render(this.app, featData.description, descDiv, ctx.sourcePath, renderChild);
+                            await this.renderDndMarkdown(featData.description, descDiv, ctx.sourcePath, renderChild);
                         } else {
                             sectionDiv.createEl("p", { text: `Data for extra feat "${safeFeatId}" not found.`, cls: "dnd-error-text" });
                         }
@@ -578,7 +595,7 @@ export default class DnDFeaturesPlugin extends Plugin {
 
                 if (data.description) {
                     const descDiv = block.createDiv({ cls: "dnd-feature-desc" });
-                    await MarkdownRenderer.render(this.app, data.description, descDiv, ctx.sourcePath, renderChild);
+                    await this.renderDndMarkdown(data.description, descDiv, ctx.sourcePath, renderChild);
                 }
             }
 
