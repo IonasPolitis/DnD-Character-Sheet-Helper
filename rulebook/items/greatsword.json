@@ -1,0 +1,8 @@
+{
+      "name": "Greatsword",
+      "type": "Weapon",
+      "description": "Heavy, Two-Handed",
+      "weight": 6,
+      "damage": "2d6 Slashing",
+      "cost": 50
+}

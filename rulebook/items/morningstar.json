@@ -1,0 +1,8 @@
+{
+      "name": "Morningstar",
+      "type": "Weapon",
+      "description": "",
+      "weight": 4,
+      "damage": "1d8 Piercing",
+      "cost": 15
+}

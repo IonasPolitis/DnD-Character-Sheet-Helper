@@ -1,0 +1,8 @@
+{
+      "name": "Heavy Crossbow",
+      "type": "Weapon",
+      "description": "Ammunition (Range 100/400; Bolt), Heavy, Loading, Two-Handed",
+      "weight": 18,
+      "damage": "1d10 Piercing",
+      "cost": 50
+}

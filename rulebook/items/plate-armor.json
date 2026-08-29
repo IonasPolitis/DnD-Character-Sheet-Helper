@@ -1,0 +1,8 @@
+{
+      "name": "Plate Armor",
+      "type": "Armor",
+      "description": "18 -- Stealth Disadvantage",
+      "weight": 65,
+      "ac": "18",
+      "cost": 1500
+}

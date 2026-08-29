@@ -1,0 +1,8 @@
+{
+      "name": "Whip",
+      "type": "Weapon",
+      "description": "Finesse, Reach",
+      "weight": 3,
+      "damage": "1d4 Slashing",
+      "cost": 2
+}

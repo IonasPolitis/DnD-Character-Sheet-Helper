@@ -1,0 +1,8 @@
+{
+      "name": "Dagger",
+      "type": "Weapon",
+      "description": "Finesse, Light, Thrown (Range 20/60)",
+      "weight": 1,
+      "damage": "1d4 Piercing",
+      "cost": 2
+}

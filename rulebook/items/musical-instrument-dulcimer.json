@@ -1,0 +1,7 @@
+{
+      "name": "Musical Instrument - Dulcimer",
+      "type": "Gear",
+      "description": "Play a known tune (DC 10), or improvise a song (DC 15)",
+      "weight": 10,
+      "cost": 25
+}

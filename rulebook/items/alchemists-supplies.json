@@ -1,0 +1,7 @@
+{
+      "name": "Alchemist's Supplies",
+      "type": "Gear",
+      "description": "Identify a substance (DC 15), or start a fire (DC 15)",
+      "weight": 8,
+      "cost": 50
+}

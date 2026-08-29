@@ -1,0 +1,8 @@
+{
+      "name": "Ring Mail",
+      "type": "Armor",
+      "description": "14 -- Stealth Disadvantage",
+      "weight": 40,
+      "ac": "14",
+      "cost": 30
+}

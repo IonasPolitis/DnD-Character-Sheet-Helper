@@ -1,0 +1,8 @@
+{
+      "name": "Maul",
+      "type": "Weapon",
+      "description": "Heavy, Two-Handed",
+      "weight": 10,
+      "damage": "2d6 Bludgeoning",
+      "cost": 10
+}

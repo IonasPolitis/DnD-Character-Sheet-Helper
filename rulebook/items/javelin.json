@@ -1,7 +1,8 @@
 {
-    "name": "Javelin",
-    "type": "Weapon",
-    "description": "A simple thrown weapon.",
-    "weight": 2,
-    "damage": "1d6 Piercing"
+      "name": "Javelin",
+      "type": "Weapon",
+      "description": "Thrown (Range 30/120)",
+      "weight": 2,
+      "damage": "1d6 Piercing",
+      "cost": 0.5
 }

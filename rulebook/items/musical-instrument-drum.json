@@ -1,0 +1,7 @@
+{
+      "name": "Musical Instrument - Drum",
+      "type": "Gear",
+      "description": "Play a known tune (DC 10), or improvise a song (DC 15)",
+      "weight": 3,
+      "cost": 6
+}

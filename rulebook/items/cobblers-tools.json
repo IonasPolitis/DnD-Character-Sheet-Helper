@@ -1,0 +1,7 @@
+{
+      "name": "Cobbler's Tools",
+      "type": "Gear",
+      "description": "Modify footwear to give Advantage on the wearer's next Dexterity (Acrobatics) check (DC 10)",
+      "weight": 5,
+      "cost": 5
+}

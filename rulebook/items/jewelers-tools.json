@@ -1,0 +1,7 @@
+{
+      "name": "Jeweler's Tools",
+      "type": "Gear",
+      "description": "Discern a gem's value (DC 15)",
+      "weight": 2,
+      "cost": 25
+}

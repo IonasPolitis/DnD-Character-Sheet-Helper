@@ -1,0 +1,7 @@
+{
+      "name": "Cartographer's Tools",
+      "type": "Gear",
+      "description": "Draft a map of a small area (DC 15)",
+      "weight": 6,
+      "cost": 15
+}

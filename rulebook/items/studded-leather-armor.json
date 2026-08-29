@@ -1,0 +1,8 @@
+{
+      "name": "Studded Leather Armor",
+      "type": "Armor",
+      "description": "12 + Dex modifier",
+      "weight": 13,
+      "ac": "12",
+      "cost": 45
+}

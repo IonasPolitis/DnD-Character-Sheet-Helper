@@ -1,0 +1,8 @@
+{
+      "name": "Lance",
+      "type": "Weapon",
+      "description": "Heavy, Reach, Two-Handed (unless mounted)",
+      "weight": 6,
+      "damage": "1d10 Piercing",
+      "cost": 10
+}

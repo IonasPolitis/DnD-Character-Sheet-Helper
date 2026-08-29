@@ -1,0 +1,7 @@
+{
+      "name": "Tinker's Tools",
+      "type": "Gear",
+      "description": "Assemble a Tiny item composed of scrap, which falls apart in 1 minute (DC 20)",
+      "weight": 10,
+      "cost": 50
+}

@@ -1,0 +1,8 @@
+{
+      "name": "Flail",
+      "type": "Weapon",
+      "description": "",
+      "weight": 2,
+      "damage": "1d8 Bludgeoning",
+      "cost": 10
+}

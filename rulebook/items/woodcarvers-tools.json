@@ -1,0 +1,7 @@
+{
+      "name": "Woodcarver's Tools",
+      "type": "Gear",
+      "description": "Carve a pattern in wood (DC 10)",
+      "weight": 5,
+      "cost": 1
+}

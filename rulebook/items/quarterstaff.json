@@ -1,0 +1,8 @@
+{
+      "name": "Quarterstaff",
+      "type": "Weapon",
+      "description": "Versatile (1d8)",
+      "weight": 4,
+      "damage": "1d6 Bludgeoning",
+      "cost": 0.2
+}

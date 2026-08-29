@@ -1,0 +1,8 @@
+{
+      "name": "Sling",
+      "type": "Weapon",
+      "description": "Ammunition (Range 30/120; Bullet)",
+      "weight": 0,
+      "damage": "1d4 Bludgeoning",
+      "cost": 0.1
+}

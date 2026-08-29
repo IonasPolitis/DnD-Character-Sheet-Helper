@@ -1,0 +1,8 @@
+{
+      "name": "Sickle",
+      "type": "Weapon",
+      "description": "Light",
+      "weight": 2,
+      "damage": "1d4 Slashing",
+      "cost": 1
+}

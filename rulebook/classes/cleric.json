@@ -4,6 +4,11 @@
     "starting-equipment": {
         "A": {
             "items": {
+                "chain-shirt": 1,
+                "shield": 1,
+                "mace": 1,
+                "": 1,
+                "": 1
             }, "gold": 1
         },
         "B": { "items": {}, "gold": 0 }

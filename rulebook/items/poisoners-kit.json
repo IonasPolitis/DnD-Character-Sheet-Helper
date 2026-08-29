@@ -1,0 +1,7 @@
+{
+      "name": "Poisoner's Kit",
+      "type": "Gear",
+      "description": "Detect a poisoned object (DC 10)",
+      "weight": 2,
+      "cost": 50
+}

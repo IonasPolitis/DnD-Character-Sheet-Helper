@@ -1,0 +1,8 @@
+{
+      "name": "Greatclub",
+      "type": "Weapon",
+      "description": "Two-Handed",
+      "weight": 10,
+      "damage": "1d8 Bludgeoning",
+      "cost": 0.2
+}

@@ -1,0 +1,7 @@
+{
+      "name": "Weaver's Tools",
+      "type": "Gear",
+      "description": "Mend a tear in clothing (DC 10), or sew a Tiny design (DC 10)",
+      "weight": 5,
+      "cost": 1
+}

@@ -1,0 +1,7 @@
+{
+      "name": "Potter's Tools",
+      "type": "Gear",
+      "description": "Discern what a ceramic object held in the past 24 hours (DC 15)",
+      "weight": 3,
+      "cost": 10
+}

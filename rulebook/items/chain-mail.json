@@ -1,7 +1,8 @@
 {
-    "name": "Chain Mail",
-    "type": "Armor",
-    "description": "Made of interlocking metal rings.",
-    "weight": 55,
-    "ac": "16"
+      "name": "Chain Mail",
+      "type": "Armor",
+      "description": "16 -- Stealth Disadvantage",
+      "weight": 55,
+      "ac": "16",
+      "cost": 75
 }

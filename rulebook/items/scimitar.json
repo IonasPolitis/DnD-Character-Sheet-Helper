@@ -1,0 +1,8 @@
+{
+      "name": "Scimitar",
+      "type": "Weapon",
+      "description": "Finesse, Light",
+      "weight": 3,
+      "damage": "1d6 Slashing",
+      "cost": 25
+}

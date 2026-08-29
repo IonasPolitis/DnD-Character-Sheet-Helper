@@ -1,0 +1,8 @@
+{
+      "name": "Halberd",
+      "type": "Weapon",
+      "description": "Heavy, Reach, Two-Handed",
+      "weight": 6,
+      "damage": "1d10 Slashing",
+      "cost": 20
+}

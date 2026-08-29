@@ -1,0 +1,8 @@
+{
+      "name": "Scale Mail",
+      "type": "Armor",
+      "description": "14 + Dex modifier (max 2) -- Stealth Disadvantage",
+      "weight": 45,
+      "ac": "14",
+      "cost": 50
+}

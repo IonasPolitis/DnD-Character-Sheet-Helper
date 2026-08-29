@@ -1,7 +1,8 @@
 {
       "name": "Longsword",
       "type": "Weapon",
-      "description": "A versatile melee weapon typically forged from steel.",
+      "description": "Versatile (ldl0)",
       "weight": 3,
-      "damage": "1d8 Slashing"
+      "damage": "1d8 Slashing",
+      "cost": 15
 }

@@ -1,0 +1,7 @@
+{
+      "name": "Mason's Tools",
+      "type": "Gear",
+      "description": "Chisel a symbol or hole in stone (DC 10)",
+      "weight": 8,
+      "cost": 10
+}

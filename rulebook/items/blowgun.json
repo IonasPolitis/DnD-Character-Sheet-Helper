@@ -1,0 +1,8 @@
+{
+      "name": "Blowgun",
+      "type": "Weapon",
+      "description": "Ammunition (Range 25/100; Needle), Loading",
+      "weight": 1,
+      "damage": "1 Piercing",
+      "cost": 10
+}

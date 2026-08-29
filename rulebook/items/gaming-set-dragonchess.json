@@ -1,0 +1,7 @@
+{
+      "name": "Gaming Set - Dragonchess",
+      "type": "Gear",
+      "description": "Discern whether someone is cheating (DC 10), or win the game (DC 20)",
+      "weight": 0,
+      "cost": 1
+}

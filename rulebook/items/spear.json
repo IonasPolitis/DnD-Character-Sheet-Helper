@@ -1,0 +1,8 @@
+{
+      "name": "Spear",
+      "type": "Weapon",
+      "description": "Thrown (Range 20/60), Versatile (ld8)",
+      "weight": 1,
+      "damage": "1d6 Piercing",
+      "cost": 1
+}

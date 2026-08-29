@@ -1,0 +1,8 @@
+{
+      "name": "Half Plate Armor",
+      "type": "Armor",
+      "description": "15 + Dex modifier (max 2) -- Stealth Disadvantage",
+      "weight": 40,
+      "ac": "15",
+      "cost": 750
+}

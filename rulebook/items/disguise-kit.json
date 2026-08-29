@@ -1,0 +1,7 @@
+{
+      "name": "Disguise Kit",
+      "type": "Gear",
+      "description": "Apply makeup (DC 10)",
+      "weight": 3,
+      "cost": 25
+}

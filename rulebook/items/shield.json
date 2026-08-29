@@ -1,0 +1,8 @@
+{
+      "name": "Shield",
+      "type": "Armor",
+      "description": "+2",
+      "weight": 6,
+      "ac": "+2",
+      "cost": 10
+}

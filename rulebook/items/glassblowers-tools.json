@@ -1,0 +1,7 @@
+{
+      "name": "Glassblower's Tools",
+      "type": "Gear",
+      "description": "Discern what a glass object held in the past 24 hours (DC 15)",
+      "weight": 5,
+      "cost": 30
+}

@@ -1,0 +1,8 @@
+{
+      "name": "Rapier",
+      "type": "Weapon",
+      "description": "Finesse",
+      "weight": 2,
+      "damage": "1d8 Piercing",
+      "cost": 25
+}

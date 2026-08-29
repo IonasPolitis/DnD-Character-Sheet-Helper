@@ -1,0 +1,8 @@
+{
+      "name": "Hand Crossbow",
+      "type": "Weapon",
+      "description": "Ammunition (Range 30/120; Bolt), Light, Loading",
+      "weight": 3,
+      "damage": "1d6 Piercing",
+      "cost": 75
+}

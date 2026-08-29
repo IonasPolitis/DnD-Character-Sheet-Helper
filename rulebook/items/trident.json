@@ -1,0 +1,8 @@
+{
+      "name": "Trident",
+      "type": "Weapon",
+      "description": "Thrown (Range 20/60), Versatile (1d10)",
+      "weight": 4,
+      "damage": "1d8 Piercing",
+      "cost": 5
+}
