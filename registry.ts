@@ -6,6 +6,7 @@
 import classesMap from './rulebook/classes.json';
 import backgroundsMap from './rulebook/backgrounds.json';
 import racesMap from './rulebook/races.json';
+import itemsMap from './rulebook/items.json';
 import class_monksubclasses from './rulebook/classes/monk-subclasses.json';
 import class_monk from './rulebook/classes/monk.json';
 import class_paladin from './rulebook/classes/paladin.json';
@@ -25,7 +26,7 @@ import feat_tough from './rulebook/feats/tough.json';
 import race_halforc from './rulebook/races/half-orc.json';
 import race_orc from './rulebook/races/orc.json';
 
-export { classesMap, backgroundsMap, racesMap };
+export { classesMap, backgroundsMap, racesMap, itemsMap };
 
 export const classRegistry: Record<string, any> = {
     "monk": class_monk,
@@ -54,4 +55,6 @@ export const featRegistry: Record<string, any> = {
 export const raceRegistry: Record<string, any> = {
     "half-orc": race_halforc,
     "orc": race_orc,
+};
+export const itemRegistry: Record<string, any> = {
 };

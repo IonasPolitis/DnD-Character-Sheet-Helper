@@ -16,6 +16,7 @@ function scanFolder(folderName) {
 const classes = scanFolder('classes');
 const feats = scanFolder('feats');
 const races = scanFolder('races');
+const items = scanFolder('items');
 
 // Start building the file text
 let out = `// ==========================================\n`;
@@ -35,6 +36,11 @@ if (fs.existsSync(path.join(rulebookDir, 'races.json'))) {
 } else {
     out += `const racesMap = {};\n`;
 }
+if (fs.existsSync(path.join(rulebookDir, 'items.json'))) {
+    out += `import itemsMap from './rulebook/items.json';\n`;
+} else {
+    out += `const itemsMap = {};\n`;
+}
 
 // 2. Generate Imports for Sub-folders
 classes.forEach(c => {
@@ -50,8 +56,12 @@ races.forEach(r => {
     const safeName = r.replace(/[^a-zA-Z0-9]/g, '');
     out += `import race_${safeName} from './rulebook/races/${r}.json';\n`;
 });
+items.forEach(i => {
+    const safeName = i.replace(/[^a-zA-Z0-9]/g, '');
+    out += `import item_${safeName} from './rulebook/items/${i}.json';\n`;
+});
 
-out += `\nexport { classesMap, backgroundsMap, racesMap };\n\n`;
+out += `\nexport { classesMap, backgroundsMap, racesMap, itemsMap };\n\n`;
 
 // 3. Generate the Registry Maps
 out += `export const classRegistry: Record<string, any> = {\n`;
@@ -75,6 +85,12 @@ out += `};\n`;
 out += `export const raceRegistry: Record<string, any> = {\n`;
 races.forEach(r => {
     out += `    "${r}": race_${r.replace(/[^a-zA-Z0-9]/g, '')},\n`;
+});
+out += `};\n`;
+
+out += `export const itemRegistry: Record<string, any> = {\n`;
+items.forEach(i => {
+    out += `    "${i}": item_${i.replace(/[^a-zA-Z0-9]/g, '')},\n`;
 });
 out += `};\n`;
 

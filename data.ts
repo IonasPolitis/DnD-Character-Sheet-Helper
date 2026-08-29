@@ -3,9 +3,11 @@ import {
     subclassRegistry, 
     featRegistry, 
     raceRegistry,
+    itemRegistry,
     classesMap, 
     backgroundsMap,
-    racesMap
+    racesMap,
+    itemsMap
 } from './registry';
 
 import { App, normalizePath } from 'obsidian';
@@ -181,5 +183,34 @@ export async function getExtraFeat(app: App, settings: FetchSettings, featName: 
             return fetchNative() || (await fetchCustom());
         }
     }
+    return fetchNative();
+}
+
+// --- Logic for Fetching Item Data ---
+export async function getItemData(app: App, settings: FetchSettings, itemName: string) {
+    const fetchNative = () => {
+        // Look up the raw item name in the items.json router to find the exact filename
+        const itemId = getIgnoreCase(itemsMap as Record<string, string>, itemName);
+        return itemId ? getIgnoreCase(itemRegistry, itemId) : null;
+    };
+    
+    const fetchCustom = async () => {
+        if (!settings.customRulebookPath) return null;
+        // Use the custom router to find the mapped filename in the user's vault
+        const itemId = await getCustomMappedName(app, settings.customRulebookPath, 'items.json', itemName);
+        if (!itemId) return null;
+        return await readCustomJson(app, normalizePath(`${settings.customRulebookPath}/items/${itemId}.json`));
+    };
+
+    if (settings.customRulebookPath) {
+        if (settings.customRulebookPriority) {
+            // Custom Priority ON: Check Custom -> Check Native
+            return (await fetchCustom()) || fetchNative();
+        } else {
+            // Custom Priority OFF: Check Native -> Check Custom
+            return fetchNative() || (await fetchCustom());
+        }
+    }
+    // No custom path set: Native only
     return fetchNative();
 }
