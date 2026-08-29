@@ -43,10 +43,10 @@ rulebook/
 The backgrounds.json, classes.json and races.json work as router files to the specific feat, class, or race JSON is needed for better modularity.
 
 The structure of each JSON file is as follows:
-- backgrounds/classes/races.json:
+- backgrounds/classes/races/items.json:
 ```
 {
-	"<Background/Class/Race_Name>": "<Feat/Class/Race_File_Name>"
+	"<Background/Class/Race/Item_Name>": "<Feat/Class/Race/Item_File_Name>"
 }
 ```
 
@@ -89,6 +89,19 @@ The structure of each JSON file is as follows:
 }
 ```
 The *lineage* variable in the race.json is a Flag, making it so that this trait will appear if that and the *race-lineage* variable in the code block have the same value, while also swapping out the "Trait" badge for a "Lineage" badge.
+
+- item.json:
+```
+{
+      "name": "<Item's_name>",
+      "type": "<Weapon/Armor/Gear>",
+      "description": "<Item's_Description>",
+      "weight": <Item's_Weight>,
+      <optional>"damage": "<Damage_Dice+Damage_Type>",
+	<optional>"ac": "<Armor's_Base_AC>",
+      "cost": <Item's_Cost>
+}
+```
 
 
 All text fields support the markdown format as well.
