@@ -1,0 +1,37 @@
+{
+      "traits": [
+            {
+                  "name": "Giant Ancestry",
+                  "description": "**Fire's Burn**: When you hit a target with an attack roll and deal damage to it, you can also deal 1dlO Fire damage to that target.",
+                  "lineage": "Fire Giant"
+            },
+            {
+                  "name": "Giant Ancestry",
+                  "description": "**Frost's Chill**: When you hit a target with an attack roll and deal damage to it, you can also deal 1d6 Cold damage to that target and reduce its Speed by 10 feet until the start of your next turn.",
+                  "lineage": "Frost Giant"
+            },
+            {
+                  "name": "Giant Ancestry",
+                  "description": "*Hill's Tumble**: When you hit a Large or smaller creature with an attack roll and deal damage to it, you can give that target the Prone condition.",
+                  "lineage": "Hill Giant"
+            },
+            {
+                  "name": "Giant Ancestry",
+                  "description": "**Stone's Endurance**: When you take damage, you can take a Reaction to roll 1d12. Add your Constitution modifier to the number rolled and reduce the damage by that total.",
+                  "lineage": "Stone Giant"
+            },
+            {
+                  "name": "Giant Ancestry",
+                  "description": "**Storm's Thunder**: When you take damage from a creature within 60 feet of you, you can take a Reaction to deal 1d8 Thunder damage to that creature.",
+                  "lineage": "Storm Giant"
+            },
+            {
+                  "name": "Large Form",
+                  "description": "Star ting at character level 5, you can change your size to Large as a Bonus Action if you're in a big enough space. This transformation lasts for 10 minutes or until you end it (no action required). For that duration, you have Advantage on Strength checks, and your Speed increases by 10 feet. Once you use this trait, you can't use it again until you finish a Long Rest."
+            },
+            {
+                  "name": "Powerful Build",
+                  "description": "You have Advantage on any saving throw you make to end the Grappled condition. You also count as one size larger whe1 determining your carrying capacity."
+            }
+      ]
+}

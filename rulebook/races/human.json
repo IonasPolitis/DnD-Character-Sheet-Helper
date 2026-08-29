@@ -1,0 +1,16 @@
+{
+      "traits": [
+            {
+                  "name": "Resourceful",
+                  "description": "You gain Heroic Inspiration whenever you finish a Long Rest."
+            },
+            {
+                  "name": "Heroic Inspiration",
+                  "description": "You can reroll any die immediately after rolling it, and you must use the new roll. You can never have more than one instance of Heroic Inspiration. If something gives you Heroic Inspiration and you already have it, you can give it to a player character in your group who lacks it."
+            },
+            {
+                  "name": "Skillful",
+                  "description": "You gain proficiency in one skill of your choice."
+            }
+      ]
+}

@@ -1,0 +1,70 @@
+{
+      "traits": [
+            {
+                  "name": "Draconic Ancestry",
+                  "description": "Damage Type: Acid",
+                  "lineage": "Black"
+            },
+            {
+                  "name": "Draconic Ancestry",
+                  "description": "Damage Type: Lightning",
+                  "lineage": "Blue"
+            },
+            {
+                  "name": "Draconic Ancestry",
+                  "description": "Damage Type: Fire",
+                  "lineage": "Brass"
+            },
+            {
+                  "name": "Draconic Ancestry",
+                  "description": "Damage Type: Lightning",
+                  "lineage": "Bronze"
+            },
+            {
+                  "name": "Draconic Ancestry",
+                  "description": "Damage Type: Acid",
+                  "lineage": "Copper"
+            },
+            {
+                  "name": "Draconic Ancestry",
+                  "description": "Damage Type: Fire",
+                  "lineage": "Gold"
+            },
+            {
+                  "name": "Draconic Ancestry",
+                  "description": "Damage Type: Poison",
+                  "lineage": "Green"
+            },
+            {
+                  "name": "Draconic Ancestry",
+                  "description": "Damage Type: Fire",
+                  "lineage": "Red"
+            },
+            {
+                  "name": "Draconic Ancestry",
+                  "description": "Damage Type: Cold",
+                  "lineage": "Silver"
+            },
+            {
+                  "name": "Draconic Ancestry",
+                  "description": "Damage Type: Cold",
+                  "lineage": "White"
+            },
+            {
+                  "name": "Breath Weapon",
+                  "description": "When you take the Attack action on your turn, you can replace one of your attacks with an exhalation of magical energy in either a 15-foot Cone or a 30-foot Line that is 5 feet wide (choose the shape each time). Each creature in that area must make a Dexterity saving throw (DC 8 plus your Constitution modifier and Proficiency Bonus). On a failed save, a creature takes 1dl0 damage of the type determined by your Draconic Ancestry trait. On a successful save, a creature takes half as much damage. This damage increases by 1dlO when you reach character levels S (2d10), 11 {3d10), and 17 (4d10).\n  You can use this Breath Weapon a number of times equal to your Proficiency Bonus, and you regain all expended uses when you finish a Long Rest."
+            },
+            {
+                  "name": "Damage Resistance",
+                  "description": "You have Resistance to the damage type determined by your Draconic Ancestry trait."
+            },
+            {
+                  "name": "Darkvision",
+                  "description": "You have Darkvision with a range of 60 feet"
+            },
+            {
+                  "name": "Draconic Flight",
+                  "description": "At Level 5, as a Bonus Action you can sprout spectral wings on your back that last for 10 minutes, until you retract them (no action required), or have the Incapacitated condition. During that time, you have a Fly Speed equal to your Speed.\n  Once you use this trait, you can't use it again until you finish a Long Rest."
+            }
+      ]
+}
