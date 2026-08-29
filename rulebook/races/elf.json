@@ -10,17 +10,65 @@
             }
       ],
       "lineages": {
-            "High Elf": [
-                  {
-                        "name": "Cantrip",
-                        "description": "You know one cantrip of your choice from the wizard spell list."
-                  }
-            ],
-            "Wood Elf": [
-                  {
-                        "name": "Fleet of Foot",
-                        "description": "Your base walking speed increases to 35 feet."
-                  }
-            ]
+            "Abyssal": {
+                  "1": [
+                        {
+                              "name": "",
+                              "description": "<Lineage_Trait_Description>"
+                        }
+                  ],
+                  "3": [
+                        {
+                              "name": "<Lineage_Trait_Name>",
+                              "description": "<Lineage_Trait_Description>"
+                        }
+                  ],
+                  "5": [
+                        {
+                              "name": "<Lineage_Trait_Name>",
+                              "description": "<Lineage_Trait_Description>"
+                        }
+                  ]
+            },
+            "Chthonic": {
+                  "1": [
+                        {
+                              "name": "",
+                              "description": "<Lineage_Trait_Description>"
+                        }
+                  ],
+                  "3": [
+                        {
+                              "name": "<Lineage_Trait_Name>",
+                              "description": "<Lineage_Trait_Description>"
+                        }
+                  ],
+                  "5": [
+                        {
+                              "name": "<Lineage_Trait_Name>",
+                              "description": "<Lineage_Trait_Description>"
+                        }
+                  ]
+            },
+            "Infernal": {
+                  "1": [
+                        {
+                              "name": "",
+                              "description": "<Lineage_Trait_Description>"
+                        }
+                  ],
+                  "3": [
+                        {
+                              "name": "<Lineage_Trait_Name>",
+                              "description": "<Lineage_Trait_Description>"
+                        }
+                  ],
+                  "5": [
+                        {
+                              "name": "<Lineage_Trait_Name>",
+                              "description": "<Lineage_Trait_Description>"
+                        }
+                  ]
+            }
       }
 }

@@ -342,43 +342,28 @@ export default class DnDFeaturesPlugin extends Plugin {
                     const raceData = await getRaceData(this.app, this.settings, race);
                     
                     if (raceData && raceData.traits) {
-                        // 1. Render the base Race traits
                         for (const trait of raceData.traits) {
+                            // --- THE GATEKEEPER LOGIC ---
+                            // If this trait has a specific lineage flag...
+                            if (trait.lineage) {
+                                // ...skip rendering it if the user didn't provide a lineage OR if it doesn't match!
+                                if (!raceLineage || trait.lineage.toLowerCase() !== String(raceLineage).toLowerCase()) {
+                                    continue; 
+                                }
+                            }
+
                             const featureBlock = sectionDiv.createDiv({ cls: "dnd-feature-block" });
                             const titleContainer = featureBlock.createDiv({ cls: "dnd-feature-title" });
 
-                            titleContainer.createEl("span", { text: trait.badge ? trait.badge : "Trait", cls: "dnd-level-badge" });
+                            // Dynamic Badge & Class
+                            const defaultBadge = trait.lineage ? "Lineage" : "Trait";
+                            const badgeClass = trait.lineage ? "dnd-level-badge dnd-badge-combined" : "dnd-level-badge";
+
+                            titleContainer.createEl("span", { text: trait.badge ? trait.badge : defaultBadge, cls: badgeClass });
                             titleContainer.createEl("span", { text: trait.name, cls: "dnd-feature-name" });
 
                             const descDiv = featureBlock.createDiv({ cls: "dnd-feature-desc" });
                             await MarkdownRenderer.render(this.app, trait.description, descDiv, ctx.sourcePath, renderChild);
-                        }
-
-                        // 2. Render the Lineage traits (if provided by the user AND existing in the JSON)
-                        if (raceLineage && raceData.lineages) {
-                            // Find the lineage using a case-insensitive search to prevent accidental typos!
-                            const safeLineageKey = Object.keys(raceData.lineages).find(
-                                key => key.toLowerCase() === String(raceLineage).toLowerCase()
-                            );
-
-                            if (safeLineageKey && raceData.lineages[safeLineageKey]) {
-                                const lineageTraits = raceData.lineages[safeLineageKey];
-                                
-                                // Add a tiny sub-header just to visually separate the lineage traits cleanly
-                                sectionDiv.createEl("h4", { text: `${safeLineageKey} Lineage`, cls: "dnd-class-header", style: "margin-top: 10px;" });
-
-                                for (const trait of lineageTraits) {
-                                    const featureBlock = sectionDiv.createDiv({ cls: "dnd-feature-block" });
-                                    const titleContainer = featureBlock.createDiv({ cls: "dnd-feature-title" });
-
-                                    // Use a special badge to denote it came from the lineage
-                                    titleContainer.createEl("span", { text: trait.badge ? trait.badge : "Lineage", cls: "dnd-level-badge dnd-badge-combined" });
-                                    titleContainer.createEl("span", { text: trait.name, cls: "dnd-feature-name" });
-
-                                    const descDiv = featureBlock.createDiv({ cls: "dnd-feature-desc" });
-                                    await MarkdownRenderer.render(this.app, trait.description, descDiv, ctx.sourcePath, renderChild);
-                                }
-                            }
                         }
                     } else {
                         sectionDiv.createEl("p", { text: `Data for race "${race}" not found.`, cls: "dnd-error-text" });

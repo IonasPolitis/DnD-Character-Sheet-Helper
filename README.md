@@ -82,18 +82,13 @@ The structure of each JSON file is as follows:
       "traits": [
             {
                   "name": "<Trait_Name>",
-                  "description": "<Trait_Description>"
+                  "description": "<Trait_Description>",
+                  <optional>"lineage": "Lineage_Name"
             }
-      ],
-      "lineages": {
-            "<Lineage_Name>": [
-                  {
-                        "name": "<Trait_Name>",
-                        "description": "<Trait_Description>"
-                  }
-            ]
-      }
+      ]
 }
 ```
+The *lineage* variable in the race.json is a Flag, making it so that this trait will appear if that and the *race-lineage* variable in the code block have the same value, while also swapping out the "Trait" badge for a "Lineage" badge.
+
 
 All text fields support the markdown format as well.
