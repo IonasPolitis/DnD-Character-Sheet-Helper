@@ -1,0 +1,7 @@
+{
+    "name": "Chain Mail",
+    "type": "Armor",
+    "description": "Made of interlocking metal rings.",
+    "weight": 55,
+    "ac": "16"
+}

@@ -1,0 +1,7 @@
+{
+    "name": "Javelin",
+    "type": "Weapon",
+    "description": "A simple thrown weapon.",
+    "weight": 2,
+    "damage": "1d6 Piercing"
+}
