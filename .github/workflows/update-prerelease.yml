@@ -3,7 +3,7 @@ name: Build and Update Pre-Release
 on:
   push:
     branches:
-      - beta
+      - main
 
 jobs:
   build-and-release:
