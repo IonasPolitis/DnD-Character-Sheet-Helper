@@ -36,14 +36,37 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          TAG_NAME="v1.1.0-beta"
+          # 1. Extract version from manifest.json using jq
+          VERSION=$(jq -r .version manifest.json)
+          TAG_NAME="v${VERSION}-beta"
+          
+          echo "Target tag is $TAG_NAME"
 
-          # Create or move tag
+          # 2. Fetch existing tags to evaluate what needs deleting
+          git fetch --tags
+
+          # 3. Find and delete all OTHER tags ending in "-beta"
+          for tag in $(git tag -l "*-beta"); do
+            if [ "$tag" != "$TAG_NAME" ]; then
+              echo "Cleaning up old beta: $tag"
+              
+              # Delete the GitHub release and its underlying tag
+              gh release delete "$tag" --yes --cleanup-tag 2>/dev/null || true
+              
+              # Fallback: Delete remote tag just in case it didn't have an associated release
+              git push origin --delete "$tag" 2>/dev/null || true
+              
+              # Delete local tag
+              git tag -d "$tag" 2>/dev/null || true
+            fi
+          done
+
+          # 4. Create or move the current beta tag
           git tag -f $TAG_NAME
           git push -f origin $TAG_NAME
 
-          # Create release if missing, or update if exists
-          gh release view $TAG_NAME >/dev/null 2>&1 || gh release create $TAG_NAME --prerelease --title "Latest Beta Build" --notes "Automated beta build"
+          # 5. Create release if missing, or update if it exists
+          gh release view $TAG_NAME >/dev/null 2>&1 || gh release create $TAG_NAME --prerelease --title "Beta Build ($TAG_NAME)" --notes "Automated beta build"
 
-          # Upload assets
+          # 6. Upload assets
           gh release upload $TAG_NAME main.js styles.css manifest.json --clobber
