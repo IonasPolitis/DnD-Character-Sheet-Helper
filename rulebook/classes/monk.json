@@ -1,6 +1,18 @@
 {
   "class": "Monk",
   "subclassFile": "monk-subclasses",
+  "starting-equipment": {
+        "A": {
+            "items": {
+                "spear": 1,
+                "dagger": 5,
+                "artisans-tools": 1,
+                "musical-instrument": 1,
+                "explorers-pack": 1
+            }, "gold": 11
+        },
+        "B": { "items": {}, "gold": 50 }
+    },
   "features": {
     "1": [
       {
