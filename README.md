@@ -1,11 +1,10 @@
 The DnD Character Sheet Helper is an Obsidian Plugin that brings the DnD Rulebook right inside your Digital Character Sheet.
 
-Currently this plugin only shows information for a characters Features, Feats and Traits, but in the future I plan on adding something to help with inventory management as well, especially automatically adding items that you gain from the rulebook.
+Currently this plugin only shows information for a character's Features, Feats and Traits, but in the future I plan on adding something to help with inventory management as well, especially on automatically adding items that you gain from the rulebook.
 
 Given the appropriate variables and values it can give you information useful information of your character directly inside your Obsidian Note from your Class (with Multi-class support), Subclass, Race Traits, Background Feat and Extra Feats added at your own disposal. It has frontmatter support by using the key-word "frontmatter." + a note property's name.
 
 A Sample of the Code Block looks like this:
-
 ````
 ```dnd-features
 level: $num$
@@ -30,10 +29,13 @@ rulebook/
 │   └── <add your custom classes & subclasses>
 ├── feats/
 │   └── <add your custom feats>
+├── items/
+│   └── <add your custom items>
 ├── races/
 │   └── <add your custom races>
 ├── backgrounds.json
 ├── classes.json
+├── ietms.json
 └── races.json
 ```
 
