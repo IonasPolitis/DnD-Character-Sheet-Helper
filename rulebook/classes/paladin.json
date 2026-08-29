@@ -1,13 +1,25 @@
 {
-      "class": "Paladin",
-      "subclassFile": "paladin-subclasses",
-      "features": {
-            "4": [
-                  {
-                        "name": "Ability Score Improvement",
-                        "description": "You gain the Ability Score Improvement feat or another feat of your choice.",
-                        "grantedFeats": ["ability-score-improvement"]
-                  }
-            ]
-      }
+    "class": "Paladin",
+    "subclassFile": "paladin-subclasses",
+    "starting-equipment": {
+        "A": {
+            "items": {
+                "chain-mail": 1,
+                "shield": 1,
+                "longsword": 1,
+                "javelin": 6,
+                "holy-symbol": 1,
+                "priest-pack": 1
+            }, "gold": 9
+        },
+        "B": { "items": {}, "gold": 150 }
+    },
+    "features": {
+        "1": [
+            {
+                "name": "Lay on Hands",
+                "description": "Your blessed touch can heal wounds"
+            }
+        ]
+    }
 }
