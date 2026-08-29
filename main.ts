@@ -132,6 +132,7 @@ export default class DnDFeaturesPlugin extends Plugin {
             const subclass = resolveValue(blockData.subclass);
             const classLevels = resolveValue(blockData['class-levels']);
             const race = resolveValue(blockData.race);
+            const raceLineage = resolveValue(blockData['race-lineage']);
             const background = resolveValue(blockData.background);
             const extraFeats = resolveValue(blockData['extra-feats']);
 
@@ -339,7 +340,9 @@ export default class DnDFeaturesPlugin extends Plugin {
                 // Render Race Section
                 else if (sectionName === "Race") {
                     const raceData = await getRaceData(this.app, this.settings, race);
+                    
                     if (raceData && raceData.traits) {
+                        // 1. Render the base Race traits
                         for (const trait of raceData.traits) {
                             const featureBlock = sectionDiv.createDiv({ cls: "dnd-feature-block" });
                             const titleContainer = featureBlock.createDiv({ cls: "dnd-feature-title" });
@@ -349,6 +352,33 @@ export default class DnDFeaturesPlugin extends Plugin {
 
                             const descDiv = featureBlock.createDiv({ cls: "dnd-feature-desc" });
                             await MarkdownRenderer.render(this.app, trait.description, descDiv, ctx.sourcePath, renderChild);
+                        }
+
+                        // 2. Render the Lineage traits (if provided by the user AND existing in the JSON)
+                        if (raceLineage && raceData.lineages) {
+                            // Find the lineage using a case-insensitive search to prevent accidental typos!
+                            const safeLineageKey = Object.keys(raceData.lineages).find(
+                                key => key.toLowerCase() === String(raceLineage).toLowerCase()
+                            );
+
+                            if (safeLineageKey && raceData.lineages[safeLineageKey]) {
+                                const lineageTraits = raceData.lineages[safeLineageKey];
+                                
+                                // Add a tiny sub-header just to visually separate the lineage traits cleanly
+                                sectionDiv.createEl("h4", { text: `${safeLineageKey} Lineage`, cls: "dnd-class-header", style: "margin-top: 10px;" });
+
+                                for (const trait of lineageTraits) {
+                                    const featureBlock = sectionDiv.createDiv({ cls: "dnd-feature-block" });
+                                    const titleContainer = featureBlock.createDiv({ cls: "dnd-feature-title" });
+
+                                    // Use a special badge to denote it came from the lineage
+                                    titleContainer.createEl("span", { text: trait.badge ? trait.badge : "Lineage", cls: "dnd-level-badge dnd-badge-combined" });
+                                    titleContainer.createEl("span", { text: trait.name, cls: "dnd-feature-name" });
+
+                                    const descDiv = featureBlock.createDiv({ cls: "dnd-feature-desc" });
+                                    await MarkdownRenderer.render(this.app, trait.description, descDiv, ctx.sourcePath, renderChild);
+                                }
+                            }
                         }
                     } else {
                         sectionDiv.createEl("p", { text: `Data for race "${race}" not found.`, cls: "dnd-error-text" });

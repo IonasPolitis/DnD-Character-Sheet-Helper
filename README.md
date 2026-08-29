@@ -12,6 +12,7 @@ class: $list$
 class-levels: $list$
 subclass: $list$
 race: $text$
+race-lineage: $text$
 background: $list$
 extra-feats: $list$
 ```
@@ -78,12 +79,20 @@ The structure of each JSON file is as follows:
 - race.json:
 ```
 {
-	"traits": [
-		{
-			"name": "<Trait_Name>",
-			"description": "<Trait_Description>"
-		}
-	]
+      "traits": [
+            {
+                  "name": "<Trait_Name>",
+                  "description": "<Trait_Description>"
+            }
+      ],
+      "lineages": {
+            "<Lineage_Name>": [
+                  {
+                        "name": "<Trait_Name>",
+                        "description": "<Trait_Description>"
+                  }
+            ]
+      }
 }
 ```
 

@@ -1,0 +1,16 @@
+{
+      "traits": [
+            {
+                  "name": "<Trait_Name>",
+                  "description": "<Trait_Description>"
+            }
+      ],
+      "lineages": {
+            "<Lineage_Name>": [
+                  {
+                        "name": "<Trait_Name>",
+                        "description": "<Trait_Description>"
+                  }
+            ]
+      }
+}
