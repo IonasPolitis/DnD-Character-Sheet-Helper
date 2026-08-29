@@ -6,8 +6,18 @@
     },
     {
       "name": "Fiendish Legacy",
-      "description": "You are the recipient of a legacy that grants you supernatural abilities.\n\n| Level 1 | Level 2 | Level 3 |\n| ------------- | ------------- | ------------- |\n| You have Resistance to Poison damage.<br>You also know the _Poison_ _Spray_ cantrip. | _Ray of Sickness_ | _Hold Person_ |",
+      "description": "You are the recipient of a legacy that grants you supernatural abilities.\n\n| Level 1 | Level 2 | Level 3 |\n| ------------- | ------------- | ------------- |\n| You have Resistance to Poison damage.<br>You also know the _Poison Spray_ cantrip. |  _Ray of Sickness_  |  _Hold Person_  |",
       "lineage": "Abyssal"
+    },
+    {
+      "name": "Fiendish Legacy",
+      "description": "You are the recipient of a legacy that grants you supernatural abilities.\n\n| Level 1 | Level 2 | Level 3 |\n| ------------- | ------------- | ------------- |\n| You have Resistance to Necrotic damage.<br>You also know the _Chill Touch_ cantrip. |  _False Life_  |  _Ray of Enfeeblement_  |",
+      "lineage": "Chthonic"
+    },
+    {
+      "name": "Fiendish Legacy",
+      "description": "You are the recipient of a legacy that grants you supernatural abilities.\n\n| Level 1 | Level 2 | Level 3 |\n| ------------- | ------------- | ------------- |\n| You have Resistance to Fire damage.<br>You also know the _Fire Bolt_ cantrip. |  _Hellish Rebuke_  |  _Darkness_  |",
+      "lineage": "Infernal"
     },
     {
       "name": "Otherworldly Presence",

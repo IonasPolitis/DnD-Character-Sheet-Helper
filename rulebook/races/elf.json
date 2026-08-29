@@ -1,74 +1,27 @@
 {
-      "traits": [
-            {
-                  "name": "Darkvision",
-                  "description": "You can see in dim light within 60 feet of you as if it were bright light..."
-            },
-            {
-                  "name": "Fey Ancestry",
-                  "description": "You have advantage on saving throws against being charmed..."
-            }
-      ],
-      "lineages": {
-            "Abyssal": {
-                  "1": [
-                        {
-                              "name": "",
-                              "description": "<Lineage_Trait_Description>"
-                        }
-                  ],
-                  "3": [
-                        {
-                              "name": "<Lineage_Trait_Name>",
-                              "description": "<Lineage_Trait_Description>"
-                        }
-                  ],
-                  "5": [
-                        {
-                              "name": "<Lineage_Trait_Name>",
-                              "description": "<Lineage_Trait_Description>"
-                        }
-                  ]
-            },
-            "Chthonic": {
-                  "1": [
-                        {
-                              "name": "",
-                              "description": "<Lineage_Trait_Description>"
-                        }
-                  ],
-                  "3": [
-                        {
-                              "name": "<Lineage_Trait_Name>",
-                              "description": "<Lineage_Trait_Description>"
-                        }
-                  ],
-                  "5": [
-                        {
-                              "name": "<Lineage_Trait_Name>",
-                              "description": "<Lineage_Trait_Description>"
-                        }
-                  ]
-            },
-            "Infernal": {
-                  "1": [
-                        {
-                              "name": "",
-                              "description": "<Lineage_Trait_Description>"
-                        }
-                  ],
-                  "3": [
-                        {
-                              "name": "<Lineage_Trait_Name>",
-                              "description": "<Lineage_Trait_Description>"
-                        }
-                  ],
-                  "5": [
-                        {
-                              "name": "<Lineage_Trait_Name>",
-                              "description": "<Lineage_Trait_Description>"
-                        }
-                  ]
-            }
-      }
+    "traits": [
+        {
+            "name": "Darkvision",
+            "description": "You can see in dim light within 60 feet of you as if it were bright light..."
+        },
+        {
+            "name": "Elven Lineage",
+            "description": "You are the recipient of a legacy that grants you supernatural abilities.\n\n| Level 1 | Level 2 | Level 3 |\n| ------------- | ------------- | ------------- |\n| Darkvision range increases to 120 feet.<br>You also know the _Dancing Lights_ cantrip. |  _Faerie Fire_  |  _Darkness_  |",
+            "lineage": "Drow"
+        },
+        {
+            "name": "Elven Lineage",
+            "description": "You are the recipient of a legacy that grants you supernatural abilities.\n\n| Level 1 | Level 2 | Level 3 |\n| ------------- | ------------- | ------------- |\n| You know the _Prestidigitation_ cantrip.<br>Whenever you finish a Long Rest you can replace that cantrip with any from the Wizard Spell list |  _Detect Magic_  |  _Misty Step_  |",
+            "lineage": "High Elves"
+        },
+        {
+            "name": "Elven Lineage",
+            "description": "You are the recipient of a legacy that grants you supernatural abilities.\n\n| Level 1 | Level 2 | Level 3 |\n| ------------- | ------------- | ------------- |\n| Your speed increases to 35 feet.<br>You also know the _Druidcraft_ cantrip. |  _Longstrider_  |  _Pass withough Trace_  |",
+            "lineage": "Wood Elves"
+        },
+        {
+            "name": "Otherworldly Presence",
+            "description": "You know the Thaumaturgy cantrip. When you cast it with this trait, the spell uses the same spellcasting ability you use for your Fiendish Legacy trait."
+        }
+    ]
 }
