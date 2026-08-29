@@ -1,5 +1,5 @@
-import { App, Plugin, PluginSettingTab, Setting, MarkdownPostProcessorContext, parseYaml, MarkdownRenderChild, MarkdownRenderer } from 'obsidian';
-import { getClassData, getSubclassData, getBackgroundFeat, getRaceData, getExtraFeat } from './data';
+import { App, Plugin, PluginSettingTab, Setting, MarkdownPostProcessorContext, parseYaml, MarkdownRenderChild, MarkdownRenderer, TFile } from 'obsidian';
+import { getClassData, getSubclassData, getBackgroundFeat, getRaceData, getExtraFeat, getItemData } from './data';
 
 // 1. Define the shape of our settings
 interface DnDPluginSettings {
@@ -48,6 +48,12 @@ export default class DnDFeaturesPlugin extends Plugin {
             "dnd-features",
             this.processDnDBlock.bind(this)
         );
+
+        // Register the processor for the inventory block
+        this.registerMarkdownCodeBlockProcessor(
+            "dnd-inventory",
+            this.processInventoryBlock.bind(this)
+        );
     }
 
     // Helper functions for Obsidian to read/write settings
@@ -71,6 +77,18 @@ export default class DnDFeaturesPlugin extends Plugin {
             for (const variable of Object.keys(this.settings.customColors)) {
                 document.body.style.removeProperty(variable);
             }
+        }
+    }
+
+    // --- Helper: Safely Update Gold Frontmatter ---
+    async updateGoldFrontmatter(filePath: string, type: 'base' | 'added' | 'spent', amount: number) {
+        const file = this.app.vault.getAbstractFileByPath(filePath);
+        if (file instanceof TFile) {
+            await this.app.fileManager.processFrontMatter(file, (frontmatter) => {
+                const key = `dnd_gold_${type}`;
+                const current = Number(frontmatter[key]) || 0;
+                frontmatter[key] = current + amount;
+            });
         }
     }
 
@@ -395,6 +413,173 @@ export default class DnDFeaturesPlugin extends Plugin {
             })
         );
     }
+
+    async processInventoryBlock(source: string, el: HTMLElement, ctx: MarkdownPostProcessorContext) {
+        const renderChild = new MarkdownRenderChild(el);
+        ctx.addChild(renderChild);
+
+        const renderContent = async () => {
+            const wrapper = document.createElement('div');
+            let blockData;
+            try {
+                blockData = parseYaml(source);
+            } catch (error) {
+                wrapper.createEl("p", { text: "Error: Invalid format in dnd-inventory block.", cls: "dnd-error" });
+                el.empty();
+                el.appendChild(wrapper);
+                return;
+            }
+
+            const fileCache = this.app.metadataCache.getCache(ctx.sourcePath);
+            const frontmatter = fileCache?.frontmatter || {};
+
+            const resolveValue = (val: any) => {
+                if (typeof val === 'string' && val.startsWith('frontmatter.')) {
+                    return frontmatter[val.replace('frontmatter.', '')];
+                }
+                return val;
+            };
+
+            // 1. Resolve Variables
+            const dndClass = resolveValue(blockData.class);
+            const background = resolveValue(blockData.background);
+            const classEq = resolveValue(blockData['class-equipment']);
+            const bgEq = resolveValue(blockData['background-equipment']);
+            const weaponSlot = resolveValue(blockData.weapon);
+            const weaponDamage = resolveValue(blockData.weapon_damage);
+            const armourSlot = resolveValue(blockData.armour);
+            const armourAc = resolveValue(blockData.armour_ac);
+            const extraItemsRaw = resolveValue(blockData['extra-items']);
+
+            // 2. Fetch Core Data to read Starting Equipment
+            let grantedGold = 0;
+            const itemCounts: Record<string, number> = {};
+
+            const addItemsToPool = (eqData: any) => {
+                if (!eqData) return;
+                if (eqData.gold) grantedGold += Number(eqData.gold);
+                if (eqData.items) {
+                    for (const [itemId, qty] of Object.entries(eqData.items)) {
+                        itemCounts[itemId] = (itemCounts[itemId] || 0) + Number(qty);
+                    }
+                }
+            };
+
+            if (dndClass && classEq) {
+                // We use [0] to handle multi-class arrays safely
+                const primaryClass = Array.isArray(dndClass) ? dndClass[0] : dndClass;
+                const classData = await getClassData(this.app, this.settings, primaryClass);
+                if (classData?.['starting-equipment']) addItemsToPool(classData['starting-equipment'][classEq]);
+            }
+
+            if (background && bgEq) {
+                // (Assuming you'll add getBackgroundData later, but for now we follow the pattern)
+                // If backgrounds have a JSON file, fetch it here and call addItemsToPool
+            }
+
+            // Add manual extra items to the pool
+            const extraItems = Array.isArray(extraItemsRaw) ? extraItemsRaw : (extraItemsRaw ? [extraItemsRaw] : []);
+            for (const item of extraItems) {
+                const safeItem = typeof item === 'string' ? item.toLowerCase().replace(/\s+/g, '-') : String(item);
+                itemCounts[safeItem] = (itemCounts[safeItem] || 0) + 1;
+            }
+
+            // 3. Omission Logic for Equipped Slots
+            const consumeItem = (itemName: string) => {
+                if (!itemName) return null;
+                const safeName = itemName.toLowerCase().replace(/\s+/g, '-');
+                if (itemCounts[safeName] && itemCounts[safeName] > 0) {
+                    itemCounts[safeName] -= 1; // Remove 1 from the backpack pool
+                }
+                return itemName;
+            };
+
+            const equippedWeapon = consumeItem(weaponSlot);
+            const equippedArmour = consumeItem(armourSlot);
+
+            // --- 4. RENDER UI ---
+
+            // A. Wealth Bar (Interactive)
+            const goldBase = Number(frontmatter['dnd_gold_base']) || 0;
+            const goldAdded = Number(frontmatter['dnd_gold_added']) || 0;
+            const goldSpent = Number(frontmatter['dnd_gold_spent']) || 0;
+            // The plugin automatically adds the granted gold from the Class/Background into the pool!
+            const totalGold = goldBase + goldAdded + grantedGold - goldSpent;
+
+            const wealthWindow = wrapper.createDiv({ cls: "dnd-features-window" });
+            const wealthHeader = wealthWindow.createDiv({ cls: "dnd-feature-title" });
+            wealthHeader.createEl("span", { text: "Wealth", cls: "dnd-level-badge" });
+            wealthHeader.createEl("span", { text: `${totalGold} GP`, cls: "dnd-feature-name" });
+
+            const buttonGroup = wealthWindow.createDiv({ cls: "dnd-feature-desc" });
+            const addBtn = buttonGroup.createEl("button", { text: "+ 10 GP" });
+            const subBtn = buttonGroup.createEl("button", { text: "- 10 GP" });
+
+            addBtn.onclick = () => this.updateGoldFrontmatter(ctx.sourcePath, 'added', 10);
+            subBtn.onclick = () => this.updateGoldFrontmatter(ctx.sourcePath, 'spent', 10);
+
+            // B. Equipped Slots
+            const equipWindow = wrapper.createDiv({ cls: "dnd-features-window" });
+
+            // Helper to render slots with Graceful Fallback
+            const renderSlot = async (label: string, itemName: string, overrideStat: string, statLabel: string) => {
+                if (!itemName) return;
+                const safeName = itemName.toLowerCase().replace(/\s+/g, '-');
+                let data = await getItemData(this.app, this.settings, safeName);
+
+                // Graceful Fallback: If not in JSON, mock the data!
+                if (!data) data = { name: itemName, description: "Custom item." };
+
+                const block = equipWindow.createDiv({ cls: "dnd-feature-block" });
+                const title = block.createDiv({ cls: "dnd-feature-title" });
+                title.createEl("span", { text: label, cls: "dnd-level-badge" });
+                title.createEl("span", { text: data.name, cls: "dnd-feature-name" });
+
+                const statToDisplay = overrideStat || data[statLabel.toLowerCase()] || "";
+                if (statToDisplay) title.createEl("span", { text: `${statLabel}: ${statToDisplay}`, cls: "dnd-feature-name", style: "margin-left: auto;" });
+            };
+
+            await renderSlot("Weapon", equippedWeapon, weaponDamage, "Damage");
+            await renderSlot("Armor", equippedArmour, armourAc, "AC");
+
+            // C. Backpack (Remaining Items)
+            const backpackWindow = wrapper.createDiv({ cls: "dnd-features-window" });
+            wrapper.createEl("h4", { text: "Backpack", cls: "dnd-class-header" });
+
+            for (const [itemId, qty] of Object.entries(itemCounts)) {
+                if (qty <= 0) continue; // Skip items entirely consumed by slots
+
+                let data = await getItemData(this.app, this.settings, itemId);
+                if (!data) data = { name: itemId.replace(/-/g, ' '), description: "" }; // Graceful fallback
+
+                const block = backpackWindow.createDiv({ cls: "dnd-feature-block" });
+                const title = block.createDiv({ cls: "dnd-feature-title" });
+                title.createEl("span", { text: `x${qty}`, cls: "dnd-level-badge" });
+                title.createEl("span", { text: data.name, cls: "dnd-feature-name" });
+
+                if (data.weight) {
+                    title.createEl("span", { text: `${data.weight * qty} lbs`, cls: "dnd-feature-name", style: "margin-left: auto;" });
+                }
+
+                if (data.description) {
+                    const descDiv = block.createDiv({ cls: "dnd-feature-desc" });
+                    await MarkdownRenderer.render(this.app, data.description, descDiv, ctx.sourcePath, renderChild);
+                }
+            }
+
+            el.empty();
+            el.appendChild(wrapper);
+        };
+
+        renderContent();
+
+        renderChild.registerEvent(
+            this.app.metadataCache.on('changed', (file) => {
+                if (file.path === ctx.sourcePath) renderContent();
+            })
+        );
+    }
+
 }
 
 // --- Settings Tab UI ---
