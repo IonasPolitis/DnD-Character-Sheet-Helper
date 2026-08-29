@@ -3,22 +3,24 @@ name: Build and Update Pre-Release
 on:
   push:
     branches:
-      - beta # This triggers the action whenever you push to 'main'
+      - beta
 
 jobs:
   build-and-release:
     runs-on: ubuntu-latest
     permissions:
-      contents: write # Required for GitHub Actions to push tags and update releases
+      contents: write
 
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20' # You can change this to your preferred Node version
+          node-version: '20'
 
       - name: Install Dependencies
         run: npm install
@@ -30,15 +32,18 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # 1. Define the tag name you want to use for this rolling pre-release
-          TAG_NAME="v1.1.0-beta" 
-          
-          # 2. Force move the tag to the latest commit and push it to GitHub
+          # Configure Git author for tag creation
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          TAG_NAME="v1.1.0-beta"
+
+          # Create or move tag
           git tag -f $TAG_NAME
           git push -f origin $TAG_NAME
-          
-          # 3. Create the release if it doesn't exist yet
-          gh release view $TAG_NAME >/dev/null 2>&1 || gh release create $TAG_NAME --prerelease --title "Latest Beta Build"
-          
-          # 4. Upload the 3 specific files, overwriting any older versions
+
+          # Create release if missing, or update if exists
+          gh release view $TAG_NAME >/dev/null 2>&1 || gh release create $TAG_NAME --prerelease --title "Latest Beta Build" --notes "Automated beta build"
+
+          # Upload assets
           gh release upload $TAG_NAME main.js styles.css manifest.json --clobber
