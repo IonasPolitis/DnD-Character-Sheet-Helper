@@ -1,0 +1,83 @@
+name: Update Pre-Release on Push
+
+on:
+  push:
+    branches:
+      - main # Change this to the branch you are pushing to
+
+jobs:
+  update-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # Required to update releases
+    
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        
+      - name: D&D Character Sheet Helper Plugin
+        run: npm run build
+        
+      - name: Update Pre-Release tag
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Force move the tag to the latest commit
+        git tag -f v1.1.0-beta
+        git push -f beta v1.1.0-beta
+          
+          # Update the release notes/assets using the GitHub CLI
+        release edit v1.1.0-beta --prerelease --title "Latest Beta Build"
+          
+          # If you have assets to upload, uncomment the line below:
+        gh release upload v1.1.0-beta ./main.js ./styles.css ./manifest.json --clobber
+
+
+
+
+
+
+name: Build and Update Pre-Release
+
+on:
+  push:
+    branches:
+      - beta # This triggers the action whenever you push to 'main'
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # Required for GitHub Actions to push tags and update releases
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20' # You can change this to your preferred Node version
+
+      - name: Install Dependencies
+        run: npm install
+
+      - name: Build Project
+        run: npm run build
+
+      - name: Update Tag and Pre-Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # 1. Define the tag name you want to use for this rolling pre-release
+          TAG_NAME="v1.1.0-beta" 
+          
+          # 2. Force move the tag to the latest commit and push it to GitHub
+          git tag -f $TAG_NAME
+          git push -f origin $TAG_NAME
+          
+          # 3. Create the release if it doesn't exist yet
+          gh release view $TAG_NAME >/dev/null 2>&1 || gh release create $TAG_NAME --prerelease --title "Latest Beta Build"
+          
+          # 4. Upload the 3 specific files, overwriting any older versions
+          gh release upload $TAG_NAME main.js styles.css manifest.json --clobber
