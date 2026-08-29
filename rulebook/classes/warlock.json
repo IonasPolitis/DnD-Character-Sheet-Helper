@@ -1,0 +1,19 @@
+{
+    "class": "Warlock",
+    "subclassFile": "warlock-subclasses",
+    "starting-equipment": {
+        "A": {
+            "items": {
+            }, "gold": 0
+        },
+        "B": { "items": {}, "gold": 0 }
+    },
+    "features": {
+        "1": [
+            {
+                "name": "",
+                "description": ""
+            }
+        ]
+      }
+}

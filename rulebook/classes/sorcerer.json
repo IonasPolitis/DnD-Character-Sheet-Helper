@@ -1,0 +1,19 @@
+{
+    "class": "Sorcerer",
+    "subclassFile": "sorcerer-subclasses",
+    "starting-equipment": {
+        "A": {
+            "items": {
+            }, "gold": 0
+        },
+        "B": { "items": {}, "gold": 0 }
+    },
+    "features": {
+        "1": [
+            {
+                "name": "",
+                "description": ""
+            }
+        ]
+      }
+}
