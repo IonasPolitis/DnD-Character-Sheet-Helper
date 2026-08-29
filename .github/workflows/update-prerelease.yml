@@ -36,7 +36,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          TAG_NAME="1.1.0-beta"
+          TAG_NAME="v1.1.0-beta"
 
           # Create or move tag
           git tag -f $TAG_NAME
