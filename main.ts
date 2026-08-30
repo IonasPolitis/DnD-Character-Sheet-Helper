@@ -482,6 +482,9 @@ export default class DnDFeaturesPlugin extends Plugin {
             const armourSlot = resolveValue(blockData.armour);
             const armourAc = resolveValue(blockData.armour_ac);
             const extraItemsRaw = resolveValue(blockData['extra-items']);
+            // Umbrella Item Choices
+            const musicalInstrumentChoice = resolveValue(blockData['musical-instrument']);
+            const gamingSetChoice = resolveValue(blockData['gaming-set']);
 
             // 2. Fetch Core Data to read Starting Equipment
             let grantedGold = 0;
@@ -490,9 +493,23 @@ export default class DnDFeaturesPlugin extends Plugin {
             const addItemsToPool = (eqData: any) => {
                 if (!eqData) return;
                 if (eqData.gold) grantedGold += Number(eqData.gold);
+                
                 if (eqData.items) {
                     for (const [itemId, qty] of Object.entries(eqData.items)) {
-                        itemCounts[itemId] = (itemCounts[itemId] || 0) + Number(qty);
+                        let finalItemId = itemId;
+                        
+                        // --- THE INTERCEPTOR LOGIC ---
+                        // If the class grants a generic umbrella item, check if the user specified a variant!
+                        if (itemId === 'musical-instrument' && musicalInstrumentChoice) {
+                            const safeChoice = String(musicalInstrumentChoice).toLowerCase().replace(/\s+/g, '-');
+                            finalItemId = `musical-instrument-${safeChoice}`; // e.g., "musical-instrument-lute"
+                        } else if (itemId === 'gaming-set' && gamingSetChoice) {
+                            const safeChoice = String(gamingSetChoice).toLowerCase().replace(/\s+/g, '-');
+                            finalItemId = `gaming-set-${safeChoice}`; // e.g., "gaming-set-dice"
+                        }
+
+                        // Add the final resolved item to the user's pool
+                        itemCounts[finalItemId] = (itemCounts[finalItemId] || 0) + Number(qty);
                     }
                 }
             };

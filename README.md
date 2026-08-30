@@ -53,20 +53,31 @@ The structure of each JSON file is as follows:
 - class.json:
 ```
 {
-	"class": "<Class_Name>",
-	"subclassFile": "<Subclass_File_Name>",
-	"features": {
-		"<Level_of_Features_Set>": [
-			{
-				"name": "<Feature_Title>",
-				"description": "<Feature_Description>",
-				<optional>"grantedFeats": "<Feat_to_Unlocks>",
-				<optional>"badge": "<Custome_Badge_Text>"
-			}
-		]
-	}
+    "class": "<Class_Name>>",
+    "subclassFile": "<Subclass_File_Name>",
+    "starting-equipment": {
+        "A": {
+            "items": {
+                "<Item_File_Name>>": <Number>,
+                <optional_umbrella_item>"musical-instrument": <Number>,
+                <optional_umbrella_item>"gaming-set": <Number>
+
+            }, "gold": <Number>
+        },
+        "B": { "items": {}, "gold": <Number> }
+    },
+    "features": {
+        "<Level>": [
+            {
+                "name": "<Feature_Name>",
+                "description": "<Feature_Description>"
+            }
+        ]
+      }
 }
 ```
+-Umbrella Items explanation
+
 
 - feat.json:
 ```
