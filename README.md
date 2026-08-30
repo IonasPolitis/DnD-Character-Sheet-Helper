@@ -4,7 +4,7 @@ Currently this plugin only shows information for a character's Features, Feats a
 
 Given the appropriate variables and values it can give you information useful information of your character directly inside your Obsidian Note from your Class (with Multi-class support), Subclass, Race Traits, Background Feat and Extra Feats added at your own disposal. It has frontmatter support by using the key-word "frontmatter." + a note property's name.
 
-A Sample of the Code Block looks like this:
+A Sample of the Code Blocks looks like this:
 ````
 ```dnd-features
 level: $num$
@@ -15,6 +15,23 @@ race: $text$
 race-lineage: $text$
 background: $list$
 extra-feats: $list$
+```
+````
+
+````
+```dnd-inventory
+class: $text$
+class-equipment: $text$
+<optional>musical-instrument: $text$
+<optional>gaming-set: $text$
+<optional>variable-class-items: $list$
+background: $text$
+background-equipment: $text$
+weapon: $text$
+weapon_damage: $text$
+armour: $text$
+armour_ac: $text$
+extra-items: $list$
 ```
 ````
 
@@ -59,9 +76,9 @@ The structure of each JSON file is as follows:
         "A": {
             "items": {
                 "<Item_File_Name>>": <Number>,
-                <optional_umbrella_item>"musical-instrument": <Number>,
-                <optional_umbrella_item>"gaming-set": <Number>
-
+                <optional_DnD_musical-instrument>"musical-instrument": <Number>,
+                <optional_DnD_gaming-set>"gaming-set": <Number>,
+		    <optional_homebrew_variable_item>"<Umbrella_Item>" : <Number>
             }, "gold": <Number>
         },
         "B": { "items": {}, "gold": <Number> }
@@ -76,7 +93,10 @@ The structure of each JSON file is as follows:
       }
 }
 ```
--Umbrella Items explanation
+Some classes in DnD give you an item that has variants (like the Gaming Set), and so that the player is able to choose which variant they want to be displayed they can either use the pre-made varibales *musical-instrument* and *gaming-set*, or for Homebrewd items they can use the *variable-class-items* variable with this structure:
+[ [<homebrew_item_1>, <variant>], [<homebrew_item_2>, <variant>] ]
+For the items in the *variable-class-items* variable to appear in the inventory the "homebrew_item" portion of the the name should be inside the class itself as an item.
+The plugin automaticaly searches for items named: "homebrew_item-variant", striping off quotes and spaces from the code block variable so that the text can more easily match the filename.
 
 
 - feat.json:

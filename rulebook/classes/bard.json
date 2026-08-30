@@ -6,7 +6,7 @@
             "items": {
                 "leather-armor": 1,
                 "dagger": 2,
-                "musical-instruments": 1,
+                "musical-instrument": 1,
                 "entertainers-pack": 1
 
             }, "gold": 19
@@ -16,8 +16,38 @@
     "features": {
         "1": [
             {
-                "name": "",
-                "description": ""
+                "name": "Bardic Inspiration",
+                "description": "As a Bonus Action, you can inspire another creature within 60 feet of yourself who can see or hear you. That creature gains one of your Bardic Inspiration dice.\n   • **Number of Uses**: You can confer a Bardic Inspiration die a number of times equal to your Charisma modifier (minimum of once), and you regain all expended uses when you finish a Long Rest."
+            }
+        ],
+        "2": [
+            {
+                "name": "Jack of All Trades",
+                "description": "You can add half your Proficiency Bonus (round down) to any ability check you make that uses a skill proficiency you lack and that doesn't otherwise use your Proficiency Bonus."
+            }
+        ],
+        "5": [
+            {
+                "name": "Font of Inspiration",
+                "description": "You can expend a spell slot (no action required) to regain one expended use of Bardic Inspiration."
+            }
+        ],
+        "7": [
+            {
+                "name": "Countercharm",
+                "description": "You can use musical notes or words of power to disrupt mind-influencing effects. If you or a creature within 30 feet of you fails a saving throw against an effect that applies the Charmed or Frightened condition, you can take a Reaction to cause the save to be rerolled, and the new roll has Advantage."
+            }
+        ],
+        "18": [
+            {
+                "name": "Superior Inspiration",
+                "description": "When you roll Initiative, you regain expended uses of Bardic Inspiration until you have two if you have fewer than that"
+            }
+        ],
+        "x": [
+            {
+                "name": "Words of Creation",
+                "description": "You have mastered two of the Words of Creation: the words of life and death. You therefore always have the Power Word Heal and Power Word Kill spells prepared. When you cast either spell, you can target a second creature with it if that creature is within 10 feet of the first target."
             }
         ]
       }
