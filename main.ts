@@ -569,18 +569,20 @@ export default class DnDFeaturesPlugin extends Plugin {
             const goldSpent = Number(frontmatter['dnd_gold_spent']) || 0;
             const totalGold = goldBase + goldAdded + grantedGold - goldSpent;
 
-            const wealthWindow = wrapper.createDiv({
-                cls: "dnd-features-window",
-                style: "display: flex; align-items: center; justify-content: space-between; padding: 12px 15px;"
+            const wealthWindow = wrapper.createDiv({ cls: "dnd-features-window" });
+            
+            // By wrapping the contents in a brand NEW div without any classes, we bypass the CSS block rules entirely!
+            const wealthContainer = wealthWindow.createDiv({ 
+                style: "display: flex; flex-direction: row; align-items: center; justify-content: space-between; width: 100%; padding: 5px;" 
             });
 
             // Left Side: Badge + GP (Inline)
-            const wealthLeft = wealthWindow.createDiv({ style: "display: flex; align-items: center; gap: 10px;" });
+            const wealthLeft = wealthContainer.createDiv({ style: "display: flex; align-items: center; gap: 10px;" });
             wealthLeft.createEl("span", { text: "Wealth", cls: "dnd-level-badge" });
             wealthLeft.createEl("strong", { text: `${totalGold} GP`, style: "font-size: 1.1em; color: var(--dnd-text-bright);" });
 
             // Right Side: Input + Add + Spend (Inline)
-            const wealthRight = wealthWindow.createDiv({ style: "display: flex; gap: 8px; align-items: center;" });
+            const wealthRight = wealthContainer.createDiv({ style: "display: flex; flex-direction: row; gap: 8px; align-items: center;" });
             const amountInput = wealthRight.createEl("input", { type: "number", value: "1", style: "width: 60px; text-align: center; background: var(--dnd-bg-darker); border: 1px solid var(--dnd-border-primary); color: var(--dnd-text-bright); border-radius: 4px; padding: 4px;" });
             const addBtn = wealthRight.createEl("button", { text: "Add" });
             const subBtn = wealthRight.createEl("button", { text: "Spend" });
@@ -613,7 +615,7 @@ export default class DnDFeaturesPlugin extends Plugin {
                 await renderSlot("Armor", equippedArmour, armourAc, "AC");
             }
 
-            // C. Backpack (Separated Sections)
+            // C. Backpack (Separated Sections - Single Line Layout)
             const backpackWindow = wrapper.createDiv({ cls: "dnd-features-window" });
             backpackWindow.createEl("h4", { text: "Backpack Contents", cls: "dnd-class-header", style: "margin: 10px 15px;" });
 
@@ -625,29 +627,39 @@ export default class DnDFeaturesPlugin extends Plugin {
                 }
 
                 for (const [itemId, qty] of Object.entries(pool)) {
-                    if (qty <= 0) continue;
+                    if (qty <= 0) continue; 
 
                     let data = await getItemData(this.app, this.settings, itemId);
                     const fallbackName = itemId.replace(/\b\w/g, c => c.toUpperCase()).replace(/-/g, ' ');
                     if (!data) data = { name: fallbackName, description: "" };
 
-                    const block = backpackWindow.createDiv({ cls: "dnd-feature-block" });
-
-                    // Bulletproof Spacing using Space-Between Flexbox
-                    const headerRow = block.createDiv({ style: "display: flex; justify-content: space-between; align-items: center; width: 100%;" });
-
-                    const leftSide = headerRow.createDiv({ style: "display: flex; align-items: center; gap: 8px;" });
-                    leftSide.createEl("span", { text: `x${qty}`, cls: "dnd-level-badge" });
-                    leftSide.createEl("span", { text: data.name, cls: "dnd-feature-name" });
-
-                    if (data.weight) {
-                        // Force the weight to render on the far right edge!
-                        headerRow.createEl("span", { text: `${data.weight * qty} lbs`, style: "color: var(--dnd-text-muted); font-size: 0.9em; white-space: nowrap;" });
-                    }
+                    // 1. Remove the .dnd-feature-block class entirely to prevent the top border "divider" line!
+                    const itemRow = backpackWindow.createDiv({ 
+                        style: "display: flex; align-items: baseline; justify-content: space-between; gap: 10px; padding: 8px 15px; border-bottom: 1px solid var(--dnd-border-primary);" 
+                    });
+                    
+                    // 2. Left side holds Badge, Name, AND Description on the exact same line
+                    const contentLeft = itemRow.createDiv({ style: "display: flex; align-items: baseline; gap: 8px; flex-grow: 1; flex-wrap: wrap;" });
+                    contentLeft.createEl("span", { text: `x${qty}`, cls: "dnd-level-badge" });
+                    contentLeft.createEl("strong", { text: data.name, style: "color: var(--dnd-text-bright); white-space: nowrap;" });
 
                     if (data.description) {
-                        const descDiv = block.createDiv({ cls: "dnd-feature-desc" });
+                        // Notice we aren't using .dnd-feature-desc here either!
+                        const descDiv = contentLeft.createDiv({ style: "color: var(--dnd-text-secondary); font-size: 0.9em;" });
                         await this.renderDndMarkdown(data.description, descDiv, ctx.sourcePath, renderChild);
+                        
+                        // 3. Obsidian's Markdown engine wraps text in a `<p>` tag which forces a line break. 
+                        // We target the `<p>` tag programmatically and force it to be inline!
+                        const pTags = descDiv.getElementsByTagName('p');
+                        for (let i = 0; i < pTags.length; i++) {
+                            pTags[i].style.display = "inline";
+                            pTags[i].style.margin = "0";
+                        }
+                    }
+
+                    if (data.weight) {
+                        // 4. Weight goes on the far right, strictly bounded so it never touches the description
+                        itemRow.createEl("span", { text: `${data.weight * qty} lbs`, style: "color: var(--dnd-text-muted); font-size: 0.9em; white-space: nowrap; flex-shrink: 0;" });
                     }
                 }
             };
