@@ -1,10 +1,10 @@
 The DnD Character Sheet Helper is an Obsidian Plugin that brings the DnD Rulebook right inside your Digital Character Sheet.
 
-Currently this plugin only shows information for a character's Features, Feats and Traits, but in the future I plan on adding something to help with inventory management as well, especially on automatically adding items that you gain from the rulebook.
+## DnD Character Features:
 
-Given the appropriate variables and values it can give you information useful information of your character directly inside your Obsidian Note from your Class (with Multi-class support), Subclass, Race Traits, Background Feat and Extra Feats added at your own disposal. It has frontmatter support by using the key-word "frontmatter." + a note property's name.
+Given the appropriate variables and values this plugin can give you useful information of your character directly inside your Obsidian Note. It displays all the Action related Features from your Class (with Multi-class support), Subclass, Race Traits, Background Feat and Extra Feats added at your own disposal.
 
-A Sample of the Code Blocks looks like this:
+A Sample of the Code Block looks like this:
 ````
 ```dnd-features
 level: $num$
@@ -17,7 +17,17 @@ background: $list$
 extra-feats: $list$
 ```
 ````
+Any of the variables (except for *level*) can be omitted and only the variables with a value will be used and displayed.
 
+The variable *class-levels* is used when you have multiple classes on your character and the plugin needs to know how many levels does each class have. *The order of the levels should be the same as the class order*.
+The variable *variable-class-items* as well as *musical-instrument* and *gaming-set* is explained below.
+The rest of the variables should be self-explanatory.
+
+## DnD Character Inventory:
+
+a
+
+A Sample of the Code Block looks like this:
 ````
 ```dnd-inventory
 class: $text$
@@ -35,11 +45,11 @@ extra-items: $list$
 ```
 ````
 
-Any of the variables (except for *level*) can be omitted and only the variables with a value will be used and displayed.
+> [!example]- Usefule Info
+> - Code Blocks have frontmatter support by using the key-word "frontmatter." + a note property's name.
+> - All text fields support the markdown format as well.
 
-The variable *class-levels* is used when you have multiple classes on your character and the plugin needs to know how many levels does each class have. *The order of the levels should be the same as the class order*.
-The variable *variable-class-items* as well as *musical-instrument* and *gaming-set* is explained below.
-The rest of the variables should be self-explanatory.
+## Homebrew:
 
 This plugin also supports custom rules by adding the path of your custom Rulebook that is inside your Obsidian Vault. This is the folder structure used and what the plugin expects:
 
@@ -148,6 +158,3 @@ The *lineage* variable in the race.json is a Flag, making it so that this trait 
       "cost": <Item's_Cost>
 }
 ```
-
-
-All text fields support the markdown format as well.
