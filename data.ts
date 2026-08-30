@@ -189,8 +189,12 @@ export async function getExtraFeat(app: App, settings: FetchSettings, featName: 
 // --- Logic for Fetching Item Data ---
 export async function getItemData(app: App, settings: FetchSettings, itemName: string) {
     const fetchNative = () => {
-        // Look up the raw item name in the items.json router to find the exact filename
-        const itemId = getIgnoreCase(itemsMap as Record<string, string>, itemName);
+        // 1. Check if the itemName is ALREADY a valid filename (a Value in the JSON)
+        const isAlreadyFilename = Object.values(itemsMap).includes(itemName);
+        
+        // 2. If it is, use it directly! If not, try to search for it as a Key.
+        const itemId = isAlreadyFilename ? itemName : getIgnoreCase(itemsMap as Record<string, string>, itemName);
+        
         return itemId ? getIgnoreCase(itemRegistry, itemId) : null;
     };
     

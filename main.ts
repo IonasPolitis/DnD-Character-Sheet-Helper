@@ -568,7 +568,7 @@ export default class DnDFeaturesPlugin extends Plugin {
             // --- 4. RENDER UI ---
 
             // Add the Main Section Title
-            wrapper.createEl("h3", { text: "Equipment & Items", cls: "dnd-section-header" });
+            wrapper.createEl("h3", { text: "Equipment & Items:", cls: "dnd-section-header" });
 
             // A. Wealth Bar (Interactive)
             const goldBase = Number(frontmatter['dnd_gold_base']) || 0;
@@ -576,21 +576,21 @@ export default class DnDFeaturesPlugin extends Plugin {
             const goldSpent = Number(frontmatter['dnd_gold_spent']) || 0;
             const totalGold = goldBase + goldAdded + grantedGold - goldSpent;
 
-            const wealthWindow = wrapper.createDiv({ cls: "dnd-features-window" });
+            // Apply flexbox DIRECTLY to the window to prevent stacking
+            const wealthWindow = wrapper.createDiv({ 
+                cls: "dnd-features-window",
+                style: "display: flex; align-items: center; justify-content: space-between; padding: 12px 15px;" 
+            });
 
-            // Use Flexbox to put everything on one skinny line!
-            const wealthContainer = wealthWindow.createDiv({ style: "display: flex; align-items: center; justify-content: space-between; padding: 10px 15px;" });
-
-            const wealthText = wealthContainer.createDiv({ style: "display: flex; align-items: center; gap: 10px;" });
+            const wealthText = wealthWindow.createDiv({ style: "display: flex; align-items: center; gap: 10px;" });
             wealthText.createEl("span", { text: "Wealth", cls: "dnd-level-badge" });
             wealthText.createEl("span", { text: `${totalGold} GP`, cls: "dnd-feature-name" });
 
-            const buttonGroup = wealthContainer.createDiv({ style: "display: flex; gap: 8px; align-items: center;" });
+            const buttonGroup = wealthWindow.createDiv({ style: "display: flex; gap: 8px; align-items: center;" });
             const amountInput = buttonGroup.createEl("input", { type: "number", value: "1", style: "width: 60px; text-align: center; background: var(--dnd-bg-darker); border: 1px solid var(--dnd-border-primary); color: var(--dnd-text-bright); border-radius: 4px; padding: 4px;" });
             const addBtn = buttonGroup.createEl("button", { text: "Add" });
             const subBtn = buttonGroup.createEl("button", { text: "Spend" });
 
-            // Read the input value dynamically when clicked!
             addBtn.onclick = () => this.updateGoldFrontmatter(ctx.sourcePath, 'added', Number(amountInput.value) || 0);
             subBtn.onclick = () => this.updateGoldFrontmatter(ctx.sourcePath, 'spent', Number(amountInput.value) || 0);
 
@@ -609,14 +609,15 @@ export default class DnDFeaturesPlugin extends Plugin {
                 if (!data) data = { name: toTitleCase(itemName.replace(/-/g, ' ')), description: "" };
 
                 // Create a standalone card for each slot
-                const card = equipGrid.createDiv({ cls: "dnd-features-window", style: "display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 15px; text-align: center; margin: 0;" });
+                const card = equipGrid.createDiv({ cls: "dnd-features-window", style: "display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 15px; text-align: center; margin: 0; gap: 6px;" });
                 
-                card.createEl("span", { text: label.toUpperCase(), style: "font-size: 0.75em; opacity: 0.7; letter-spacing: 1.5px; margin-bottom: 8px;" });
-                card.createEl("strong", { text: data.name, style: "font-size: 1.2em; color: var(--dnd-text-bright); margin-bottom: 8px;" });
+                // Changed from spans to block-level DIVs to prevent text clumping!
+                card.createDiv({ text: label.toUpperCase(), style: "font-size: 0.75em; opacity: 0.7; letter-spacing: 1.5px;" });
+                card.createDiv({ text: data.name, style: "font-size: 1.2em; font-weight: bold; color: var(--dnd-text-bright);" });
 
                 const statToDisplay = overrideStat || (data[statLabel.toLowerCase()] ? data[statLabel.toLowerCase()] : "");
                 if (statToDisplay) {
-                    card.createEl("span", { text: statToDisplay, style: "font-size: 1.1em; font-weight: bold; color: var(--dnd-text-sublabel);" });
+                    card.createDiv({ text: statToDisplay, style: "font-size: 1.1em; font-weight: bold; color: var(--dnd-text-sublabel);" });
                 }
             };
 
