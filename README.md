@@ -1,7 +1,7 @@
 The DnD Character Sheet Helper is an Obsidian Plugin that brings the DnD Rulebook right inside your Digital Character Sheet.
 
-> - Code Blocks have frontmatter support by using the key-word "frontmatter." + a note property's name.
-> - All text fields support the markdown format as well.
+> Code Blocks have frontmatter support by using the key-word "frontmatter." + a note property's name.
+> All text fields support the markdown format as well.
 
 ## DnD Character Features:
 
