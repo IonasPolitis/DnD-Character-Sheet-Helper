@@ -563,24 +563,26 @@ export default class DnDFeaturesPlugin extends Plugin {
 
             wrapper.createEl("h3", { text: "Equipment & Items:", cls: "dnd-section-header" });
 
-            // A. Wealth Bar (Strict Single-Line Layout)
+            // -----------------------------------------------------------
+            // A. WEALTH SECTION (Strictly 1 Line)
+            // -----------------------------------------------------------
             const goldBase = Number(frontmatter['dnd_gold_base']) || 0;
             const goldAdded = Number(frontmatter['dnd_gold_added']) || 0;
             const goldSpent = Number(frontmatter['dnd_gold_spent']) || 0;
             const totalGold = goldBase + goldAdded + grantedGold - goldSpent;
 
-            // Notice we use raw inline styles instead of dnd-features-window to prevent CSS interference!
-            const wealthWindow = wrapper.createDiv({
-                style: "display: flex; flex-direction: row; align-items: center; justify-content: space-between; padding: 12px 15px; background: var(--dnd-bg-primary); border: 1px solid var(--dnd-border-primary); border-radius: 8px; margin-bottom: 15px;"
+            // Restored the window class, added flexbox directly to it
+            const wealthWindow = wrapper.createDiv({ 
+                cls: "dnd-features-window", 
+                style: "display: flex; flex-direction: row; align-items: center; justify-content: space-between; padding: 12px 16px; margin-bottom: 16px;" 
             });
 
-            // Left Side: Badge + GP (Inline)
-            const wealthLeft = wealthWindow.createDiv({ style: "display: flex; align-items: center; gap: 10px;" });
-            wealthLeft.createEl("span", { text: "Wealth", cls: "dnd-level-badge" });
+            // We use SPANs here to bypass the styles.css nesting rules!
+            const wealthLeft = wealthWindow.createEl("span", { style: "display: flex; align-items: center; gap: 10px;" });
+            wealthLeft.createEl("span", { text: "Wealth", cls: "dnd-level-badge", style: "margin: 0;" }); // Margin 0 overrides the default badge right-margin
             wealthLeft.createEl("strong", { text: `${totalGold} GP`, style: "font-size: 1.1em; color: var(--dnd-text-bright);" });
 
-            // Right Side: Input + Add + Spend (Inline)
-            const wealthRight = wealthWindow.createDiv({ style: "display: flex; flex-direction: row; gap: 8px; align-items: center;" });
+            const wealthRight = wealthWindow.createEl("span", { style: "display: flex; flex-direction: row; gap: 8px; align-items: center;" });
             const amountInput = wealthRight.createEl("input", { type: "number", value: "1", style: "width: 60px; text-align: center; background: var(--dnd-bg-darker); border: 1px solid var(--dnd-border-primary); color: var(--dnd-text-bright); border-radius: 4px; padding: 4px;" });
             const addBtn = wealthRight.createEl("button", { text: "Add" });
             const subBtn = wealthRight.createEl("button", { text: "Spend" });
@@ -588,10 +590,11 @@ export default class DnDFeaturesPlugin extends Plugin {
             addBtn.onclick = () => this.updateGoldFrontmatter(ctx.sourcePath, 'added', Number(amountInput.value) || 0);
             subBtn.onclick = () => this.updateGoldFrontmatter(ctx.sourcePath, 'spent', Number(amountInput.value) || 0);
 
-            // B. Equipped Slots (Placeholder as requested, we will polish this later)
+            // -----------------------------------------------------------
+            // B. WEAPON & ARMOR (Placeholder)
+            // -----------------------------------------------------------
             if (equippedWeapon || equippedArmour) {
-                const equipGrid = wrapper.createDiv({ style: "display: flex; gap: 10px; margin-bottom: 15px;" });
-
+                const equipGrid = wrapper.createDiv({ style: "display: flex; gap: 10px; margin-bottom: 16px;" });
                 const renderSlot = async (label: string, itemName: string, overrideStat: string, statLabel: string) => {
                     if (!itemName) return;
                     const safeName = itemName.toLowerCase().replace(/\s+/g, '-');
@@ -599,10 +602,9 @@ export default class DnDFeaturesPlugin extends Plugin {
                     const fallbackName = safeName.replace(/\b\w/g, c => c.toUpperCase()).replace(/-/g, ' ');
                     if (!data) data = { name: fallbackName, description: "" };
 
-                    const card = equipGrid.createDiv({ style: "flex: 1; display: flex; flex-direction: column; padding: 12px; text-align: center; background: var(--dnd-bg-secondary); border: 1px solid var(--dnd-border-primary); border-radius: 8px;" });
-                    card.createDiv({ text: label.toUpperCase(), style: "font-size: 0.7em; opacity: 0.7; letter-spacing: 1px; margin-bottom: 4px;" });
+                    const card = equipGrid.createDiv({ cls: "dnd-features-window", style: "flex: 1; display: flex; flex-direction: column; padding: 12px; text-align: center; margin: 0;" });
+                    card.createDiv({ text: label.toUpperCase(), style: "font-size: 0.75em; opacity: 0.7; letter-spacing: 1px; margin-bottom: 4px;" });
                     card.createDiv({ text: data.name, style: "font-size: 1.1em; font-weight: bold; color: var(--dnd-text-bright); margin-bottom: 4px;" });
-
                     const statToDisplay = overrideStat || (data[statLabel.toLowerCase()] ? data[statLabel.toLowerCase()] : "");
                     if (statToDisplay) card.createDiv({ text: statToDisplay, style: "font-size: 1em; font-weight: bold; color: var(--dnd-text-sublabel);" });
                 };
@@ -610,57 +612,68 @@ export default class DnDFeaturesPlugin extends Plugin {
                 await renderSlot("Armor", equippedArmour, armourAc, "AC");
             }
 
-            // C. Backpack (Strictly 1-Line Layout)
-            const backpackWindow = wrapper.createDiv({ style: "background: var(--dnd-bg-primary); border: 1px solid var(--dnd-border-primary); border-radius: 8px; padding-bottom: 8px;" });
-            backpackWindow.createEl("h4", { text: "Backpack Contents", cls: "dnd-class-header", style: "margin: 15px 15px 10px 15px;" });
+            // -----------------------------------------------------------
+            // C. BACKPACK CONTENTS (Strictly 1 Line per Item)
+            // -----------------------------------------------------------
+            // Restored the window class so the outer box appears!
+            const backpackWindow = wrapper.createDiv({ cls: "dnd-features-window", style: "padding: 16px;" });
+            backpackWindow.createEl("h4", { text: "Backpack Contents", cls: "dnd-class-header", style: "margin: 0 0 10px 0; border-bottom: 1px solid var(--dnd-border-primary); padding-bottom: 8px;" });
 
             const renderPool = async (pool: Record<string, number>, title?: string) => {
                 if (title && Object.keys(pool).some(k => pool[k] > 0)) {
                     // Small divider sub-header strictly for Extra Items
-                    backpackWindow.createEl("div", { text: title, style: "margin: 15px 15px 5px 15px; font-weight: bold; font-size: 0.85em; text-transform: uppercase; color: var(--dnd-text-sublabel); border-bottom: 1px solid var(--dnd-bg-tertiary); padding-bottom: 4px;" });
+                    backpackWindow.createEl("div", { text: title, style: "margin: 16px 0 8px 0; font-weight: bold; font-size: 0.85em; text-transform: uppercase; color: var(--dnd-text-sublabel); border-bottom: 1px solid var(--dnd-bg-tertiary); padding-bottom: 4px;" });
                 }
 
                 for (const [itemId, qty] of Object.entries(pool)) {
-                    if (qty <= 0) continue;
+                    if (qty <= 0) continue; 
                     let data = await getItemData(this.app, this.settings, itemId);
                     const fallbackName = itemId.replace(/\b\w/g, c => c.toUpperCase()).replace(/-/g, ' ');
                     if (!data) data = { name: fallbackName, description: "" };
 
-                    // STRICT ONE LINE CONTAINER (NO dnd-feature classes)
-                    const itemRow = backpackWindow.createDiv({
-                        style: "display: flex; flex-direction: row; align-items: center; justify-content: space-between; padding: 6px 15px; gap: 12px; border-bottom: 1px solid var(--dnd-bg-tertiary);"
+                    // STRICT ONE LINE CONTAINER 
+                    // No inner divs are used here to prevent styles.css from breaking the layout
+                    const itemRow = backpackWindow.createDiv({ 
+                        style: "display: flex; flex-direction: row; align-items: center; width: 100%; padding: 6px 0; border-bottom: 1px solid var(--dnd-bg-tertiary);" 
+                    });
+                    
+                    // 1. Badge (flex-shrink: 0 ensures it doesn't squish)
+                    itemRow.createEl("span", { text: `x${qty}`, cls: "dnd-level-badge", style: "margin: 0 10px 0 0; flex-shrink: 0;" });
+                    
+                    // 2. Name (flex-shrink: 0 ensures it doesn't squish)
+                    itemRow.createEl("strong", { text: data.name, style: "color: var(--dnd-text-bright); margin-right: 10px; flex-shrink: 0;" });
+
+                    // 3. Description 
+                    // flex-grow: 1 makes it take the middle space. nowrap and ellipsis keep it to 1 line!
+                    const descSpan = itemRow.createEl("span", { 
+                        style: "color: var(--dnd-text-secondary); font-size: 0.9em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-grow: 1; margin-right: 10px;" 
                     });
 
-                    // LEFT SIDE: Badge + Name + Description
-                    // 'flex-grow: 1' allows it to take space, 'white-space: nowrap' PREVENTS new lines.
-                    const leftContent = itemRow.createDiv({ style: "display: flex; flex-direction: row; align-items: center; gap: 10px; flex-grow: 1; overflow: hidden; white-space: nowrap;" });
-
-                    // 'flex-shrink: 0' ensures Badge and Name never get squished
-                    leftContent.createEl("span", { text: `x${qty}`, cls: "dnd-level-badge", style: "flex-shrink: 0;" });
-                    leftContent.createEl("strong", { text: data.name, style: "color: var(--dnd-text-bright); flex-shrink: 0;" });
-
                     if (data.description) {
-                        // 'text-overflow: ellipsis' adds "..." if the description is too long for the line!
-                        const descSpan = leftContent.createEl("span", { style: "color: var(--dnd-text-secondary); font-size: 0.9em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" });
-
                         await this.renderDndMarkdown(data.description, descSpan, ctx.sourcePath, renderChild);
-
-                        // Force Obsidian's generated <p> tags to be inline so they do not break the row!
-                        const pTags = descSpan.getElementsByTagName('p');
-                        for (let i = 0; i < pTags.length; i++) {
-                            pTags[i].style.display = "inline";
-                            pTags[i].style.margin = "0";
-                        }
+                        
+                        // Destroy all Obsidian block-level formatting (<p> tags, etc.) so it stays inline!
+                        descSpan.querySelectorAll('*').forEach((el: HTMLElement) => {
+                            el.style.display = "inline";
+                            el.style.margin = "0";
+                            el.style.padding = "0";
+                            el.style.border = "none";
+                        });
+                    } else {
+                        // If no description, we still need it to grow so it pushes the weight to the right
+                        descSpan.innerHTML = "";
                     }
 
-                    // RIGHT SIDE: Weight + Cost 
-                    // 'flex-shrink: 0' forces this to stay glued to the right edge and never wrap!
-                    const rightContent = itemRow.createDiv({ style: "display: flex; flex-direction: row; gap: 12px; flex-shrink: 0; color: var(--dnd-text-muted); font-size: 0.9em;" });
+                    // 4. Weight & Cost (flex-shrink: 0 keeps it locked to the right side)
+                    const rightSide = itemRow.createEl("span", { 
+                        style: "display: flex; gap: 10px; flex-shrink: 0; color: var(--dnd-text-muted); font-size: 0.9em; white-space: nowrap; text-align: right;" 
+                    });
+                    
                     if (data.weight) {
-                        rightContent.createEl("span", { text: `${data.weight * qty} lbs` });
+                        rightSide.createEl("span", { text: `${data.weight * qty} lbs` });
                     }
                     if (data.cost) {
-                        rightContent.createEl("span", { text: data.cost });
+                        rightSide.createEl("span", { text: data.cost });
                     }
                 }
             };
