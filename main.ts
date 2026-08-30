@@ -569,20 +569,18 @@ export default class DnDFeaturesPlugin extends Plugin {
             const goldSpent = Number(frontmatter['dnd_gold_spent']) || 0;
             const totalGold = goldBase + goldAdded + grantedGold - goldSpent;
 
-            const wealthWindow = wrapper.createDiv({ cls: "dnd-features-window" });
-            
-            // By wrapping the contents in a brand NEW div without any classes, we bypass the CSS block rules entirely!
-            const wealthContainer = wealthWindow.createDiv({ 
-                style: "display: flex; flex-direction: row; align-items: center; justify-content: space-between; width: 100%; padding: 5px;" 
+            // Notice we use raw inline styles instead of dnd-features-window to prevent CSS interference!
+            const wealthWindow = wrapper.createDiv({
+                style: "display: flex; flex-direction: row; align-items: center; justify-content: space-between; padding: 12px 15px; background: var(--dnd-bg-primary); border: 1px solid var(--dnd-border-primary); border-radius: 8px; margin-bottom: 15px;"
             });
 
             // Left Side: Badge + GP (Inline)
-            const wealthLeft = wealthContainer.createDiv({ style: "display: flex; align-items: center; gap: 10px;" });
+            const wealthLeft = wealthWindow.createDiv({ style: "display: flex; align-items: center; gap: 10px;" });
             wealthLeft.createEl("span", { text: "Wealth", cls: "dnd-level-badge" });
             wealthLeft.createEl("strong", { text: `${totalGold} GP`, style: "font-size: 1.1em; color: var(--dnd-text-bright);" });
 
             // Right Side: Input + Add + Spend (Inline)
-            const wealthRight = wealthContainer.createDiv({ style: "display: flex; flex-direction: row; gap: 8px; align-items: center;" });
+            const wealthRight = wealthWindow.createDiv({ style: "display: flex; flex-direction: row; gap: 8px; align-items: center;" });
             const amountInput = wealthRight.createEl("input", { type: "number", value: "1", style: "width: 60px; text-align: center; background: var(--dnd-bg-darker); border: 1px solid var(--dnd-border-primary); color: var(--dnd-text-bright); border-radius: 4px; padding: 4px;" });
             const addBtn = wealthRight.createEl("button", { text: "Add" });
             const subBtn = wealthRight.createEl("button", { text: "Spend" });
@@ -590,7 +588,7 @@ export default class DnDFeaturesPlugin extends Plugin {
             addBtn.onclick = () => this.updateGoldFrontmatter(ctx.sourcePath, 'added', Number(amountInput.value) || 0);
             subBtn.onclick = () => this.updateGoldFrontmatter(ctx.sourcePath, 'spent', Number(amountInput.value) || 0);
 
-            // B. Equipped Slots (Side-by-Side Flex Layout)
+            // B. Equipped Slots (Placeholder as requested, we will polish this later)
             if (equippedWeapon || equippedArmour) {
                 const equipGrid = wrapper.createDiv({ style: "display: flex; gap: 10px; margin-bottom: 15px;" });
 
@@ -598,75 +596,79 @@ export default class DnDFeaturesPlugin extends Plugin {
                     if (!itemName) return;
                     const safeName = itemName.toLowerCase().replace(/\s+/g, '-');
                     let data = await getItemData(this.app, this.settings, safeName);
-
                     const fallbackName = safeName.replace(/\b\w/g, c => c.toUpperCase()).replace(/-/g, ' ');
                     if (!data) data = { name: fallbackName, description: "" };
 
-                    // Creating a styled Block-Level Card
-                    const card = equipGrid.createDiv({ cls: "dnd-features-window", style: "flex: 1; display: flex; flex-direction: column; padding: 12px; text-align: center; margin: 0; background: var(--dnd-bg-secondary);" });
+                    const card = equipGrid.createDiv({ style: "flex: 1; display: flex; flex-direction: column; padding: 12px; text-align: center; background: var(--dnd-bg-secondary); border: 1px solid var(--dnd-border-primary); border-radius: 8px;" });
                     card.createDiv({ text: label.toUpperCase(), style: "font-size: 0.7em; opacity: 0.7; letter-spacing: 1px; margin-bottom: 4px;" });
                     card.createDiv({ text: data.name, style: "font-size: 1.1em; font-weight: bold; color: var(--dnd-text-bright); margin-bottom: 4px;" });
 
                     const statToDisplay = overrideStat || (data[statLabel.toLowerCase()] ? data[statLabel.toLowerCase()] : "");
                     if (statToDisplay) card.createDiv({ text: statToDisplay, style: "font-size: 1em; font-weight: bold; color: var(--dnd-text-sublabel);" });
                 };
-
                 await renderSlot("Weapon", equippedWeapon, weaponDamage, "Damage");
                 await renderSlot("Armor", equippedArmour, armourAc, "AC");
             }
 
-            // C. Backpack (Separated Sections - Single Line Layout)
-            const backpackWindow = wrapper.createDiv({ cls: "dnd-features-window" });
-            backpackWindow.createEl("h4", { text: "Backpack Contents", cls: "dnd-class-header", style: "margin: 10px 15px;" });
+            // C. Backpack (Strictly 1-Line Layout)
+            const backpackWindow = wrapper.createDiv({ style: "background: var(--dnd-bg-primary); border: 1px solid var(--dnd-border-primary); border-radius: 8px; padding-bottom: 8px;" });
+            backpackWindow.createEl("h4", { text: "Backpack Contents", cls: "dnd-class-header", style: "margin: 15px 15px 10px 15px;" });
 
-            // Reusable renderer for our two different item pools
             const renderPool = async (pool: Record<string, number>, title?: string) => {
-                // Only render the sub-header if this specific pool has items remaining!
                 if (title && Object.keys(pool).some(k => pool[k] > 0)) {
-                    backpackWindow.createEl("h5", { text: title, style: "margin: 15px 15px 5px 15px; opacity: 0.8; font-size: 0.9em; text-transform: uppercase; letter-spacing: 1px;" });
+                    // Small divider sub-header strictly for Extra Items
+                    backpackWindow.createEl("div", { text: title, style: "margin: 15px 15px 5px 15px; font-weight: bold; font-size: 0.85em; text-transform: uppercase; color: var(--dnd-text-sublabel); border-bottom: 1px solid var(--dnd-bg-tertiary); padding-bottom: 4px;" });
                 }
 
                 for (const [itemId, qty] of Object.entries(pool)) {
-                    if (qty <= 0) continue; 
-
+                    if (qty <= 0) continue;
                     let data = await getItemData(this.app, this.settings, itemId);
                     const fallbackName = itemId.replace(/\b\w/g, c => c.toUpperCase()).replace(/-/g, ' ');
                     if (!data) data = { name: fallbackName, description: "" };
 
-                    // 1. Remove the .dnd-feature-block class entirely to prevent the top border "divider" line!
-                    const itemRow = backpackWindow.createDiv({ 
-                        style: "display: flex; align-items: baseline; justify-content: space-between; gap: 10px; padding: 8px 15px; border-bottom: 1px solid var(--dnd-border-primary);" 
+                    // STRICT ONE LINE CONTAINER (NO dnd-feature classes)
+                    const itemRow = backpackWindow.createDiv({
+                        style: "display: flex; flex-direction: row; align-items: center; justify-content: space-between; padding: 6px 15px; gap: 12px; border-bottom: 1px solid var(--dnd-bg-tertiary);"
                     });
-                    
-                    // 2. Left side holds Badge, Name, AND Description on the exact same line
-                    const contentLeft = itemRow.createDiv({ style: "display: flex; align-items: baseline; gap: 8px; flex-grow: 1; flex-wrap: wrap;" });
-                    contentLeft.createEl("span", { text: `x${qty}`, cls: "dnd-level-badge" });
-                    contentLeft.createEl("strong", { text: data.name, style: "color: var(--dnd-text-bright); white-space: nowrap;" });
+
+                    // LEFT SIDE: Badge + Name + Description
+                    // 'flex-grow: 1' allows it to take space, 'white-space: nowrap' PREVENTS new lines.
+                    const leftContent = itemRow.createDiv({ style: "display: flex; flex-direction: row; align-items: center; gap: 10px; flex-grow: 1; overflow: hidden; white-space: nowrap;" });
+
+                    // 'flex-shrink: 0' ensures Badge and Name never get squished
+                    leftContent.createEl("span", { text: `x${qty}`, cls: "dnd-level-badge", style: "flex-shrink: 0;" });
+                    leftContent.createEl("strong", { text: data.name, style: "color: var(--dnd-text-bright); flex-shrink: 0;" });
 
                     if (data.description) {
-                        // Notice we aren't using .dnd-feature-desc here either!
-                        const descDiv = contentLeft.createDiv({ style: "color: var(--dnd-text-secondary); font-size: 0.9em;" });
-                        await this.renderDndMarkdown(data.description, descDiv, ctx.sourcePath, renderChild);
-                        
-                        // 3. Obsidian's Markdown engine wraps text in a `<p>` tag which forces a line break. 
-                        // We target the `<p>` tag programmatically and force it to be inline!
-                        const pTags = descDiv.getElementsByTagName('p');
+                        // 'text-overflow: ellipsis' adds "..." if the description is too long for the line!
+                        const descSpan = leftContent.createEl("span", { style: "color: var(--dnd-text-secondary); font-size: 0.9em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" });
+
+                        await this.renderDndMarkdown(data.description, descSpan, ctx.sourcePath, renderChild);
+
+                        // Force Obsidian's generated <p> tags to be inline so they do not break the row!
+                        const pTags = descSpan.getElementsByTagName('p');
                         for (let i = 0; i < pTags.length; i++) {
                             pTags[i].style.display = "inline";
                             pTags[i].style.margin = "0";
                         }
                     }
 
+                    // RIGHT SIDE: Weight + Cost 
+                    // 'flex-shrink: 0' forces this to stay glued to the right edge and never wrap!
+                    const rightContent = itemRow.createDiv({ style: "display: flex; flex-direction: row; gap: 12px; flex-shrink: 0; color: var(--dnd-text-muted); font-size: 0.9em;" });
                     if (data.weight) {
-                        // 4. Weight goes on the far right, strictly bounded so it never touches the description
-                        itemRow.createEl("span", { text: `${data.weight * qty} lbs`, style: "color: var(--dnd-text-muted); font-size: 0.9em; white-space: nowrap; flex-shrink: 0;" });
+                        rightContent.createEl("span", { text: `${data.weight * qty} lbs` });
+                    }
+                    if (data.cost) {
+                        rightContent.createEl("span", { text: data.cost });
                     }
                 }
             };
 
-            // Render Starting Equipment First, then Extra Items!
             await renderPool(startingItemCounts);
             await renderPool(extraItemCounts, "Extra Items");
+
+            el.empty();
             el.appendChild(wrapper);
         };
 
