@@ -583,10 +583,10 @@ export default class DnDFeaturesPlugin extends Plugin {
             const wealthRight = wealthWindow.createEl("span", { style: "display: flex; flex-direction: row; align-items: center;" });
             
             // Reduced width to 45px and added margin: 0 15px to create padding on both sides!
-            const amountInput = wealthRight.createEl("input", { type: "number", value: "1", style: "width: 45px; text-align: center; background: var(--dnd-bg-darker); border: 1px solid var(--dnd-border-primary); color: var(--dnd-text-bright); border-radius: 4px; padding: 4px; margin: 0 15px;" });
+            const amountInput = wealthRight.createEl("input", { type: "number", value: "1", style: "width: 10px; text-align: center; background: var(--dnd-bg-darker); border: 1px solid var(--dnd-border-primary); color: var(--dnd-text-bright); border-radius: 4px; padding: 4px; margin: 0 15px;" });
             
             // Grouped buttons together with their own 10px gap
-            const btnGroup = wealthRight.createEl("span", { style: "display: flex; gap: 10px;" });
+            const btnGroup = wealthRight.createEl("span", { style: "display: flex; width: 15px; gap: 10px;" });
             const addBtn = btnGroup.createEl("button", { text: "Add" });
             const subBtn = btnGroup.createEl("button", { text: "Spend" });
 
