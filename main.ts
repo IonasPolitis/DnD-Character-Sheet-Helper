@@ -509,55 +509,49 @@ export default class DnDFeaturesPlugin extends Plugin {
 
             // 2. Fetch Core Data to read Starting Equipment
             let grantedGold = 0;
-            const itemCounts: Record<string, number> = {};
+            // Split into two separate dictionaries to track where they came from
+            const startingItemCounts: Record<string, number> = {};
+            const extraItemCounts: Record<string, number> = {};
 
-            const addItemsToPool = (eqData: any) => {
+            // Updated helper now accepts the target dictionary to fill
+            const addItemsToPool = (eqData: any, targetPool: Record<string, number>) => {
                 if (!eqData) return;
                 if (eqData.gold) grantedGold += Number(eqData.gold);
 
                 if (eqData.items) {
                     for (const [itemId, qty] of Object.entries(eqData.items)) {
                         let finalItemId = itemId;
-
-                        // --- THE MODULAR INTERCEPTOR LOGIC ---
-                        // Check if the granted item exists in our user's variant map
                         if (variantMap.has(itemId)) {
-                            // If it does, grab the variant and append it! (e.g., "musical-instrument" + "-" + "lute")
                             const variant = variantMap.get(itemId);
                             finalItemId = `${itemId}-${variant}`;
                         }
-
-                        // Add the final resolved item to the user's pool
-                        itemCounts[finalItemId] = (itemCounts[finalItemId] || 0) + Number(qty);
+                        targetPool[finalItemId] = (targetPool[finalItemId] || 0) + Number(qty);
                     }
                 }
             };
 
             if (dndClass && classEq) {
-                // We use [0] to handle multi-class arrays safely
                 const primaryClass = Array.isArray(dndClass) ? dndClass[0] : dndClass;
                 const classData = await getClassData(this.app, this.settings, primaryClass);
-                if (classData?.['starting-equipment']) addItemsToPool(classData['starting-equipment'][classEq]);
+                // Fill the Starting Equipment pool
+                if (classData?.['starting-equipment']) addItemsToPool(classData['starting-equipment'][classEq], startingItemCounts);
             }
 
-            if (background && bgEq) {
-                // (Assuming you'll add getBackgroundData later, but for now we follow the pattern)
-                // If backgrounds have a JSON file, fetch it here and call addItemsToPool
-            }
-
-            // Add manual extra items to the pool
+            // Add manual extra items to the Extra Items pool
             const extraItems = Array.isArray(extraItemsRaw) ? extraItemsRaw : (extraItemsRaw ? [extraItemsRaw] : []);
             for (const item of extraItems) {
                 const safeItem = typeof item === 'string' ? item.toLowerCase().replace(/\s+/g, '-') : String(item);
-                itemCounts[safeItem] = (itemCounts[safeItem] || 0) + 1;
+                extraItemCounts[safeItem] = (extraItemCounts[safeItem] || 0) + 1;
             }
 
-            // 3. Omission Logic for Equipped Slots
+            // 3. Omission Logic for Equipped Slots (Checks both pools!)
             const consumeItem = (itemName: string) => {
                 if (!itemName) return null;
                 const safeName = itemName.toLowerCase().replace(/\s+/g, '-');
-                if (itemCounts[safeName] && itemCounts[safeName] > 0) {
-                    itemCounts[safeName] -= 1; // Remove 1 from the backpack pool
+                if (startingItemCounts[safeName] && startingItemCounts[safeName] > 0) {
+                    startingItemCounts[safeName] -= 1;
+                } else if (extraItemCounts[safeName] && extraItemCounts[safeName] > 0) {
+                    extraItemCounts[safeName] -= 1;
                 }
                 return itemName;
             };
@@ -567,92 +561,100 @@ export default class DnDFeaturesPlugin extends Plugin {
 
             // --- 4. RENDER UI ---
 
-            // Add the Main Section Title
             wrapper.createEl("h3", { text: "Equipment & Items:", cls: "dnd-section-header" });
 
-            // A. Wealth Bar (Interactive)
+            // A. Wealth Bar (Strict Single-Line Layout)
             const goldBase = Number(frontmatter['dnd_gold_base']) || 0;
             const goldAdded = Number(frontmatter['dnd_gold_added']) || 0;
             const goldSpent = Number(frontmatter['dnd_gold_spent']) || 0;
             const totalGold = goldBase + goldAdded + grantedGold - goldSpent;
 
-            // Apply flexbox DIRECTLY to the window to prevent stacking
-            const wealthWindow = wrapper.createDiv({ 
+            const wealthWindow = wrapper.createDiv({
                 cls: "dnd-features-window",
-                style: "display: flex; align-items: center; justify-content: space-between; padding: 12px 15px;" 
+                style: "display: flex; align-items: center; justify-content: space-between; padding: 12px 15px;"
             });
 
-            const wealthText = wealthWindow.createDiv({ style: "display: flex; align-items: center; gap: 10px;" });
-            wealthText.createEl("span", { text: "Wealth", cls: "dnd-level-badge" });
-            wealthText.createEl("span", { text: `${totalGold} GP`, cls: "dnd-feature-name" });
+            // Left Side: Badge + GP (Inline)
+            const wealthLeft = wealthWindow.createDiv({ style: "display: flex; align-items: center; gap: 10px;" });
+            wealthLeft.createEl("span", { text: "Wealth", cls: "dnd-level-badge" });
+            wealthLeft.createEl("strong", { text: `${totalGold} GP`, style: "font-size: 1.1em; color: var(--dnd-text-bright);" });
 
-            const buttonGroup = wealthWindow.createDiv({ style: "display: flex; gap: 8px; align-items: center;" });
-            const amountInput = buttonGroup.createEl("input", { type: "number", value: "1", style: "width: 60px; text-align: center; background: var(--dnd-bg-darker); border: 1px solid var(--dnd-border-primary); color: var(--dnd-text-bright); border-radius: 4px; padding: 4px;" });
-            const addBtn = buttonGroup.createEl("button", { text: "Add" });
-            const subBtn = buttonGroup.createEl("button", { text: "Spend" });
+            // Right Side: Input + Add + Spend (Inline)
+            const wealthRight = wealthWindow.createDiv({ style: "display: flex; gap: 8px; align-items: center;" });
+            const amountInput = wealthRight.createEl("input", { type: "number", value: "1", style: "width: 60px; text-align: center; background: var(--dnd-bg-darker); border: 1px solid var(--dnd-border-primary); color: var(--dnd-text-bright); border-radius: 4px; padding: 4px;" });
+            const addBtn = wealthRight.createEl("button", { text: "Add" });
+            const subBtn = wealthRight.createEl("button", { text: "Spend" });
 
             addBtn.onclick = () => this.updateGoldFrontmatter(ctx.sourcePath, 'added', Number(amountInput.value) || 0);
             subBtn.onclick = () => this.updateGoldFrontmatter(ctx.sourcePath, 'spent', Number(amountInput.value) || 0);
 
-            // Helper function to Title Case missing items!
-            const toTitleCase = (str: string) => str.replace(/\w\S*/g, (txt) => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase());
+            // B. Equipped Slots (Side-by-Side Flex Layout)
+            if (equippedWeapon || equippedArmour) {
+                const equipGrid = wrapper.createDiv({ style: "display: flex; gap: 10px; margin-bottom: 15px;" });
 
-            // B. Equipped Slots (Grid Layout)
-            const equipGrid = wrapper.createDiv({ style: "display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px;" });
+                const renderSlot = async (label: string, itemName: string, overrideStat: string, statLabel: string) => {
+                    if (!itemName) return;
+                    const safeName = itemName.toLowerCase().replace(/\s+/g, '-');
+                    let data = await getItemData(this.app, this.settings, safeName);
 
-            const renderSlot = async (label: string, itemName: string, overrideStat: string, statLabel: string) => {
-                if (!itemName) return;
-                const safeName = itemName.toLowerCase().replace(/\s+/g, '-');
-                let data = await getItemData(this.app, this.settings, safeName);
+                    const fallbackName = safeName.replace(/\b\w/g, c => c.toUpperCase()).replace(/-/g, ' ');
+                    if (!data) data = { name: fallbackName, description: "" };
 
-                // Graceful Fallback using Title Case
-                if (!data) data = { name: toTitleCase(itemName.replace(/-/g, ' ')), description: "" };
+                    // Creating a styled Block-Level Card
+                    const card = equipGrid.createDiv({ cls: "dnd-features-window", style: "flex: 1; display: flex; flex-direction: column; padding: 12px; text-align: center; margin: 0; background: var(--dnd-bg-secondary);" });
+                    card.createDiv({ text: label.toUpperCase(), style: "font-size: 0.7em; opacity: 0.7; letter-spacing: 1px; margin-bottom: 4px;" });
+                    card.createDiv({ text: data.name, style: "font-size: 1.1em; font-weight: bold; color: var(--dnd-text-bright); margin-bottom: 4px;" });
 
-                // Create a standalone card for each slot
-                const card = equipGrid.createDiv({ cls: "dnd-features-window", style: "display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 15px; text-align: center; margin: 0; gap: 6px;" });
-                
-                // Changed from spans to block-level DIVs to prevent text clumping!
-                card.createDiv({ text: label.toUpperCase(), style: "font-size: 0.75em; opacity: 0.7; letter-spacing: 1.5px;" });
-                card.createDiv({ text: data.name, style: "font-size: 1.2em; font-weight: bold; color: var(--dnd-text-bright);" });
+                    const statToDisplay = overrideStat || (data[statLabel.toLowerCase()] ? data[statLabel.toLowerCase()] : "");
+                    if (statToDisplay) card.createDiv({ text: statToDisplay, style: "font-size: 1em; font-weight: bold; color: var(--dnd-text-sublabel);" });
+                };
 
-                const statToDisplay = overrideStat || (data[statLabel.toLowerCase()] ? data[statLabel.toLowerCase()] : "");
-                if (statToDisplay) {
-                    card.createDiv({ text: statToDisplay, style: "font-size: 1.1em; font-weight: bold; color: var(--dnd-text-sublabel);" });
+                await renderSlot("Weapon", equippedWeapon, weaponDamage, "Damage");
+                await renderSlot("Armor", equippedArmour, armourAc, "AC");
+            }
+
+            // C. Backpack (Separated Sections)
+            const backpackWindow = wrapper.createDiv({ cls: "dnd-features-window" });
+            backpackWindow.createEl("h4", { text: "Backpack Contents", cls: "dnd-class-header", style: "margin: 10px 15px;" });
+
+            // Reusable renderer for our two different item pools
+            const renderPool = async (pool: Record<string, number>, title?: string) => {
+                // Only render the sub-header if this specific pool has items remaining!
+                if (title && Object.keys(pool).some(k => pool[k] > 0)) {
+                    backpackWindow.createEl("h5", { text: title, style: "margin: 15px 15px 5px 15px; opacity: 0.8; font-size: 0.9em; text-transform: uppercase; letter-spacing: 1px;" });
+                }
+
+                for (const [itemId, qty] of Object.entries(pool)) {
+                    if (qty <= 0) continue;
+
+                    let data = await getItemData(this.app, this.settings, itemId);
+                    const fallbackName = itemId.replace(/\b\w/g, c => c.toUpperCase()).replace(/-/g, ' ');
+                    if (!data) data = { name: fallbackName, description: "" };
+
+                    const block = backpackWindow.createDiv({ cls: "dnd-feature-block" });
+
+                    // Bulletproof Spacing using Space-Between Flexbox
+                    const headerRow = block.createDiv({ style: "display: flex; justify-content: space-between; align-items: center; width: 100%;" });
+
+                    const leftSide = headerRow.createDiv({ style: "display: flex; align-items: center; gap: 8px;" });
+                    leftSide.createEl("span", { text: `x${qty}`, cls: "dnd-level-badge" });
+                    leftSide.createEl("span", { text: data.name, cls: "dnd-feature-name" });
+
+                    if (data.weight) {
+                        // Force the weight to render on the far right edge!
+                        headerRow.createEl("span", { text: `${data.weight * qty} lbs`, style: "color: var(--dnd-text-muted); font-size: 0.9em; white-space: nowrap;" });
+                    }
+
+                    if (data.description) {
+                        const descDiv = block.createDiv({ cls: "dnd-feature-desc" });
+                        await this.renderDndMarkdown(data.description, descDiv, ctx.sourcePath, renderChild);
+                    }
                 }
             };
 
-            await renderSlot("Weapon", equippedWeapon, weaponDamage, "Damage");
-            await renderSlot("Armor", equippedArmour, armourAc, "AC");
-
-            // C. Backpack (Remaining Items)
-            const backpackWindow = wrapper.createDiv({ cls: "dnd-features-window" });
-            
-            // Place the header beautifully INSIDE the window box
-            backpackWindow.createEl("h4", { text: "Backpack Contents", cls: "dnd-class-header", style: "margin: 10px 15px;" });
-
-            for (const [itemId, qty] of Object.entries(itemCounts)) {
-                if (qty <= 0) continue; 
-
-                let data = await getItemData(this.app, this.settings, itemId);
-                // Apply the Title Case fix here as well!
-                if (!data) data = { name: toTitleCase(itemId.replace(/-/g, ' ')), description: "" };
-
-                const block = backpackWindow.createDiv({ cls: "dnd-feature-block" });
-                const title = block.createDiv({ cls: "dnd-feature-title" });
-                title.createEl("span", { text: `x${qty}`, cls: "dnd-level-badge" });
-                title.createEl("span", { text: data.name, cls: "dnd-feature-name" });
-
-                if (data.weight) {
-                    title.createEl("span", { text: `${data.weight * qty} lbs`, cls: "dnd-feature-name", style: "margin-left: auto;" });
-                }
-
-                if (data.description) {
-                    const descDiv = block.createDiv({ cls: "dnd-feature-desc" });
-                    await this.renderDndMarkdown(data.description, descDiv, ctx.sourcePath, renderChild);
-                }
-            }
-
-            el.empty();
+            // Render Starting Equipment First, then Extra Items!
+            await renderPool(startingItemCounts);
+            await renderPool(extraItemCounts, "Extra Items");
             el.appendChild(wrapper);
         };
 
