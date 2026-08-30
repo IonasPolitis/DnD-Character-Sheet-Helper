@@ -1,0 +1,90 @@
+{
+      "College of Dance": {
+            "3": [
+                  {
+                        "name": "Dazzling Footwork",
+                        "description": " • **Dance Virtuoso**: You have Advantage on any Charisma (Performance) check you make that involves you dancing.\n  • **Agile Strikes**: When you expend a use of your Bardic Inspiration as part of an action, a Bonus Action, or a Reaction, you can make one Unarmed Strike as part of that action, Bonus Action, or Reaction\n  • **Bardic Damage**: You can use Dexterity instead of Strength for the attack rolls of your Unarmed Strikes. When you deal damage with an Unarmed Strike, you can deal Bludgeoning damage equal to a roll of your Bardic Inspiration die plus your Dexterity modifier, instead of the strike's normal damage. This roll doesn't expend the die."
+                  }
+            ],
+            "6": [
+                  {
+                        "name": "Inspiring Movement",
+                        "description": "When an enemy you can see ends its turn within 5 feet of you, you can take a Reaction and expend one use of your Bardic Inspiration to move up to half your Speed. Then one ally of your choice within 30 feet of you can also move up to half their Speed using their Reaction.\n  None of this feature's movement provokes Opportunity Attacks."
+                  },
+                  {
+                        "name": "Tandem Footwork",
+                        "description": "When you roll Initiative, you can expend one use of your Bardic Inspiration if you don't have the Incapacitated condition. When you do so, roll your Bardic Inspiration die; you and each ally within 30 feet of you who can see or hear you gains a bonus to Initiative equal to the number rolled."
+                  }
+            ],
+            "14": [
+                  {
+                        "name": "Leading Evasion",
+                        "description": "When you are subjected to an effect that allows you damage, you instead take no damage if you succeed on the saving throw and only half damage if you fail. If any creatures within 5 feet of you are making the same Dexterity saving throw, you can share this benefit with them for that save.\n  You can't use this feature if you have the Incapacitated condition."
+                  }
+            ]
+      },
+      "College of Glamour": {
+            "3": [
+                  {
+                        "name": "Beguiling Magic",
+                        "description": "immediately after you cast an Enchantment or Illusion spell using a spell slot, you can cause a creature you can see within 60 feet of yourself to make a Wisdom saving throw against your spell save DC. On a failed save, the target has the Charmed or Frightened condition (your choice) for 1 minute. The target repeats the save at the end of each of its turns, ending the effect on itself on a success.\n  Once you use this benefit, you can't use it again until you finish a Long Rest. You can also restore your use of it by expending one use of your Bardic Inspiration (no action required)."
+                  },
+                  {
+                        "name": "Mantle of Inspiearion",
+                        "description": "You can weave fey magic into a song or dance to fill others with vigor. As a Bonus Action, you can expend a use of Bardic Inspiration, rolling a Bardic Inspiration die. When you do so, choose a number of other creatures within 60 feet of yourself, up to a number equal to your Charisma modifier (minimum of one creature). Each of those creatures gains a number of Temporary Hit Points equal to two times the number rolled on the Bardic Inspiration die, and then each can use its Reaction to move up to its Speed without provoking Opportunity Attacks."
+                  }
+            ],
+            "6": [
+                  {
+                        "name": "Mantle of Majestry",
+                        "description": "You always have the Command spell prepared.\n  As a Bonus Action, you cast Command without expending a spell slot, and you take on an unearthly appearance for 1 minute or until your Concentration ends. During this time, you can cast Command as a Bonus Action without expending a spell slot .Any creature Charmed by you automaticaily fails its saving throw against the Command you cast with this feature.\n  Once you use this feature, you can't use it again until you finish a Long Rest. You can a lso res tore your use of it by expending a level 3+ s pell slot (no action required)."
+                  }
+            ],
+            "14": [
+                  {
+                        "name": "Unbreakable Majesty",
+                        "description": "As a Bonus Action, you can assume a magically majestic presence for 1 minute or until you have the Incapacitated condition. For the duration, whenever any creature hits you with an attack roll for the first time on a turn, the attacker must succeed on a Charisma saving throw against your spell save DC, or the attack misses instead, as the creature recoils from your majesty. Once you assume this majestic presence, you can't do so again until you finish a Short or Long Rest."
+                  }
+            ]
+      },
+      "College of Lore": {
+            "3": [
+                  {
+                        "name": "Cutting Words",
+                        "description": "You learn to use your wit to supernaturally distract, confuse, and otherwise sap the confidence and competence of others. When a creature that you can see within 60 feet of yourself makes a damage roll or succeeds on an ability check or attack roll, you can take a Reaction to expend one use of your Bardic Inspiration; roll your Bardic Inspiration die, and subtract the number rolled from the creature's roll, reducing the damage or potentially turning the success into a failure."
+                  }
+            ],
+            "6": [
+                  {
+                        "name": "Magical Discoveries",
+                        "description": "You learn two spells of your choice. These spells can come from the Cleric, Druid, or Wizard spell list or any combination thereof (see a class's section for its spell list). A spell you choose must be a cantrip or a spell for which you have spell slots, as shown in the Bard Features table.\n  You always have the chosen spells prepared, and whenever you ga in a Bard level, you can replace one of the spells with another spell that meets these requirements."
+                  }
+            ],
+            "14": [
+                  {
+                        "name": "Peerless Skill",
+                        "description": "When you make an ability check or attack roll and fail. you can expend one use of Bardic Inspiration; roll the Bardic Inspiration die, and add the number rolled to the d20, potentially turning a failure into a success. On a failure, the Bardic Inspiration isn't expended."
+                  }
+            ]
+      },
+      "College of Valor": {
+            "3": [
+                  {
+                        "name": "",
+                        "description": "A creature that has a Bardic Inspiration die from you can use it for one of the following effects.\n  • **Defense**: When the creature is hit by an attack roll, that creature can use its Reaction to roll the Bardic Inspiration die and add the number rolled to its AC against that attack, potentially causing the attack to miss.\n  • **Offense**: Immediately after the creature hits a target with an attack roll, the creature can roll the Bardic Inspiration die and add the number rolled to the attack's damage against the target."
+                  }
+            ],
+            "6": [
+                  {
+                        "name": "Extra Attack",
+                        "description": "You can attack twice instead of once whenever you take the Attack action on your turn.\n  In addition, you can cast one of your can trips that has a casting time of an action in place of one of those attacks."
+                  }
+            ],
+            "14": [
+                  {
+                        "name": "Battle Magic",
+                        "description": "After you cast a spell that has a casting time of an action, you can make one attack with a weapon as a Bonus Action."
+                  }
+            ]
+      }
+}

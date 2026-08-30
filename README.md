@@ -98,6 +98,19 @@ Some classes in DnD give you an item that has variants (like the Gaming Set), an
 For the items in the *variable-class-items* variable to appear in the inventory the "homebrew_item" portion of the the name should be inside the class itself as an item.
 The plugin automaticaly searches for items named: "homebrew_item-variant", striping off quotes and spaces from the code block variable so that the text can more easily match the filename.
 
+- $class-subclass.json:
+```
+{
+      "<Subclass_Name>": {
+            "<Level>": [
+                  {
+                        "name": "<Feature_Name>",
+                        "description": "<Feature_Description>"
+                  }
+            ]
+      }
+}
+```
 
 - feat.json:
 ```

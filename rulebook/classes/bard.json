@@ -17,7 +17,7 @@
         "1": [
             {
                 "name": "Bardic Inspiration",
-                "description": "As a Bonus Action, you can inspire another creature within 60 feet of yourself who can see or hear you. That creature gains one of your Bardic Inspiration dice.\n   • **Number of Uses**: You can confer a Bardic Inspiration die a number of times equal to your Charisma modifier (minimum of once), and you regain all expended uses when you finish a Long Rest."
+                "description": "As a Bonus Action, you can inspire another creature within 60 feet of yourself who can see or hear you. That creature gains one of your Bardic Inspiration dice.\n  • **Number of Uses**: You can confer a Bardic Inspiration die a number of times equal to your Charisma modifier (minimum of once), and you regain all expended uses when you finish a Long Rest."
             }
         ],
         "2": [
@@ -44,7 +44,7 @@
                 "description": "When you roll Initiative, you regain expended uses of Bardic Inspiration until you have two if you have fewer than that"
             }
         ],
-        "x": [
+        "20": [
             {
                 "name": "Words of Creation",
                 "description": "You have mastered two of the Words of Creation: the words of life and death. You therefore always have the Power Word Heal and Power Word Kill spells prepared. When you cast either spell, you can target a second creature with it if that creature is within 10 feet of the first target."
