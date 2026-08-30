@@ -95,13 +95,13 @@ export default class DnDFeaturesPlugin extends Plugin {
     // --- Helper: Safely Render Markdown and Fix Spacing ---
     async renderDndMarkdown(text: string, container: HTMLElement, sourcePath: string, component: MarkdownRenderChild) {
         if (!text) return;
-        
+
         // 1. Trim trailing newlines that cause empty invisible <p> tags
         const cleanText = text.trim();
-        
+
         // 2. Render the markdown securely
         await MarkdownRenderer.render(this.app, cleanText, container, sourcePath, component);
-        
+
         // 3. Strip the bottom margin from the very last child to eliminate dead space!
         const lastChild = container.lastElementChild as HTMLElement;
         if (lastChild) {
@@ -357,7 +357,7 @@ export default class DnDFeaturesPlugin extends Plugin {
                 // Render Race Section
                 else if (sectionName === "Race") {
                     const raceData = await getRaceData(this.app, this.settings, race);
-                    
+
                     if (raceData && raceData.traits) {
                         for (const trait of raceData.traits) {
                             // --- THE GATEKEEPER LOGIC ---
@@ -365,7 +365,7 @@ export default class DnDFeaturesPlugin extends Plugin {
                             if (trait.lineage) {
                                 // ...skip rendering it if the user didn't provide a lineage OR if it doesn't match!
                                 if (!raceLineage || trait.lineage.toLowerCase() !== String(raceLineage).toLowerCase()) {
-                                    continue; 
+                                    continue;
                                 }
                             }
 
@@ -490,7 +490,7 @@ export default class DnDFeaturesPlugin extends Plugin {
 
             // Build a unified dictionary for all umbrella items
             const variantMap = new Map<string, string>();
-            
+
             // 1. Auto-map the official Rulebook shortcuts
             if (musicalInstrumentChoice) variantMap.set('musical-instrument', String(musicalInstrumentChoice).toLowerCase().replace(/\s+/g, '-'));
             if (gamingSetChoice) variantMap.set('gaming-set', String(gamingSetChoice).toLowerCase().replace(/\s+/g, '-'));
@@ -514,11 +514,11 @@ export default class DnDFeaturesPlugin extends Plugin {
             const addItemsToPool = (eqData: any) => {
                 if (!eqData) return;
                 if (eqData.gold) grantedGold += Number(eqData.gold);
-                
+
                 if (eqData.items) {
                     for (const [itemId, qty] of Object.entries(eqData.items)) {
                         let finalItemId = itemId;
-                        
+
                         // --- THE MODULAR INTERCEPTOR LOGIC ---
                         // Check if the granted item exists in our user's variant map
                         if (variantMap.has(itemId)) {
@@ -567,44 +567,57 @@ export default class DnDFeaturesPlugin extends Plugin {
 
             // --- 4. RENDER UI ---
 
+            // Add the Main Section Title
+            wrapper.createEl("h3", { text: "Equipment & Items", cls: "dnd-section-header" });
+
             // A. Wealth Bar (Interactive)
             const goldBase = Number(frontmatter['dnd_gold_base']) || 0;
             const goldAdded = Number(frontmatter['dnd_gold_added']) || 0;
             const goldSpent = Number(frontmatter['dnd_gold_spent']) || 0;
-            // The plugin automatically adds the granted gold from the Class/Background into the pool!
             const totalGold = goldBase + goldAdded + grantedGold - goldSpent;
 
             const wealthWindow = wrapper.createDiv({ cls: "dnd-features-window" });
-            const wealthHeader = wealthWindow.createDiv({ cls: "dnd-feature-title" });
-            wealthHeader.createEl("span", { text: "Wealth", cls: "dnd-level-badge" });
-            wealthHeader.createEl("span", { text: `${totalGold} GP`, cls: "dnd-feature-name" });
 
-            const buttonGroup = wealthWindow.createDiv({ cls: "dnd-feature-desc" });
-            const addBtn = buttonGroup.createEl("button", { text: "+ 10 GP" });
-            const subBtn = buttonGroup.createEl("button", { text: "- 10 GP" });
+            // Use Flexbox to put everything on one skinny line!
+            const wealthContainer = wealthWindow.createDiv({ style: "display: flex; align-items: center; justify-content: space-between; padding: 10px 15px;" });
 
-            addBtn.onclick = () => this.updateGoldFrontmatter(ctx.sourcePath, 'added', 10);
-            subBtn.onclick = () => this.updateGoldFrontmatter(ctx.sourcePath, 'spent', 10);
+            const wealthText = wealthContainer.createDiv({ style: "display: flex; align-items: center; gap: 10px;" });
+            wealthText.createEl("span", { text: "Wealth", cls: "dnd-level-badge" });
+            wealthText.createEl("span", { text: `${totalGold} GP`, cls: "dnd-feature-name" });
 
-            // B. Equipped Slots
-            const equipWindow = wrapper.createDiv({ cls: "dnd-features-window" });
+            const buttonGroup = wealthContainer.createDiv({ style: "display: flex; gap: 8px; align-items: center;" });
+            const amountInput = buttonGroup.createEl("input", { type: "number", value: "1", style: "width: 60px; text-align: center; background: var(--dnd-bg-darker); border: 1px solid var(--dnd-border-primary); color: var(--dnd-text-bright); border-radius: 4px; padding: 4px;" });
+            const addBtn = buttonGroup.createEl("button", { text: "Add" });
+            const subBtn = buttonGroup.createEl("button", { text: "Spend" });
 
-            // Helper to render slots with Graceful Fallback
+            // Read the input value dynamically when clicked!
+            addBtn.onclick = () => this.updateGoldFrontmatter(ctx.sourcePath, 'added', Number(amountInput.value) || 0);
+            subBtn.onclick = () => this.updateGoldFrontmatter(ctx.sourcePath, 'spent', Number(amountInput.value) || 0);
+
+            // Helper function to Title Case missing items!
+            const toTitleCase = (str: string) => str.replace(/\w\S*/g, (txt) => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase());
+
+            // B. Equipped Slots (Grid Layout)
+            const equipGrid = wrapper.createDiv({ style: "display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px;" });
+
             const renderSlot = async (label: string, itemName: string, overrideStat: string, statLabel: string) => {
                 if (!itemName) return;
                 const safeName = itemName.toLowerCase().replace(/\s+/g, '-');
                 let data = await getItemData(this.app, this.settings, safeName);
 
-                // Graceful Fallback: If not in JSON, mock the data!
-                if (!data) data = { name: itemName, description: "Custom item." };
+                // Graceful Fallback using Title Case
+                if (!data) data = { name: toTitleCase(itemName.replace(/-/g, ' ')), description: "" };
 
-                const block = equipWindow.createDiv({ cls: "dnd-feature-block" });
-                const title = block.createDiv({ cls: "dnd-feature-title" });
-                title.createEl("span", { text: label, cls: "dnd-level-badge" });
-                title.createEl("span", { text: data.name, cls: "dnd-feature-name" });
+                // Create a standalone card for each slot
+                const card = equipGrid.createDiv({ cls: "dnd-features-window", style: "display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 15px; text-align: center; margin: 0;" });
+                
+                card.createEl("span", { text: label.toUpperCase(), style: "font-size: 0.75em; opacity: 0.7; letter-spacing: 1.5px; margin-bottom: 8px;" });
+                card.createEl("strong", { text: data.name, style: "font-size: 1.2em; color: var(--dnd-text-bright); margin-bottom: 8px;" });
 
-                const statToDisplay = overrideStat || data[statLabel.toLowerCase()] || "";
-                if (statToDisplay) title.createEl("span", { text: `${statLabel}: ${statToDisplay}`, cls: "dnd-feature-name", style: "margin-left: auto;" });
+                const statToDisplay = overrideStat || (data[statLabel.toLowerCase()] ? data[statLabel.toLowerCase()] : "");
+                if (statToDisplay) {
+                    card.createEl("span", { text: statToDisplay, style: "font-size: 1.1em; font-weight: bold; color: var(--dnd-text-sublabel);" });
+                }
             };
 
             await renderSlot("Weapon", equippedWeapon, weaponDamage, "Damage");
@@ -612,13 +625,16 @@ export default class DnDFeaturesPlugin extends Plugin {
 
             // C. Backpack (Remaining Items)
             const backpackWindow = wrapper.createDiv({ cls: "dnd-features-window" });
-            wrapper.createEl("h4", { text: "Backpack", cls: "dnd-class-header" });
+            
+            // Place the header beautifully INSIDE the window box
+            backpackWindow.createEl("h4", { text: "Backpack Contents", cls: "dnd-class-header", style: "margin: 10px 15px;" });
 
             for (const [itemId, qty] of Object.entries(itemCounts)) {
-                if (qty <= 0) continue; // Skip items entirely consumed by slots
+                if (qty <= 0) continue; 
 
                 let data = await getItemData(this.app, this.settings, itemId);
-                if (!data) data = { name: itemId.replace(/-/g, ' '), description: "" }; // Graceful fallback
+                // Apply the Title Case fix here as well!
+                if (!data) data = { name: toTitleCase(itemId.replace(/-/g, ' ')), description: "" };
 
                 const block = backpackWindow.createDiv({ cls: "dnd-feature-block" });
                 const title = block.createDiv({ cls: "dnd-feature-title" });

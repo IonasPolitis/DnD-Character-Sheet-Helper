@@ -28,7 +28,7 @@ The rest of the variables should be self-explanatory.
 
 ## DnD Character Inventory:
 
-a
+An easy way to manage your character's inventory including. There is a section for managing your Gold, a section for Weapon / Armor, a section for starter items and a section for extra items added in later on.
 
 A Sample of the Code Block looks like this:
 ````
