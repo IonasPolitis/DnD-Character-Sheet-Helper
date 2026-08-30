@@ -571,21 +571,24 @@ export default class DnDFeaturesPlugin extends Plugin {
             const goldSpent = Number(frontmatter['dnd_gold_spent']) || 0;
             const totalGold = goldBase + goldAdded + grantedGold - goldSpent;
 
-            // Restored the window class, added flexbox directly to it
             const wealthWindow = wrapper.createDiv({ 
                 cls: "dnd-features-window", 
                 style: "display: flex; flex-direction: row; align-items: center; justify-content: space-between; padding: 12px 16px; margin-bottom: 16px;" 
             });
 
-            // We use SPANs here to bypass the styles.css nesting rules!
             const wealthLeft = wealthWindow.createEl("span", { style: "display: flex; align-items: center; gap: 10px;" });
-            wealthLeft.createEl("span", { text: "Wealth", cls: "dnd-level-badge", style: "margin: 0;" }); // Margin 0 overrides the default badge right-margin
+            wealthLeft.createEl("span", { text: "Wealth", cls: "dnd-level-badge", style: "margin: 0;" });
             wealthLeft.createEl("strong", { text: `${totalGold} GP`, style: "font-size: 1.1em; color: var(--dnd-text-bright);" });
 
-            const wealthRight = wealthWindow.createEl("span", { style: "display: flex; flex-direction: row; gap: 8px; align-items: center;" });
-            const amountInput = wealthRight.createEl("input", { type: "number", value: "1", style: "width: 60px; text-align: center; background: var(--dnd-bg-darker); border: 1px solid var(--dnd-border-primary); color: var(--dnd-text-bright); border-radius: 4px; padding: 4px;" });
-            const addBtn = wealthRight.createEl("button", { text: "Add" });
-            const subBtn = wealthRight.createEl("button", { text: "Spend" });
+            const wealthRight = wealthWindow.createEl("span", { style: "display: flex; flex-direction: row; align-items: center;" });
+            
+            // Reduced width to 45px and added margin: 0 15px to create padding on both sides!
+            const amountInput = wealthRight.createEl("input", { type: "number", value: "1", style: "width: 45px; text-align: center; background: var(--dnd-bg-darker); border: 1px solid var(--dnd-border-primary); color: var(--dnd-text-bright); border-radius: 4px; padding: 4px; margin: 0 15px;" });
+            
+            // Grouped buttons together with their own 10px gap
+            const btnGroup = wealthRight.createEl("span", { style: "display: flex; gap: 10px;" });
+            const addBtn = btnGroup.createEl("button", { text: "Add" });
+            const subBtn = btnGroup.createEl("button", { text: "Spend" });
 
             addBtn.onclick = () => this.updateGoldFrontmatter(ctx.sourcePath, 'added', Number(amountInput.value) || 0);
             subBtn.onclick = () => this.updateGoldFrontmatter(ctx.sourcePath, 'spent', Number(amountInput.value) || 0);
@@ -637,36 +640,17 @@ export default class DnDFeaturesPlugin extends Plugin {
                         style: "display: flex; flex-direction: row; align-items: center; width: 100%; padding: 6px 0; border-bottom: 1px solid var(--dnd-bg-tertiary);" 
                     });
                     
-                    // 1. Badge (flex-shrink: 0 ensures it doesn't squish)
+                    // 1. Badge 
                     itemRow.createEl("span", { text: `x${qty}`, cls: "dnd-level-badge", style: "margin: 0 10px 0 0; flex-shrink: 0;" });
                     
-                    // 2. Name (flex-shrink: 0 ensures it doesn't squish)
-                    itemRow.createEl("strong", { text: data.name, style: "color: var(--dnd-text-bright); margin-right: 10px; flex-shrink: 0;" });
+                    // 2. Name (Added ":" and flex-grow: 1 to push everything else to the far right)
+                    itemRow.createEl("strong", { text: data.name + ": ", style: "color: var(--dnd-text-bright); margin-right: auto; flex-grow: 1;" });
 
-                    // 3. Description 
-                    // flex-grow: 1 makes it take the middle space. nowrap and ellipsis keep it to 1 line!
-                    const descSpan = itemRow.createEl("span", { 
-                        style: "color: var(--dnd-text-secondary); font-size: 0.9em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-grow: 1; margin-right: 10px;" 
-                    });
+                    // (Description has been completely removed to prepare for the hover implementation!)
 
-                    if (data.description) {
-                        await this.renderDndMarkdown(data.description, descSpan, ctx.sourcePath, renderChild);
-                        
-                        // Destroy all Obsidian block-level formatting (<p> tags, etc.) so it stays inline!
-                        descSpan.querySelectorAll('*').forEach((el: HTMLElement) => {
-                            el.style.display = "inline";
-                            el.style.margin = "0";
-                            el.style.padding = "0";
-                            el.style.border = "none";
-                        });
-                    } else {
-                        // If no description, we still need it to grow so it pushes the weight to the right
-                        descSpan.innerHTML = "";
-                    }
-
-                    // 4. Weight & Cost (flex-shrink: 0 keeps it locked to the right side)
+                    // 3. Weight & Cost (Added generous 20px gap for padding between them)
                     const rightSide = itemRow.createEl("span", { 
-                        style: "display: flex; gap: 10px; flex-shrink: 0; color: var(--dnd-text-muted); font-size: 0.9em; white-space: nowrap; text-align: right;" 
+                        style: "display: flex; gap: 20px; flex-shrink: 0; color: var(--dnd-text-muted); font-size: 0.9em; white-space: nowrap; text-align: right; padding-left: 20px;" 
                     });
                     
                     if (data.weight) {
