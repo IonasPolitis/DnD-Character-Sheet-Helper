@@ -27,17 +27,19 @@ class-equipment: $text$
 <optional>variable-class-items: $list$
 background: $text$
 background-equipment: $text$
-weapon: $text$
-weapon_damage: $text$
-armour: $text$
-armour_ac: $text$
+<optional>weapon: $text$
+<optional>weapon_damage: $text$
+<optional>armour: $text$
+<optional>armour_ac: $text$
 extra-items: $list$
 ```
 ````
 
 Any of the variables (except for *level*) can be omitted and only the variables with a value will be used and displayed.
 
-The variable *class-levels* is used when you have multiple classes on your character and the plugin needs to know how many levels does each class have. *The order of the levels should be the same as the class order*. The rest of the variables should be self-explanatory.
+The variable *class-levels* is used when you have multiple classes on your character and the plugin needs to know how many levels does each class have. *The order of the levels should be the same as the class order*.
+The variable *variable-class-items* as well as *musical-instrument* and *gaming-set* is explained below.
+The rest of the variables should be self-explanatory.
 
 This plugin also supports custom rules by adding the path of your custom Rulebook that is inside your Obsidian Vault. This is the folder structure used and what the plugin expects:
 
