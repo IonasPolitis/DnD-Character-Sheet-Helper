@@ -482,9 +482,30 @@ export default class DnDFeaturesPlugin extends Plugin {
             const armourSlot = resolveValue(blockData.armour);
             const armourAc = resolveValue(blockData.armour_ac);
             const extraItemsRaw = resolveValue(blockData['extra-items']);
-            // Umbrella Item Choices
+
+            // --- Modular Umbrella Item Logic ---
             const musicalInstrumentChoice = resolveValue(blockData['musical-instrument']);
             const gamingSetChoice = resolveValue(blockData['gaming-set']);
+            const variableClassItemsRaw = resolveValue(blockData['variable-class-items']);
+
+            // Build a unified dictionary for all umbrella items
+            const variantMap = new Map<string, string>();
+            
+            // 1. Auto-map the official Rulebook shortcuts
+            if (musicalInstrumentChoice) variantMap.set('musical-instrument', String(musicalInstrumentChoice).toLowerCase().replace(/\s+/g, '-'));
+            if (gamingSetChoice) variantMap.set('gaming-set', String(gamingSetChoice).toLowerCase().replace(/\s+/g, '-'));
+
+            // 2. Auto-map the custom homebrew list
+            if (Array.isArray(variableClassItemsRaw)) {
+                variableClassItemsRaw.forEach(pair => {
+                    // Ensure the user provided a valid [umbrella, variant] pair
+                    if (Array.isArray(pair) && pair.length === 2) {
+                        const umbrella = String(pair[0]).toLowerCase().replace(/\s+/g, '-');
+                        const variant = String(pair[1]).toLowerCase().replace(/\s+/g, '-');
+                        variantMap.set(umbrella, variant);
+                    }
+                });
+            }
 
             // 2. Fetch Core Data to read Starting Equipment
             let grantedGold = 0;
@@ -498,14 +519,12 @@ export default class DnDFeaturesPlugin extends Plugin {
                     for (const [itemId, qty] of Object.entries(eqData.items)) {
                         let finalItemId = itemId;
                         
-                        // --- THE INTERCEPTOR LOGIC ---
-                        // If the class grants a generic umbrella item, check if the user specified a variant!
-                        if (itemId === 'musical-instrument' && musicalInstrumentChoice) {
-                            const safeChoice = String(musicalInstrumentChoice).toLowerCase().replace(/\s+/g, '-');
-                            finalItemId = `musical-instrument-${safeChoice}`; // e.g., "musical-instrument-lute"
-                        } else if (itemId === 'gaming-set' && gamingSetChoice) {
-                            const safeChoice = String(gamingSetChoice).toLowerCase().replace(/\s+/g, '-');
-                            finalItemId = `gaming-set-${safeChoice}`; // e.g., "gaming-set-dice"
+                        // --- THE MODULAR INTERCEPTOR LOGIC ---
+                        // Check if the granted item exists in our user's variant map
+                        if (variantMap.has(itemId)) {
+                            // If it does, grab the variant and append it! (e.g., "musical-instrument" + "-" + "lute")
+                            const variant = variantMap.get(itemId);
+                            finalItemId = `${itemId}-${variant}`;
                         }
 
                         // Add the final resolved item to the user's pool
