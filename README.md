@@ -130,7 +130,7 @@ The structure of each JSON file is as follows:
       }
 }
 ```
-Sometimes D&D classes or backgrounds offer a choice of an item category (like any Musical Instrument or Artisan's Tool) rather than a specific item. To handle this you can use items' Type instead of a single item's filename
+Sometimes DnD classes or backgrounds offer a choice of an item category (like any Musical Instrument or Artisan's Tool) rather than a specific item. To handle this you can use items' Type instead of a single item's filename
 
 By adding a pipe character (|) to an item key in your class.json or backgrounds.json (e.g: "musical-instrument|": 1 or "artisans-tool|musical-instrument": 1), you tell the plugin to wait for the player's choice. The plugin will automatically scan the player's *class-chosen-items* or *background-chosen-items* variables in their note, find an item whose "type" matches the requirement, and seamlessly add it to their inventory.
 
