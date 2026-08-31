@@ -577,7 +577,7 @@ export default class DnDFeaturesPlugin extends Plugin {
             });
 
             // 1. The Left Group (Badge + Gold Text remain close together)
-            const wealth = wealthWindow.createEl("span", { attr: { style: "display: flex; align-items: center; gap: 10px;" } });
+            const wealth = wealthWindow.createEl("span", { attr: { style: "display: flex; align-items: center;" } });
             wealth.createEl("span", { text: "Wealth", cls: "dnd-level-badge", attr: { style: "margin-left: 5px; margin-right: 5px;" } });
             wealth.createEl("strong", { text: `${totalGold} GP`, attr: { style: "font-size: 1.1em; color: var(--dnd-text-bright);" } });
             // 2. The Controls
