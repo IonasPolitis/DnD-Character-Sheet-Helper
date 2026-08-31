@@ -185,6 +185,6 @@ The *lineage* variable in the race.json is a Flag, making it so that this trait 
 
 ## Acknowledgements:
 
-This plugin was made because of my want to have a comfortable Character Sheet in Obsidian without hassle. I first stumbled upon [hay-kot's Obsidian DnD UI Toolkit](https://github.com/hay-kot/obsidian-dnd-ui-toolkit) and was inspiration for the color pallete and the reason I started this project, because if it wasn't for his plugin and making it possible to have some of he crutial DnD Character Sheet elements inside an Obsidian Note I would have never gone through the trouble of making my own.
+This plugin was made because of my want to have a comfortable Character Sheet in Obsidian without hassle. I first stumbled upon [hay-kot's Obsidian DnD UI Toolkit](https://github.com/hay-kot/obsidian-dnd-ui-toolkit) and was the inspiration for the color pallete and the reason I started this project, because if it wasn't for his plugin and making it possible to have some of he crutial DnD Character Sheet elements inside an Obsidian Note I would have never gone through the trouble of making my own.
 
 I currently use both plugins for my character sheets and have made a Template uploaded in this repo: https://github.com/IonasPolitis/Ionas-Obsidian-DnD-Character-Sheet-Template
