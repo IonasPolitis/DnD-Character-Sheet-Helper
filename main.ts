@@ -573,7 +573,7 @@ export default class DnDFeaturesPlugin extends Plugin {
 
             const wealthWindow = wrapper.createDiv({
                 cls: "dnd-features-window",
-                attr: { style: "display: flex; flex-direction: row; align-items: center; gap: 5px; padding: 12px 16px;" }
+                attr: { style: "display: flex; flex-direction: row; align-items: center; gap: 10px; padding: 12px 16px;" }
             });
 
             // 1. The Left Group (Badge + Gold Text remain close together)
@@ -581,7 +581,7 @@ export default class DnDFeaturesPlugin extends Plugin {
             wealth.createEl("span", { text: "Wealth", cls: "dnd-level-badge", attr: { style: "margin-left: 5px; margin-right: 5px;" } });
             wealth.createEl("strong", { text: `${totalGold} GP`, attr: { style: "font-size: 1.1em; color: var(--dnd-text-bright);" } });
             // 2. The Controls
-            const amountInput = wealthWindow.createEl("input", { type: "number", value: "1", attr: { style: "text-align: center; background: var(--dnd-bg-darker); border: 1px solid var(--dnd-border-primary); color: var(--dnd-text-bright); border-radius: 4px; padding: 4px; width: 40px;" } });
+            const amountInput = wealthWindow.createEl("input", { type: "number", value: "1", attr: { style: "margin-left: 10px; text-align: center; background: var(--dnd-bg-darker); border: 1px solid var(--dnd-border-primary); color: var(--dnd-text-bright); border-radius: 4px; padding: 4px; width: 40px;" } });
             const addBtn = wealthWindow.createEl("button", { text: "Add" });
             const subBtn = wealthWindow.createEl("button", { text: "Spend" });
 
