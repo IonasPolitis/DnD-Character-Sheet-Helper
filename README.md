@@ -51,10 +51,10 @@ The variable *class-chosen-items* is used to select an Artisan's Tool, a Musical
  - Class & Subclass combination toggle
 
  - Custom Rulebook folder path inside your Obsidian Vault for Homebrewed DnD.
- There's also a toggle to have the Custom Rulebook be prioritied
+      There's also a toggle to have the Custom Rulebook be prioritied
 
  - Theme Engine
- Not anything special, just some basic custom color pallete pane for you to change any color to your liking.
+      Not anything special, just some basic custom color pallete pane for you to change any color to your liking.
 
 ## Homebrew:
 
