@@ -168,7 +168,7 @@ The *lineage* variable in the race.json is a Flag, making it so that this trait 
       "description": "<Item's_Description>",
       "weight": <Item's_Weight>,
       <optional>"damage": "<Damage_Dice+Damage_Type>",
-	<optional>"ac": "<Armor's_Base_AC>",
+      <optional>"ac": "<Armor's_Base_AC>",
       "cost": <Item's_Cost>
 }
 ```
