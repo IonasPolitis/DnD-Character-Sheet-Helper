@@ -130,9 +130,9 @@ The structure of each JSON file is as follows:
       }
 }
 ```
-Some classes in DnD give you an item that has variants (like the Gaming Set), and so that the player is able to choose which variant they want to be displayed they can either use the *class-chosen-items* variable that accepts the items that have the item type mentioned in the class.json.
+Sometimes D&D classes or backgrounds offer a choice of an item category (like any Musical Instrument or Artisan's Tool) rather than a specific item. To handle this you can use items' Type instead of a single item's filename
 
-For the items in the *class-chosen-items* variable to appear in the inventory the "homebrew_item" should have the type that is mentioed in the class. When using an item Type you should add the "|" character at the end to activate this functionality, and you can also use it as a divider to there after add second type that may be accepted.
+By adding a pipe character (|) to an item key in your class.json or backgrounds.json (e.g: "musical-instrument|": 1 or "artisans-tool|musical-instrument": 1), you tell the plugin to wait for the player's choice. The plugin will automatically scan the player's *class-chosen-items* or *background-chosen-items* variables in their note, find an item whose "type" matches the requirement, and seamlessly add it to their inventory.
 
 - $class-subclass.json:
 ```
