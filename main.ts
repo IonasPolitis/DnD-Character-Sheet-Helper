@@ -571,19 +571,19 @@ export default class DnDFeaturesPlugin extends Plugin {
             const goldSpent = Number(frontmatter['dnd_gold_spent']) || 0;
             const totalGold = goldBase + goldAdded + grantedGold - goldSpent;
 
-            const wealthWindow = wrapper.createDiv({ 
-                cls: "dnd-features-window", 
-                style: "display: flex; flex-direction: row; align-items: center; justify-content: space-between; padding: 12px 16px; margin-bottom: 16px;" 
+            const wealthWindow = wrapper.createDiv({
+                cls: "dnd-features-window",
+                style: "display: flex; flex-direction: row; align-items: center; justify-content: space-between; padding: 12px 16px; margin-bottom: 16px;"
             });
 
-            const wealthLeft = wealthWindow.createEl("span", { style: "display: flex; align-items: center; gap: 20px;" });
-            wealthLeft.createEl("span", { text: "Wealth", cls: "dnd-level-badge", style: "margin: 0;" });
-            wealthLeft.createEl("strong", { text: `${totalGold} GP`, style: "font-size: 1.1em; color: var(--dnd-text-bright);" });
+            const wealthLeft = wealthWindow.createEl("span", { attr: { style: "display: flex; align-items: center; gap: 20px;" } });
+            wealthLeft.createEl("span", { text: "Wealth", cls: "dnd-level-badge", attr: { style: "margin: 0;" } });
+            wealthLeft.createEl("strong", { text: `${totalGold} GP`, attr: { style: "font-size: 1.1em; color: var(--dnd-text-bright);" } });
 
-            const wealthRight = wealthWindow.createEl("span", { style: "display: flex; flex-direction: row; align-items: center;" });
-            const amountInput = wealthRight.createEl("input", { type: "number", value: "1", style: "width: 20px; text-align: center; background: var(--dnd-bg-darker); border: 1px solid var(--dnd-border-primary); color: var(--dnd-text-bright); border-radius: 4px; padding: 4px; margin: 0 15px;" });
+            const wealthRight = wealthWindow.createEl("span", { attr: { style: "display: flex; flex-direction: row; align-items: center;" } });
+            const amountInput = wealthRight.createEl("input", { type: "number", value: "1", attr: { style: "width: 45px; text-align: center; background: var(--dnd-bg-darker); border: 1px solid var(--dnd-border-primary); color: var(--dnd-text-bright); border-radius: 4px; padding: 4px; margin: 0 15px;" } });
             // Grouped buttons
-            const btnGroup = wealthRight.createEl("span", { style: "display: flex; gap: 20px;" });
+            const btnGroup = wealthRight.createEl("span", { attr: { style: "display: flex; gap: 20px;" } });
             const addBtn = btnGroup.createEl("button", { text: "Add" });
             const subBtn = btnGroup.createEl("button", { text: "Spend" });
 
@@ -626,30 +626,30 @@ export default class DnDFeaturesPlugin extends Plugin {
                 }
 
                 for (const [itemId, qty] of Object.entries(pool)) {
-                    if (qty <= 0) continue; 
+                    if (qty <= 0) continue;
                     let data = await getItemData(this.app, this.settings, itemId);
                     const fallbackName = itemId.replace(/\b\w/g, c => c.toUpperCase()).replace(/-/g, ' ');
                     if (!data) data = { name: fallbackName, description: "" };
 
                     // STRICT ONE LINE CONTAINER 
                     // No inner divs are used here to prevent styles.css from breaking the layout
-                    const itemRow = backpackWindow.createDiv({ 
-                        style: "display: flex; flex-direction: row; align-items: center; width: 100%; padding: 6px 0; border-bottom: 1px solid var(--dnd-bg-tertiary);" 
+                    const itemRow = backpackWindow.createDiv({
+                        style: "display: flex; flex-direction: row; align-items: center; width: 100%; padding: 6px 0; border-bottom: 1px solid var(--dnd-bg-tertiary);"
                     });
-                    
+
                     // 1. Badge 
                     itemRow.createEl("span", { text: `x${qty}`, cls: "dnd-level-badge", style: "margin: 0 10px 0 0; flex-shrink: 0;" });
-                    
+
                     // 2. Name (Added ":" and flex-grow: 1 to push everything else to the far right)
                     itemRow.createEl("strong", { text: data.name + ": ", style: "color: var(--dnd-text-bright); margin-right: auto; flex-grow: 1;" });
 
                     // (Description has been completely removed to prepare for the hover implementation!)
 
                     // 3. Weight & Cost (Added generous 20px gap for padding between them)
-                    const rightSide = itemRow.createEl("span", { 
-                        style: "display: flex; gap: 20px; flex-shrink: 0; color: var(--dnd-text-muted); font-size: 0.9em; white-space: nowrap; text-align: right; padding-left: 20px;" 
+                    const rightSide = itemRow.createEl("span", {
+                        style: "display: flex; gap: 20px; flex-shrink: 0; color: var(--dnd-text-muted); font-size: 0.9em; white-space: nowrap; text-align: right; padding-left: 20px;"
                     });
-                    
+
                     if (data.weight) {
                         rightSide.createEl("span", { text: `${data.weight * qty} lbs` });
                     }
