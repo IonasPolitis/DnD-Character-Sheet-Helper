@@ -576,17 +576,14 @@ export default class DnDFeaturesPlugin extends Plugin {
                 style: "display: flex; flex-direction: row; align-items: center; justify-content: space-between; padding: 12px 16px; margin-bottom: 16px;" 
             });
 
-            const wealthLeft = wealthWindow.createEl("span", { style: "display: flex; align-items: center; gap: 10px;" });
+            const wealthLeft = wealthWindow.createEl("span", { style: "display: flex; align-items: center; gap: 20px;" });
             wealthLeft.createEl("span", { text: "Wealth", cls: "dnd-level-badge", style: "margin: 0;" });
             wealthLeft.createEl("strong", { text: `${totalGold} GP`, style: "font-size: 1.1em; color: var(--dnd-text-bright);" });
 
             const wealthRight = wealthWindow.createEl("span", { style: "display: flex; flex-direction: row; align-items: center;" });
-            
-            // Reduced width to 45px and added margin: 0 15px to create padding on both sides!
-            const amountInput = wealthRight.createEl("input", { type: "number", value: "1", style: "width: 10px; text-align: center; background: var(--dnd-bg-darker); border: 1px solid var(--dnd-border-primary); color: var(--dnd-text-bright); border-radius: 4px; padding: 4px; margin: 0 15px;" });
-            
-            // Grouped buttons together with their own 10px gap
-            const btnGroup = wealthRight.createEl("span", { style: "display: flex; width: 15px; gap: 10px;" });
+            const amountInput = wealthRight.createEl("input", { type: "number", value: "1", style: "width: 20px; text-align: center; background: var(--dnd-bg-darker); border: 1px solid var(--dnd-border-primary); color: var(--dnd-text-bright); border-radius: 4px; padding: 4px; margin: 0 15px;" });
+            // Grouped buttons
+            const btnGroup = wealthRight.createEl("span", { style: "display: flex; gap: 20px;" });
             const addBtn = btnGroup.createEl("button", { text: "Add" });
             const subBtn = btnGroup.createEl("button", { text: "Spend" });
 
