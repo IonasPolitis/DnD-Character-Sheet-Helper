@@ -573,11 +573,11 @@ export default class DnDFeaturesPlugin extends Plugin {
 
             const wealthWindow = wrapper.createDiv({
                 cls: "dnd-features-window",
-                attr: { style: "display: flex; flex-direction: row; align-items: center; gap: 15px; padding: 12px 16px;" }
+                attr: { style: "display: flex; flex-direction: row; align-items: center; gap: 10px; padding: 12px 16px;" }
             });
 
             // 1. The Left Group (Badge + Gold Text remain close together)
-            const wealthLeft = wealthWindow.createEl("span", { attr: { style: "display: flex; align-items: center; gap: 10px;" } });
+            const wealthLeft = wealthWindow.createEl("span", { attr: { style: "display: flex; align-items: center; margin-right: 10px;" } });
             wealthLeft.createEl("span", { text: "Wealth", cls: "dnd-level-badge", attr: { style: "margin: 0;" } });
             wealthLeft.createEl("strong", { text: `${totalGold} GP`, attr: { style: "font-size: 1.1em; color: var(--dnd-text-bright);" } });
 
@@ -588,7 +588,7 @@ export default class DnDFeaturesPlugin extends Plugin {
 
             addBtn.onclick = () => this.updateGoldFrontmatter(ctx.sourcePath, 'added', Number(amountInput.value) || 0);
             subBtn.onclick = () => this.updateGoldFrontmatter(ctx.sourcePath, 'spent', Number(amountInput.value) || 0);
-            
+
             // -----------------------------------------------------------
             // B. WEAPON & ARMOR (Placeholder)
             // -----------------------------------------------------------
