@@ -46,6 +46,16 @@ extra-items: $list$
 ````
 The variable *class-chosen-items* is used to select an Artisan's Tool, a Musical Instrument, or a Gaming Set depeding on what's provided by the class. Same goes for the *background-chosen-items*.
 
+## Settinsg Menu:
+
+ - Class & Subclass combination toggle
+
+ - Custom Rulebook folder path inside your Obsidian Vault for Homebrewed DnD.
+ There's also a toggle to have the Custom Rulebook be prioritied
+
+ - Theme Engine
+ Not anything special, just some basic custom color pallete pane for you to change any color to your liking.
+
 ## Homebrew:
 
 This plugin also supports custom rules by adding the path of your custom Rulebook that is inside your Obsidian Vault. This is the folder structure used and what the plugin expects:
