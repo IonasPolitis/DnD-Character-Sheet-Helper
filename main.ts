@@ -573,16 +573,15 @@ export default class DnDFeaturesPlugin extends Plugin {
 
             const wealthWindow = wrapper.createDiv({
                 cls: "dnd-features-window",
-                attr: { style: "display: flex; flex-direction: row; align-items: center; gap: 10px; padding: 12px 16px;" }
+                attr: { style: "display: flex; flex-direction: row; align-items: center; gap: 5px; padding: 12px 16px;" }
             });
 
             // 1. The Left Group (Badge + Gold Text remain close together)
-            const wealthLeft = wealthWindow.createEl("span", { attr: { style: "display: flex; align-items: center; gap: 10px;" } });
-            wealthLeft.createEl("span", { text: "Wealth", cls: "dnd-level-badge", attr: { style: "margin-right: 10px;" } });
-            wealthLeft.createEl("strong", { text: `${totalGold} GP`, attr: { style: "font-size: 1.1em; color: var(--dnd-text-bright);" } });
-
-            // 2. The Controls (Attached directly to the main window!)
-            const amountInput = wealthWindow.createEl("input", { type: "number", value: "1", attr: { style: "text-align: center; background: var(--dnd-bg-darker); border: 1px solid var(--dnd-border-primary); color: var(--dnd-text-bright); border-radius: 4px; padding: 4px; width: 45px;" } });
+            const wealth = wealthWindow.createEl("span", { attr: { style: "display: flex; align-items: center; gap: 10px;" } });
+            wealth.createEl("span", { text: "Wealth", cls: "dnd-level-badge", attr: { style: "margin-left: 5px; margin-right: 5px;" } });
+            wealth.createEl("strong", { text: `${totalGold} GP`, attr: { style: "font-size: 1.1em; color: var(--dnd-text-bright);" } });
+            // 2. The Controls
+            const amountInput = wealthWindow.createEl("input", { type: "number", value: "1", attr: { style: "text-align: center; background: var(--dnd-bg-darker); border: 1px solid var(--dnd-border-primary); color: var(--dnd-text-bright); border-radius: 4px; padding: 4px; width: 40px;" } });
             const addBtn = wealthWindow.createEl("button", { text: "Add" });
             const subBtn = wealthWindow.createEl("button", { text: "Spend" });
 
