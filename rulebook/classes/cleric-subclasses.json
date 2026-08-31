@@ -1,0 +1,86 @@
+{
+      "Life Domain": {
+            "3": [
+                  {
+                        "name": "Discipline of Life",
+                        "description": "When a spell you cast with a spell slot restores Hit Points to a creature, that creature regains additional Hit Points on the turn you cast the spell. The additional Hit Points equal 2 plus the spell slot's level."
+                  },
+                  {
+                        "name": "Life Domain Spells",
+                        "description": "When you reach a Cleric level specified in the Life Domain Spells table, you thereafter always have the listed spells prepared.\n\n| Cleric Level | Prepared Spells | ----- | ----- | 3 | Aid, Bless, Cure Wounds, Lesser Restoration | 5 | Mass Healing Word, Revivify | 7 | Aura of Life, Death Ward | 9 | Greater Restoration, Mass Cure Wounds |"
+                  }
+            ],
+            "6": [
+                  {
+                        "name": "<Feature_Name>",
+                        "description": "<Feature_Description>"
+                  }
+            ],
+            "17": [
+                  {
+                        "name": "<Feature_Name>",
+                        "description": "<Feature_Description>"
+                  }
+            ]
+      },
+      "Light Domain": {
+            "3": [
+                  {
+                        "name": "<Feature_Name>",
+                        "description": "<Feature_Description>"
+                  }
+            ],
+            "6": [
+                  {
+                        "name": "<Feature_Name>",
+                        "description": "<Feature_Description>"
+                  }
+            ],
+            "17": [
+                  {
+                        "name": "<Feature_Name>",
+                        "description": "<Feature_Description>"
+                  }
+            ]
+      },
+      "Trickery Domain": {
+            "3": [
+                  {
+                        "name": "<Feature_Name>",
+                        "description": "<Feature_Description>"
+                  }
+            ],
+            "6": [
+                  {
+                        "name": "<Feature_Name>",
+                        "description": "<Feature_Description>"
+                  }
+            ],
+            "17": [
+                  {
+                        "name": "<Feature_Name>",
+                        "description": "<Feature_Description>"
+                  }
+            ]
+      },
+      "War Domain": {
+            "3": [
+                  {
+                        "name": "<Feature_Name>",
+                        "description": "<Feature_Description>"
+                  }
+            ],
+            "6": [
+                  {
+                        "name": "<Feature_Name>",
+                        "description": "<Feature_Description>"
+                  }
+            ],
+            "17": [
+                  {
+                        "name": "<Feature_Name>",
+                        "description": "<Feature_Description>"
+                  }
+            ]
+      }
+}

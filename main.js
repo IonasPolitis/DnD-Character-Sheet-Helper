@@ -414,7 +414,7 @@ var items_default = {
   Spellbook: "spellbook",
   "Splint Armor": "splint-armor",
   "Studded Leather Armor": "studded-leather-armor",
-  "Thieves' Tools": "thieves-tools",
+  "Thieve's Tools": "thieves-tools",
   "Tinker's Tools": "tinkers-tools",
   Trident: "trident",
   "War Pick": "war-pick",
@@ -644,10 +644,98 @@ var bard_default = {
   }
 };
 
+// rulebook/classes/cleric-subclasses.json
+var cleric_subclasses_default = {
+  "Life Domain": {
+    "3": [
+      {
+        name: "Discipline of Life",
+        description: "When a spell you cast with a spell slot restores Hit Points to a creature, that creature regains additional Hit Points on the turn you cast the spell. The additional Hit Points equal 2 plus the spell slot's level."
+      },
+      {
+        name: "Life Domain Spells",
+        description: "When you reach a Cleric level specified in the Life Domain Spells table, you thereafter always have the listed spells prepared.\n\n| Cleric Level | Prepared Spells | ----- | ----- | 3 | Aid, Bless, Cure Wounds, Lesser Restoration | 5 | Mass Healing Word, Revivify | 7 | Aura of Life, Death Ward | 9 | Greater Restoration, Mass Cure Wounds |"
+      }
+    ],
+    "6": [
+      {
+        name: "<Feature_Name>",
+        description: "<Feature_Description>"
+      }
+    ],
+    "17": [
+      {
+        name: "<Feature_Name>",
+        description: "<Feature_Description>"
+      }
+    ]
+  },
+  "Light Domain": {
+    "3": [
+      {
+        name: "<Feature_Name>",
+        description: "<Feature_Description>"
+      }
+    ],
+    "6": [
+      {
+        name: "<Feature_Name>",
+        description: "<Feature_Description>"
+      }
+    ],
+    "17": [
+      {
+        name: "<Feature_Name>",
+        description: "<Feature_Description>"
+      }
+    ]
+  },
+  "Trickery Domain": {
+    "3": [
+      {
+        name: "<Feature_Name>",
+        description: "<Feature_Description>"
+      }
+    ],
+    "6": [
+      {
+        name: "<Feature_Name>",
+        description: "<Feature_Description>"
+      }
+    ],
+    "17": [
+      {
+        name: "<Feature_Name>",
+        description: "<Feature_Description>"
+      }
+    ]
+  },
+  "War Domain": {
+    "3": [
+      {
+        name: "<Feature_Name>",
+        description: "<Feature_Description>"
+      }
+    ],
+    "6": [
+      {
+        name: "<Feature_Name>",
+        description: "<Feature_Description>"
+      }
+    ],
+    "17": [
+      {
+        name: "<Feature_Name>",
+        description: "<Feature_Description>"
+      }
+    ]
+  }
+};
+
 // rulebook/classes/cleric.json
 var cleric_default = {
   class: "Cleric",
-  subclassFile: "cleric-subclasses",
+  subclassFile: "",
   "starting-equipment": {
     A: {
       items: {
@@ -659,13 +747,37 @@ var cleric_default = {
       },
       gold: 7
     },
-    B: { items: {}, gold: 0 }
+    B: { items: {}, gold: 110 }
   },
   features: {
-    "1": [
+    "2": [
       {
-        name: "",
-        description: ""
+        name: "Channel Divinity",
+        description: "You can channel divine energy directly from the Outer Planes to fuel magical effects. You start with two such effects: Divine Spark and Turn Undead. You can use this class's Channel Divinity twice. You regain one of its expended uses when you finish a Short Rest, and you regain all expended uses when you finish a Long Rest.\n  \u2022 **Divine Spark**: As a Magic action, you point your Holy Symbol at another creature you can see within 30 feet of yourself and focus divine energy at it. Roll ld8 and add your Wisdom modifier. You either restore Hit Points to the creature equal to that total or force the creature to make a Constitution saving throw. On a failed save, the creature takes Necrotic or Radiant damage (your choice) equal to that total. On a successful save, the creature takes half as much damage (round down).\n  \u2022 **Turn Undead**: As a Magic action, you present your Holy Symbol and censure Undead creatures. Each Undead of your choice within 30 feet of you must make a Wisdom saving throw. If the creature fails its save, it has the Frightened and Incapacitated conditions for 1 minute. For that duration, it tries to move as far from you as it can on its turns. This effect ends early on the creature if it takes any damage, if you have the Incapacitated condition, or if you die."
+      }
+    ],
+    "5": [
+      {
+        name: "Sear Undead",
+        description: "Whenever you use Turn Undead, you can roll a number of d8s equal to your Wisdom modifier (minimum of ld8) and add the rolls together. Each Undead that fails its saving throw against that use of Turn Undead takes Radiant damage equal to the roll's total. This damage doesn't end the turn effect."
+      }
+    ],
+    "7": [
+      {
+        name: "Blessed Strikes",
+        description: "You gain one of the following options of your choice:\n  \u2022 **Divine Strike**: Once on each of your turns when you hit a creature with an attack roll using a weapon, you can cause the target to take an extra 1d8 Necrotic or Radiant damage.\n  \u2022 **Potent Spellcasting**: Add your Wisdom modifier to the damage you deal with any Cleric cantrip."
+      }
+    ],
+    "10": [
+      {
+        name: "Devine Intervention",
+        description: "As a Magic action, choose any Cleric spell of level 5 or lower that doesn't require a Reaction to cast. As part of the same action, you cast that spell without expending a spell slot or needing Material components. You can't use this feature again until you finish a Long Rest."
+      }
+    ],
+    "14": [
+      {
+        name: "Improved ",
+        description: "The option you chose for Blessed Strikes grows more powerful:\n  \u2022 **Divine Strike**: The extra damage of your Divine Strike increases to 2d8.\n  \u2022 **Potent Spellcasting**: When you cast a Cleric cantrip and deal damage to a creature with it, you can give vitality to yourself or another creature within 60 feet of yourself, granting a number of Temporary Hit Points equal to twice your Wisdom modifier."
       }
     ]
   }
@@ -2243,7 +2355,7 @@ var studded_leather_armor_default = {
 
 // rulebook/items/thieves-tools.json
 var thieves_tools_default = {
-  name: "Thieves' Tools",
+  name: "Thieve's Tools",
   type: "artisans-tool",
   description: "Pick a lock (DC 15), or disarm a trap (DC 15)",
   weight: 1,
@@ -2352,6 +2464,7 @@ var classRegistry = {
 };
 var subclassRegistry = {
   "bard-subclasses": bard_subclasses_default,
+  "cleric-subclasses": cleric_subclasses_default,
   "monk-subclasses": monk_subclasses_default
 };
 var featRegistry = {

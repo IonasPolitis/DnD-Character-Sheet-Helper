@@ -10,6 +10,7 @@ import itemsMap from './rulebook/items.json';
 import class_barbarian from './rulebook/classes/barbarian.json';
 import class_bardsubclasses from './rulebook/classes/bard-subclasses.json';
 import class_bard from './rulebook/classes/bard.json';
+import class_clericsubclasses from './rulebook/classes/cleric-subclasses.json';
 import class_cleric from './rulebook/classes/cleric.json';
 import class_druid from './rulebook/classes/druid.json';
 import class_figher from './rulebook/classes/figher.json';
@@ -161,6 +162,7 @@ export const classRegistry: Record<string, any> = {
 
 export const subclassRegistry: Record<string, any> = {
     "bard-subclasses": class_bardsubclasses,
+    "cleric-subclasses": class_clericsubclasses,
     "monk-subclasses": class_monksubclasses,
 };
 
