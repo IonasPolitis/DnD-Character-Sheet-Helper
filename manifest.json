@@ -1,7 +1,7 @@
 {
 	"id": "dnd-character-sheet-helper",
 	"name": "D&D Character Sheet Helper",
-	"version": "1.1.5.14",
+	"version": "1.1.5.15",
 	"minAppVersion": "1.13.7",
 	"description": "Renders D&D 5.5e character features from frontmatter properties.",
 	"author": "Ionas Politis",

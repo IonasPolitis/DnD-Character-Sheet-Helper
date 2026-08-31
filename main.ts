@@ -573,22 +573,22 @@ export default class DnDFeaturesPlugin extends Plugin {
 
             const wealthWindow = wrapper.createDiv({
                 cls: "dnd-features-window",
-                attr: { style: "display: flex; flex-direction: row; align-items: center; padding: 12px 16px;"
-            } });
+                attr: { style: "display: flex; flex-direction: row; align-items: center; gap: 15px; padding: 12px 16px;" }
+            });
 
-            const wealthLeft = wealthWindow.createEl("span", { attr: { style: "display: flex; align-items: center; gap: 15px;" } });
+            // 1. The Left Group (Badge + Gold Text remain close together)
+            const wealthLeft = wealthWindow.createEl("span", { attr: { style: "display: flex; align-items: center; gap: 10px;" } });
             wealthLeft.createEl("span", { text: "Wealth", cls: "dnd-level-badge", attr: { style: "margin: 0;" } });
             wealthLeft.createEl("strong", { text: `${totalGold} GP`, attr: { style: "font-size: 1.1em; color: var(--dnd-text-bright);" } });
-            const wealthRight = wealthWindow.createEl("span", { attr: { style: "display: flex; align-items: center; ga[: 10px;" } });
-            const amountInput = wealthRight.createEl("input", { type: "number", value: "1", attr: { style: "text-align: center; background: var(--dnd-bg-darker); border: 1px solid var(--dnd-border-primary); color: var(--dnd-text-bright); border-radius: 4px; padding: 4px;" } });
-            // Grouped buttons
-            const btnGroup = wealthRight.createEl("span", { attr: { style: "display: flex; gap: 10px;" } });
-            const addBtn = btnGroup.createEl("button", { text: "Add" });
-            const subBtn = btnGroup.createEl("button", { text: "Spend" });
+
+            // 2. The Controls (Attached directly to the main window!)
+            const amountInput = wealthWindow.createEl("input", { type: "number", value: "1", attr: { style: "text-align: center; background: var(--dnd-bg-darker); border: 1px solid var(--dnd-border-primary); color: var(--dnd-text-bright); border-radius: 4px; padding: 4px; width: 45px;" } });
+            const addBtn = wealthWindow.createEl("button", { text: "Add" });
+            const subBtn = wealthWindow.createEl("button", { text: "Spend" });
 
             addBtn.onclick = () => this.updateGoldFrontmatter(ctx.sourcePath, 'added', Number(amountInput.value) || 0);
             subBtn.onclick = () => this.updateGoldFrontmatter(ctx.sourcePath, 'spent', Number(amountInput.value) || 0);
-
+            
             // -----------------------------------------------------------
             // B. WEAPON & ARMOR (Placeholder)
             // -----------------------------------------------------------
