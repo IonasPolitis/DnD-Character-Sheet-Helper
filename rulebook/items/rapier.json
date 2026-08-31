@@ -1,6 +1,6 @@
 {
       "name": "Rapier",
-      "type": "Weapon",
+      "type": "weapon",
       "description": "Finesse",
       "weight": 2,
       "damage": "1d8 Piercing",

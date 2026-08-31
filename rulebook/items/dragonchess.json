@@ -1,7 +1,7 @@
 {
-      "name": "Gaming Set - Playing Cards",
-      "type": "Gear",
+      "name": "Gaming Set - Dragonchess",
+      "type": "gaming-set",
       "description": "Discern whether someone is cheating (DC 10), or win the game (DC 20)",
       "weight": 0,
-      "cost": 0.5
+      "cost": 1
 }

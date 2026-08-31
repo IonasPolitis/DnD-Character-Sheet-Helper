@@ -1,6 +1,6 @@
 {
       "name": "Padded Armor",
-      "type": "Armor",
+      "type": "armor",
       "description": "11 + Dex modifier -- Stealth Disadvantage",
       "weight": 8,
       "ac": "11",

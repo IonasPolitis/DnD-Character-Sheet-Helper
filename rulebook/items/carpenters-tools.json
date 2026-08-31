@@ -1,6 +1,6 @@
 {
       "name": "Carpenter's Tools",
-      "type": "Gear",
+      "type": "artisans-tool",
       "description": "Seal or pry open a door or container (DC 20)",
       "weight": 6,
       "cost": 8

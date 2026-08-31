@@ -1,6 +1,6 @@
 {
       "name": "Ring Mail",
-      "type": "Armor",
+      "type": "armor",
       "description": "14 -- Stealth Disadvantage",
       "weight": 40,
       "ac": "14",

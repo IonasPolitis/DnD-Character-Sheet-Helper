@@ -1,6 +1,6 @@
 {
       "name": "Leather Armor",
-      "type": "Armor",
+      "type": "armor",
       "description": "11 + Dex modifier",
       "weight": 10,
       "ac": "11",

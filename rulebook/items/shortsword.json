@@ -1,6 +1,6 @@
 {
       "name": "Shortsword",
-      "type": "Weapon",
+      "type": "weapon",
       "description": "Finesse, Light",
       "weight": 2,
       "damage": "1d6 Piercing",

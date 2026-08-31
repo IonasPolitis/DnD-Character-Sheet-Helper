@@ -1,6 +1,6 @@
 {
       "name": "Brewer's Supplies",
-      "type": "Gear",
+      "type": "artisans-tool",
       "description": "Detect poisoned drink (DC 15), or identify alcohol (DC 10)",
       "weight": 9,
       "cost": 20

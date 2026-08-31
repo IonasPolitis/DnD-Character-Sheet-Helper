@@ -1,7 +1,7 @@
 {
-      "name": "Musical Instrument - Lyre",
-      "type": "Gear",
+      "name": "Lute",
+      "type": "musical-instrument",
       "description": "Play a known tune (DC 10), or improvise a song (DC 15)",
       "weight": 2,
-      "cost": 30
+      "cost": 35
 }

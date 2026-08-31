@@ -7,9 +7,9 @@
                 "chain-shirt": 1,
                 "shield": 1,
                 "mace": 1,
-                "": 1,
-                "": 1
-            }, "gold": 1
+                "Holy Symbol": 1,
+                "Priest's Pack": 1
+            }, "gold": 7
         },
         "B": { "items": {}, "gold": 0 }
     },

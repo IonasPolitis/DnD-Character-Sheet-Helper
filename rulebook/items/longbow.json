@@ -1,6 +1,6 @@
 {
       "name": "Longbow",
-      "type": "Weapon",
+      "type": "weapon",
       "description": "Ammunition (Range 150/600; Arrow), Heavy, Two-Handed",
       "weight": 2,
       "damage": "1d8 Piercing",

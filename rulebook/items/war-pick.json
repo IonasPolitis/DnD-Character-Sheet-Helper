@@ -1,6 +1,6 @@
 {
       "name": "War Pick",
-      "type": "Weapon",
+      "type": "weapon",
       "description": "Versatile (1d10)",
       "weight": 2,
       "damage": "1d8 Piercing",

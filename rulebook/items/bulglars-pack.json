@@ -1,6 +1,6 @@
 {
       "name": "Burglar's Pack",
-      "type": "Gear",
+      "type": "gear",
       "description": "",
       "weight": 42,
       "cost": 16

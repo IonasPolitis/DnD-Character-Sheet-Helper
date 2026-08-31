@@ -1,6 +1,6 @@
 {
       "name": "Navigator's Tools",
-      "type": "Gear",
+      "type": "artisans-tool",
       "description": "Plot a course (DC 10), or determine position by stargazing (DC 15)",
       "weight": 2,
       "cost": 25

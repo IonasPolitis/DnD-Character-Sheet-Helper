@@ -1,6 +1,6 @@
 {
       "name": "Studded Leather Armor",
-      "type": "Armor",
+      "type": "armor",
       "description": "12 + Dex modifier",
       "weight": 13,
       "ac": "12",

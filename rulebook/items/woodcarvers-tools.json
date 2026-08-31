@@ -1,6 +1,6 @@
 {
       "name": "Woodcarver's Tools",
-      "type": "Gear",
+      "type": "artisans-tool",
       "description": "Carve a pattern in wood (DC 10)",
       "weight": 5,
       "cost": 1

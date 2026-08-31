@@ -1,6 +1,6 @@
 {
       "name": "Greatsword",
-      "type": "Weapon",
+      "type": "weapon",
       "description": "Heavy, Two-Handed",
       "weight": 6,
       "damage": "2d6 Slashing",

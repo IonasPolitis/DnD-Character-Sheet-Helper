@@ -1,6 +1,6 @@
 {
       "name": "Explorer's Pack",
-      "type": "Gear",
+      "type": "gear",
       "description": "",
       "weight": 55,
       "cost": 10

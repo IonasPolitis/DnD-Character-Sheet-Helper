@@ -1,6 +1,6 @@
 {
       "name": "Jeweler's Tools",
-      "type": "Gear",
+      "type": "artisans-tool",
       "description": "Discern a gem's value (DC 15)",
       "weight": 2,
       "cost": 25

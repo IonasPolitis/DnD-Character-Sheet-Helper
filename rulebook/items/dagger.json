@@ -1,6 +1,6 @@
 {
       "name": "Dagger",
-      "type": "Weapon",
+      "type": "weapon",
       "description": "Finesse, Light, Thrown (Range 20/60)",
       "weight": 1,
       "damage": "1d4 Piercing",

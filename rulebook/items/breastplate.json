@@ -1,6 +1,6 @@
 {
       "name": "Breastplate",
-      "type": "Armor",
+      "type": "armor",
       "description": "14 + Dex modifier (max 2)",
       "weight": 20,
       "ac": "14",

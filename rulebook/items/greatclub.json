@@ -1,6 +1,6 @@
 {
       "name": "Greatclub",
-      "type": "Weapon",
+      "type": "weapon",
       "description": "Two-Handed",
       "weight": 10,
       "damage": "1d8 Bludgeoning",

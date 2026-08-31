@@ -1,6 +1,6 @@
 {
       "name": "Leatherworker's Tools",
-      "type": "Gear",
+      "type": "artisans-tool",
       "description": "Add a design to a leather item (DC 10)",
       "weight": 5,
       "cost": 5

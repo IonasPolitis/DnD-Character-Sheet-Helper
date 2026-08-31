@@ -1,6 +1,6 @@
 {
       "name": "Calligrapher's Supplies",
-      "type": "Gear",
+      "type": "artisans-tool",
       "description": "Write text with impressive flourishes that guard against forgery (DC 15)",
       "weight": 5,
       "cost": 10

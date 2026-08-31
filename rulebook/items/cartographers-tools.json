@@ -1,6 +1,6 @@
 {
       "name": "Cartographer's Tools",
-      "type": "Gear",
+      "type": "artisans-tool",
       "description": "Draft a map of a small area (DC 15)",
       "weight": 6,
       "cost": 15

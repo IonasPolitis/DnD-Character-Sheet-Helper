@@ -1,6 +1,6 @@
 {
       "name": "Quarterstaff",
-      "type": "Weapon",
+      "type": "weapon",
       "description": "Versatile (1d8)",
       "weight": 4,
       "damage": "1d6 Bludgeoning",

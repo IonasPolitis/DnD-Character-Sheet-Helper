@@ -1,6 +1,6 @@
 {
       "name": "Shortbow",
-      "type": "Weapon",
+      "type": "weapon",
       "description": "Ammunition (Range 80/320; Arrow), Two-Handed",
       "weight": 2,
       "damage": "1d6 Piercing",

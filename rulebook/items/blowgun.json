@@ -1,6 +1,6 @@
 {
       "name": "Blowgun",
-      "type": "Weapon",
+      "type": "weapon",
       "description": "Ammunition (Range 25/100; Needle), Loading",
       "weight": 1,
       "damage": "1 Piercing",

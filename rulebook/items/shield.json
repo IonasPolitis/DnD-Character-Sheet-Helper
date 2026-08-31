@@ -1,6 +1,6 @@
 {
       "name": "Shield",
-      "type": "Armor",
+      "type": "armor",
       "description": "+2",
       "weight": 6,
       "ac": "+2",

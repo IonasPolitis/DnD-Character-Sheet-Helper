@@ -1,6 +1,6 @@
 {
       "name": "Light Crossbow",
-      "type": "Weapon",
+      "type": "weapon",
       "description": "Ammunition (Range 80/320; Bolt), Loading, Two-Handed",
       "weight": 5,
       "damage": "1d8 Piercing",

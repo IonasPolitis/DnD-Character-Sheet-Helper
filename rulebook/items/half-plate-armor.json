@@ -1,6 +1,6 @@
 {
       "name": "Half Plate Armor",
-      "type": "Armor",
+      "type": "armor",
       "description": "15 + Dex modifier (max 2) -- Stealth Disadvantage",
       "weight": 40,
       "ac": "15",

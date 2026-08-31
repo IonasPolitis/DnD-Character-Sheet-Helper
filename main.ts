@@ -1,5 +1,5 @@
 import { App, Plugin, PluginSettingTab, Setting, MarkdownPostProcessorContext, parseYaml, MarkdownRenderChild, MarkdownRenderer, TFile } from 'obsidian';
-import { getClassData, getSubclassData, getBackgroundFeat, getRaceData, getExtraFeat, getItemData } from './data';
+import { getClassData, getSubclassData, getBackgroundData, getRaceData, getExtraFeat, getItemData } from './data';
 
 // 1. Define the shape of our settings
 interface DnDPluginSettings {
@@ -46,13 +46,13 @@ export default class DnDFeaturesPlugin extends Plugin {
         // Register the processor for our specific code block
         this.registerMarkdownCodeBlockProcessor(
             "dnd-features",
-            this.processDnDBlock.bind(this)
+            this.processDnDFeaturesBlock.bind(this)
         );
 
         // Register the processor for the inventory block
         this.registerMarkdownCodeBlockProcessor(
             "dnd-inventory",
-            this.processInventoryBlock.bind(this)
+            this.processDnDInventoryBlock.bind(this)
         );
     }
 
@@ -109,7 +109,7 @@ export default class DnDFeaturesPlugin extends Plugin {
         }
     }
 
-    async processDnDBlock(source: string, el: HTMLElement, ctx: MarkdownPostProcessorContext) {
+    async processDnDFeaturesBlock(source: string, el: HTMLElement, ctx: MarkdownPostProcessorContext) {
         // 1. Create a Render Child to manage the lifecycle and reactivity
         const renderChild = new MarkdownRenderChild(el);
         ctx.addChild(renderChild);
@@ -389,7 +389,10 @@ export default class DnDFeaturesPlugin extends Plugin {
 
                 // Render Background Section
                 else if (sectionName === "Background") {
-                    const featData = await getBackgroundFeat(this.app, this.settings, background);
+                    // Fetch the updated background object, then fetch the specific feat data based on the new structure
+                    const bgData = await getBackgroundData(this.app, this.settings, background);
+                    const featData = bgData && bgData.feat ? await getExtraFeat(this.app, this.settings, bgData.feat) : null;
+                    
                     if (featData) {
                         const featureBlock = sectionDiv.createDiv({ cls: "dnd-feature-block" });
                         const titleContainer = featureBlock.createDiv({ cls: "dnd-feature-title" });
@@ -446,7 +449,7 @@ export default class DnDFeaturesPlugin extends Plugin {
         );
     }
 
-    async processInventoryBlock(source: string, el: HTMLElement, ctx: MarkdownPostProcessorContext) {
+    async processDnDInventoryBlock(source: string, el: HTMLElement, ctx: MarkdownPostProcessorContext) {
         const renderChild = new MarkdownRenderChild(el);
         ctx.addChild(renderChild);
 
@@ -479,53 +482,98 @@ export default class DnDFeaturesPlugin extends Plugin {
             const bgEq = resolveValue(blockData['background-equipment']);
             const weaponSlot = resolveValue(blockData.weapon);
             const weaponDamage = resolveValue(blockData.weapon_damage);
-            const armourSlot = resolveValue(blockData.armour);
-            const armourAc = resolveValue(blockData.armour_ac);
+            const armorSlot = resolveValue(blockData.armor);
+            const armorAc = resolveValue(blockData.armor_ac);
             const extraItemsRaw = resolveValue(blockData['extra-items']);
+            
+            // --- Phase 1 & 2: Pre-Pass & Build the "Available Choices" Pools ---
+            const classChosenItemsRaw = resolveValue(blockData['class-chosen-items']);
+            const bgChosenItemsRaw = resolveValue(blockData['background-chosen-items']); // New variable
+            
+            // Helper to sanitize items natively
+            const sanitizeItem = (val: any) => {
+                if (!val) return null;
+                return String(val).toLowerCase().replace(/['"]/g, '').trim().replace(/\s+/g, '-');
+            };
 
-            // --- Modular Umbrella Item Logic ---
-            const musicalInstrumentChoice = resolveValue(blockData['musical-instrument']);
-            const gamingSetChoice = resolveValue(blockData['gaming-set']);
-            const variableClassItemsRaw = resolveValue(blockData['variable-class-items']);
+            // Reusable helper to securely build a standalone item pool
+            const buildPool = async (rawItems: any) => {
+                const list = Array.isArray(rawItems) ? rawItems : (typeof rawItems === 'string' ? rawItems.split(',') : (rawItems ? [String(rawItems)] : []));
+                const pool: { id: string, type: string }[] = [];
+                for (const item of list) {
+                    const safeId = sanitizeItem(item);
+                    if (!safeId) continue;
 
-            // Build a unified dictionary for all umbrella items
-            const variantMap = new Map<string, string>();
-
-            // 1. Auto-map the official Rulebook shortcuts
-            if (musicalInstrumentChoice) variantMap.set('musical-instrument', String(musicalInstrumentChoice).toLowerCase().replace(/\s+/g, '-'));
-            if (gamingSetChoice) variantMap.set('gaming-set', String(gamingSetChoice).toLowerCase().replace(/\s+/g, '-'));
-
-            // 2. Auto-map the custom homebrew list
-            if (Array.isArray(variableClassItemsRaw)) {
-                variableClassItemsRaw.forEach(pair => {
-                    // Ensure the user provided a valid [umbrella, variant] pair
-                    if (Array.isArray(pair) && pair.length === 2) {
-                        const umbrella = String(pair[0]).toLowerCase().replace(/\s+/g, '-');
-                        const variant = String(pair[1]).toLowerCase().replace(/\s+/g, '-');
-                        variantMap.set(umbrella, variant);
+                    const data = await getItemData(this.app, this.settings, safeId);
+                    if (data && data.type) {
+                        // Fully sanitize the type to match class requirements perfectly
+                        pool.push({ id: safeId, type: sanitizeItem(data.type) as string });
                     }
-                });
-            }
+                }
+                return pool;
+            };
+
+            // Build STRICTLY SEPARATE pools for class and background!
+            const classChosenItemsPool = await buildPool(classChosenItemsRaw);
+            const bgChosenItemsPool = await buildPool(bgChosenItemsRaw);
 
             // 2. Fetch Core Data to read Starting Equipment
             let grantedGold = 0;
-            // Split into two separate dictionaries to track where they came from
             const startingItemCounts: Record<string, number> = {};
             const extraItemCounts: Record<string, number> = {};
 
-            // Updated helper now accepts the target dictionary to fill
-            const addItemsToPool = (eqData: any, targetPool: Record<string, number>) => {
+            // --- Phase 3: The Greedy Matcher Engine ---
+            // We now pass a specific 'sourcePool' so the engine knows WHICH choices it is allowed to consume!
+            const addItemsToPool = (eqData: any, targetPool: Record<string, number>, sourcePool: { id: string, type: string }[]) => {
                 if (!eqData) return;
                 if (eqData.gold) grantedGold += Number(eqData.gold);
 
-                if (eqData.items) {
-                    for (const [itemId, qty] of Object.entries(eqData.items)) {
-                        let finalItemId = itemId;
-                        if (variantMap.has(itemId)) {
-                            const variant = variantMap.get(itemId);
-                            finalItemId = `${itemId}-${variant}`;
+                // Safely handle both Class format (eqData.items) and Background format (direct object)
+                const itemsList = eqData.items ? eqData.items : (eqData.gold ? null : eqData);
+
+                if (itemsList) {
+                    // Separate strict items from flexible "OR" slots
+                    const strictSlots: [string, number][] = [];
+                    const flexibleSlots: [string, number][] = [];
+
+                    for (const [itemId, qty] of Object.entries(itemsList)) {
+                        // Detect our Pipe syntax!
+                        if (itemId.includes('|')) {
+                            flexibleSlots.push([itemId, Number(qty)]);
+                        } else {
+                            strictSlots.push([itemId, Number(qty)]);
                         }
-                        targetPool[finalItemId] = (targetPool[finalItemId] || 0) + Number(qty);
+                    }
+
+                    // 1. Process strict items immediately (e.g., "dagger": 5)
+                    for (const [itemId, qty] of strictSlots) {
+                        targetPool[itemId] = (targetPool[itemId] || 0) + Number(qty);
+                    }
+
+                    // 2. Process flexible "OR" slots (e.g., "artisans-tool|musical-instrument": 1)
+                    // Sort them so slots with FEWER options are processed first to avoid starving them
+                    flexibleSlots.sort((a, b) => a[0].split('|').length - b[0].split('|').length);
+
+                    for (const [itemId, qty] of flexibleSlots) {
+                        // Pass each side of the pipe through our global sanitizer for a perfect 1:1 match
+                        const acceptedTypes = itemId.split('|').map(t => sanitizeItem(t) as string);
+                        let amountNeeded = Number(qty);
+
+                        // Search the SPECIFIC source pool for matching items
+                        for (let i = 0; i < sourcePool.length && amountNeeded > 0; i++) {
+                            const poolItem = sourcePool[i];
+                            
+                            // If the item's type matches one of the slot's accepted types...
+                            if (acceptedTypes.includes(poolItem.type)) {
+                                // Add it to the backpack
+                                targetPool[poolItem.id] = (targetPool[poolItem.id] || 0) + 1;
+                                amountNeeded -= 1;
+                                
+                                // Remove it from the specific pool so it can't be used twice!
+                                sourcePool.splice(i, 1);
+                                i--; // Adjust index since we mutated the array
+                            }
+                        }
                     }
                 }
             };
@@ -533,38 +581,147 @@ export default class DnDFeaturesPlugin extends Plugin {
             if (dndClass && classEq) {
                 const primaryClass = Array.isArray(dndClass) ? dndClass[0] : dndClass;
                 const classData = await getClassData(this.app, this.settings, primaryClass);
-                // Fill the Starting Equipment pool
-                if (classData?.['starting-equipment']) addItemsToPool(classData['starting-equipment'][classEq], startingItemCounts);
+                // Fill the pool strictly using the class's chosen items!
+                if (classData?.['starting-equipment']) addItemsToPool(classData['starting-equipment'][classEq], startingItemCounts, classChosenItemsPool);
+            }
+
+            // Check for both the background name AND the A/B choice variable
+            if (background && bgEq) {
+                // Fetch the background data
+                const bgData = await getBackgroundData(this.app, this.settings, background);
+                
+                // Fill the pool strictly using the background's chosen items, routing through the A/B choice!
+                if (bgData?.['starting-equipment']) {
+                    addItemsToPool(bgData['starting-equipment'][bgEq], startingItemCounts, bgChosenItemsPool);
+                }
             }
 
             // Add manual extra items to the Extra Items pool
-            const extraItems = Array.isArray(extraItemsRaw) ? extraItemsRaw : (extraItemsRaw ? [extraItemsRaw] : []);
+            let extraItems: string[] = [];
+            if (Array.isArray(extraItemsRaw)) {
+                extraItems = extraItemsRaw;
+            } else if (typeof extraItemsRaw === 'string') {
+                // Split comma-separated strings into a proper array
+                extraItems = extraItemsRaw.split(',');
+            } else if (extraItemsRaw) {
+                extraItems = [String(extraItemsRaw)];
+            }
+
             for (const item of extraItems) {
-                const safeItem = typeof item === 'string' ? item.toLowerCase().replace(/\s+/g, '-') : String(item);
+                // Use our global helper to sanitize the string instantly
+                const safeItem = sanitizeItem(item);
+                if (!safeItem) continue;
+                
+                // Directly load the item! No variantMap interception is needed.
                 extraItemCounts[safeItem] = (extraItemCounts[safeItem] || 0) + 1;
             }
 
             // 3. Omission Logic for Equipped Slots (Checks both pools!)
-            const consumeItem = (itemName: string) => {
-                if (!itemName) return null;
-                const safeName = itemName.toLowerCase().replace(/\s+/g, '-');
+            const consumeItem = (rawItemName: any) => {
+                // Using the helper protects against stray quotes in the frontmatter!
+                const safeName = sanitizeItem(rawItemName);
+                if (!safeName) return null;
+                
                 if (startingItemCounts[safeName] && startingItemCounts[safeName] > 0) {
                     startingItemCounts[safeName] -= 1;
                 } else if (extraItemCounts[safeName] && extraItemCounts[safeName] > 0) {
                     extraItemCounts[safeName] -= 1;
                 }
-                return itemName;
+                // Return clean, exact text (without quotes) for fallback display
+                return String(rawItemName).replace(/['"]/g, '').trim(); 
             };
 
             const equippedWeapon = consumeItem(weaponSlot);
-            const equippedArmour = consumeItem(armourSlot);
+            const equippedArmor = consumeItem(armorSlot);
 
             // --- 4. RENDER UI ---
 
-            wrapper.createEl("h3", { text: "Equipment & Items:", cls: "dnd-section-header" });
+            wrapper.createEl("h3", { text: "Equipment, Wealth & Items:", cls: "dnd-section-header" });
 
             // -----------------------------------------------------------
-            // A. WEALTH SECTION (Strictly 1 Line)
+            // A. WEAPON & ARMOR 
+            // -----------------------------------------------------------
+            if (equippedWeapon || equippedArmor) {
+                // Main container with attr to ensure Flexbox works
+                const equipGrid = wrapper.createDiv({ 
+                    attr: { style: "display: flex; gap: 10px;" } 
+                });
+
+                const renderSlot = async (
+                    slotLabel: "Weapon" | "Armor",
+                    rawItemInput: any,
+                    manualStat: any,
+                    expectedType: "Weapon" | "Armor"
+                ) => {
+                    if (!rawItemInput) return;
+
+                    const actualName = String(rawItemInput).replace(/['"]/g, '').trim();
+                    if (actualName.toLowerCase() === "none") return;
+
+                    // Use the global helper so item mapping is always perfectly consistent
+                    const safeName = sanitizeItem(rawItemInput) as string;
+                    
+                    let data = await getItemData(this.app, this.settings, safeName);
+                    
+                    // 2. Type-Checking: Ensure the item exists AND matches the expected type
+                    // Using .includes() safely handles sub-types like "Melee Weapon" or "Light Armor"
+                    const isRecognizedType = data && data.type && String(data.type).toLowerCase().includes(expectedType.toLowerCase());
+
+                    // Default to fallback behavior (raw name, manual stat, no description)
+                    let displayName = actualName;
+                    let displayStat = manualStat ? String(manualStat) : "-";
+                    let displayDesc = "";
+
+                    // 3. Apply Official Data if recognized
+                    if (isRecognizedType) {
+                        displayName = data.name || actualName;
+                        // Ignore manual overrides and pull natively
+                        displayStat = expectedType === "Weapon" ? (data.damage || "-") : (data.ac || "-");
+                        displayDesc = data.description || "";
+                    }
+
+                    // Card styling
+                    const card = equipGrid.createDiv({ 
+                        cls: "dnd-features-window", 
+                        attr: { style: "flex: 1; display: flex; flex-direction: column; padding: 10px; text-align: center; margin: 0; justify-content: center; gap: 6px;" } 
+                    });
+                    
+                    // TOP: Item Name
+                    card.createDiv({ 
+                        text: displayName.toUpperCase(), 
+                        attr: { style: "font-size: 0.85em; color: var(--dnd-text-secondary); letter-spacing: 1.5px; font-weight: 600;" } 
+                    });
+                    
+                    // MIDDLE: The Stat
+                    card.createDiv({ 
+                        text: displayStat,
+                        attr: { style: "font-size: 1.6em; font-weight: bold; color: var(--dnd-text-bright);" } 
+                    });
+                    
+                    // BOTTOM: Description 
+                    if (displayDesc) {
+                        const noteDiv = card.createDiv({ 
+                            attr: { style: "font-size: 0.9em; color: var(--dnd-text-sublabel); line-height: 1.3;" } 
+                        });
+                        
+                        await this.renderDndMarkdown(displayDesc, noteDiv, ctx.sourcePath, renderChild);
+
+                        // Strip Obsidian's block paragraph margins so the card stays beautifully compact
+                        noteDiv.querySelectorAll('*').forEach((childEl: HTMLElement) => {
+                            childEl.style.display = "inline";
+                            childEl.style.margin = "0";
+                            childEl.style.padding = "0";
+                        });
+                    }
+                };
+
+                // Inject the updated parameters including our expected Types!
+                await renderSlot("Weapon", equippedWeapon, weaponDamage, "Weapon");
+                await renderSlot("Armor", equippedArmor, armorAc, "Armor");
+            }
+
+            // -----------------------------------------------------------
+            // B. WEALTH
             // -----------------------------------------------------------
             const goldBase = Number(frontmatter['dnd_gold_base']) || 0;
             const goldAdded = Number(frontmatter['dnd_gold_added']) || 0;
@@ -581,7 +738,7 @@ export default class DnDFeaturesPlugin extends Plugin {
             wealth.createEl("span", { text: "Wealth", cls: "dnd-level-badge", attr: { style: "margin-right: 10px;" } });
             wealth.createEl("strong", { text: `${totalGold} GP`, attr: { style: "font-size: 1.1em; color: var(--dnd-text-bright);" } });
             // 2. The Controls
-            const amountInput = wealthWindow.createEl("input", { type: "number", value: "1", attr: { style: "margin-left: 5px; text-align: center; background: var(--dnd-bg-darker); border: 1px solid var(--dnd-border-primary); color: var(--dnd-text-bright); border-radius: 4px; padding: 4px; width: 40px;" } });
+            const amountInput = wealthWindow.createEl("input", { type: "number", value: "1", attr: { style: "text-align: center; background: var(--dnd-bg-darker); border: 1px solid var(--dnd-border-primary); color: var(--dnd-text-bright); border-radius: 4px; padding: 4px; width: 40px;" } });
             const addBtn = wealthWindow.createEl("button", { text: "Add" });
             const subBtn = wealthWindow.createEl("button", { text: "Spend" });
 
@@ -589,70 +746,59 @@ export default class DnDFeaturesPlugin extends Plugin {
             subBtn.onclick = () => this.updateGoldFrontmatter(ctx.sourcePath, 'spent', Number(amountInput.value) || 0);
 
             // -----------------------------------------------------------
-            // B. WEAPON & ARMOR (Placeholder)
-            // -----------------------------------------------------------
-            if (equippedWeapon || equippedArmour) {
-                const equipGrid = wrapper.createDiv({ style: "display: flex; gap: 10px; margin-bottom: 16px;" });
-                const renderSlot = async (label: string, itemName: string, overrideStat: string, statLabel: string) => {
-                    if (!itemName) return;
-                    const safeName = itemName.toLowerCase().replace(/\s+/g, '-');
-                    let data = await getItemData(this.app, this.settings, safeName);
-                    const fallbackName = safeName.replace(/\b\w/g, c => c.toUpperCase()).replace(/-/g, ' ');
-                    if (!data) data = { name: fallbackName, description: "" };
-
-                    const card = equipGrid.createDiv({ cls: "dnd-features-window", style: "flex: 1; display: flex; flex-direction: column; padding: 12px; text-align: center; margin: 0;" });
-                    card.createDiv({ text: label.toUpperCase(), style: "font-size: 0.75em; opacity: 0.7; letter-spacing: 1px; margin-bottom: 4px;" });
-                    card.createDiv({ text: data.name, style: "font-size: 1.1em; font-weight: bold; color: var(--dnd-text-bright); margin-bottom: 4px;" });
-                    const statToDisplay = overrideStat || (data[statLabel.toLowerCase()] ? data[statLabel.toLowerCase()] : "");
-                    if (statToDisplay) card.createDiv({ text: statToDisplay, style: "font-size: 1em; font-weight: bold; color: var(--dnd-text-sublabel);" });
-                };
-                await renderSlot("Weapon", equippedWeapon, weaponDamage, "Damage");
-                await renderSlot("Armor", equippedArmour, armourAc, "AC");
-            }
-
-            // -----------------------------------------------------------
-            // C. BACKPACK CONTENTS (Strictly 1 Line per Item)
+            // C. BACKPACK CONTENTS
             // -----------------------------------------------------------
             // Restored the window class so the outer box appears!
-            const backpackWindow = wrapper.createDiv({ cls: "dnd-features-window", style: "padding: 16px;" });
-            backpackWindow.createEl("h4", { text: "Backpack Contents", cls: "dnd-class-header", style: "margin: 0 0 10px 0; border-bottom: 1px solid var(--dnd-border-primary); padding-bottom: 8px;" });
+            const backpackWindow = wrapper.createDiv({ cls: "dnd-features-window" });
+            backpackWindow.createEl("h4", { text: "Backpack Contents", cls: "dnd-class-header", attr: {style: "margin: 0 0 10px 0; border-bottom: 1px solid var(--dnd-border-primary); padding-bottom: 8px;" } });
 
             const renderPool = async (pool: Record<string, number>, title?: string) => {
-                if (title && Object.keys(pool).some(k => pool[k] > 0)) {
+                // Filter out items with 0 quantity so we only create headers/grids if there are items to show
+                const validItems = Object.entries(pool).filter(([_, qty]) => qty > 0);
+                if (validItems.length === 0) return;
+
+                if (title) {
                     // Small divider sub-header strictly for Extra Items
-                    backpackWindow.createEl("div", { text: title, style: "margin: 16px 0 8px 0; font-weight: bold; font-size: 0.85em; text-transform: uppercase; color: var(--dnd-text-sublabel); border-bottom: 1px solid var(--dnd-bg-tertiary); padding-bottom: 4px;" });
+                    backpackWindow.createEl("div", { text: title, attr: { style: "margin: 16px 0 8px 0; font-weight: bold; font-size: 0.85em; text-transform: uppercase; color: var(--dnd-text-sublabel); border-bottom: 1px solid var(--dnd-bg-tertiary); padding-bottom: 4px;" } });
                 }
 
-                for (const [itemId, qty] of Object.entries(pool)) {
-                    if (qty <= 0) continue;
+                // --- THE 2-COLUMN GRID CONTAINER ---
+                const gridContainer = backpackWindow.createDiv({
+                    attr: { style: "display: grid; grid-template-columns: 1fr 1fr; column-gap: 20px; row-gap: 4px;" }
+                });
+
+                for (const [itemId, qty] of validItems) {
                     let data = await getItemData(this.app, this.settings, itemId);
                     const fallbackName = itemId.replace(/\b\w/g, c => c.toUpperCase()).replace(/-/g, ' ');
                     if (!data) data = { name: fallbackName, description: "" };
 
                     // STRICT ONE LINE CONTAINER 
-                    // No inner divs are used here to prevent styles.css from breaking the layout
-                    const itemRow = backpackWindow.createDiv({
-                        style: "display: flex; flex-direction: row; align-items: center; width: 100%; padding: 6px 0; border-bottom: 1px solid var(--dnd-bg-tertiary);"
+                    // Using createEl("span") safely breaks the '.dnd-features-window > div > div' CSS rule!
+                    const itemRow = gridContainer.createEl("span", {
+                        attr: { style: "display: flex; flex-direction: row; align-items: center; width: 100%; padding: 3px 0;" }
                     });
 
                     // 1. Badge 
-                    itemRow.createEl("span", { text: `x${qty}`, cls: "dnd-level-badge", style: "margin: 0 10px 0 0; flex-shrink: 0;" });
+                    itemRow.createEl("span", { text: `x${qty}`, cls: "dnd-level-badge", attr: {style: "margin: 0 10px 0 0; flex-shrink: 0;" } });
 
-                    // 2. Name (Added ":" and flex-grow: 1 to push everything else to the far right)
-                    itemRow.createEl("strong", { text: data.name + ": ", style: "color: var(--dnd-text-bright); margin-right: auto; flex-grow: 1;" });
+                    // 2. Name (Conditional Colon!)
+                    const hasExtraInfo = !!(data.weight || data.cost);
+                    const colon = hasExtraInfo ? ": " : "";
+                    
+                    itemRow.createEl("strong", { text: data.name + colon, attr: { style: "color: var(--dnd-text-bright); margin-right: 4px" } });
 
                     // (Description has been completely removed to prepare for the hover implementation!)
 
-                    // 3. Weight & Cost (Added generous 20px gap for padding between them)
+                    // 3. Weight & Cost (Fixed the 'display: color:' typo here)
                     const rightSide = itemRow.createEl("span", {
-                        style: "display: flex; gap: 20px; flex-shrink: 0; color: var(--dnd-text-muted); font-size: 0.9em; white-space: nowrap; text-align: right; padding-left: 20px;"
+                        attr: { style: "color: var(--dnd-text-muted); font-size: 0.9em; white-space: nowrap; text-align: center;" }
                     });
 
                     if (data.weight) {
-                        rightSide.createEl("span", { text: `${data.weight * qty} lbs` });
+                        rightSide.createEl("span", { text: `${data.weight * qty}lbs,  ` });
                     }
                     if (data.cost) {
-                        rightSide.createEl("span", { text: data.cost });
+                        rightSide.createEl("span", { text: `${data.cost}GP` });
                     }
                 }
             };

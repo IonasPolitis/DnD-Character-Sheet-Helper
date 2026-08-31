@@ -1,6 +1,6 @@
 {
       "name": "Painter's Supplies",
-      "type": "Gear",
+      "type": "artisans-tool",
       "description": "Paint a recognizable image of something you've seen (DC 10)",
       "weight": 5,
       "cost": 10

@@ -1,6 +1,6 @@
 {
       "name": "Plate Armor",
-      "type": "Armor",
+      "type": "armor",
       "description": "18 -- Stealth Disadvantage",
       "weight": 65,
       "ac": "18",

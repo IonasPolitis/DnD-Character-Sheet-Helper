@@ -1,6 +1,6 @@
 {
       "name": "Battleaxe",
-      "type": "Weapon",
+      "type": "weapon",
       "description": "Versatile (1d10)",
       "weight": 4,
       "damage": "1d8 Slashing",

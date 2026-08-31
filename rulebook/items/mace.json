@@ -1,7 +1,7 @@
 {
       "name": "Mace",
-      "type": "Weapon",
-      "description": "Versatile (ldl0)",
+      "type": "weapon",
+      "description": "Versatile (1d10)",
       "weight": 4,
       "damage": "1d6 Bludgeoning",
       "cost": 5

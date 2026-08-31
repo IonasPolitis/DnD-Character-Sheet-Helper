@@ -1,6 +1,6 @@
 {
-      "name": "Musical Instrument - Pan Flute",
-      "type": "Gear",
+      "name": "Pan Flute",
+      "type": "musical-instrument",
       "description": "Play a known tune (DC 10), or improvise a song (DC 15)",
       "weight": 2,
       "cost": 12

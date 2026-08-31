@@ -1,7 +1,7 @@
 {
       "name": "Longsword",
-      "type": "Weapon",
-      "description": "Versatile (ldl0)",
+      "type": "weapon",
+      "description": "Versatile (1d10)",
       "weight": 3,
       "damage": "1d8 Slashing",
       "cost": 15

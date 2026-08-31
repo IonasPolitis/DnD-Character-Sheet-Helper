@@ -1,6 +1,6 @@
 {
       "name": "Chain Mail",
-      "type": "Armor",
+      "type": "armor",
       "description": "16 -- Stealth Disadvantage",
       "weight": 55,
       "ac": "16",

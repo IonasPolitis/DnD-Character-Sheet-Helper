@@ -1,7 +1,7 @@
 {
   "name": "dnd-character-features-plugin",
   "version": "1.0.0",
-  "description": "",
+  "description": "The DnD Character Sheet Helper is an Obsidian Plugin that brings the DnD Rulebook right inside your Digital Character Sheet.",
   "main": "index.js",
   "scripts": {
     "generate": "node generate-registry.js",

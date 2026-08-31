@@ -1,17 +1,244 @@
 {
-      "Acolyte": "magic-initiate-cleric",
-      "Artisan": "crafter",
-      "Charlatan": "skilled",
-      "Criminal": "alert",
-      "Entertainer": "musician",
-      "Farmer": "tough",
-      "Guard": "alert",
-      "Guide": "magic-initiate-druid",
-      "Hermit": "healer",
-      "Merchant": "lucky",
-      "Noble": "skilled",
-      "Sage": "magic-initiate-wizard",
-      "Sailor": "tavern-brawler",
-      "Soldier": "savage-attacker",
-      "Wayfarer": "lucky"
+      "Acolyte": {
+            "feat": "magic-initiate-cleric",
+            "starting-equipment": {
+                  "A": {
+                        "items": {
+                              "calligraphers-supplies": 1,
+                              "book": 1,
+                              "holy-symbol": 1,
+                              "parchmant": 10,
+                              "robe": 1
+                        }, "gold": 8
+                  },
+                  "B": { "items": {}, "gold": 50 }
+            }
+      },
+      "Artisan": {
+            "feat": "crafter",
+            "starting-equipment": {
+                  "A": {
+                        "items": {
+                              "artisans-tool|": 1,
+                              "pouche": 2,
+                              "travelers-clothes": 1
+                        }, "gold": 32
+                  },
+                  "B": { "items": {}, "gold": 50 }
+            }
+      },
+      "Charlatan": {
+            "feat": "skilled",
+            "starting-equipment": {
+                  "A": {
+                        "items": {
+                              "forgery-kit": 1,
+                              "costume": 1,
+                              "fine-clothes": 1
+                        }, "gold": 15
+                  },
+                  "B": { "items": {}, "gold": 50 }
+            }
+      },
+      "Criminal": {
+            "feat": "alert",
+            "starting-equipment": {
+                  "A": {
+                        "items": {
+                              "dagger": 2,
+                              "thieves-tools": 1,
+                              "crowbar": 1,
+                              "pouche": 2,
+                              "travelers-clothes": 1
+                        }, "gold": 16
+                  },
+                  "B": { "items": {}, "gold": 50 }
+            }
+      },
+      "Entertainer": {
+            "feat": "musician",
+            "starting-equipment": {
+                  "A": {
+                        "items": {
+                              "musical-instrument|": 1,
+                              "costume": 2,
+                              "mirror": 1,
+                              "perfume": 1,
+                              "travelers-clothes": 1
+                        }, "gold": 11
+                  },
+                  "B": { "items": {}, "gold": 50 }
+            }
+      },
+      "Farmer": {
+            "feat": "tough",
+            "starting-equipment": {
+                  "A": {
+                        "items": {
+                              "sickle": 1,
+                              "carpenters-tools": 1,
+                              "healers-kit": 1,
+                              "iron-pot": 1,
+                              "shovel": 1,
+                              "travelers-clothes": 1
+                        }, "gold": 30
+                  },
+                  "B": { "items": {}, "gold": 50 }
+            }
+      },
+      "Guard": {
+            "feat": "alert",
+            "starting-equipment": {
+                  "A": {
+                        "items": {
+                              "spear": 1,
+                              "light-crossbow": 1,
+                              "bolt": 1,
+                              "gaming-set|": 1,
+                              "hooded-lantern": 1,
+                              "manacles": 1,
+                              "quiver": 1,
+                              "travelers-clothes": 1
+                        }, "gold": 12
+                  },
+                  "B": { "items": {}, "gold": 50 }
+            }
+      },
+      "Guide": {
+            "feat": "magic-initiate-druid",
+            "starting-equipment": {
+                  "A": {
+                        "items": {
+                              "shortbow": 1,
+                              "arrow": 20,
+                              "cartographers-tools": 1,
+                              "bedroll": 1,
+                              "quiver": 1,
+                              "tent": 1,
+                              "travelers-clothes": 1
+                        }, "gold": 3
+                  },
+                  "B": { "items": {}, "gold": 50 }
+            }
+      },
+      "Hermit": {
+            "feat": "healer",
+            "starting-equipment": {
+                  "A": {
+                        "items": {
+                              "quarterstaff": 1,
+                              "herbalism-kit": 1,
+                              "bedroll": 1,
+                              "book": 1,
+                              "lamp": 1,
+                              "oil": 3,
+                              "travelers-clothes": 1
+                        }, "gold": 16
+                  },
+                  "B": { "items": {}, "gold": 50 }
+            }
+      },
+      "Merchant": {
+            "feat": "lucky",
+            "starting-equipment": {
+                  "A": {
+                        "items": {
+                              "navigators-tools": 1,
+                              "pouche": 2,
+                              "travelers-clothes": 1
+                        }, "gold": 22
+                  },
+                  "B": { "items": {}, "gold": 50 }
+            }
+      },
+      "Noble": {
+            "feat": "skilled",
+            "starting-equipment": {
+                  "A": {
+                        "items": {
+                              "gaming-set|": 1,
+                              "fine-clothes": 1,
+                              "perfume": 1
+                        }, "gold": 29
+                  },
+                  "B": { "items": {}, "gold": 50 }
+            }
+      },
+      "Sage": {
+            "feat": "magic-initiate-wizard",
+            "starting-equipment": {
+                  "A": {
+                        "items": {
+                              "quarterstaff": 1,
+                              "calligraphers-supplies": 1,
+                              "book": 1,
+                              "parchmant": 8,
+                              "robe": 1
+                        }, "gold": 8
+                  },
+                  "B": { "items": {}, "gold": 50 }
+            }
+      },
+      "Sailor": {
+            "feat": "tavern-brawler",
+            "starting-equipment": {
+                  "A": {
+                        "items": {
+                              "dagger": 1,
+                              "navigators-tools": 1,
+                              "rope": 1,
+                              "travelers-clothes": 1
+                        }, "gold": 20
+                  },
+                  "B": { "items": {}, "gold": 50 }
+            }
+      },
+      "Scribe": {
+            "feat": "skilled",
+            "starting-equipment": {
+                  "A": {
+                        "items": {
+                              "calligraphers-supplies": 1,
+                              "fine-clothes": 1,
+                              "lamp": 1,
+                              "oil": 3,
+                              "parchmant": 12
+                        }, "gold": 23
+                  },
+                  "B": { "items": {}, "gold": 50 }
+            }
+      },
+      "Soldier": {
+            "feat": "savage-attacker",
+            "starting-equipment": {
+                  "A": {
+                        "items": {
+                              "spear": 1,
+                              "shortbow": 1,
+                              "arrow": 20,
+                              "gaming-set|": 1,
+                              "healers-kit": 1,
+                              "quiver": 1,
+                              "travelers-clothes": 1
+                        }, "gold": 14
+                  },
+                  "B": { "items": {}, "gold": 50 }
+            }
+      },
+      "Wayfarer": {
+            "feat": "lucky",
+            "starting-equipment": {
+                  "A": {
+                        "items": {
+                              "dagger": 2,
+                              "thieves-tools": 1,
+                              "gaming-set|": 1,
+                              "bedroll": 1,
+                              "pouche": 2,
+                              "travelers-clothes": 1
+                        }, "gold": 16
+                  },
+                  "B": { "items": {}, "gold": 50 }
+            }
+      }
 }

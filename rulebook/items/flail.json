@@ -1,6 +1,6 @@
 {
       "name": "Flail",
-      "type": "Weapon",
+      "type": "weapon",
       "description": "",
       "weight": 2,
       "damage": "1d8 Bludgeoning",

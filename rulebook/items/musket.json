@@ -1,6 +1,6 @@
 {
       "name": "Musket",
-      "type": "Weapon",
+      "type": "weapon",
       "description": "Ammunition (Range 40/120; Bullet), Loading, Two-Handed",
       "weight": 10,
       "damage": "1d12 Piercing",

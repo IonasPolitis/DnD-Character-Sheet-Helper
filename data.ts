@@ -111,18 +111,18 @@ export async function getSubclassData(app: App, settings: FetchSettings, subclas
     return fetchNative();
 }
 
-// --- Logic for Fetching Background Feats ---
-export async function getBackgroundFeat(app: App, settings: FetchSettings, backgroundName: string) {
+// --- Logic for Fetching Background Data ---
+export async function getBackgroundData(app: App, settings: FetchSettings, backgroundName: string) {
     const fetchNative = () => {
-        const featId = getIgnoreCase(backgroundsMap as Record<string, string>, backgroundName);
-        return featId ? getIgnoreCase(featRegistry, featId) : null;
+        // backgroundsMap now holds the actual object (feat, starting-equipment), so we just return it directly!
+        return getIgnoreCase(backgroundsMap as Record<string, any>, backgroundName);
     };
     
     const fetchCustom = async () => {
         if (!settings.customRulebookPath) return null;
-        const featId = await getCustomMappedName(app, settings.customRulebookPath, 'backgrounds.json', backgroundName);
-        if (!featId) return null;
-        return await readCustomJson(app, normalizePath(`${settings.customRulebookPath}/feats/${featId}.json`));
+        // getCustomMappedName reads backgrounds.json and extracts the value for the backgroundName.
+        // Since the value is now an object, we just return it! No secondary file fetching required.
+        return await getCustomMappedName(app, settings.customRulebookPath, 'backgrounds.json', backgroundName);
     };
 
     if (settings.customRulebookPath) {

@@ -1,6 +1,6 @@
 {
       "name": "Club",
-      "type": "Weapon",
+      "type": "weapon",
       "description": "Light",
       "weight": 2,
       "damage": "1d4 Bludgeoning",

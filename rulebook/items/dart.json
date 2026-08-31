@@ -1,6 +1,6 @@
 {
       "name": "Dart",
-      "type": "Weapon",
+      "type": "weapon",
       "description": "Finesse, Thrown (Range 20/60)",
       "weight": 0.25,
       "damage": "1d4 Piercing",

@@ -1,6 +1,6 @@
 {
       "name": "Scimitar",
-      "type": "Weapon",
+      "type": "weapon",
       "description": "Finesse, Light",
       "weight": 3,
       "damage": "1d6 Slashing",

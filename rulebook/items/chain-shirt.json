@@ -1,6 +1,6 @@
 {
       "name": "Chain Shirt",
-      "type": "Armor",
+      "type": "armor",
       "description": "13 + Dex modifier (max 2)",
       "weight": 20,
       "ac": "13",

@@ -7,9 +7,20 @@ import classesMap from './rulebook/classes.json';
 import backgroundsMap from './rulebook/backgrounds.json';
 import racesMap from './rulebook/races.json';
 import itemsMap from './rulebook/items.json';
+import class_barbarian from './rulebook/classes/barbarian.json';
+import class_bardsubclasses from './rulebook/classes/bard-subclasses.json';
+import class_bard from './rulebook/classes/bard.json';
+import class_cleric from './rulebook/classes/cleric.json';
+import class_druid from './rulebook/classes/druid.json';
+import class_figher from './rulebook/classes/figher.json';
 import class_monksubclasses from './rulebook/classes/monk-subclasses.json';
 import class_monk from './rulebook/classes/monk.json';
 import class_paladin from './rulebook/classes/paladin.json';
+import class_ranger from './rulebook/classes/ranger.json';
+import class_rogue from './rulebook/classes/rogue.json';
+import class_sorcerer from './rulebook/classes/sorcerer.json';
+import class_warlock from './rulebook/classes/warlock.json';
+import class_wizard from './rulebook/classes/wizard.json';
 import feat_abilityscoreimprovement from './rulebook/feats/ability-score-improvement.json';
 import feat_alert from './rulebook/feats/alert.json';
 import feat_crafter from './rulebook/feats/crafter.json';
@@ -23,17 +34,133 @@ import feat_savageattacker from './rulebook/feats/savage-attacker.json';
 import feat_skilled from './rulebook/feats/skilled.json';
 import feat_tavernbrawler from './rulebook/feats/tavern-brawler.json';
 import feat_tough from './rulebook/feats/tough.json';
+import race_aasimar from './rulebook/races/aasimar.json';
+import race_dragonborn from './rulebook/races/dragonborn.json';
+import race_dwarf from './rulebook/races/dwarf.json';
+import race_elf from './rulebook/races/elf.json';
+import race_gnome from './rulebook/races/gnome.json';
+import race_goliath from './rulebook/races/goliath.json';
 import race_halforc from './rulebook/races/half-orc.json';
+import race_halfling from './rulebook/races/halfling.json';
+import race_human from './rulebook/races/human.json';
 import race_orc from './rulebook/races/orc.json';
+import race_tiefling from './rulebook/races/tiefling.json';
+import item_alchemistssupplies from './rulebook/items/alchemists-supplies.json';
+import item_bagpipes from './rulebook/items/bagpipes.json';
+import item_battleaxe from './rulebook/items/battleaxe.json';
+import item_blowgun from './rulebook/items/blowgun.json';
+import item_breastplate from './rulebook/items/breastplate.json';
+import item_brewerssupplies from './rulebook/items/brewers-supplies.json';
+import item_bulglarspack from './rulebook/items/bulglars-pack.json';
+import item_calligrapherssupplies from './rulebook/items/calligraphers-supplies.json';
+import item_carpenterstools from './rulebook/items/carpenters-tools.json';
+import item_cartographerstools from './rulebook/items/cartographers-tools.json';
+import item_chainmail from './rulebook/items/chain-mail.json';
+import item_chainshirt from './rulebook/items/chain-shirt.json';
+import item_club from './rulebook/items/club.json';
+import item_cobblerstools from './rulebook/items/cobblers-tools.json';
+import item_cooksutensils from './rulebook/items/cooks-utensils.json';
+import item_dagger from './rulebook/items/dagger.json';
+import item_dart from './rulebook/items/dart.json';
+import item_dice from './rulebook/items/dice.json';
+import item_disguisekit from './rulebook/items/disguise-kit.json';
+import item_dragonchess from './rulebook/items/dragonchess.json';
+import item_drum from './rulebook/items/drum.json';
+import item_dulcimer from './rulebook/items/dulcimer.json';
+import item_dungeoneerspack from './rulebook/items/dungeoneers-pack.json';
+import item_entertainerspack from './rulebook/items/entertainers-pack.json';
+import item_explorerspack from './rulebook/items/explorers-pack.json';
+import item_flail from './rulebook/items/flail.json';
+import item_flute from './rulebook/items/flute.json';
+import item_forgerykit from './rulebook/items/forgery-kit.json';
+import item_glaive from './rulebook/items/glaive.json';
+import item_glassblowerstools from './rulebook/items/glassblowers-tools.json';
+import item_greataxe from './rulebook/items/greataxe.json';
+import item_greatclub from './rulebook/items/greatclub.json';
+import item_greatsword from './rulebook/items/greatsword.json';
+import item_halberd from './rulebook/items/halberd.json';
+import item_halfplatearmor from './rulebook/items/half-plate-armor.json';
+import item_handcrossbow from './rulebook/items/hand-crossbow.json';
+import item_handaxe from './rulebook/items/handaxe.json';
+import item_heavycrossbow from './rulebook/items/heavy-crossbow.json';
+import item_herbalismkit from './rulebook/items/herbalism-kit.json';
+import item_hidearmor from './rulebook/items/hide-armor.json';
+import item_holysymbol from './rulebook/items/holy-symbol.json';
+import item_horn from './rulebook/items/horn.json';
+import item_javelin from './rulebook/items/javelin.json';
+import item_jewelerstools from './rulebook/items/jewelers-tools.json';
+import item_lance from './rulebook/items/lance.json';
+import item_leatherarmor from './rulebook/items/leather-armor.json';
+import item_leatherworkerstools from './rulebook/items/leatherworkers-tools.json';
+import item_lightcrossbow from './rulebook/items/light-crossbow.json';
+import item_lighthammer from './rulebook/items/light-hammer.json';
+import item_longbow from './rulebook/items/longbow.json';
+import item_longsword from './rulebook/items/longsword.json';
+import item_lute from './rulebook/items/lute.json';
+import item_lyre from './rulebook/items/lyre.json';
+import item_mace from './rulebook/items/mace.json';
+import item_masonstools from './rulebook/items/masons-tools.json';
+import item_maul from './rulebook/items/maul.json';
+import item_morningstar from './rulebook/items/morningstar.json';
+import item_musket from './rulebook/items/musket.json';
+import item_navigatorstools from './rulebook/items/navigators-tools.json';
+import item_paddedarmor from './rulebook/items/padded-armor.json';
+import item_painterssupplies from './rulebook/items/painters-supplies.json';
+import item_panflute from './rulebook/items/pan-flute.json';
+import item_pike from './rulebook/items/pike.json';
+import item_pistol from './rulebook/items/pistol.json';
+import item_platearmor from './rulebook/items/plate-armor.json';
+import item_playingcards from './rulebook/items/playing-cards.json';
+import item_poisonerskit from './rulebook/items/poisoners-kit.json';
+import item_potterstools from './rulebook/items/potters-tools.json';
+import item_priestspack from './rulebook/items/priests-pack.json';
+import item_quarterstaff from './rulebook/items/quarterstaff.json';
+import item_rapier from './rulebook/items/rapier.json';
+import item_ringmail from './rulebook/items/ring-mail.json';
+import item_scalemail from './rulebook/items/scale-mail.json';
+import item_scholarspack from './rulebook/items/scholars-pack.json';
+import item_scimitar from './rulebook/items/scimitar.json';
+import item_shawm from './rulebook/items/shawm.json';
+import item_shield from './rulebook/items/shield.json';
+import item_shortbow from './rulebook/items/shortbow.json';
+import item_shortsword from './rulebook/items/shortsword.json';
+import item_sickle from './rulebook/items/sickle.json';
+import item_sling from './rulebook/items/sling.json';
+import item_smithstools from './rulebook/items/smiths-tools.json';
+import item_spear from './rulebook/items/spear.json';
+import item_spellbook from './rulebook/items/spellbook.json';
+import item_splintarmor from './rulebook/items/splint-armor.json';
+import item_studdedleatherarmor from './rulebook/items/studded-leather-armor.json';
+import item_thievestools from './rulebook/items/thieves-tools.json';
+import item_threedragonante from './rulebook/items/three-dragon-ante.json';
+import item_tinkerstools from './rulebook/items/tinkers-tools.json';
+import item_trident from './rulebook/items/trident.json';
+import item_viol from './rulebook/items/viol.json';
+import item_warpick from './rulebook/items/war-pick.json';
+import item_warhammer from './rulebook/items/warhammer.json';
+import item_weaverstools from './rulebook/items/weavers-tools.json';
+import item_whip from './rulebook/items/whip.json';
+import item_woodcarverstools from './rulebook/items/woodcarvers-tools.json';
 
 export { classesMap, backgroundsMap, racesMap, itemsMap };
 
 export const classRegistry: Record<string, any> = {
+    "barbarian": class_barbarian,
+    "bard": class_bard,
+    "cleric": class_cleric,
+    "druid": class_druid,
+    "figher": class_figher,
     "monk": class_monk,
     "paladin": class_paladin,
+    "ranger": class_ranger,
+    "rogue": class_rogue,
+    "sorcerer": class_sorcerer,
+    "warlock": class_warlock,
+    "wizard": class_wizard,
 };
 
 export const subclassRegistry: Record<string, any> = {
+    "bard-subclasses": class_bardsubclasses,
     "monk-subclasses": class_monksubclasses,
 };
 
@@ -53,8 +180,113 @@ export const featRegistry: Record<string, any> = {
     "tough": feat_tough,
 };
 export const raceRegistry: Record<string, any> = {
+    "aasimar": race_aasimar,
+    "dragonborn": race_dragonborn,
+    "dwarf": race_dwarf,
+    "elf": race_elf,
+    "gnome": race_gnome,
+    "goliath": race_goliath,
     "half-orc": race_halforc,
+    "halfling": race_halfling,
+    "human": race_human,
     "orc": race_orc,
+    "tiefling": race_tiefling,
 };
 export const itemRegistry: Record<string, any> = {
+    "alchemists-supplies": item_alchemistssupplies,
+    "bagpipes": item_bagpipes,
+    "battleaxe": item_battleaxe,
+    "blowgun": item_blowgun,
+    "breastplate": item_breastplate,
+    "brewers-supplies": item_brewerssupplies,
+    "bulglars-pack": item_bulglarspack,
+    "calligraphers-supplies": item_calligrapherssupplies,
+    "carpenters-tools": item_carpenterstools,
+    "cartographers-tools": item_cartographerstools,
+    "chain-mail": item_chainmail,
+    "chain-shirt": item_chainshirt,
+    "club": item_club,
+    "cobblers-tools": item_cobblerstools,
+    "cooks-utensils": item_cooksutensils,
+    "dagger": item_dagger,
+    "dart": item_dart,
+    "dice": item_dice,
+    "disguise-kit": item_disguisekit,
+    "dragonchess": item_dragonchess,
+    "drum": item_drum,
+    "dulcimer": item_dulcimer,
+    "dungeoneers-pack": item_dungeoneerspack,
+    "entertainers-pack": item_entertainerspack,
+    "explorers-pack": item_explorerspack,
+    "flail": item_flail,
+    "flute": item_flute,
+    "forgery-kit": item_forgerykit,
+    "glaive": item_glaive,
+    "glassblowers-tools": item_glassblowerstools,
+    "greataxe": item_greataxe,
+    "greatclub": item_greatclub,
+    "greatsword": item_greatsword,
+    "halberd": item_halberd,
+    "half-plate-armor": item_halfplatearmor,
+    "hand-crossbow": item_handcrossbow,
+    "handaxe": item_handaxe,
+    "heavy-crossbow": item_heavycrossbow,
+    "herbalism-kit": item_herbalismkit,
+    "hide-armor": item_hidearmor,
+    "holy-symbol": item_holysymbol,
+    "horn": item_horn,
+    "javelin": item_javelin,
+    "jewelers-tools": item_jewelerstools,
+    "lance": item_lance,
+    "leather-armor": item_leatherarmor,
+    "leatherworkers-tools": item_leatherworkerstools,
+    "light-crossbow": item_lightcrossbow,
+    "light-hammer": item_lighthammer,
+    "longbow": item_longbow,
+    "longsword": item_longsword,
+    "lute": item_lute,
+    "lyre": item_lyre,
+    "mace": item_mace,
+    "masons-tools": item_masonstools,
+    "maul": item_maul,
+    "morningstar": item_morningstar,
+    "musket": item_musket,
+    "navigators-tools": item_navigatorstools,
+    "padded-armor": item_paddedarmor,
+    "painters-supplies": item_painterssupplies,
+    "pan-flute": item_panflute,
+    "pike": item_pike,
+    "pistol": item_pistol,
+    "plate-armor": item_platearmor,
+    "playing-cards": item_playingcards,
+    "poisoners-kit": item_poisonerskit,
+    "potters-tools": item_potterstools,
+    "priests-pack": item_priestspack,
+    "quarterstaff": item_quarterstaff,
+    "rapier": item_rapier,
+    "ring-mail": item_ringmail,
+    "scale-mail": item_scalemail,
+    "scholars-pack": item_scholarspack,
+    "scimitar": item_scimitar,
+    "shawm": item_shawm,
+    "shield": item_shield,
+    "shortbow": item_shortbow,
+    "shortsword": item_shortsword,
+    "sickle": item_sickle,
+    "sling": item_sling,
+    "smiths-tools": item_smithstools,
+    "spear": item_spear,
+    "spellbook": item_spellbook,
+    "splint-armor": item_splintarmor,
+    "studded-leather-armor": item_studdedleatherarmor,
+    "thieves-tools": item_thievestools,
+    "three-dragon-ante": item_threedragonante,
+    "tinkers-tools": item_tinkerstools,
+    "trident": item_trident,
+    "viol": item_viol,
+    "war-pick": item_warpick,
+    "warhammer": item_warhammer,
+    "weavers-tools": item_weaverstools,
+    "whip": item_whip,
+    "woodcarvers-tools": item_woodcarverstools,
 };

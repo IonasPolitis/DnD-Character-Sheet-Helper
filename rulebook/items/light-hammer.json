@@ -1,6 +1,6 @@
 {
       "name": "Light Hammer",
-      "type": "Weapon",
+      "type": "weapon",
       "description": "Light, Thrown (Range 20/60)",
       "weight": 2,
       "damage": "1d4 Bludgeoning",

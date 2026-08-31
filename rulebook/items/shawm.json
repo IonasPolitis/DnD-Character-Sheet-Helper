@@ -1,7 +1,7 @@
 {
-      "name": "Musical Instrument - Viol",
-      "type": "Gear",
+      "name": "Shawm",
+      "type": "musical-instrument",
       "description": "Play a known tune (DC 10), or improvise a song (DC 15)",
       "weight": 1,
-      "cost": 30
+      "cost": 2
 }

@@ -1,6 +1,6 @@
 {
       "name": "Spellbook",
-      "type": "Gear",
+      "type": "gear",
       "description": "",
       "weight": 3,
       "cost": 0

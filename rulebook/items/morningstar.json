@@ -1,6 +1,6 @@
 {
       "name": "Morningstar",
-      "type": "Weapon",
+      "type": "weapon",
       "description": "",
       "weight": 4,
       "damage": "1d8 Piercing",

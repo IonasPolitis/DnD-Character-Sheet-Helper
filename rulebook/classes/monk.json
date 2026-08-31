@@ -6,8 +6,7 @@
             "items": {
                 "spear": 1,
                 "dagger": 5,
-                "artisans-tools": 1,
-                "musical-instrument": 1,
+                "artisans-tool|musical-instrument": 1,
                 "explorers-pack": 1
             }, "gold": 11
         },
