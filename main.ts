@@ -573,7 +573,7 @@ export default class DnDFeaturesPlugin extends Plugin {
 
             const wealthWindow = wrapper.createDiv({
                 cls: "dnd-features-window",
-                attr: { style: "display: flex; flex-direction: row; align-items: center; justify-content: space-between; padding: 12px 16px; margin-bottom: 16px;"
+                attr: { style: "display: flex; flex-direction: row; align-items: center; justify-content: space-between; padding: 12px 16px;"
             } });
 
             const wealthLeft = wealthWindow.createEl("span", { attr: { style: "display: flex; align-items: center; gap: 20px;" } });
@@ -581,9 +581,9 @@ export default class DnDFeaturesPlugin extends Plugin {
             wealthLeft.createEl("strong", { text: `${totalGold} GP`, attr: { style: "font-size: 1.1em; color: var(--dnd-text-bright);" } });
 
             const wealthRight = wealthWindow.createEl("span", { attr: { style: "display: flex; flex-direction: row; align-items: center;" } });
-            const amountInput = wealthRight.createEl("input", { type: "number", value: "1", attr: { style: "width: 45px; text-align: center; background: var(--dnd-bg-darker); border: 1px solid var(--dnd-border-primary); color: var(--dnd-text-bright); border-radius: 4px; padding: 4px; margin: 0 15px;" } });
+            const amountInput = wealthRight.createEl("input", { type: "number", value: "1", attr: { style: "text-align: center; background: var(--dnd-bg-darker); border: 1px solid var(--dnd-border-primary); color: var(--dnd-text-bright); border-radius: 4px; padding: 4px; margin: 0 15px;" } });
             // Grouped buttons
-            const btnGroup = wealthRight.createEl("span", { attr: { style: "display: flex; gap: 20px;" } });
+            const btnGroup = wealthRight.createEl("span", { attr: { style: "display: flex; gap: 10px;" } });
             const addBtn = btnGroup.createEl("button", { text: "Add" });
             const subBtn = btnGroup.createEl("button", { text: "Spend" });
 
