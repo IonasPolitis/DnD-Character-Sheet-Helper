@@ -84,7 +84,7 @@ The structure of each JSON file is as follows:
 - classes/races/items.json:
 ```
 {
-	"<Background/Class/Race/Item_Name>": "<Feat/Class/Race/Item_File_Name>"
+	"<Class/Race/Item_Name>": "<Class/Race/Item_File_Name>"
 }
 ```
 
