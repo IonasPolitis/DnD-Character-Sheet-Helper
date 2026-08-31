@@ -571,9 +571,9 @@ export default class DnDFeaturesPlugin extends Plugin {
             const goldSpent = Number(frontmatter['dnd_gold_spent']) || 0;
             const totalGold = goldBase + goldAdded + grantedGold - goldSpent;
 
-            const wealthWindow = wrapper.createDiv({ attr: {
+            const wealthWindow = wrapper.createDiv({
                 cls: "dnd-features-window",
-                style: "display: flex; flex-direction: row; align-items: center; justify-content: space-between; padding: 12px 16px; margin-bottom: 16px;"
+                attr: { style: "display: flex; flex-direction: row; align-items: center; justify-content: space-between; padding: 12px 16px; margin-bottom: 16px;"
             } });
 
             const wealthLeft = wealthWindow.createEl("span", { attr: { style: "display: flex; align-items: center; gap: 20px;" } });
