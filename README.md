@@ -30,7 +30,7 @@ An easy way to manage your character's inventory including. There is a section f
 A Sample of the Code Block looks like this:
 ````markdown
 ```dnd-inventory
-<optional>weapon: $text$
+weapon: $text$ [//]: <optional>
 <optional>weapon_damage: $text$
 <optional>armor: $text$
 <optional>armor_ac: $text$
