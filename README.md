@@ -55,7 +55,7 @@ The Backpack section is also always visible and wil be automatically populated w
 
  - Code Blocks have frontmatter support by using the key-word "frontmatter." + a note property's name.
  
-#### Settinsg Menu:
+#### Settings Menu:
 
  - Class & Subclass combination toggle
 
