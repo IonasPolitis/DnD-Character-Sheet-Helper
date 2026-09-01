@@ -90,7 +90,7 @@ The structure of each JSON file is as follows:
 ```
 
 - backgrounds.json:
-```markdown
+```json
 {
       "<Background>": {
             "feat": "<Feat_Given>",
@@ -108,7 +108,7 @@ The structure of each JSON file is as follows:
 ```
 
 - class.json:
-```
+```json
 {
     "class": "<Class_Name>>",
     "subclassFile": "<Subclass_File_Name>",
@@ -138,7 +138,7 @@ Sometimes DnD classes or backgrounds offer a choice of an item category (like an
 By adding a pipe character (|) to an item key in your class.json or backgrounds.json (e.g: "musical-instrument|": 1 or "artisans-tool|musical-instrument": 1), you tell the plugin to wait for the player's choice. The plugin will automatically scan the player's *class-chosen-items* or *background-chosen-items* variables in their note, find an item whose "type" matches the requirement, and seamlessly add it to their inventory.
 
 - $class-subclass.json:
-```
+```json
 {
       "<Subclass_Name>": {
             "<Level>": [
@@ -152,7 +152,7 @@ By adding a pipe character (|) to an item key in your class.json or backgrounds.
 ```
 
 - feat.json:
-```
+```json
 {
 	"name": "<Feat_Name>",
 	"description": "<Feat_Description>"
@@ -160,7 +160,7 @@ By adding a pipe character (|) to an item key in your class.json or backgrounds.
 ```
 
 - race.json:
-```
+```json
 {
       "traits": [
             {
@@ -174,7 +174,7 @@ By adding a pipe character (|) to an item key in your class.json or backgrounds.
 The *lineage* variable in the race.json is a Flag, making it so that this trait will appear if that and the *race-lineage* variable in the code block have the same value, while also swapping out the "Trait" badge for a "Lineage" badge.
 
 - item.json:
-```
+```json
 {
       "name": "<Item's_name>",
       "type": "<weapon/armor/gear/artisans-tool/musical-instrument/gaming-set>",
