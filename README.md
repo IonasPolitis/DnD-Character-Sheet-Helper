@@ -7,7 +7,7 @@ The DnD Character Sheet Helper is an Obsidian Plugin that brings the DnD Ruleboo
 Given the appropriate variables and values this plugin can give you useful information of your character directly inside your Obsidian Note. It displays all the Action related Features from your Class (with Multi-class support), Subclass, Race Traits, Background Feat and Extra Feats added at your own disposal.
 
 A Sample of the Code Block looks like this:
-````
+````markdown
 ```dnd-features
 level: $num$
 class: $list$
@@ -28,7 +28,7 @@ The rest of the variables should be self-explanatory.
 An easy way to manage your character's inventory including. There is a section for managing your Gold, a section for Weapon / Armor, a section for starter items and a section for extra items added in later on.
 
 A Sample of the Code Block looks like this:
-````
+````markdown
 ```dnd-inventory
 <optional>weapon: $text$
 <optional>weapon_damage: $text$
@@ -90,7 +90,7 @@ The structure of each JSON file is as follows:
 ```
 
 - backgrounds.json:
-```
+```markdown
 {
       "<Background>": {
             "feat": "<Feat_Given>",
