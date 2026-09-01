@@ -217,6 +217,16 @@ export default class DnDFeaturesPlugin extends Plugin {
             const raceLineage = resolveValue(blockData['race-lineage']);
             const background = resolveValue(blockData.background);
             const extraFeats = resolveValue(blockData['extra-feats']);
+            const hideRaw = resolveValue(blockData.hide);
+
+            // --- THE GATEKEEPER SETUP ---
+            // Normalize the 'hide' variable into a clean array of lowercased strings to prevent typo-misses
+            let hiddenFeatures: string[] = [];
+            if (Array.isArray(hideRaw)) {
+                hiddenFeatures = hideRaw.map(name => String(name).toLowerCase().trim());
+            } else if (typeof hideRaw === 'string') {
+                hiddenFeatures = hideRaw.split(',').map(name => String(name).toLowerCase().trim());
+            }
 
             // 5. Validate Multiclassing Levels & Ensure Numbers
             const parsedLevel = Number(level) || 0; // Force total level to be a number
@@ -347,6 +357,8 @@ export default class DnDFeaturesPlugin extends Plugin {
 
                             if (levelFeatures && levelFeatures.length > 0) {
                                 for (const feature of levelFeatures) {
+                                    if (feature.name && hiddenFeatures.includes(feature.name.toLowerCase())) continue;
+
                                     const featureBlock = sectionDiv.createDiv({ cls: "dnd-feature-block" });
                                     const titleContainer = featureBlock.createDiv({ cls: "dnd-feature-title" });
 
@@ -366,6 +378,8 @@ export default class DnDFeaturesPlugin extends Plugin {
 
                                 if (subLevelFeatures && subLevelFeatures.length > 0) {
                                     for (const feature of subLevelFeatures) {
+                                        if (feature.name && hiddenFeatures.includes(feature.name.toLowerCase())) continue;
+
                                         const featureBlock = sectionDiv.createDiv({ cls: "dnd-feature-block" });
                                         const titleContainer = featureBlock.createDiv({ cls: "dnd-feature-title" });
 
@@ -404,6 +418,8 @@ export default class DnDFeaturesPlugin extends Plugin {
                                 const subLevelFeatures = subclassData[i.toString()];
                                 if (subLevelFeatures && subLevelFeatures.length > 0) {
                                     for (const feature of subLevelFeatures) {
+                                        if (feature.name && hiddenFeatures.includes(feature.name.toLowerCase())) continue;
+
                                         const featureBlock = sectionDiv.createDiv({ cls: "dnd-feature-block" });
                                         const titleContainer = featureBlock.createDiv({ cls: "dnd-feature-title" });
 
@@ -426,6 +442,8 @@ export default class DnDFeaturesPlugin extends Plugin {
                     if (raceData && raceData.traits) {
                         for (const trait of raceData.traits) {
                             // --- THE GATEKEEPER LOGIC ---
+                            if (trait.name && hiddenFeatures.includes(trait.name.toLowerCase())) continue;
+
                             // If this trait has a specific lineage flag...
                             if (trait.lineage) {
                                 // ...skip rendering it if the user didn't provide a lineage OR if it doesn't match!
@@ -458,7 +476,7 @@ export default class DnDFeaturesPlugin extends Plugin {
                     const bgData = await getBackgroundData(this.app, this.settings, background);
                     const featData = bgData && bgData.feat ? await getExtraFeat(this.app, this.settings, bgData.feat) : null;
                     
-                    if (featData) {
+                    if (featData && !hiddenFeatures.includes(featData.name.toLowerCase())) {
                         const featureBlock = sectionDiv.createDiv({ cls: "dnd-feature-block" });
                         const titleContainer = featureBlock.createDiv({ cls: "dnd-feature-title" });
 
@@ -481,6 +499,8 @@ export default class DnDFeaturesPlugin extends Plugin {
                         const featData = await getExtraFeat(this.app, this.settings, safeFeatId);
 
                         if (featData) {
+                            if (featData.name && hiddenFeatures.includes(featData.name.toLowerCase())) continue;
+
                             const featureBlock = sectionDiv.createDiv({ cls: "dnd-feature-block" });
                             const titleContainer = featureBlock.createDiv({ cls: "dnd-feature-title" });
 

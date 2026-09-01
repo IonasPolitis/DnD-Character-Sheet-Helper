@@ -953,7 +953,7 @@ var druid_subclasses_default = {
       },
       {
         name: "Circle of the Moon Spells",
-        description: "When you reach a Druid level specified in the Circle of the Moon Spells table, you ther eafter always have the listed spells prepared.\n#### Circle of the Moon Spells\n\n| Lvl 3 | Lvl 5 | Lvl 7 | Lvl 9 |\n| ----- | ----- | ----- | ----- |\n| Cure Wounds, Moonbeam, Starry Wisp | Conjure Animals | Fount of Moonlight | Mass Cure Wounds |"
+        description: "When you reach a Druid level specified in the Circle of the Moon Spells table, you ther eafter always have the listed spells prepared.\n#### Circle of the Moon Spells\n\n| Level 3 | Level 5 | Level 7 | Level 9 |\n| ----- | ----- | ----- | ----- |\n| Cure Wounds, Moonbeam, Starry Wisp | Conjure Animals | Fount of Moonlight | Mass Cure Wounds |"
       }
     ],
     "6": [
@@ -979,7 +979,7 @@ var druid_subclasses_default = {
     "3": [
       {
         name: "Circle of the Sea Spells",
-        description: "When you reach a Druid level specified in the Circle of the Sea Spells table, you thereafter always have the listed spells prepared.\n#### Circle of the Sea Spells\n\n| Lvl 3 | Lvl 5 | Lvl 7 | Lvl 9 |\n| ----- | ----- | ----- | ----- |\n| Fog Cloud, Gust of Wind, Ray of Frost, Shatter, Thunderwave | Lightning Bolt, Water Breathing | Control Water, Ice Storm | Conjure Elemental, Hold Monster |"
+        description: "When you reach a Druid level specified in the Circle of the Sea Spells table, you thereafter always have the listed spells prepared.\n#### Circle of the Sea Spells\n\n| Level 3 | Level 5 | Level 7 | Level 9 |\n| ----- | ----- | ----- | ----- |\n| Fog Cloud, Gust of Wind, Ray of Frost, Shatter, Thunderwave | Lightning Bolt, Water Breathing | Control Water, Ice Storm | Conjure Elemental, Hold Monster |"
       },
       {
         name: "Wrath of the Sea",
@@ -1450,11 +1450,123 @@ var monk_default = {
 
 // rulebook/classes/paladin-subclasses.json
 var paladin_subclasses_default = {
-  "<Subclass_Name>": {
-    "<Level>": [
+  "Oath of Devotion": {
+    "3": [
       {
-        name: "<Feature_Name>",
-        description: "<Feature_Description>"
+        name: "Sacred Weapon",
+        description: "When you take the Attack action, you can expend one use of your Channel Divinity to imbue one Melee weapon that you are holding with positive energy. For 10 minutes or until you use this feature again, you add your Charisma modifier to attack rolls you make with that weapon (minimum bonus of +1), and each time you hit with it, you cause it to deal its normal damage type or Radiant damage.\n	The weapon also emits Bright Light in a 20-foot radius and Dim Light 20 feet beyond that.\nYou can end this effect early (no action required).\n	This effect also ends if you aren't carrying the weapon."
+      }
+    ],
+    "7": [
+      {
+        name: "Aura of Devotion",
+        description: "You and your allies have Immunity to the Charmed condition while in your Aura of Protection. If a Charmed ally enters the aura, that condition has no effect on that ally while there."
+      }
+    ],
+    "15": [
+      {
+        name: "Smite of Protection",
+        description: "Your magical smite now radiates protective energy. Whenever you cast Divine Smite, you and your allies have Half Cover while in your Aura of Protection. The aura has this benefit until the start of your next turn."
+      }
+    ],
+    "20": [
+      {
+        name: "Holy Nimbus",
+        description: "As a Bonus Action, you can imbue your Aura of Protection with holy power, granting the benefits below for 10 minutes or until you end them (no action required). Once you use this feature, you can't use it again until you finish a Long Rest. You can also restore your use of it by expending a level 5 spell slot (no action required).\n - **Holy Ward**: You have Advantage on any saving throw you are forced to make by a Fiend or an Undead.\n - **Radiant Damage**: Whenever an enemy starts its turn in the aura, that creature takes Radiant damage equal to your Charisma modifier plus your Proficiency Bonus.\n - **Sunlight**: The aura is filled with Bright Light that is sunlight."
+      }
+    ]
+  },
+  "Oath of Glory": {
+    "3": [
+      {
+        name: "Inspiring Smite",
+        description: "Immediately after you cast Divine Smite, you can expend one use of your Channel Divinity and distribute Temporary Hit Points to creatures of your choice within 30 feet of yourself, which can include you. The total number of Temporary Hit Points equals 2d8 plus your Paladin level, divided among the chosen creatures however you like."
+      },
+      {
+        name: "Oath of Glory Spells",
+        description: "The magic of your oath ensures you always have certain spells ready:\n#### Oath of Glory Spells\n\n| Level 3 | Level 5 | Level 9 | Level 13 | Level 17 |\n| ----- | ----- | ----- | ----- | ----- |\n| Guiding Bolt, Heroism | Enhance Ability, Magic Weapon | Haste, Protection from Energy | Compulsion, Freedom of Movement | Legend Lore, Yolande's Regal Presence |"
+      },
+      {
+        name: "Pearless Athlete",
+        description: "As a Bonus Action, you can expend one use of your Channel Divinity to augment your athleticism. For 1 hour, you have Advantage on Strength (Athletics) and Dexterity (Acrobatics) checks, and the distance of your Long and High Jumps increases by 10 feet (this extra distance costs movement as normal)."
+      }
+    ],
+    "7": [
+      {
+        name: "Aura of Alacrity",
+        description: "Whenever an ally enters your Aura of Protection for the first time on a turn or starts their turn there, the ally's Speed increases by 10 feet until the end of their next turn."
+      }
+    ],
+    "15": [
+      {
+        name: "Glorious Defense",
+        description: "You can turn defense into a sudden strike. When you or another creature you can see within 10 feet of you is hit by an attack roll, you can take a Reaction to grant a bonus to the target's AC against that attack, potentially causing it to miss. The bonus equals your Charisma modifier (minimum of +1). If the attack misses, you can make one attack with a weapon against the attacker as part of this Reaction if the attacker is within your weapon's range.\n	You can use this feature a number of times equal to your Charisma modifier (minimum of once), and you regain all expended uses when you finish a Long Rest."
+      }
+    ],
+    "20": [
+      {
+        name: "Living Legend",
+        description: "You can empower yourself with the legends -whether true or exaggerated- of your great deeds. As a Bonus Ac tion, you gain the benefits below for 10 minutes. Once you use this feature, you can't use it again until you finish a Long Rest. You can also restore your use of it by expending a level 5 spell slot (no action required).\n - **Charismatic**: You are blessed with an otherworldly presence and have Advantage on all Charisma checks.\n - **Saving Throw Reroll**: If you fail a saving throw, you can take a Reaction to reroll it. You must use this new roll.\n - **Unerring Strike**: Once on each of your turns when you make an attack roll with a weapon and miss, you can cause that attack to hit instead."
+      }
+    ]
+  },
+  "Oath of the Ancients": {
+    "3": [
+      {
+        name: "Nature's Wrath",
+        description: "As a Magic action, you can expend one use of your Channel Divinity to conjure spectral vines around nearby creatures. Each creature of your choice that you can see within 15 feet of yourself must succeed on a Strength saving throw or have the Restrained condition for 1 minute. A Restrained creature repeats the save at the end of each of its turns, ending the effect on itself on a success."
+      },
+      {
+        name: "Oath of the Ancients Spells",
+        description: "The magic of your oath ensures you always have certain spells ready.\n#### Oath of the Ancients\n\n| Level 3 | Level 5 | Level 9 | Level 13 | Level 17 |\n| ----- | ----- | ----- | ----- | ----- |\n| Ensnaring Strike, Speak with Animals | Misty Step, Moonbeam | Plant Growth, Protection from Energy | Ice Storm, Stoneskin | Commune with Nature, Tree Stride |"
+      }
+    ],
+    "7": [
+      {
+        name: "Aura of Warding",
+        description: "Ancient magic lies so heavily upon you that it forms an eldritch ward, blunting energy from beyond the Material Plane; you and your allies have Resistance to Necrotic, Psychic, and Radiant damage while in your Aura of Protection."
+      }
+    ],
+    "15": [
+      {
+        name: "Undying Sentinel",
+        description: "When you are reduced to 0 Hit Points and not killed outright, you can drop to 1 Hit Point instead, and you regain a number of Hit Points equal to three times your Paladin level. Once you use this feature, you can't do so again until you finish a Long Rest.\n	Additionally, you can't be aged magically, and you cease visibly aging."
+      }
+    ],
+    "20": [
+      {
+        name: "Elder Champion",
+        description: "As a Bonus Action, you can imbue your Aura of Protection with primal power, granting the benefits below for 1 minute or until you end them (no action required}. Once you use this feature, you can't use it again until you finish a Long Rest. You can also restore your use of it by expending a level 5 spell slot (no action required)\n - **Diminish Defiance**:  Enemies in the aura have Disadvantage on saving throws against your spells and Channel Divinity options\n - **Regeneration**:  At the start of each of your turns, you regain 10 Hit Points\n - **Swift Spells**:  Whenever you cast a spell that has a casting time of an action, you can cast it using a Bonus Action instead"
+      }
+    ]
+  },
+  "Oath of Vengeance": {
+    "3": [
+      {
+        name: "Oath of Vengeance Spells",
+        description: "The magic of your oath ensures you always have certain spells read.\n#### Oath of Vengeance Spells\n\n| Level 3 | Level 5 | Level 9 | Level 13 | Level 17 |\n| ----- | ----- | ----- | ----- | ----- |\n| Bane, Hunter's Mark | Hold Person, Misty Step | Haste, Protection from Energy | Banishment , Dimension Door | Hold Monster, Scrying |"
+      },
+      {
+        name: "Vow of Enmity",
+        description: "When you take the Attack action, you can expend one use of your Channel Divinity to utter a vow of enmity against a creature you can see within 30 feet of yourself. You have Advantage on attack rolls against the creature for 1 minute or until you use this feature again.\n	If the creature drops to 0 Hit Points before the vow ends, you can transfer the vow to a different creature within 30 feet of yourself (no action required)."
+      }
+    ],
+    "7": [
+      {
+        name: "Relentless Avenger",
+        description: "Your supernatural focus helps you close off a foe's retreat. When you hit a creature with an Opportunity Attack, you can reduce the creature's Speed to O until the end of the current turn. You can then move up to half your Speed as part of the same Reaction. This movement doesn't provoke Opportunity Attacks"
+      }
+    ],
+    "15": [
+      {
+        name: "Soul of Vengeance",
+        description: "Immediately after a creature under the effect of your Vow of Enmity hits or misses with an attack roll, you can take a Reaction to make a melee attack against that creature if it's within range."
+      }
+    ],
+    "20": [
+      {
+        name: "Avenging Angel",
+        description: "As a Bonus Action, you gain the benefits below for 10 minutes or until you end them (no action required). Once you use this feature, you can't use it again until you finish a Long Rest. You can also restore your use of it by expending a level 5 spell slot (no action required).\n - **Flight**: You sprout spectral wings on your back, have a Fly Speed of 60 feet, and can hover.\n - **Frighful Aura**: Whenever an enemy starts its turn in your Aura of Protection, that creature must succeed on a Wisdom saving throw or have the Frightened condition for 1 minute or until it takes any da mage. Attack rolls against the Frightened creature have Advantage."
       }
     ]
   }
@@ -1482,7 +1594,45 @@ var paladin_default = {
     "1": [
       {
         name: "Lay on Hands",
-        description: "Your blessed touch can heal wounds"
+        description: "Your blessed touch can heal wounds. You have a pool of healing power that replenishes when you finish a Long Rest. With that pool, you can restore a total number of Hit Points equal to five times your Paladin level.\n	As a Bonus Action, you can touch a creature (which could be yourself) and draw power from the pool of healing to restore a number of Hit Points to that creature, up to the maximum amount remaining in the pool.\n	You can also expend 5 Hit Points from the pool of healing power to remove the Poisoned condition from the creature; those points don't also restore Hit Points to the creature."
+      },
+      {
+        name: "Weapon Mastery",
+        description: "Whenever you finish a Long Rest, you can change the kinds of weapons you chose. For example, you could switch to using the mastery properties of Hal-berds and Flails"
+      }
+    ],
+    "5": [
+      {
+        name: "Extra Attack",
+        description: "You can attack twice instead of once whenever you take the Attack action on your turn."
+      },
+      {
+        name: "Faithful Steed",
+        description: "You can call on the aid of an otherworldly steed. You always have the Find Steed spell prepared.\n	You can also cast the spell once without expending a spell slot, and you regain the ability to do so when you finish a Long Rest."
+      }
+    ],
+    "6": [
+      {
+        name: "Aura of Protection",
+        description: "You radiate a protective, unseeable aura in a 10-foot Emanation that originates from you. The aura is inactive while you have the Incapacitated condition.\n	You and your allies in the aura gain a bonus to saving throws equal to your Charisma modifier (minimum bonus of +1).\n	If another Paladin is present, a creature can benefit from only one Aura of Protection at a time; the creat ure chooses which aura while in them."
+      }
+    ],
+    "9": [
+      {
+        name: "Abjure Foes",
+        description: "As a Magic action, you can expend one use of this class's Channel Divinity to overwhelm foes with awe. As you present your Holy Symbol or weapon, you can target a number of creatures equal to your Charisma modifier (minimum of one creature) that you can see within 60 feet of yourself. Each target must succeed on a Wisdom saving throw or have the Frightened condition for 1 minute or until it takes any damage. While Frightened in this way, a target can do only one of the following on its turns: move, take an action, or take a Bonus Action."
+      }
+    ],
+    "10": [
+      {
+        name: "Aura of Courage",
+        description: "You and your allies have Immunity to the Frightened condition while in your Aura of Protection. If a Frightened ally enters the aura, that condition has no effect on that ally while there."
+      }
+    ],
+    "14": [
+      {
+        name: "Restoring Touch",
+        description: "When you use Lay On Hands on a creature, you can also remove one or more of the following conditions from the creature: Blinded, Charmed, Deafened, Frightened, Paralyzed, or Stunned. You must expend 5 Hit Points from the healing pool of Lay On Hands for each of these conditions you remove; those points don't also restore Hit Points to the creature."
       }
     ]
   }
@@ -3465,6 +3615,13 @@ var DnDFeaturesPlugin = class extends import_obsidian2.Plugin {
       const raceLineage = resolveValue(blockData["race-lineage"]);
       const background = resolveValue(blockData.background);
       const extraFeats = resolveValue(blockData["extra-feats"]);
+      const hideRaw = resolveValue(blockData.hide);
+      let hiddenFeatures = [];
+      if (Array.isArray(hideRaw)) {
+        hiddenFeatures = hideRaw.map((name) => String(name).toLowerCase().trim());
+      } else if (typeof hideRaw === "string") {
+        hiddenFeatures = hideRaw.split(",").map((name) => String(name).toLowerCase().trim());
+      }
       const parsedLevel = Number(level) || 0;
       if (Array.isArray(dndClass) && dndClass.length > 1) {
         if (!Array.isArray(classLevels) || classLevels.length !== dndClass.length) {
@@ -3554,6 +3711,7 @@ var DnDFeaturesPlugin = class extends import_obsidian2.Plugin {
               const levelFeatures = classData.features[i.toString()];
               if (levelFeatures && levelFeatures.length > 0) {
                 for (const feature of levelFeatures) {
+                  if (feature.name && hiddenFeatures.includes(feature.name.toLowerCase())) continue;
                   const featureBlock = sectionDiv.createDiv({ cls: "dnd-feature-block" });
                   const titleContainer = featureBlock.createDiv({ cls: "dnd-feature-title" });
                   titleContainer.createEl("span", { text: feature.badge ? feature.badge : `Lvl ${i}`, cls: "dnd-level-badge" });
@@ -3568,6 +3726,7 @@ var DnDFeaturesPlugin = class extends import_obsidian2.Plugin {
                 const subLevelFeatures = subclassData ? subclassData[i.toString()] : null;
                 if (subLevelFeatures && subLevelFeatures.length > 0) {
                   for (const feature of subLevelFeatures) {
+                    if (feature.name && hiddenFeatures.includes(feature.name.toLowerCase())) continue;
                     const featureBlock = sectionDiv.createDiv({ cls: "dnd-feature-block" });
                     const titleContainer = featureBlock.createDiv({ cls: "dnd-feature-title" });
                     titleContainer.createEl("span", { text: feature.badge ? feature.badge : `Lvl ${i}`, cls: "dnd-level-badge dnd-badge-combined" });
@@ -3595,6 +3754,7 @@ var DnDFeaturesPlugin = class extends import_obsidian2.Plugin {
                 const subLevelFeatures = subclassData[i.toString()];
                 if (subLevelFeatures && subLevelFeatures.length > 0) {
                   for (const feature of subLevelFeatures) {
+                    if (feature.name && hiddenFeatures.includes(feature.name.toLowerCase())) continue;
                     const featureBlock = sectionDiv.createDiv({ cls: "dnd-feature-block" });
                     const titleContainer = featureBlock.createDiv({ cls: "dnd-feature-title" });
                     titleContainer.createEl("span", { text: feature.badge ? feature.badge : `Lvl ${i}`, cls: "dnd-level-badge" });
@@ -3610,6 +3770,7 @@ var DnDFeaturesPlugin = class extends import_obsidian2.Plugin {
           const raceData = await getRaceData(this.app, this.settings, race);
           if (raceData && raceData.traits) {
             for (const trait of raceData.traits) {
+              if (trait.name && hiddenFeatures.includes(trait.name.toLowerCase())) continue;
               if (trait.lineage) {
                 if (!raceLineage || trait.lineage.toLowerCase() !== String(raceLineage).toLowerCase()) {
                   continue;
@@ -3630,7 +3791,7 @@ var DnDFeaturesPlugin = class extends import_obsidian2.Plugin {
         } else if (sectionName === "Background") {
           const bgData = await getBackgroundData(this.app, this.settings, background);
           const featData = bgData && bgData.feat ? await getExtraFeat(this.app, this.settings, bgData.feat) : null;
-          if (featData) {
+          if (featData && !hiddenFeatures.includes(featData.name.toLowerCase())) {
             const featureBlock = sectionDiv.createDiv({ cls: "dnd-feature-block" });
             const titleContainer = featureBlock.createDiv({ cls: "dnd-feature-title" });
             titleContainer.createEl("span", { text: "Origin Feat", cls: "dnd-level-badge" });
@@ -3645,6 +3806,7 @@ var DnDFeaturesPlugin = class extends import_obsidian2.Plugin {
             const safeFeatId = typeof featId === "string" ? featId : String(featId);
             const featData = await getExtraFeat(this.app, this.settings, safeFeatId);
             if (featData) {
+              if (featData.name && hiddenFeatures.includes(featData.name.toLowerCase())) continue;
               const featureBlock = sectionDiv.createDiv({ cls: "dnd-feature-block" });
               const titleContainer = featureBlock.createDiv({ cls: "dnd-feature-title" });
               titleContainer.createEl("span", { text: featData.badge ? featData.badge : "Feat", cls: "dnd-level-badge" });

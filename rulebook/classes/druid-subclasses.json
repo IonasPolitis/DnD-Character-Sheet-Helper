@@ -32,7 +32,7 @@
                   },
                   {
                         "name": "Circle of the Moon Spells",
-                        "description": "When you reach a Druid level specified in the Circle of the Moon Spells table, you ther eafter always have the listed spells prepared.\n#### Circle of the Moon Spells\n\n| Lvl 3 | Lvl 5 | Lvl 7 | Lvl 9 |\n| ----- | ----- | ----- | ----- |\n| Cure Wounds, Moonbeam, Starry Wisp | Conjure Animals | Fount of Moonlight | Mass Cure Wounds |"
+                        "description": "When you reach a Druid level specified in the Circle of the Moon Spells table, you ther eafter always have the listed spells prepared.\n#### Circle of the Moon Spells\n\n| Level 3 | Level 5 | Level 7 | Level 9 |\n| ----- | ----- | ----- | ----- |\n| Cure Wounds, Moonbeam, Starry Wisp | Conjure Animals | Fount of Moonlight | Mass Cure Wounds |"
                   }
             ],
             "6": [
@@ -58,7 +58,7 @@
             "3": [
                   {
                         "name": "Circle of the Sea Spells",
-                        "description": "When you reach a Druid level specified in the Circle of the Sea Spells table, you thereafter always have the listed spells prepared.\n#### Circle of the Sea Spells\n\n| Lvl 3 | Lvl 5 | Lvl 7 | Lvl 9 |\n| ----- | ----- | ----- | ----- |\n| Fog Cloud, Gust of Wind, Ray of Frost, Shatter, Thunderwave | Lightning Bolt, Water Breathing | Control Water, Ice Storm | Conjure Elemental, Hold Monster |"
+                        "description": "When you reach a Druid level specified in the Circle of the Sea Spells table, you thereafter always have the listed spells prepared.\n#### Circle of the Sea Spells\n\n| Level 3 | Level 5 | Level 7 | Level 9 |\n| ----- | ----- | ----- | ----- |\n| Fog Cloud, Gust of Wind, Ray of Frost, Shatter, Thunderwave | Lightning Bolt, Water Breathing | Control Water, Ice Storm | Conjure Elemental, Hold Monster |"
                   },
                   {
                         "name": "Wrath of the Sea",

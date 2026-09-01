@@ -18,7 +18,45 @@
         "1": [
             {
                 "name": "Lay on Hands",
-                "description": "Your blessed touch can heal wounds"
+                "description": "Your blessed touch can heal wounds. You have a pool of healing power that replenishes when you finish a Long Rest. With that pool, you can restore a total number of Hit Points equal to five times your Paladin level.\n\tAs a Bonus Action, you can touch a creature (which could be yourself) and draw power from the pool of healing to restore a number of Hit Points to that creature, up to the maximum amount remaining in the pool.\n\tYou can also expend 5 Hit Points from the pool of healing power to remove the Poisoned condition from the creature; those points don't also restore Hit Points to the creature."
+            },
+            {
+                "name": "Weapon Mastery",
+                "description": "Whenever you finish a Long Rest, you can change the kinds of weapons you chose. For example, you could switch to using the mastery properties of Hal-berds and Flails"
+            }
+        ],
+        "5": [
+            {
+                "name": "Extra Attack",
+                "description": "You can attack twice instead of once whenever you take the Attack action on your turn."
+            },
+            {
+                "name": "Faithful Steed",
+                "description": "You can call on the aid of an otherworldly steed. You always have the Find Steed spell prepared.\n\tYou can also cast the spell once without expending a spell slot, and you regain the ability to do so when you finish a Long Rest."
+            }
+        ],
+        "6": [
+            {
+                "name": "Aura of Protection",
+                "description": "You radiate a protective, unseeable aura in a 10-foot Emanation that originates from you. The aura is inactive while you have the Incapacitated condition.\n\tYou and your allies in the aura gain a bonus to saving throws equal to your Charisma modifier (minimum bonus of +1).\n\tIf another Paladin is present, a creature can benefit from only one Aura of Protection at a time; the creat ure chooses which aura while in them."
+            }
+        ],
+        "9": [
+            {
+                "name": "Abjure Foes",
+                "description": "As a Magic action, you can expend one use of this class's Channel Divinity to overwhelm foes with awe. As you present your Holy Symbol or weapon, you can target a number of creatures equal to your Charisma modifier (minimum of one creature) that you can see within 60 feet of yourself. Each target must succeed on a Wisdom saving throw or have the Frightened condition for 1 minute or until it takes any damage. While Frightened in this way, a target can do only one of the following on its turns: move, take an action, or take a Bonus Action."
+            }
+        ],
+        "10": [
+            {
+                "name": "Aura of Courage",
+                "description": "You and your allies have Immunity to the Frightened condition while in your Aura of Protection. If a Frightened ally enters the aura, that condition has no effect on that ally while there."
+            }
+        ],
+        "14": [
+            {
+                "name": "Restoring Touch",
+                "description": "When you use Lay On Hands on a creature, you can also remove one or more of the following conditions from the creature: Blinded, Charmed, Deafened, Frightened, Paralyzed, or Stunned. You must expend 5 Hit Points from the healing pool of Lay On Hands for each of these conditions you remove; those points don't also restore Hit Points to the creature."
             }
         ]
     }

@@ -1,13 +1,14 @@
 # DnD Character Sheet Helper
 
-The DnD Character Sheet Helper is an Obsidian Plugin that brings the DnD Rulebook right inside your Digital Character Sheet.
+The DnD Character Sheet Helper is an Obsidian Plugin that brings the DnD Rulebook 5.5e (2024) right inside your Digital Character Sheet. This is not a replacement for the DnD Player's Handbook, but just a handyy tool that gives you only the information you might need, or you wouldn't remeber on top of your mind, while playing.
+(If text has anything written wrong please make an Issue Report on GitHub. I maintaine it myseld)
 
 ## DnD Character Features:
 
 Given the appropriate variables and values this plugin can give you useful information of your character directly inside your Obsidian Note. It displays all the Action related Features from your Class (with Multi-class support), Subclass, Race Traits, Background Feat and Extra Feats added at your own disposal.
 
 A Sample of the Code Block looks like this:
-````markdown
+````
 ```dnd-features
 level: $num$
 class: $list$
@@ -17,10 +18,15 @@ race: $text$
 race-lineage: $text$
 background: $list$
 extra-feats: $list$
+hide: $list$
 ```
 ````
 Any of the variables (except for *level*) can be omitted and only the variables with a value will be used and displayed.
+
 The variable *class-levels* is used when you have multiple classes on your character and the plugin needs to know how many levels does each class have. *The order of the levels should be the same as the class order*.
+
+Write down a Feature's name as in on the screen inside the variable *hide* to hide it from view.
+
 The rest of the variables should be self-explanatory.
 
 ## DnD Character Inventory:
@@ -28,34 +34,26 @@ The rest of the variables should be self-explanatory.
 An easy way to manage your character's inventory including. There is a section for managing your Gold, a section for Weapon / Armor, a section for starter items and a section for extra items added in later on.
 
 A Sample of the Code Block looks like this:
-````markdown
+````
 ```dnd-inventory
-weapon: $text$
-weapon_damage: $text$
-armor: $text$
-armor_ac: $text$
+<optional>weapon: $text$
+<optional>weapon_damage: $text$
+<optional>armor: $text$
+<optional>armor_ac: $text$
 class: $text$
 class-equipment: $text$
-class-chosen-items: $list$ <optional>
+<optional>class-chosen-items: $list$
 background: $text$
 background-equipment: $text$
-background-chosen-items: $list$ <optional>
+<optional>background-chosen-items: $list$
 extra-items: $list$
 ```
 ````
-Weapons and Amor related varibales are optional and when not set that section will not be made visible.
+The variable *class-chosen-items* is used to select an Artisan's Tool, a Musical Instrument, or a Gaming Set depeding on what's provided by the class. Same goes for the *background-chosen-items*.
 
-The Gold section is always visible and will have as base rate the gold provided by the class + background. There after, you can use the `Add` and `Spend` buttons that will change the Gold amount displayed. When using the aforementioned buttons the ammount added/spent will be as  properties inside your character's note that then will be used to calculate the Total Gold you currently have.
+> Code Blocks have frontmatter support by using the key-word "frontmatter." + a note property's name.
 
-The Backpack section is also always visible and wil be automatically populated with the items given to your character from their class and backround. If given the choise between items from your class or background you will have to use the *class-chosen-items* and *background-chosen-items*.
-
-> The aforementioned variables are used to select an Artisan's Tool, a Musical Instrument, or a Gaming Set depeding on what's provided by the class or background. For more information on your choices always look through the actual DnD Player's Handbook.
-
-## Extra Features:
-
- - Code Blocks have frontmatter support by using the key-word "frontmatter." + a note property's name.
- 
-#### Settings Menu:
+## Settinsg Menu:
 
  - Class & Subclass combination toggle
 
@@ -81,7 +79,7 @@ rulebook/
 │   └── <add your custom races>
 ├── backgrounds.json
 ├── classes.json
-├── ietms.json
+├── items.json
 └── races.json
 ```
 
@@ -98,38 +96,38 @@ The structure of each JSON file is as follows:
 ```
 
 - backgrounds.json:
-```json
+```
 {
       "<Background>": {
             "feat": "<Feat_Given>",
             "starting-equipment": {
                   "A": {
                         "items": {
-                              "<item>": 0,
-                              "<type+|>": 0
-                        }, "gold": 0
+                              "<item>": <Quantity>,
+                              "<type+|>": <Quantity>
+                        }, "gold": <Quantity>
                   },
-                  "B": { "items": {}, "gold": 0 }
+                  "B": { "items": {}, "gold": <Quantity> }
             }
       }
 }
 ```
 
 - class.json:
-```json
+```
 {
     "class": "<Class_Name>>",
     "subclassFile": "<Subclass_File_Name>",
     "starting-equipment": {
         "A": {
             "items": {
-                "<Item_File_Name>>": 0,
-                "musical-instrument|": 0, // <optional_DnD_item_type>
-                "artisans-tool|musical-instrument": 0, // <optional_DnD_multiple_items_w/_type>
-		    "<item_type|>" : 0 // <optional_homebrew_item_type>
-            }, "gold": 0
+                "<Item_File_Name>>": <Quantity>,
+                <optional_DnD_item_type>"musical-instrument|": <Quantity>,
+                <optional_DnD_multiple_items_w/_type>"artisans-tool|musical-instrument": <Quantity>,
+		    <optional_homebrew_variable_item_type>"<varaint_item_that_has_that_type>" : <Quantity>
+            }, "gold": <Quantity>
         },
-        "B": { "items": {}, "gold": 0 }
+        "B": { "items": {}, "gold": <Quantity> }
     },
     "features": {
         "<Level>": [
@@ -146,7 +144,7 @@ Sometimes DnD classes or backgrounds offer a choice of an item category (like an
 By adding a pipe character (|) to an item key in your class.json or backgrounds.json (e.g: "musical-instrument|": 1 or "artisans-tool|musical-instrument": 1), you tell the plugin to wait for the player's choice. The plugin will automatically scan the player's *class-chosen-items* or *background-chosen-items* variables in their note, find an item whose "type" matches the requirement, and seamlessly add it to their inventory.
 
 - $class-subclass.json:
-```json
+```
 {
       "<Subclass_Name>": {
             "<Level>": [
@@ -160,7 +158,7 @@ By adding a pipe character (|) to an item key in your class.json or backgrounds.
 ```
 
 - feat.json:
-```json
+```
 {
 	"name": "<Feat_Name>",
 	"description": "<Feat_Description>"
@@ -168,13 +166,13 @@ By adding a pipe character (|) to an item key in your class.json or backgrounds.
 ```
 
 - race.json:
-```json
+```
 {
       "traits": [
             {
                   "name": "<Trait_Name>",
                   "description": "<Trait_Description>",
-                  "lineage": "Lineage_Name" // <optional>
+                  <optional>"lineage": "Lineage_Name"
             }
       ]
 }
@@ -182,15 +180,15 @@ By adding a pipe character (|) to an item key in your class.json or backgrounds.
 The *lineage* variable in the race.json is a Flag, making it so that this trait will appear if that and the *race-lineage* variable in the code block have the same value, while also swapping out the "Trait" badge for a "Lineage" badge.
 
 - item.json:
-```json
+```
 {
       "name": "<Item's_name>",
       "type": "<weapon/armor/gear/artisans-tool/musical-instrument/gaming-set>",
       "description": "<Item's_Description>",
-      "weight": 0,
-      "damage": "<Damage_Dice+Damage_Type>", // <optional>
-      "ac": "<Armor's_Base_AC>", // <optional>
-      "cost": 0
+      "weight": <Item's_Weight>,
+      <optional>"damage": "<Damage_Dice+Damage_Type>",
+      <optional>"ac": "<Armor's_Base_AC>",
+      "cost": <Item's_Cost>
 }
 ```
 
