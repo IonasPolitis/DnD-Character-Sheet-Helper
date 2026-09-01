@@ -152,7 +152,7 @@ Sometimes DnD classes or backgrounds offer a choice of an item category (like an
 
 By adding a pipe character (|) to an item key in your class.json or backgrounds.json (e.g: "musical-instrument|": 1 or "artisans-tool|musical-instrument": 1), you tell the plugin to wait for the player's choice. The plugin will automatically scan the player's *class-chosen-items* or *background-chosen-items* variables in their note, find an item whose "type" matches the requirement, and seamlessly add it to their inventory.
 
-- $class-subclass.json:
+- $class-subclasses.json:
 ```json
 {
       "<Subclass_Name>": {
