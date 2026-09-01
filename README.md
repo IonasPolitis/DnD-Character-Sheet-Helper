@@ -43,8 +43,10 @@ background-chosen-items: $list$ <optional>
 extra-items: $list$
 ```
 ````
-Weapons and Amor related varibales are optional and when not set that section will not be made visible.\n
-The Gold section is always visible and will have as base rate the gold provided by the class + background .There after, you can use the `Add` and `Spend` buttons that will change the Gold amount displayed. When using the aforementioned buttons the ammount added/spent will be as  properties inside your character's note that then will be used to calculate the Total Gold you currently have.  
+Weapons and Amor related varibales are optional and when not set that section will not be made visible.
+
+The Gold section is always visible and will have as base rate the gold provided by the class + background .There after, you can use the `Add` and `Spend` buttons that will change the Gold amount displayed. When using the aforementioned buttons the ammount added/spent will be as  properties inside your character's note that then will be used to calculate the Total Gold you currently have.
+
 The Backpack section is also always visible and wil be automatically populated with the items given to your character from their class and backround. If given the choise between items from your class or background you will have to the *class-chosen-items* and *background-chosen-items*.
 
 > The aforementioned variables are used to select an Artisan's Tool, a Musical Instrument, or a Gaming Set depeding on what's provided by the class or backgrounds. For more information on your choices always look through the actual DnD Player's Handbook.
