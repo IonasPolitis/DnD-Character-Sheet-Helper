@@ -2,9 +2,6 @@
 
 The DnD Character Sheet Helper is an Obsidian Plugin that brings the DnD Rulebook right inside your Digital Character Sheet.
 
-> Code Blocks have frontmatter support by using the key-word "frontmatter." + a note property's name.
-> All text fields support the markdown format with some custom spacing so that information can more easily fit inside the UI. Use `\n` for line-break and `\t` for tabs as normal.
-
 ## DnD Character Features:
 
 Given the appropriate variables and values this plugin can give you useful information of your character directly inside your Obsidian Note. It displays all the Action related Features from your Class (with Multi-class support), Subclass, Race Traits, Background Feat and Extra Feats added at your own disposal.
@@ -48,6 +45,8 @@ extra-items: $list$
 ````
 The variable *class-chosen-items* is used to select an Artisan's Tool, a Musical Instrument, or a Gaming Set depeding on what's provided by the class. Same goes for the *background-chosen-items*.
 
+> Code Blocks have frontmatter support by using the key-word "frontmatter." + a note property's name.
+
 ## Settinsg Menu:
 
  - Class & Subclass combination toggle
@@ -79,6 +78,8 @@ rulebook/
 ```
 
 The backgrounds.json, classes.json and races.json work as router files to the specific feat, class, or race JSON is needed for better modularity.
+
+> All text fields support the markdown format with some custom spacing so that information can more easily fit inside the UI. Use `\n` for line-break and `\t` for tabs as normal.
 
 The structure of each JSON file is as follows:
 - classes/races/items.json:
