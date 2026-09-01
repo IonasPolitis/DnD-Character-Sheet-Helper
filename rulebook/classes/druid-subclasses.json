@@ -1,0 +1,117 @@
+{
+      "Circle of the Land": {
+            "3": [
+                  {
+                        "name": "Lans's Aid",
+                        "description": "As a Magic action, you can expend a use of your Wild Shape and choose a point within 60 feet of yourself. Vitality-giving flowers and life-draining thorns appear for a moment in a 10-foot-radius Sphere centered on that point. Each creature of your choice in the Sphere must make a Constitution saving throw against your spell save DC, taking 2d6 Necrotic damage on a failed save or half as much damage on a successful one. One creature of your choice in that area regains 2d6 Hit Points.\n  The damage and healing increase by ld6 when you reach Druid levels 10 (3d6) and 14 (4d6)."
+                  }
+            ],
+            "6": [
+                  {
+                        "name": "Natural Recovery",
+                        "description": "You can cast one of the level 1 + spells that you have prepared from your Circle Spells feature without expending a spell slot, and you must finish a Long Rest before you do so again.\n In addition, when you finish a Short Rest, you can choose expended spell slots to recover. The spell slots can have a combined level that is equal to or less than half your Druid level (round up), and none of them can be level 6+ . For example, if you're a level 6 Druid, you can recover up to three levels' worth of spell slots. Once you recover spell slots with this feature, you can't do so again until you finish a Long Rest."
+                  }
+            ],
+            "10": [
+                  {
+                        "name": "Nature's Ward",
+                        "description": "You are immune to the Poisoned condition, and you have Resistance to a damage type associated with your current land choice in the Circle Spells feature, as shown in the Nature's Ward table.\n#### Nature's Ward\n| Land Type  | Arid | Polar | Temprate  | Tropical |\n| ----- | ----- | ----- | ----- | ----- |\n| Resistance | Fire | Cold | Lightning | Poison |"
+                  }
+            ],"14": [
+                  {
+                        "name": "Nature's Sanctuary",
+                        "description": "As a Magic action, you can expend a use of your Wild Shape and cause spectral trees and vines to appear in a 15-foot Cube on the ground within 120 feet of yourself. They last there for 1 minute or until you have the Incapacitated condition or die. You and your allies have Half Cover while in that a rea and your allies gain the current Resistance of your Nature's Ward while there."
+                  }
+            ]
+      },
+       "Circle of the Moon": {
+            "3": [
+                  {
+                        "name": "Circle of the Moon",
+                        "description": " - **Challenge Rating**: The maximum Challenge Rating for the form equals your Druid level divided by 3 (round down).\n - **Armor Class**: Until you leave the form, your AC equals 13 plus your Wisdom modifier if that total is higher than the Beast's AC.\n - **Temporary Hit Points**: You gain a number of Temporary Hit Points equal to three times your Druid level."
+                  },
+                  {
+                        "name": "Circle of the Moon Spells",
+                        "description": "When you reach a Druid level specified in the Circle of the Moon Spells table, you ther eafter always have the listed spells prepared.\n#### Circle of the Moon Spells\n\n| Lvl 3 | Lvl 5 | Lvl 7 | Lvl 9 |\n| ----- | ----- | ----- | ----- |\n| Cure Wounds, Moonbeam, Starry Wisp | Conjure Animals | Fount of Moonlight | Mass Cure Wounds |"
+                  }
+            ],
+            "6": [
+                  {
+                        "name": "Improved Circle Forms",
+                        "description": "While in a Wild Shape form, you gain the following benefits:\n - **Lunar Radiance**: Each of your attacks in a Wild Shape form can deal its normal damage type or Radiant damage. You make this choice each time you hit with those attacks.\n - **Increased Toughness**: You can add your Wisdom modifier to your Constitution saving throws."
+                  }
+            ],
+            "10": [
+                  {
+                        "name": "Moonlight Step",
+                        "description": "As a Bonus Action, you teleport up to 30 feet to an unoccupied space you can see, and you have Advantage on the next attack roll you make before the end of this turn.\n\tYou can use this feature a number of times equal to your Wisdom modifier (minimum of once), and you regain all expended uses when you finish a Long Rest. You can also regain uses by expending a level 2+ spell slot for each use you want to restore (no action required)."
+                  }
+            ],
+            "14": [
+                  {
+                        "name": "Lunar Form",
+                        "description": " - **Improved Lunar Radiance**: Once per turn, you can deal an extra 2d10 Radiant damage to a target you hit with a Wild Shape form's attack.\n - **Shared Moonlight**: Whenever you use MoonlightStep, you can also teleport one willing creature. That creature must be within 10 feet of you, and you teleport it to an unoccupied space you can see within 10 fe et of your destination space."
+                  }
+            ]
+      },
+       "Circle of the Sea": {
+            "3": [
+                  {
+                        "name": "Circle of the Sea Spells",
+                        "description": "When you reach a Druid level specified in the Circle of the Sea Spells table, you thereafter always have the listed spells prepared.\n#### Circle of the Sea Spells\n\n| Lvl 3 | Lvl 5 | Lvl 7 | Lvl 9 |\n| ----- | ----- | ----- | ----- |\n| Fog Cloud, Gust of Wind, Ray of Frost, Shatter, Thunderwave | Lightning Bolt, Water Breathing | Control Water, Ice Storm | Conjure Elemental, Hold Monster |"
+                  },
+                  {
+                        "name": "Wrath of the Sea",
+                        "description": "As a Bonus Action, you can expend a use of your Wild Shape to manifest a 5-foot Emanation that takes the form of ocean spray that surrounds you for 10 minutes. It ends early if you dismiss it (no action required), manifest it again, or have the Incapacitated condition.\n\tWhen you manifest the Emanation and as a Bonus Action on your subsequent turns, you can choose another creature you can see in the Emanation. The target must succeed on a Constitution saving throw against your spell save DC or take Cold damage and, if the creature is Large or smaller, be pushed up to 15 feet away from you. To determine this damage, roll a number of d6s equal to your Wisdom modifier (minimum of one die)."
+                  }
+            ],
+            "6": [
+                  {
+                        "name": "Aquatic Afinity",
+                        "description": "The size of the Emanation created by your Wrath of the Sea increases to 10 feet.\n\tIn addition, you gain a Swim Speed equal to your Speed."
+                  }
+            ],
+            "10": [
+                  {
+                        "name": "Stormborn",
+                        "description": "Your Wrath of the Sea confers two more benefits while active, as detailed below.\n - **Flight**: You gain a Fly Speed equal to your Speed.\n - **Resistance**: You have Resistance to Cold, Lightning, and Thunder damage."
+                  }
+            ],
+            "14": [
+                  {
+                        "name": "Oceanic Gift",
+                        "description": "Instead of manifesting the Emanation of Wrath of the Sea around yourself, you can manifest it around one willing creature within 60 feet of yourself. That creature gains all the benefits of the Emanation and uses your spell save DC and Wisdom modifier for it.\n\tIn addition, you can manifest the Emanation around both the other creature and yourself if you expend two uses of your Wild Shape ins tead of one when manifesting it."
+                  }
+            ]
+      },
+       "Circle of the Stars": {
+            "3": [
+                  {
+                        "name": "Star Map",
+                        "description": "You've created a star chart as part of your heavenly studies, and while holding it you have the Guidance and Guiding Bolt spells prepared, and you can cast Guiding Bolt without expending a spell slot. You can cast it in that way a number of times equal to your Wisdom modifier (minimum of once), and you regain all expended uses when you finish a Long Rest."
+                  },
+                  {
+                        "name": "Starry Form",
+                        "description": "As a Bonus Action, you can expend a use of your Wild Shape feature to take on a starry fo rm rather than shape-shifting.\n\tThis form sheds Bright Light in a 10-foot radius and Dim Light for a n additional 10 feet. The form lasts for 10 m inutes. It ends early if you dismiss it (no action required), have the Inca pacitated condition, or use this feature again. Whenever you assume your starry form, choose which of the following constellations glimmers on your body:\n - **Archer**: As a Bonus Action you can make a ranged spell attack, hurling a luminous arrow that targets one creature within 60 feet of yourself. On a hit, the attack deals Radiant damage equal to ld8 plus your Wisdom modifier.\n - **Chalice**: Whenever you cast a spell using a spell slot that restores Hit Points to a creature, you or another creature within 30 feet of you can regain Hit Points equal to ld8 plus your Wisdom modifier.\n - **Dragon**: When you make an Intelligence or a Wisdom check or a Constitution saving throw to maintain Concentration, you can treat a roll of 9 or lower on the d20 as a 10."
+                  }
+            ],
+            "6": [
+                  {
+                        "name": "Cosmic Omen",
+                        "description": "Whenever you finish a Long Rest, you can consult your Star Map for omens and roll a die. Until you finish your next Long Rest, you gain access to a special Reaction based on whether you rolled an even or an odd number on the die:\n - **Weal** (Even): Whenever a creature you can see within 30 feet of you is about to make a D20 Test, you can take a Reaction to roll ld6 and add the number rolled to the total.\n - **Woe** (Odd): Whenever a creature you can see within 30 feet of you is about to make a D20 Test, you can take a Reaction to roll ld6 and subtract the number rolled from the total.\nYou can use this Reaction a number of times equal to your Wisdom modifier (minimum of once), and you regain all expended uses when you finish a Long Rest."
+                  }
+            ],
+            "10": [
+                  {
+                        "name": "Twinkling Constellations",
+                        "description": "At the start of each of your turns while in your Starry Form, you can change which constellation glimmers on your body."
+                  }
+            ],
+            "14": [
+                  {
+                        "name": "Full of Stars",
+                        "description": "While in your Starry Form, you become partially incor poreal, giving you Resistance to Bludgeoning, Piercing, a nd Slashing damage."
+                  }
+            ]
+      }
+}

@@ -1,0 +1,88 @@
+{
+    "class": "Fighter",
+    "subclassFile": "fighter-subclasses",
+    "starting-equipment": {
+        "A": {
+            "items": {
+                "chain-mail": 1,
+                "greatsword": 1,
+                "flail": 1,
+                "javelin": 8,
+                "dungeoneers-pack": 1
+            },
+            "gold": 4
+        },
+        "B": {
+            "items": {
+                "studded-leather-armor": 1,
+                "scimitar": 1,
+                "shortsword": 1,
+                "longbow": 8,
+                "arrow": 20,
+                "quiver": 1,
+                "dungeoneers-pack": 1
+            },
+            "gold": 11
+        },
+        "C": {
+            "items": {},
+            "gold": 0
+        }
+    },
+    "features": {
+        "1": [
+            {
+                "name": "Second Wind",
+                "description": "As a Bonus Action, you can use it to regain Hit Points equal to ldlO plus your Fighter level.\n\tYou regain one expended use when you finish a Short Rest, and you regain all expended uses when you finish a Long Rest."
+            }
+        ],
+        "2": [
+            {
+                "name": "Action Surge",
+                "description": "You can push yourself beyond your normal limits for a moment. On your turn, you can take one additional action, except the Magic action.\n\tOnce you use this feature, you can't do so again until you finish a Short or Long Rest. Starting at level 17, you can use it twice before a rest but only once on a turn."
+            },
+            {
+                "name": "Tactical Mind",
+                "description": "When you fail an ability check, you can expend a use of your Second Wind to push yourself toward success. Rather than regaining Hit Points, you roll ldlO and add the number rolled to the ability check, potentially turning it into a success. If the check still fails, this use of Second Wind isn't expended."
+            }
+        ],
+        "5": [
+            {
+                "name": "Extra Attack",
+                "description": "You can attack twice instead of once whenever you take the Attack action on your turn."
+            },
+            {
+                "name": "Tactical Shift",
+                "description": "Whenever you activate your Second Wind with a Bonus Action, you can move up to half your Speed without provoking Opportunity Attacks."
+            }
+        ],
+        "9": [
+            {
+                "name": "Indomitable",
+                "description": "If you fail a saving throw, you can re roll it with a bonus equal to your Fighter level. You must use the new roll, and you can't use this feature again until you finish a Long Rest.\n\tYou can use this feature twice before a Long Reststarting at level 13 and three times at level 17."
+            },
+            {
+                "name": "Tactical Master",
+                "description": "When you attack with a weapon whose mastery property you can use, you can replace that property with the Push, Sap, or Slow property for that attack."
+            }
+        ],
+        "11": [
+            {
+                "name": "Two Extra Attacks",
+                "description": "You can attack three times instead of once whenever you take the Attack action on your turn."
+            }
+        ],
+        "13": [
+            {
+                "name": "Studied Attacks",
+                "description": "You study your opponents and learn from each attack you make. If you make an attack roll against a creature and miss, you have Advantage on your next attack roll against that creature before the end of your next turn."
+            }
+        ],
+        "20": [
+            {
+                "name": "Three Extra Attacks",
+                "description": "You can attack four times instead of once whenever you take the Attack action on you r turn."
+            }
+        ]
+    }
+}

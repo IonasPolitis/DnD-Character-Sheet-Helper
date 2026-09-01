@@ -4,9 +4,17 @@
     "starting-equipment": {
         "A": {
             "items": {
-            }, "gold": 0
+                "leather-armor": 1,
+                "dagger": 1,
+                "shortsword": 1,
+                "shortbow": 1,
+                "arrow": 20,
+                "quiver": 1,
+                "thieves-tools": 1,
+                "burglars-pack": 1
+            }, "gold": 8
         },
-        "B": { "items": {}, "gold": 0 }
+        "B": { "items": {}, "gold": 100 }
     },
     "features": {
         "1": [

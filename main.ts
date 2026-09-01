@@ -96,17 +96,82 @@ export default class DnDFeaturesPlugin extends Plugin {
     async renderDndMarkdown(text: string, container: HTMLElement, sourcePath: string, component: MarkdownRenderChild) {
         if (!text) return;
 
-        // 1. Trim trailing newlines that cause empty invisible <p> tags
-        const cleanText = text.trim();
+        // 1. Trim trailing newlines AND intercept tab characters!
+        const cleanText = text.trim().replace(/\t/g, '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;');
 
         // 2. Render the markdown securely
         await MarkdownRenderer.render(this.app, cleanText, container, sourcePath, component);
 
-        // 3. Strip the bottom margin from the very last child to eliminate dead space!
+        // 3. If a header is the VERY first item in the text, completely remove its top margin!
+        const firstChild = container.firstElementChild as HTMLElement;
+        if (firstChild && firstChild.tagName.match(/^H[1-6]$/i)) {
+            firstChild.style.marginTop = '0';
+        }
+        
+        // 4. Strip the bottom margin from the very last child to eliminate dead space!
         const lastChild = container.lastElementChild as HTMLElement;
         if (lastChild) {
             lastChild.style.marginBottom = '0';
         }
+
+        // 5. Eliminate the large default Obsidian margins from all block elements
+        const blockElements = container.querySelectorAll('h1, h2, h3, h4, h5, h6, p, ul, ol, li, blockquote, pre, table, hr');
+        blockElements.forEach((el: Element) => {
+            const htmlEl = el as HTMLElement;
+            const tag = htmlEl.tagName.toLowerCase();
+            
+            // 1. BASELINE: Zero out vertical margins for every single element by default
+            htmlEl.style.marginTop = '0';
+            htmlEl.style.marginBottom = '0';
+            
+            // 2. EXCEPTIONS: Standard block elements that NEED breathing room
+            if (['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'table', 'blockquote', 'pre', 'hr'].includes(tag)) {
+                htmlEl.style.marginTop = '0.5em';
+                htmlEl.style.marginBottom = '0.5em';
+            }
+            // 3. LIST PARAGRAPHS: Prevent the paragraph from breaking onto a new line under the bullet
+            else if (tag === 'p' && htmlEl.closest('li')) {
+                htmlEl.style.display = 'inline';
+            }
+            // 4. LIST CONTAINERS: Strip hidden padding/margins and flush to the left edge
+            else if (tag === 'ul' || tag === 'ol') {
+                htmlEl.style.paddingTop = '0'; 
+                htmlEl.style.marginLeft = '0'; 
+                htmlEl.style.paddingLeft = '0'; // Flushed completely left!
+            }
+            // 5. BULLET POINTS: The Custom Styled Injection
+            else if (tag === 'li') {
+                // 1. Hide the rigid native bullet
+                htmlEl.style.listStyleType = 'none';
+                 
+                // 2. List's Text
+                htmlEl.style.paddingLeft = '0'; // 'paddingLeft' is 0 so wrapped text hits the edge
+                htmlEl.style.marginLeft = '0'; // 'textIndent' pushes ONLY the first line inward
+                htmlEl.style.textIndent = '1.05em'; // Adjust List Text (text after a bullet-point) placement
+                
+                // 3. Set relative positioning so our custom bullet can float inside this space
+                htmlEl.style.position = 'relative'; 
+                
+                // 4. Bullet-Point adjustment.
+                if (!htmlEl.getAttribute('data-custom-bullet')) {
+                    const bulletSpan = document.createElement('span');
+                    bulletSpan.innerHTML = '&bull;'; // Standard bullet entity
+                    
+                    // Style it to match Obsidian's native look perfectly!
+                    bulletSpan.style.position = 'absolute';
+                    bulletSpan.style.left = '0'; // Adjust bullet-point placement 
+                    bulletSpan.style.textIndent = '0'; // Ensure the absolute bullet ignores the text-indent of the parent
+                    
+                    bulletSpan.style.lineHeight = '1';
+                    bulletSpan.style.top = '-0.175em'; // Adjust height position
+                    bulletSpan.style.color = 'var(--dnd-text-secondary)'; // Adjust colour pallete
+                    bulletSpan.style.fontSize = '2em'; // Adjust size
+                    
+                    htmlEl.insertBefore(bulletSpan, htmlEl.firstChild);
+                    htmlEl.setAttribute('data-custom-bullet', 'true');
+                }
+            }
+        });
     }
 
     async processDnDFeaturesBlock(source: string, el: HTMLElement, ctx: MarkdownPostProcessorContext) {

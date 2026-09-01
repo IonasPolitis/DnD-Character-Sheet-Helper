@@ -4,9 +4,14 @@
     "starting-equipment": {
         "A": {
             "items": {
-            }, "gold": 0
+                "dagger": 2,
+                "arcane-focus": 1,
+                "robe": 1,
+                "spellbook": 1,
+                "scholars-pack": 1
+            }, "gold": 5
         },
-        "B": { "items": {}, "gold": 0 }
+        "B": { "items": {}, "gold": 55 }
     },
     "features": {
         "1": [

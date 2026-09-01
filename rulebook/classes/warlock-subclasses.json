@@ -1,0 +1,10 @@
+{
+      "<Subclass_Name>": {
+            "<Level>": [
+                  {
+                        "name": "<Feature_Name>",
+                        "description": "<Feature_Description>"
+                  }
+            ]
+      }
+}

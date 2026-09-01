@@ -1,0 +1,88 @@
+{
+      "Battle Master": {
+            "3": [
+                  {
+                        "name": "Combat Superiority",
+                        "description": "Your experience on the battlefield has refined your figh ting techniques. You learn maneuvers that are fueled by special dice called Superiority Dice.\n\t**Saving Throughs**: If a maneuver requires a saving throw, the DC equals 8 plus your Strength or Dexterity modifier (your choice) and Proficiency Bonus."
+                  }
+            ],
+            "7": [
+                  {
+                        "name": "Know Your Enemy",
+                        "description": "As a Bonus Action, you can discern certain strengths and weaknesses of a creature you can see within 30 feet of yourself; you know whether that creature has any Immunities, Resistances, or Vul-nerabilities, and if the creature has any, you know what they are.\n\tOnce you use this feature, you can't do so again until you finish a Long Rest. You can also restore a use of the feature by expending one Superiority Die (no action required)."
+                  }
+            ]
+      },
+      "Champion": {
+            "3": [
+                  {
+                        "name": "Remarkable Athlete",
+                        "description": "Thanks to your athleticism, you have Advantage on Initiative rolls and Strength (Athletics) checks.\n\tIn addition, immediately after you score a Critical Hit, you can move up to half your Speed without provoking Opportunity Attacks."
+                  }
+            ],
+            "10": [
+                  {
+                        "name": "Heroic Warrior",
+                        "description": "The thrill of battle drives you toward victory. During combat, you can give yourself Heroic Inspiration whenever you start your turn without it."
+                  }
+            ],
+            "18": [
+                  {
+                        "name": "Survivor",
+                        "description": "You attain the pinnacle of resilience in battle, giving you these benefits.\n - **Defy Death**: You have Advantage on Death Saving Throws. Moreover, when you roll 18-20 on a Death Saving Thr:ow, you gain the benefit of rolling a 20 on it.\n - **Heroic Rally**: At the start of each of your turns, you regain Hit Points equal to 5 plus your Constitution modifier if you are Bloodied and have at least 1 Hit Point."
+                  }
+            ]
+      },
+      "Eldrich Knight": {
+            "3": [
+                  {
+                        "name": "War Bond",
+                        "description": "You learn a ritual that creates a magical bond between yourself and one weapon, which ritual takes 1 hour. You can have up to two bonded weapons.\n\tOnce you have bonded a weapon to yourself, you can't be disarmed of that weapon unless you have the Incapacitated condition.If it is on the same plane of existence, you can summon that weapon as a Bonus Action, causing it to teleport instantly to your hand."
+                  }
+            ],
+            "10": [
+                  {
+                        "name": "Eldritch Strike",
+                        "description": "You learn how to make your weapon strikes undercut a creature's ability to withstand your spells. When you hit a creature with an attack using a weapon, that creature has Disadvantage on the next saving throw it makes against a spell you cast before the end of your next turn."
+                  }
+            ],
+            "15": [
+                  {
+                        "name": "Arcane Charge",
+                        "description": "When you use your Action Surge, you can teleport up to 30 feet to an unoccupied space you can see. You can teleport before or after the additional action."
+                  }
+            ]
+      },
+      "Psi Warrior": {
+            "3": [
+                  {
+                        "name": "Psionic Power",
+                        "description": " - **Protective Field**: When you or another creature you can see within 30 feet of you takes damage, you can take a Reaction to expend one Psionic Energy Die, roll the die, and reduce the damage taken by the number rolled plus your Intelligence modifier (minimum reduction of 1), as you create a momentary shield of telekinetic force.\n - **Psionic Strike**: You can propel your weapons with psionic force. Once on each of your turns, immediately after you hit a target within 30 feet of yourself with an attack and deal damage to it with a weapon, you can expend one Psionic Energy Die, rolling it and dealing Force damage to the target equal to the number rolled plus your Intelligence modifier.\n - **Telekinetic Movement**: You can move an object or a creature with your mind. As a Magic action, choose one target you can see within 30 feet of yourself; the target must be a loose object that is Large or smaller or one willing creature other than you. You transport the target up to 30 feet to an unoccupied space you can see. Alternatively, if the target is a Tiny object, you can transport it to or from your hand.\n\tOnce you take this action, you can't do so again until you finish a Short or Long Rest unless you expend a Psionic Energy Die (no action required) to restore your use of it."
+                  }
+            ],
+            "7": [
+                  {
+                        "name": "Telekinetic Adept",
+                        "description": "You have mastered new ways to use your telekinetic abilities, detailed below.\n - **Psi-Powered Leap**: As a Bonus Action, you gain a Fly Speed equal to twice your Speed until the end of the current turn. Once you take this Bonus Action, you can't do so again until you finish a Short or Long Rest unless you expend a Psionic Energy Die (no action required) to restore your use of it.\n - **Telekinetic Thrust**: When you deal damage to a target with your Psionic Strike, you can force the target to make a Strength saving throw (DC 8 plus your Intelligence modifier and Proficiency Bonus). On a failed save, you can give the target the Prone condition or transport it up to 10 feet horizontally."
+                  }
+            ],
+            "10": [
+                  {
+                        "name": "Guarded Mind",
+                        "description": "You have Resistance to Psychic damage. Moreover, if you start your turn with the Charmed or Frightened condition, you can expend a Psionic Energy Die (no action required) and end every effect on yourself giving you those conditions."
+                  }
+            ],
+            "15": [
+                  {
+                        "name": "Bulwark of Force",
+                        "description": "You can shield yourself and others with telekinetic force. As a Bonus Action, you can choose creatures, including yourself, within 30 feet of yourself, up to a number of creatures equal to your Intelligence modifier (minimum of one creature). Each of the chosen creatures has Half Cover for 1 minute or until you have the Incapacitated condition.\n\tOnce you use this feature, you can't do so again until you finish a Long Rest unless you expend a Psionic Energy Die (no action required) to restore your use of it."
+                  }
+            ],
+            "18": [
+                  {
+                        "name": "Telekinetic Master",
+                        "description": "You always have the Telekinesis spell prepared. With this feature, you can cast it without a spell slot or components, and your spellcasting ability for it is Intelligence. On each of your turns while you maintain Concentration on it, including the turn when you cast it, you can make one attack with a weapon as a Bonus Action.\n\tOnce you cast the spell with this feature, you can't do so in this way again until you finish a Long Rest unless you expend a Psionic Energy Die (no action required) to restore your use of it."
+                  }
+            ]
+      }
+}

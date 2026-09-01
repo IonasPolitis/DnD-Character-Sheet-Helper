@@ -7,20 +7,29 @@ import classesMap from './rulebook/classes.json';
 import backgroundsMap from './rulebook/backgrounds.json';
 import racesMap from './rulebook/races.json';
 import itemsMap from './rulebook/items.json';
+import class_barbariansubclasses from './rulebook/classes/barbarian-subclasses.json';
 import class_barbarian from './rulebook/classes/barbarian.json';
 import class_bardsubclasses from './rulebook/classes/bard-subclasses.json';
 import class_bard from './rulebook/classes/bard.json';
 import class_clericsubclasses from './rulebook/classes/cleric-subclasses.json';
 import class_cleric from './rulebook/classes/cleric.json';
+import class_druidsubclasses from './rulebook/classes/druid-subclasses.json';
 import class_druid from './rulebook/classes/druid.json';
-import class_figher from './rulebook/classes/figher.json';
+import class_fightersubclasses from './rulebook/classes/fighter-subclasses.json';
+import class_fighter from './rulebook/classes/fighter.json';
 import class_monksubclasses from './rulebook/classes/monk-subclasses.json';
 import class_monk from './rulebook/classes/monk.json';
+import class_paladinsubclasses from './rulebook/classes/paladin-subclasses.json';
 import class_paladin from './rulebook/classes/paladin.json';
+import class_rangersubclassesjson from './rulebook/classes/ranger-subclasses.json.json';
 import class_ranger from './rulebook/classes/ranger.json';
+import class_roguesubclasses from './rulebook/classes/rogue-subclasses.json';
 import class_rogue from './rulebook/classes/rogue.json';
+import class_sorcerersubclasses from './rulebook/classes/sorcerer-subclasses.json';
 import class_sorcerer from './rulebook/classes/sorcerer.json';
+import class_warlocksubclasses from './rulebook/classes/warlock-subclasses.json';
 import class_warlock from './rulebook/classes/warlock.json';
+import class_wizardsubclasses from './rulebook/classes/wizard-subclasses.json';
 import class_wizard from './rulebook/classes/wizard.json';
 import feat_abilityscoreimprovement from './rulebook/feats/ability-score-improvement.json';
 import feat_alert from './rulebook/feats/alert.json';
@@ -150,7 +159,7 @@ export const classRegistry: Record<string, any> = {
     "bard": class_bard,
     "cleric": class_cleric,
     "druid": class_druid,
-    "figher": class_figher,
+    "fighter": class_fighter,
     "monk": class_monk,
     "paladin": class_paladin,
     "ranger": class_ranger,
@@ -161,9 +170,18 @@ export const classRegistry: Record<string, any> = {
 };
 
 export const subclassRegistry: Record<string, any> = {
+    "barbarian-subclasses": class_barbariansubclasses,
     "bard-subclasses": class_bardsubclasses,
     "cleric-subclasses": class_clericsubclasses,
+    "druid-subclasses": class_druidsubclasses,
+    "fighter-subclasses": class_fightersubclasses,
     "monk-subclasses": class_monksubclasses,
+    "paladin-subclasses": class_paladinsubclasses,
+    "ranger-subclasses.json": class_rangersubclassesjson,
+    "rogue-subclasses": class_roguesubclasses,
+    "sorcerer-subclasses": class_sorcerersubclasses,
+    "warlock-subclasses": class_warlocksubclasses,
+    "wizard-subclasses": class_wizardsubclasses,
 };
 
 export const featRegistry: Record<string, any> = {

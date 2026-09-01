@@ -414,7 +414,7 @@ var items_default = {
   Spellbook: "spellbook",
   "Splint Armor": "splint-armor",
   "Studded Leather Armor": "studded-leather-armor",
-  "Thieve's Tools": "thieves-tools",
+  "Thieves' Tools": "thieves-tools",
   "Tinker's Tools": "tinkers-tools",
   Trident: "trident",
   "War Pick": "war-pick",
@@ -422,6 +422,118 @@ var items_default = {
   "Weaver's Tools": "weavers-tools",
   Whip: "whip",
   "Woodcarver's Tools": "woodcarvers-tools"
+};
+
+// rulebook/classes/barbarian-subclasses.json
+var barbarian_subclasses_default = {
+  "Path of the Berserker": {
+    "3": [
+      {
+        name: "Frenzy",
+        description: "If you use Reckless Attack while your Rage is active, you deal extra damage to the first target you hit on your turn with a Strength-based attack. To determine the extra damage, roll a number of d6s equal to your Rage Damage bonus, and add them together. The damage has the same type as the weapon or Unarmed Strike used for the attack."
+      }
+    ],
+    "6": [
+      {
+        name: "Mindless Rage",
+        description: "You have Immunity to the Charmed and Frightened conditions while your Rage is active. If you're Charmed or Frightened when you enter your Rage, the condition ends on you."
+      }
+    ],
+    "10": [
+      {
+        name: "Retaliation",
+        description: "When you take damage from a creature that is within 5 feet of you, you can take a Reaction to make one melee attack against that creature, using a weapon or an Unarmed Strike."
+      }
+    ],
+    "14": [
+      {
+        name: "Intimidating Presence",
+        description: "As a Bonus Action, you can strike terror into others with your menacing presence and primal power. When you do so, each creature of your choice in a 30-foot Emanation originating from you must make a Wisdom saving throw (DC 8 plus your Strength modifier and Proficiency Bonus). On a failed save, a creature has the Frightened condition for 1 minute. At the end of each of the Frightened creature's turns, the creature repeats the save, ending the effect on itself on a success.\n	Once you use this feature, you can't use it again until you finish a Long Rest unless you expend a use of your Rage (no action required) to restore your use of it."
+      }
+    ]
+  },
+  "Path of the Wild Heart": {
+    "3": [
+      {
+        name: "Rage of the Wilds",
+        description: "Your Rage taps into the primal power of animals. Whenever you activate your Rage, you gain one of the following options of your choice.\n - **Bear**: While your Rage is active, you have Resistance to every damage type except Force, Necrotic, Psychic, and Radiant.\n - **Eagle**: When you activate your Rage, you can take the Disengage and Dash actions as part of that Bonus Action. While your Rage is active, you can take a Bonus Action to take both of those actions.\n - **Wolf**: While your Rage is active, your allies have Advantage on attack rolls against any enemy of yours within 5 feet of you."
+      }
+    ],
+    "6": [
+      {
+        name: "Aspect of the Wilds",
+        description: "You gain one of the following options of your choice. Whenever you finish a Long Rest, you can change your choice.\n - **Owl**: You have Darkvision with a range of 60 feet. If you already have Darkvision, its range increases by 60 feet.\n - **Panther**: You have a Climb Speed equal to your Speed.\n - **Salmon**: You have a Swim Speed equal to your Speed."
+      }
+    ],
+    "10": [
+      {
+        name: "Nature Speaker",
+        description: "You can cast the Commune with Nature spell but only as a Ritual. Wisdom is your spellcasting ability for it."
+      }
+    ],
+    "14": [
+      {
+        name: "Power of the Wilds",
+        description: "Whenever you activate your Rage, you gain one of the following options of your choice.\n - **Falcon**: While your Rage is active, you have a Fly Speed equal to your Speed if you aren't wearing any armor.\n - **Lion**: While your Rage is active, any of your enemies within 5 feet of you have Disadvantage on attack rolls against targets other than you or another Barbarian who has this option active.\n - **Ram**: While your Rage is active, you can cause a Large or smaller creature to have the Prone condition when you hit it with a melee attack."
+      }
+    ]
+  },
+  "Path of the World Tree": {
+    "3": [
+      {
+        name: "Vitality of the Tree",
+        description: "Your Rage taps into the life force of the World Tree. You gain the following benefits.\n - **Vitality Surge**: When you activate your Rage, you gain a number of Temporary Hit Points equal to your Barbarian level.\n **Life-Giving Force**: At the start of each of your turns while your Rage is active, you can choose another creature within 10 feet of yourself to gain Temporary Hit Points. To determine the number of Temporary Hit Points, roll a number of d6s equal to your Rage Damage bonus, and add them together. If any of these Temporary Hit Points remain when your Rage ends, they vanish."
+      }
+    ],
+    "6": [
+      {
+        name: "Branches of the Tree",
+        description: "Whenever a creature you can see starts its turn within 30 feet of you while your Rage is active, you can take a Reaction to summon spectral branches of the World Tree around it. The target must succeed on a Strength saving throw (DC 8 plus your Strength modifier and Proficiency Bonus) or be teleported to an unoccupied space you can see within 5 feet of yourself or in the nearest unoccupied space you can see. After the target teleports, you can reduce its Speed to O until the end of the current turn."
+      }
+    ],
+    "10": [
+      {
+        name: "Battering Roots",
+        description: "During your turn, your reach is 10 feet greater with any Melee weapon that has the Heavy or Versatile property, as tendrils of the World Tree extend from you. When you hit with such a weapon on your turn, you can activate the Push or Topple mastery property in addition to a different mastery property you're using with that weapon."
+      }
+    ],
+    "14": [
+      {
+        name: "Travel along the Tree",
+        description: "When you activate your Rage and as a Bonus Action while your Rage is active, you can teleport up to 60 feet to an unoccupied space you can see.\n	In addition, once per Rage, you can increase the range of that teleport to 150 feet. When you do so, you can also bring up to six willing creatures who are within 10 feet of you. Each cFeature teleports to an unoccupied space of yom:i choice within 10 feet of your destination space."
+      }
+    ]
+  },
+  "Path of the Zealot": {
+    "3": [
+      {
+        name: "Divine Fure",
+        description: "On each of your turns while your Rage is active, the first creature you hit with a weapon or an Unarmed Strike takes extra damage equal to ld6 plus half your Barbarian level (round down). The extra damage is Necrotic or Radiant; you choose the type each time you deal the damage."
+      },
+      {
+        name: "Warrior of the Gods",
+        description: "You have a pool of four dl2s that you can spend to heal yourself. As a Bonus Action, you can expend dice from the pool, roll them, and regain a number of Hit Points equal to the roll's total.\n	Your pool regains all expended dice when you finish a Long Rest.\nThe pool's maximum number of dice increases by one when you reach Barbarian levels 6 (5 dice), 12 (6 dice), and 17 (7 dice)."
+      }
+    ],
+    "6": [
+      {
+        name: "Fanatical Focus",
+        description: "Once per active Rage, if you fail a saving throw, you can reroll it with a bonus equal to your Rage Damage bonus, and you must use the new roll."
+      }
+    ],
+    "10": [
+      {
+        name: "Zealous Presence",
+        description: "As a Bonus Action, you unleash a battle cry infused with divine energy. Up to ten other creatures of your choice within 60 feet of you gain Advantage on attack rolls and saving throws until the start of your next turn.\n	Once you use this feature, you can't use it again until you finish a Long Rest unless you expend a use of your Rage (no action required} to restore your use of it."
+      }
+    ],
+    "14": [
+      {
+        name: "Rage of the Gods",
+        description: "When you activate your Rage, you can assume the form of a divine warrior. This form lasts for 1 minute or until you drop to O Hit Points. Once you use this feature, you can't do so again until you finish a Long Rest.\n	While in this form, you gain the benefit **Flight**. You have a Fly Speed equal to your Speed and can hover."
+      }
+    ]
+  }
 };
 
 // rulebook/classes/barbarian.json
@@ -444,7 +556,7 @@ var barbarian_default = {
     "1": [
       {
         name: "Rage",
-        description: "While active, your Rage follows the rules below:\n \u2022 **Damage Resistance**: You have Resistance to Bludgeoning, Piercing, and Slashing damage.\n \u2022 **Rage Damage**: When you make an attack using Strength-with either a weapon or an Unarmed Strike-and deal damage to the target, you gain a bonus to the damage that increases as you gain levels as a Barbarian, as shown in the Rage Damage column of the Barbarian Features table.\n \u2022 **Strength Advantage**: You have Advantage on Strength checks and Strength saving throws.\n \u2022 **No Concentration or Spells**: You can't maintain Concentration, and you can't cast spells.\n \u2022 **Duration**: The Rage lasts until the end of your next turn, and it ends early if you don Heavy armor or have the Incapacitated condition. If your Rage is still active on your next turn, you can extend the Rage for another round by doing one of the following:\n   \u2022 Make an attack roll against an enemy.\n   \u2022 Force an enemy to make a saving throw.\n   \u2022 Take a Bonus Action to extend your Rage."
+        description: "While active, your Rage follows the rules below:\n - **Damage Resistance**:\nYou have Resistance to Bludgeoning, Piercing, and Slashing damage.\n - **Rage Damage**: When you make an attack using Strength-with either a weapon or an Unarmed Strike-and deal damage to the target, you gain a bonus to the damage that increases as you gain levels as a Barbarian, as shown in the Rage Damage column of the Barbarian Features table.\n - **Strength Advantage**:\nYou have Advantage on Strength checks and Strength saving throws.\n - **No Concentration or Spells**:\nYou can't maintain Concentration, and you can't cast spells.\n - **Duration**: The Rage lasts until the end of your next turn, and it ends early if you don Heavy armor or have the Incapacitated condition. If your Rage is still active on your next turn, you can extend the Rage for another round by doing one of the following:\n - Make an attack roll against an enemy.\n - Force an enemy to make a saving throw.\n - Take a Bonus Action to extend your Rage."
       }
     ],
     "2": [
@@ -478,7 +590,7 @@ var barbarian_default = {
     "9": [
       {
         name: "Brutal Strike",
-        description: "If you use Reck.less Attack, you can forgo any Advantage on one Strength-based attack roll of your choice on your turn. The chosen attack roll mustn't have Disadvantage. If the chosen attack roll hits, the target takes an extra ldlO damage of the same type dealt by the weapon or Unarmed Strike, and you can cause one Brutal Strike effect of your choice. You have the following effect options.\n  \u2022 **Forceful Blow**: The target is pushed 15 feet straight away from you. You can then move up to half your Speed straight toward the target without provoking Opportunity Attacks.\n  \u2022 **Hamstering Blow**: The target's Speed is reduced by 15 feet until the start of your next turn. A target can be affected by only one Hamstring Blow at a timethe most recent one."
+        description: "If you use Reck.less Attack, you can forgo any Advantage on one Strength-based attack roll of your choice on your turn. The chosen attack roll mustn't have Disadvantage. If the chosen attack roll hits, the target takes an extra ldlO damage of the same type dealt by the weapon or Unarmed Strike, and you can cause one Brutal Strike effect of your choice. You have the following effect options.\n - **Forceful Blow**: The target is pushed 15 feet straight away from you. You can then move up to half your Speed straight toward the target without provoking Opportunity Attacks.\n - **Hamstering Blow**: The target's Speed is reduced by 15 feet until the start of your next turn. A target can be affected by only one Hamstring Blow at a timethe most recent one."
       }
     ],
     "11": [
@@ -490,7 +602,7 @@ var barbarian_default = {
     "13": [
       {
         name: "Improved Brutal Strike",
-        description: "You have honed new ways to attack furiously. The following effects are now among your Brutal Strike options.\n  \u2022 **Staggering Blow**: The target has Disadvantage on the next saving throw it makes, and it can't make Opportunity Attacks until the start of your next turn.\n  \u2022 **Sundering Blow**: Before the start of your next turn, the next attack roll made by another creature against the target gains a +5 bonus to the roll. An attack roll can gain only one Sundering Blow bonus."
+        description: "You have honed new ways to attack furiously. The following effects are now among your Brutal Strike options.\n - **Staggering Blow**: The target has Disadvantage on the next saving throw it makes, and it can't make Opportunity Attacks until the start of your next turn.\n - **Sundering Blow**: Before the start of your next turn, the next attack roll made by another creature against the target gains a +5 bonus to the roll. An attack roll can gain only one Sundering Blow bonus."
       }
     ]
   }
@@ -502,7 +614,7 @@ var bard_subclasses_default = {
     "3": [
       {
         name: "Dazzling Footwork",
-        description: " \u2022 **Dance Virtuoso**: You have Advantage on any Charisma (Performance) check you make that involves you dancing.\n  \u2022 **Agile Strikes**: When you expend a use of your Bardic Inspiration as part of an action, a Bonus Action, or a Reaction, you can make one Unarmed Strike as part of that action, Bonus Action, or Reaction\n  \u2022 **Bardic Damage**: You can use Dexterity instead of Strength for the attack rolls of your Unarmed Strikes. When you deal damage with an Unarmed Strike, you can deal Bludgeoning damage equal to a roll of your Bardic Inspiration die plus your Dexterity modifier, instead of the strike's normal damage. This roll doesn't expend the die."
+        description: " - **Dance Virtuoso**: You have Advantage on any Charisma (Performance) check you make that involves you dancing.\n - **Agile Strikes**: When you expend a use of your Bardic Inspiration as part of an action, a Bonus Action, or a Reaction, you can make one Unarmed Strike as part of that action, Bonus Action, or Reaction\n - **Bardic Damage**: You can use Dexterity instead of Strength for the attack rolls of your Unarmed Strikes. When you deal damage with an Unarmed Strike, you can deal Bludgeoning damage equal to a roll of your Bardic Inspiration die plus your Dexterity modifier, instead of the strike's normal damage. This roll doesn't expend the die."
       }
     ],
     "6": [
@@ -570,7 +682,7 @@ var bard_subclasses_default = {
     "3": [
       {
         name: "",
-        description: "A creature that has a Bardic Inspiration die from you can use it for one of the following effects.\n  \u2022 **Defense**: When the creature is hit by an attack roll, that creature can use its Reaction to roll the Bardic Inspiration die and add the number rolled to its AC against that attack, potentially causing the attack to miss.\n  \u2022 **Offense**: Immediately after the creature hits a target with an attack roll, the creature can roll the Bardic Inspiration die and add the number rolled to the attack's damage against the target."
+        description: "A creature that has a Bardic Inspiration die from you can use it for one of the following effects.\n - **Defense**: When the creature is hit by an attack roll, that creature can use its Reaction to roll the Bardic Inspiration die and add the number rolled to its AC against that attack, potentially causing the attack to miss.\n - **Offense**: Immediately after the creature hits a target with an attack roll, the creature can roll the Bardic Inspiration die and add the number rolled to the attack's damage against the target."
       }
     ],
     "6": [
@@ -608,7 +720,7 @@ var bard_default = {
     "1": [
       {
         name: "Bardic Inspiration",
-        description: "As a Bonus Action, you can inspire another creature within 60 feet of yourself who can see or hear you. That creature gains one of your Bardic Inspiration dice.\n  \u2022 **Number of Uses**: You can confer a Bardic Inspiration die a number of times equal to your Charisma modifier (minimum of once), and you regain all expended uses when you finish a Long Rest."
+        description: "As a Bonus Action, you can inspire another creature within 60 feet of yourself who can see or hear you. That creature gains one of your Bardic Inspiration dice.\n - **Number of Uses**: You can confer a Bardic Inspiration die a number of times equal to your Charisma modifier (minimum of once), and you regain all expended uses when you finish a Long Rest."
       }
     ],
     "2": [
@@ -654,79 +766,101 @@ var cleric_subclasses_default = {
       },
       {
         name: "Life Domain Spells",
-        description: "When you reach a Cleric level specified in the Life Domain Spells table, you thereafter always have the listed spells prepared.\n\n| Cleric Level | Prepared Spells | ----- | ----- | 3 | Aid, Bless, Cure Wounds, Lesser Restoration | 5 | Mass Healing Word, Revivify | 7 | Aura of Life, Death Ward | 9 | Greater Restoration, Mass Cure Wounds |"
+        description: "When you reach a Cleric level specified in the Life Domain Spells table, you thereafter always have the listed spells prepared.\n\n| Cleric Level | Prepared Spells |\n| :-----: | ----- |\n| 3 | Aid, Bless, Cure Wounds, Lesser Restoration |\n| 5 | Mass Healing Word, Revivify |\n| 7 | Aura of Life, Death Ward |\n| 9 | Greater Restoration, Mass Cure Wounds |"
+      },
+      {
+        name: "Preserve Life",
+        description: "As a Magic action, you present your Holy Symbol and expend a use of your Channel Divinity to evoke healing energy that can restore a number of Hit Points equal to five times your Cleric level. Choose Bloodied creatures within 30 feet of yourself (which can include you), and divide those Hit Points among them. This feature can restore a creature to no more than half its Hit Point maximum."
       }
     ],
     "6": [
       {
-        name: "<Feature_Name>",
-        description: "<Feature_Description>"
-      }
-    ],
-    "17": [
-      {
-        name: "<Feature_Name>",
-        description: "<Feature_Description>"
+        name: "Blessed Healer",
+        description: "he healing spells you cast on others heal you as well. Immediately after you cast a spell with a spell slot that restores Hit Points to one or more creatures other than yourself, you regain Hit Points equal to 2 plus the spell slot's level."
       }
     ]
   },
   "Light Domain": {
     "3": [
       {
-        name: "<Feature_Name>",
-        description: "<Feature_Description>"
+        name: "Light Domain Spells",
+        description: "When you reach a Cleric level specified in the Light Domain Spells table, you thereafter always have the listed spells prepared.\n\n| Cleric Level | Prepared Spells |\n| :-----: | ----- |\n| 3 | Burning Hands, Faerie Fire, Scorching Ray, See Invisibility |\n| 5 | Daylight, Fireball |\n| 7 | Arcane Eye, Wall of Fire |\n| 9 | Flame Strike, Scrying |"
+      },
+      {
+        name: "Radiance of the Dawn",
+        description: "As a Magic action, you present your Holy Symbol and expend a use of your Channel Divinity to emit a flash of light in a 30-foot Emanation originating from yourself. Any magical Darkness-such as that created by the Darkness spell-in that area is dispelled. Additionally, each creature of your choice in that area must make a Constitution saving throw, taking Radiant damage equal to 2d10 plus your Cleric level on a failed save or half as much damage on a successful one."
+      },
+      {
+        name: "Warding Flare",
+        description: "When a creature that you can see within 30 feet of yourself makes an attack roll, you can take a Reaction to impose Disadvantage on the attack roll, causing light to flare before it hits or misses.\n  You can use this feature a number of times equal to your Wisdom modifier (minimum of once). You regain all expended uses when you finish a Long Rest."
       }
     ],
     "6": [
       {
-        name: "<Feature_Name>",
-        description: "<Feature_Description>"
+        name: "Improved Warding Flare",
+        description: "You regain all expended uese of Warding Flare when you finish a Short or Long Rest.\n  In addition, whenever you use Warding Flare, you can give the target of the triggering attack a number of Temporary Hit Points equal to 2d6 plus your Wisdom modifier."
       }
     ],
     "17": [
       {
-        name: "<Feature_Name>",
-        description: "<Feature_Description>"
+        name: "Corona of Light",
+        description: "As a Magic action, you cause yourself to emit an aura of sunlight that lasts for 1 minute or until you dismiss it (no action required). You emit Bright Light in a 60-foot radius and Dim Light for an additional 30 feet. Your enemies in the Bright Light have Disadvantage on saving throws against your Radiance of the Dawn and any spell that deals Fire or Radiant damage.\n  You can use this feature a number of times equal to your Wisdom modifier (minimum of once), and you regain all expended uses when you finish a Long Rest."
       }
     ]
   },
   "Trickery Domain": {
     "3": [
       {
-        name: "<Feature_Name>",
-        description: "<Feature_Description>"
+        name: "Blessing of the Trickstrer",
+        description: "As a Magic action, you can choose yourself or a willing creature within 30 feet of yourself to have Advantage on Dexterity (Stealth) checks. This blessing lasts until you finish a Long Rest or you use this feature again"
+      },
+      {
+        name: "Invoke Duplicity",
+        description: "As a Bonus Action, you can expend one use of your Channel Divinity to create a perfect visual illusion of yourself in an unoccupied space you can see within 30 feet of yourself. The illusion is intangible and doesn't occupy its space. It lasts for 1 minute, but it ends early if you dismiss it (no action required) or have the Incapacitated condition. The illusion is animated and mimics your expressions and gestures. While it persists, you ga in the following benefits:\n - **Cast Spells**: You can cast spells as though you were in the illusion's space, but you must use your own senses.\n - **Distract**: When both you and yo ur illusion are within 5 feet of a creature that can see the illusion you have Advantage on attack rolls against that creature, given how distracting the illusion is to the target.\n - **Move**: As a Bonus Action, you can move the illusion up to 30 feet to an unoccupied space you can see that is within 120 feet of yourself."
+      },
+      {
+        name: "Trickster Domain Spells",
+        description: "When you reach a Cleric level specified in the Trickery Domain Spells table, you thereafter always have the listed spells prepared.\n\n| Cleric Level | Prepared Spells |\n| :-----: | ----- |\n| 3 | Charm Person, Disguise Self, Invisibility, Pass without Trace |\n| 5 | Hypnotic Pattern , Nondetection |\n| 7 | Confusion, Dimension Door |\n| 9 | Dominate Person, Modify Memory |"
       }
     ],
     "6": [
       {
-        name: "<Feature_Name>",
-        description: "<Feature_Description>"
+        name: "Trickster's Transposition",
+        description: "Whenever you take the Bonus Action to create or move the illusion of your Invoke Duplicity, you can teleport, swapping places with the illusion."
       }
     ],
     "17": [
       {
-        name: "<Feature_Name>",
-        description: "<Feature_Description>"
+        name: "Improved Duplicity",
+        description: "The illusion of your Invoke Duplicity has grown more powerful in the following ways.\n - **Shared Distraction**: When you and your allies make attack rolls against a creature within 5 feet of the illusion, the attack rolls have Advantage.\n - **Healing Illusion**: When the illusion ends, you or a creature of your choice within 5 feet of it regains a number of Hit Points equal to your Cleric level"
       }
     ]
   },
   "War Domain": {
     "3": [
       {
-        name: "<Feature_Name>",
-        description: "<Feature_Description>"
+        name: "Guided Strike",
+        description: "When you or a creature within 30 feet of you misses with an attack roll, you can expend one use of you r Channel Divinity and give that roll a + 10 bonus, potentially causing it to hit. When you use this feature to benefit another creature's attack roll, you must take a Reaction to do so."
+      },
+      {
+        name: "War Domain Spells",
+        description: "When you reach a Cleric level specified in the War Domain Spells table, you thereafter always have the listed spells prepared.\n\n| Cleric Level | Prepared Spells |\n| :-----: | ----- |\n| 3 | Guiding Bolt, Magic Weapon, Shield of Faith, Spiritual Weapon |\n| 5 | Crusader's Mantle, Spirit Guardians |\n| 7 | Fire Shield, Freedom of Movement |\n| 9 | Hold Monster, Steel Wind Strike |"
+      },
+      {
+        name: "War Priest",
+        description: "As a Bonus Action, you can make one attack with a weapon or an Unarmed Strike. You can use this Bonus Action a number of times equal to your Wisdom modifier (minimum of once). You regain all expended uses when you finish a Short or Long Rest."
       }
     ],
     "6": [
       {
-        name: "<Feature_Name>",
-        description: "<Feature_Description>"
+        name: "War God's Blessing",
+        description: "You can expend a use of your Channel Divinity to cast Shield of Faith or Spiritual Weapon rather than expending a spell slot. When you cast either spell in this way, the spell doesn't require Concentration. Instead the spell lasts for 1 minute, but it ends early if you cast that spell again, have the Incapacitated condition, or die"
       }
     ],
     "17": [
       {
-        name: "<Feature_Name>",
-        description: "<Feature_Description>"
+        name: "Avatar of Battle",
+        description: "You gain Resistance to Bludgeoning, Piercing, and Slashing damage"
       }
     ]
   }
@@ -735,7 +869,7 @@ var cleric_subclasses_default = {
 // rulebook/classes/cleric.json
 var cleric_default = {
   class: "Cleric",
-  subclassFile: "",
+  subclassFile: "cleric-subclasses",
   "starting-equipment": {
     A: {
       items: {
@@ -753,7 +887,7 @@ var cleric_default = {
     "2": [
       {
         name: "Channel Divinity",
-        description: "You can channel divine energy directly from the Outer Planes to fuel magical effects. You start with two such effects: Divine Spark and Turn Undead. You can use this class's Channel Divinity twice. You regain one of its expended uses when you finish a Short Rest, and you regain all expended uses when you finish a Long Rest.\n  \u2022 **Divine Spark**: As a Magic action, you point your Holy Symbol at another creature you can see within 30 feet of yourself and focus divine energy at it. Roll ld8 and add your Wisdom modifier. You either restore Hit Points to the creature equal to that total or force the creature to make a Constitution saving throw. On a failed save, the creature takes Necrotic or Radiant damage (your choice) equal to that total. On a successful save, the creature takes half as much damage (round down).\n  \u2022 **Turn Undead**: As a Magic action, you present your Holy Symbol and censure Undead creatures. Each Undead of your choice within 30 feet of you must make a Wisdom saving throw. If the creature fails its save, it has the Frightened and Incapacitated conditions for 1 minute. For that duration, it tries to move as far from you as it can on its turns. This effect ends early on the creature if it takes any damage, if you have the Incapacitated condition, or if you die."
+        description: "You can channel divine energy directly from the Outer Planes to fuel magical effects. You start with two such effects: Divine Spark and Turn Undead. You can use this class's Channel Divinity twice. You regain one of its expended uses when you finish a Short Rest, and you regain all expended uses when you finish a Long Rest.\n - **Divine Spark**: As a Magic action, you point your Holy Symbol at another creature you can see within 30 feet of yourself and focus divine energy at it. Roll ld8 and add your Wisdom modifier. You either restore Hit Points to the creature equal to that total or force the creature to make a Constitution saving throw. On a failed save, the creature takes Necrotic or Radiant damage (your choice) equal to that total. On a successful save, the creature takes half as much damage (round down).\n - **Turn Undead**: As a Magic action, you present your Holy Symbol and censure Undead creatures. Each Undead of your choice within 30 feet of you must make a Wisdom saving throw. If the creature fails its save, it has the Frightened and Incapacitated conditions for 1 minute. For that duration, it tries to move as far from you as it can on its turns. This effect ends early on the creature if it takes any damage, if you have the Incapacitated condition, or if you die."
       }
     ],
     "5": [
@@ -765,7 +899,7 @@ var cleric_default = {
     "7": [
       {
         name: "Blessed Strikes",
-        description: "You gain one of the following options of your choice:\n  \u2022 **Divine Strike**: Once on each of your turns when you hit a creature with an attack roll using a weapon, you can cause the target to take an extra 1d8 Necrotic or Radiant damage.\n  \u2022 **Potent Spellcasting**: Add your Wisdom modifier to the damage you deal with any Cleric cantrip."
+        description: "You gain one of the following options of your choice:\n - **Divine Strike**:\nOnce on each of your turns when you hit a creature with an attack roll using a weapon, you can cause the target to take an extra 1d8 Necrotic or Radiant damage.\n - **Potent Spellcasting**:\nAdd your Wisdom modifier to the damage you deal with any Cleric cantrip."
       }
     ],
     "10": [
@@ -776,8 +910,128 @@ var cleric_default = {
     ],
     "14": [
       {
-        name: "Improved ",
-        description: "The option you chose for Blessed Strikes grows more powerful:\n  \u2022 **Divine Strike**: The extra damage of your Divine Strike increases to 2d8.\n  \u2022 **Potent Spellcasting**: When you cast a Cleric cantrip and deal damage to a creature with it, you can give vitality to yourself or another creature within 60 feet of yourself, granting a number of Temporary Hit Points equal to twice your Wisdom modifier."
+        name: "Improved Blessed Strikes",
+        description: "The option you chose for Blessed Strikes grows more powerful:\n - **Divine Strike**:\nThe extra damage of your Divine Strike increases to 2d8.\n - **Potent Spellcasting**:\nWhen you cast a Cleric cantrip and deal damage to a creature with it, you can give vitality to yourself or another creature within 60 feet of yourself, granting a number of Temporary Hit Points equal to twice your Wisdom modifier."
+      }
+    ]
+  }
+};
+
+// rulebook/classes/druid-subclasses.json
+var druid_subclasses_default = {
+  "Circle of the Land": {
+    "3": [
+      {
+        name: "Lans's Aid",
+        description: "As a Magic action, you can expend a use of your Wild Shape and choose a point within 60 feet of yourself. Vitality-giving flowers and life-draining thorns appear for a moment in a 10-foot-radius Sphere centered on that point. Each creature of your choice in the Sphere must make a Constitution saving throw against your spell save DC, taking 2d6 Necrotic damage on a failed save or half as much damage on a successful one. One creature of your choice in that area regains 2d6 Hit Points.\n  The damage and healing increase by ld6 when you reach Druid levels 10 (3d6) and 14 (4d6)."
+      }
+    ],
+    "6": [
+      {
+        name: "Natural Recovery",
+        description: "You can cast one of the level 1 + spells that you have prepared from your Circle Spells feature without expending a spell slot, and you must finish a Long Rest before you do so again.\n In addition, when you finish a Short Rest, you can choose expended spell slots to recover. The spell slots can have a combined level that is equal to or less than half your Druid level (round up), and none of them can be level 6+ . For example, if you're a level 6 Druid, you can recover up to three levels' worth of spell slots. Once you recover spell slots with this feature, you can't do so again until you finish a Long Rest."
+      }
+    ],
+    "10": [
+      {
+        name: "Nature's Ward",
+        description: "You are immune to the Poisoned condition, and you have Resistance to a damage type associated with your current land choice in the Circle Spells feature, as shown in the Nature's Ward table.\n#### Nature's Ward\n| Land Type  | Arid | Polar | Temprate  | Tropical |\n| ----- | ----- | ----- | ----- | ----- |\n| Resistance | Fire | Cold | Lightning | Poison |"
+      }
+    ],
+    "14": [
+      {
+        name: "Nature's Sanctuary",
+        description: "As a Magic action, you can expend a use of your Wild Shape and cause spectral trees and vines to appear in a 15-foot Cube on the ground within 120 feet of yourself. They last there for 1 minute or until you have the Incapacitated condition or die. You and your allies have Half Cover while in that a rea and your allies gain the current Resistance of your Nature's Ward while there."
+      }
+    ]
+  },
+  "Circle of the Moon": {
+    "3": [
+      {
+        name: "Circle of the Moon",
+        description: " - **Challenge Rating**: The maximum Challenge Rating for the form equals your Druid level divided by 3 (round down).\n - **Armor Class**: Until you leave the form, your AC equals 13 plus your Wisdom modifier if that total is higher than the Beast's AC.\n - **Temporary Hit Points**: You gain a number of Temporary Hit Points equal to three times your Druid level."
+      },
+      {
+        name: "Circle of the Moon Spells",
+        description: "When you reach a Druid level specified in the Circle of the Moon Spells table, you ther eafter always have the listed spells prepared.\n#### Circle of the Moon Spells\n\n| Lvl 3 | Lvl 5 | Lvl 7 | Lvl 9 |\n| ----- | ----- | ----- | ----- |\n| Cure Wounds, Moonbeam, Starry Wisp | Conjure Animals | Fount of Moonlight | Mass Cure Wounds |"
+      }
+    ],
+    "6": [
+      {
+        name: "Improved Circle Forms",
+        description: "While in a Wild Shape form, you gain the following benefits:\n - **Lunar Radiance**: Each of your attacks in a Wild Shape form can deal its normal damage type or Radiant damage. You make this choice each time you hit with those attacks.\n - **Increased Toughness**: You can add your Wisdom modifier to your Constitution saving throws."
+      }
+    ],
+    "10": [
+      {
+        name: "Moonlight Step",
+        description: "As a Bonus Action, you teleport up to 30 feet to an unoccupied space you can see, and you have Advantage on the next attack roll you make before the end of this turn.\n	You can use this feature a number of times equal to your Wisdom modifier (minimum of once), and you regain all expended uses when you finish a Long Rest. You can also regain uses by expending a level 2+ spell slot for each use you want to restore (no action required)."
+      }
+    ],
+    "14": [
+      {
+        name: "Lunar Form",
+        description: " - **Improved Lunar Radiance**: Once per turn, you can deal an extra 2d10 Radiant damage to a target you hit with a Wild Shape form's attack.\n - **Shared Moonlight**: Whenever you use MoonlightStep, you can also teleport one willing creature. That creature must be within 10 feet of you, and you teleport it to an unoccupied space you can see within 10 fe et of your destination space."
+      }
+    ]
+  },
+  "Circle of the Sea": {
+    "3": [
+      {
+        name: "Circle of the Sea Spells",
+        description: "When you reach a Druid level specified in the Circle of the Sea Spells table, you thereafter always have the listed spells prepared.\n#### Circle of the Sea Spells\n\n| Lvl 3 | Lvl 5 | Lvl 7 | Lvl 9 |\n| ----- | ----- | ----- | ----- |\n| Fog Cloud, Gust of Wind, Ray of Frost, Shatter, Thunderwave | Lightning Bolt, Water Breathing | Control Water, Ice Storm | Conjure Elemental, Hold Monster |"
+      },
+      {
+        name: "Wrath of the Sea",
+        description: "As a Bonus Action, you can expend a use of your Wild Shape to manifest a 5-foot Emanation that takes the form of ocean spray that surrounds you for 10 minutes. It ends early if you dismiss it (no action required), manifest it again, or have the Incapacitated condition.\n	When you manifest the Emanation and as a Bonus Action on your subsequent turns, you can choose another creature you can see in the Emanation. The target must succeed on a Constitution saving throw against your spell save DC or take Cold damage and, if the creature is Large or smaller, be pushed up to 15 feet away from you. To determine this damage, roll a number of d6s equal to your Wisdom modifier (minimum of one die)."
+      }
+    ],
+    "6": [
+      {
+        name: "Aquatic Afinity",
+        description: "The size of the Emanation created by your Wrath of the Sea increases to 10 feet.\n	In addition, you gain a Swim Speed equal to your Speed."
+      }
+    ],
+    "10": [
+      {
+        name: "Stormborn",
+        description: "Your Wrath of the Sea confers two more benefits while active, as detailed below.\n - **Flight**: You gain a Fly Speed equal to your Speed.\n - **Resistance**: You have Resistance to Cold, Lightning, and Thunder damage."
+      }
+    ],
+    "14": [
+      {
+        name: "Oceanic Gift",
+        description: "Instead of manifesting the Emanation of Wrath of the Sea around yourself, you can manifest it around one willing creature within 60 feet of yourself. That creature gains all the benefits of the Emanation and uses your spell save DC and Wisdom modifier for it.\n	In addition, you can manifest the Emanation around both the other creature and yourself if you expend two uses of your Wild Shape ins tead of one when manifesting it."
+      }
+    ]
+  },
+  "Circle of the Stars": {
+    "3": [
+      {
+        name: "Star Map",
+        description: "You've created a star chart as part of your heavenly studies, and while holding it you have the Guidance and Guiding Bolt spells prepared, and you can cast Guiding Bolt without expending a spell slot. You can cast it in that way a number of times equal to your Wisdom modifier (minimum of once), and you regain all expended uses when you finish a Long Rest."
+      },
+      {
+        name: "Starry Form",
+        description: "As a Bonus Action, you can expend a use of your Wild Shape feature to take on a starry fo rm rather than shape-shifting.\n	This form sheds Bright Light in a 10-foot radius and Dim Light for a n additional 10 feet. The form lasts for 10 m inutes. It ends early if you dismiss it (no action required), have the Inca pacitated condition, or use this feature again. Whenever you assume your starry form, choose which of the following constellations glimmers on your body:\n - **Archer**: As a Bonus Action you can make a ranged spell attack, hurling a luminous arrow that targets one creature within 60 feet of yourself. On a hit, the attack deals Radiant damage equal to ld8 plus your Wisdom modifier.\n - **Chalice**: Whenever you cast a spell using a spell slot that restores Hit Points to a creature, you or another creature within 30 feet of you can regain Hit Points equal to ld8 plus your Wisdom modifier.\n - **Dragon**: When you make an Intelligence or a Wisdom check or a Constitution saving throw to maintain Concentration, you can treat a roll of 9 or lower on the d20 as a 10."
+      }
+    ],
+    "6": [
+      {
+        name: "Cosmic Omen",
+        description: "Whenever you finish a Long Rest, you can consult your Star Map for omens and roll a die. Until you finish your next Long Rest, you gain access to a special Reaction based on whether you rolled an even or an odd number on the die:\n - **Weal** (Even): Whenever a creature you can see within 30 feet of you is about to make a D20 Test, you can take a Reaction to roll ld6 and add the number rolled to the total.\n - **Woe** (Odd): Whenever a creature you can see within 30 feet of you is about to make a D20 Test, you can take a Reaction to roll ld6 and subtract the number rolled from the total.\nYou can use this Reaction a number of times equal to your Wisdom modifier (minimum of once), and you regain all expended uses when you finish a Long Rest."
+      }
+    ],
+    "10": [
+      {
+        name: "Twinkling Constellations",
+        description: "At the start of each of your turns while in your Starry Form, you can change which constellation glimmers on your body."
+      }
+    ],
+    "14": [
+      {
+        name: "Full of Stars",
+        description: "While in your Starry Form, you become partially incor poreal, giving you Resistance to Bludgeoning, Piercing, a nd Slashing damage."
       }
     ]
   }
@@ -789,37 +1043,237 @@ var druid_default = {
   subclassFile: "druid-subclasses",
   "starting-equipment": {
     A: {
-      items: {},
-      gold: 0
+      items: {
+        "leather-armor": 1,
+        shield: 1,
+        sickle: 1,
+        quarterstaff: 1,
+        "explorers-pack": 1,
+        "herbalism-kit": 1
+      },
+      gold: 9
     },
-    B: { items: {}, gold: 0 }
+    B: { items: {}, gold: 50 }
   },
   features: {
     "1": [
       {
-        name: "",
-        description: ""
+        name: "Druidic",
+        description: "While learning Druidic you also unlocked the magic of communicating with animals; you always have the Speak with Animals spell prepared.\n  You can use Druidic to leave hidden messages. You and others who know Druidic automatically spot such a message. Others spot the message's presence with a successful DC 15 Intelligence (Investigation) check but can't decipher it without magic"
+      }
+    ],
+    "2": [
+      {
+        name: "Wild Shape",
+        description: "As a Bonus Action, you shape-shift into a Beast form that you have learned for this feature. You stay in that form for a number of hours equal to half your Druid level or until you use Wild Shape again, have the Incapacitated condition, or die. You can also leave the form early as a Bonus Action.\n  **Number of Uses**: You can use Wild Shape twice. You regain one expended use when you finish a Short Rest, and you regain all expended uses when you finish a Long Rest.\n  Whenever you finish a Long Rest, you can replace one of your known forms with another eligible form.\n  **Temporary Hit Points**: When you assume a Wild Shape form, you gain a number of Temporary Hit Points equal to your Druid level."
+      },
+      {
+        name: "Wild Companion",
+        description: "You can summon a nature spirit that assumes an animal form to aid you. As a Magic action, you can expend a spell slot or a use of Wild Shape to cast the Find Familiar spell without Material components.\n  When you cast the spell in this way, the familiar is Fey and disappears when you finish a Long Rest."
+      }
+    ],
+    "5": [
+      {
+        name: "Wild Resurgence",
+        description: "Once on each of your turns, if you have no uses of Wild Shape left, you can give yourself one use by expending a spell slot (no action required).\n  In addition, you can expend one use of Wild Shape (no action required) to give yourself a level 1 spell slot, but you can't do so again until you finish a Long Rest."
+      }
+    ],
+    "7": [
+      {
+        name: "Elemental Fury",
+        description: "The might of the elements flows through you. You gain one of the following options of your choice.\n - **Potent Spellcasting**: Add your Wisdom modifier to the damage you deal with any Druid cantrip.\n - **Primal Strike**: Once on each of your turns when you hit a creature with an attack roll using a weapon or a Beast form's attack in Wild Shape, you can cause the target to take an extra ld8 Cold, Fire, Lightning, or Thunder damage (choose when you hit)."
+      }
+    ],
+    "19": [
+      {
+        name: "Beast Spells",
+        description: "While using Wild Shape, you can cast spells in Beast form, except for any spell that has a Material component with a cost specified or that consumes its Material component."
+      }
+    ],
+    "20": [
+      {
+        name: "Archdruid",
+        description: "The vitality of nature constantly blooms within you, granting you the following benefits.\n - **Evergreen Wild Shape**: Whenever you roll Initiative and have no uses of Wild Shape left, you regain one expended use of it.\n - **Nature Magician**: You can convert uses of Wild Shape into a spell slot (no action required). Choose a number of your unexpended uses of Wild Shape and convert them into a single spell slot, with each use contributing 2 spell levels. For example, if you convert two uses of Wild Shape, you produce a level 4 spell slot. Once you use this benefit, you can't do so again until you finish a Long Rest.\n - **Longevity**: The primal magic that you wield causes you to age more slowly. For every ten years that pass, your body ages only one year."
       }
     ]
   }
 };
 
-// rulebook/classes/figher.json
-var figher_default = {
+// rulebook/classes/fighter-subclasses.json
+var fighter_subclasses_default = {
+  "Battle Master": {
+    "3": [
+      {
+        name: "Combat Superiority",
+        description: "Your experience on the battlefield has refined your figh ting techniques. You learn maneuvers that are fueled by special dice called Superiority Dice.\n	**Saving Throughs**: If a maneuver requires a saving throw, the DC equals 8 plus your Strength or Dexterity modifier (your choice) and Proficiency Bonus."
+      }
+    ],
+    "7": [
+      {
+        name: "Know Your Enemy",
+        description: "As a Bonus Action, you can discern certain strengths and weaknesses of a creature you can see within 30 feet of yourself; you know whether that creature has any Immunities, Resistances, or Vul-nerabilities, and if the creature has any, you know what they are.\n	Once you use this feature, you can't do so again until you finish a Long Rest. You can also restore a use of the feature by expending one Superiority Die (no action required)."
+      }
+    ]
+  },
+  Champion: {
+    "3": [
+      {
+        name: "Remarkable Athlete",
+        description: "Thanks to your athleticism, you have Advantage on Initiative rolls and Strength (Athletics) checks.\n	In addition, immediately after you score a Critical Hit, you can move up to half your Speed without provoking Opportunity Attacks."
+      }
+    ],
+    "10": [
+      {
+        name: "Heroic Warrior",
+        description: "The thrill of battle drives you toward victory. During combat, you can give yourself Heroic Inspiration whenever you start your turn without it."
+      }
+    ],
+    "18": [
+      {
+        name: "Survivor",
+        description: "You attain the pinnacle of resilience in battle, giving you these benefits.\n - **Defy Death**: You have Advantage on Death Saving Throws. Moreover, when you roll 18-20 on a Death Saving Thr:ow, you gain the benefit of rolling a 20 on it.\n - **Heroic Rally**: At the start of each of your turns, you regain Hit Points equal to 5 plus your Constitution modifier if you are Bloodied and have at least 1 Hit Point."
+      }
+    ]
+  },
+  "Eldrich Knight": {
+    "3": [
+      {
+        name: "War Bond",
+        description: "You learn a ritual that creates a magical bond between yourself and one weapon, which ritual takes 1 hour. You can have up to two bonded weapons.\n	Once you have bonded a weapon to yourself, you can't be disarmed of that weapon unless you have the Incapacitated condition.If it is on the same plane of existence, you can summon that weapon as a Bonus Action, causing it to teleport instantly to your hand."
+      }
+    ],
+    "10": [
+      {
+        name: "Eldritch Strike",
+        description: "You learn how to make your weapon strikes undercut a creature's ability to withstand your spells. When you hit a creature with an attack using a weapon, that creature has Disadvantage on the next saving throw it makes against a spell you cast before the end of your next turn."
+      }
+    ],
+    "15": [
+      {
+        name: "Arcane Charge",
+        description: "When you use your Action Surge, you can teleport up to 30 feet to an unoccupied space you can see. You can teleport before or after the additional action."
+      }
+    ]
+  },
+  "Psi Warrior": {
+    "3": [
+      {
+        name: "Psionic Power",
+        description: " - **Protective Field**: When you or another creature you can see within 30 feet of you takes damage, you can take a Reaction to expend one Psionic Energy Die, roll the die, and reduce the damage taken by the number rolled plus your Intelligence modifier (minimum reduction of 1), as you create a momentary shield of telekinetic force.\n - **Psionic Strike**: You can propel your weapons with psionic force. Once on each of your turns, immediately after you hit a target within 30 feet of yourself with an attack and deal damage to it with a weapon, you can expend one Psionic Energy Die, rolling it and dealing Force damage to the target equal to the number rolled plus your Intelligence modifier.\n - **Telekinetic Movement**: You can move an object or a creature with your mind. As a Magic action, choose one target you can see within 30 feet of yourself; the target must be a loose object that is Large or smaller or one willing creature other than you. You transport the target up to 30 feet to an unoccupied space you can see. Alternatively, if the target is a Tiny object, you can transport it to or from your hand.\n	Once you take this action, you can't do so again until you finish a Short or Long Rest unless you expend a Psionic Energy Die (no action required) to restore your use of it."
+      }
+    ],
+    "7": [
+      {
+        name: "Telekinetic Adept",
+        description: "You have mastered new ways to use your telekinetic abilities, detailed below.\n - **Psi-Powered Leap**: As a Bonus Action, you gain a Fly Speed equal to twice your Speed until the end of the current turn. Once you take this Bonus Action, you can't do so again until you finish a Short or Long Rest unless you expend a Psionic Energy Die (no action required) to restore your use of it.\n - **Telekinetic Thrust**: When you deal damage to a target with your Psionic Strike, you can force the target to make a Strength saving throw (DC 8 plus your Intelligence modifier and Proficiency Bonus). On a failed save, you can give the target the Prone condition or transport it up to 10 feet horizontally."
+      }
+    ],
+    "10": [
+      {
+        name: "Guarded Mind",
+        description: "You have Resistance to Psychic damage. Moreover, if you start your turn with the Charmed or Frightened condition, you can expend a Psionic Energy Die (no action required) and end every effect on yourself giving you those conditions."
+      }
+    ],
+    "15": [
+      {
+        name: "Bulwark of Force",
+        description: "You can shield yourself and others with telekinetic force. As a Bonus Action, you can choose creatures, including yourself, within 30 feet of yourself, up to a number of creatures equal to your Intelligence modifier (minimum of one creature). Each of the chosen creatures has Half Cover for 1 minute or until you have the Incapacitated condition.\n	Once you use this feature, you can't do so again until you finish a Long Rest unless you expend a Psionic Energy Die (no action required) to restore your use of it."
+      }
+    ],
+    "18": [
+      {
+        name: "Telekinetic Master",
+        description: "You always have the Telekinesis spell prepared. With this feature, you can cast it without a spell slot or components, and your spellcasting ability for it is Intelligence. On each of your turns while you maintain Concentration on it, including the turn when you cast it, you can make one attack with a weapon as a Bonus Action.\n	Once you cast the spell with this feature, you can't do so in this way again until you finish a Long Rest unless you expend a Psionic Energy Die (no action required) to restore your use of it."
+      }
+    ]
+  }
+};
+
+// rulebook/classes/fighter.json
+var fighter_default = {
   class: "Fighter",
   subclassFile: "fighter-subclasses",
   "starting-equipment": {
     A: {
+      items: {
+        "chain-mail": 1,
+        greatsword: 1,
+        flail: 1,
+        javelin: 8,
+        "dungeoneers-pack": 1
+      },
+      gold: 4
+    },
+    B: {
+      items: {
+        "studded-leather-armor": 1,
+        scimitar: 1,
+        shortsword: 1,
+        longbow: 8,
+        arrow: 20,
+        quiver: 1,
+        "dungeoneers-pack": 1
+      },
+      gold: 11
+    },
+    C: {
       items: {},
       gold: 0
-    },
-    B: { items: {}, gold: 0 }
+    }
   },
   features: {
     "1": [
       {
-        name: "",
-        description: ""
+        name: "Second Wind",
+        description: "As a Bonus Action, you can use it to regain Hit Points equal to ldlO plus your Fighter level.\n	You regain one expended use when you finish a Short Rest, and you regain all expended uses when you finish a Long Rest."
+      }
+    ],
+    "2": [
+      {
+        name: "Action Surge",
+        description: "You can push yourself beyond your normal limits for a moment. On your turn, you can take one additional action, except the Magic action.\n	Once you use this feature, you can't do so again until you finish a Short or Long Rest. Starting at level 17, you can use it twice before a rest but only once on a turn."
+      },
+      {
+        name: "Tactical Mind",
+        description: "When you fail an ability check, you can expend a use of your Second Wind to push yourself toward success. Rather than regaining Hit Points, you roll ldlO and add the number rolled to the ability check, potentially turning it into a success. If the check still fails, this use of Second Wind isn't expended."
+      }
+    ],
+    "5": [
+      {
+        name: "Extra Attack",
+        description: "You can attack twice instead of once whenever you take the Attack action on your turn."
+      },
+      {
+        name: "Tactical Shift",
+        description: "Whenever you activate your Second Wind with a Bonus Action, you can move up to half your Speed without provoking Opportunity Attacks."
+      }
+    ],
+    "9": [
+      {
+        name: "Indomitable",
+        description: "If you fail a saving throw, you can re roll it with a bonus equal to your Fighter level. You must use the new roll, and you can't use this feature again until you finish a Long Rest.\n	You can use this feature twice before a Long Reststarting at level 13 and three times at level 17."
+      },
+      {
+        name: "Tactical Master",
+        description: "When you attack with a weapon whose mastery property you can use, you can replace that property with the Push, Sap, or Slow property for that attack."
+      }
+    ],
+    "11": [
+      {
+        name: "Two Extra Attacks",
+        description: "You can attack three times instead of once whenever you take the Attack action on your turn."
+      }
+    ],
+    "13": [
+      {
+        name: "Studied Attacks",
+        description: "You study your opponents and learn from each attack you make. If you make an attack roll against a creature and miss, you have Advantage on your next attack roll against that creature before the end of your next turn."
+      }
+    ],
+    "20": [
+      {
+        name: "Three Extra Attacks",
+        description: "You can attack four times instead of once whenever you take the Attack action on you r turn."
       }
     ]
   }
@@ -833,7 +1287,7 @@ var monk_subclasses_default = {
       { name: "Hand of Healing", description: "As a Magic action, you can expend 1 Focus Point to touch a creature and restore a number of Hit Points equal to a roll of your Martial Arts die plus your Wisdom modifier.\nWhen you use your Flurry of Blows, you can replace one of the Unarmed Strikes with a use of this feature without expending a Focus Point for the healing." }
     ],
     "6": [
-      { name: "Physician's Touch", description: "Your Hand of Harm and Hand of Healing improve, as detailed below.\n \u2022 **Hand of Harm**:\nWhen you use Hand of Harm on a creature, you can also give that creature the Poisoned condition until the end of your next turn.\n \u2022 **Hand of Healing**:\nWhen you use Hand of Healing, you can also end one of the following conditions on the creature you heal: Blinded, Deafened, Paralyzed, Poisoned, or Stunned." }
+      { name: "Physician's Touch", description: "Your Hand of Harm and Hand of Healing improve, as detailed below.\n - **Hand of Harm**:\nWhen you use Hand of Harm on a creature, you can also give that creature the Poisoned condition until the end of your next turn.\n - **Hand of Healing**:\nWhen you use Hand of Healing, you can also end one of the following conditions on the creature you heal: Blinded, Deafened, Paralyzed, Poisoned, or Stunned." }
     ],
     "11": [
       { name: "Flury of Healing and Harm", description: "When you use Flurry of Blows, you can replace each of the Unarmed Strikes w ith a use of Hand of Healing without expending Focus Points for the healing.\n  In addition, when you make an Unarmed Strike with Flur ry of Blows and deal damage, you can use Hand of Harm with that strike without expending a Focus Point for Hand of Harm. You ca n still use Hand of Harm only once per turn.\n  You can use these benefits a total number oftimes equal to your Wisdom modifier (minimum of once). You regain all expended uses when you finish a Long Rest." }
@@ -844,7 +1298,7 @@ var monk_subclasses_default = {
   },
   "Warrior of Shadow": {
     "3": [
-      { name: "Shadow Arts", description: "You have learned to draw on the power of the Shadowfell, gaining the following benefits.\n \u2022 **Darkness**: You can expend 1 Focus Point to cast the Darkness spell without spell components. You can see within the spell's area when you cast it with this feature. While the spell persists, you can move its area of Darkness to a space within 60 feet of yourself at the start of each of your turns.\n \u2022 **Darkvision**: You gain Darkvision with a range of 60 feet. If you already have Darkvision, its range increases by 60 feet.\n \u2022 **Shadowy Figments**: You know the Minor Illusion spell. Wisdom is your spellcasting ability for it." }
+      { name: "Shadow Arts", description: "You have learned to draw on the power of the Shadowfell, gaining the following benefits.\n - **Darkness**: You can expend 1 Focus Point to cast the Darkness spell without spell components. You can see within the spell's area when you cast it with this feature. While the spell persists, you can move its area of Darkness to a space within 60 feet of yourself at the start of each of your turns.\n - **Darkvision**: You gain Darkvision with a range of 60 feet. If you already have Darkvision, its range increases by 60 feet.\n - **Shadowy Figments**: You know the Minor Illusion spell. Wisdom is your spellcasting ability for it." }
     ],
     "6": [
       { name: "Shadow Step", description: "While entirely within Dim Light or Darkness, you can use a Bonus Action to teleport up to 60 feet to an unoccupied space you can see that is also in Dim Light or Darkness. You then have Advantage on the next melee attack you make before the end of the current turn." }
@@ -858,7 +1312,7 @@ var monk_subclasses_default = {
   },
   "Warrior of the Element": {
     "3": [
-      { name: "Elemental Attunment", description: "At the start of your turn, you can expend l Focus Point to imbue yourself with elemental energy. The energy lasts for 10 minutes or until you have the Incapacitated condition. You gain the following benefits while this feature is active.\n \u2022 **Reach**: When you make an Unarmed Strike, your reach is 10 feet greater than normal, as elemental energy extends from you.\n \u2022 **Elemental Strikes**: Whenever you hit with your Unarmed Strike, you can cause it to deal your choice of Acid, Cold, Fire, Lightning, or Thunder damage rather than its normal damage type. When you deal one of these types with it, you can also force the target to make a Strength saving throw. On a failed save, you can move the target up to 10 feet toward or away from you, as elemental energy swirls around it.\n \u2022 **Manipulate Elements**: You know the Elementalism spell. Wisdom is your spellcasting ability for it." }
+      { name: "Elemental Attunment", description: "At the start of your turn, you can expend l Focus Point to imbue yourself with elemental energy. The energy lasts for 10 minutes or until you have the Incapacitated condition. You gain the following benefits while this feature is active.\n - **Reach**: When you make an Unarmed Strike, your reach is 10 feet greater than normal, as elemental energy extends from you.\n - **Elemental Strikes**: Whenever you hit with your Unarmed Strike, you can cause it to deal your choice of Acid, Cold, Fire, Lightning, or Thunder damage rather than its normal damage type. When you deal one of these types with it, you can also force the target to make a Strength saving throw. On a failed save, you can move the target up to 10 feet toward or away from you, as elemental energy swirls around it.\n - **Manipulate Elements**: You know the Elementalism spell. Wisdom is your spellcasting ability for it." }
     ],
     "6": [
       { name: "Elemental Burst", description: "As a Magic action, you can expend 2 Focus Points to cause elemental energy to burst in a 20-foot-radius Sphere centered on a point within 120 feet of yourself. Choose a damage type: Acid, Cold, Fire, Lightning, or Thunder.\n  Each creature in the Sphere must make a Dexterity saving throw. On a failed save, a creature takes damage of the chosen type equal to three rolls of your Martial Arts die. On a successful save, a creature takes half as much damage." }
@@ -867,12 +1321,12 @@ var monk_subclasses_default = {
       { name: "Stride of the Element", description: "While your Elemental Attunement is active, you also have a Fly Speed and a Swim Speed equal to your Speed." }
     ],
     "17": [
-      { name: "Elemental Epitome", description: "While your Elemental Attunement is active, you also gain the following benefits:\n \u2022 **Damage Resistance**: You gain Resistance to one of the following damage types of your choice: Acid, Cold, Fire, Lightning, or Thunder. At the start of each of your turns, you can change this choice.\n \u2022 **Destructive Stride**: When you use your Step of the Wind, your speed increases by 20 feet until the end o the turn.  For that duration, any creature of your choice takes damage equal to one roll of your Martial Arts die when you enter a space within 5 feet of it. The damage type is your choice of Acid, Cold, Fire, Lightning, or Thunder. A creature can take this damage only once per turn.\n \u2022 **Empowered Strikes**: Once on each of your turns, you can deal extra damage to a target equal to one roll of your Martial Arts die when you hit it with an Unarmed Strike. The extra damage is the same type dealt by that strike." }
+      { name: "Elemental Epitome", description: "While your Elemental Attunement is active, you also gain the following benefits:\n - **Damage Resistance**: You gain Resistance to one of the following damage types of your choice: Acid, Cold, Fire, Lightning, or Thunder. At the start of each of your turns, you can change this choice.\n - **Destructive Stride**: When you use your Step of the Wind, your speed increases by 20 feet until the end o the turn.  For that duration, any creature of your choice takes damage equal to one roll of your Martial Arts die when you enter a space within 5 feet of it. The damage type is your choice of Acid, Cold, Fire, Lightning, or Thunder. A creature can take this damage only once per turn.\n - **Empowered Strikes**: Once on each of your turns, you can deal extra damage to a target equal to one roll of your Martial Arts die when you hit it with an Unarmed Strike. The extra damage is the same type dealt by that strike." }
     ]
   },
   "Warrior of the Open Hand": {
     "3": [
-      { name: "Open Hand Technique", description: " \u2022 **Addle**: The target can't make Opportunity Attacks until the start of its next turn.\n \u2022 **Push**: The target must succeed on a Strength saving throw or be pushed up to 15 feet away from you.\n \u2022 **Topple**: The target must succeed on a Dexterity saving throw or have the Prone condition." }
+      { name: "Open Hand Technique", description: " \u2022 **Addle**: The target can't make Opportunity Attacks until the start of its next turn.\n - **Push**: The target must succeed on a Strength saving throw or be pushed up to 15 feet away from you.\n - **Topple**: The target must succeed on a Dexterity saving throw or have the Prone condition." }
     ],
     "6": [
       { name: "Wholeness of Body", description: "You gain the ability to heal yourself. As a Bonus Action, you can roll your Martial Arts die. You regain a number of Hit Points equal to the number rolled plus your Wisdom modifier (minimum of 1 Hit Point regained).\n  You can use this feature a number of times equal to your Wisdom modifier (minimum of once), and you regain all expended uses when you finish a Long Rest." }
@@ -912,7 +1366,7 @@ var monk_default = {
     "2": [
       {
         name: "Monk's Focus",
-        description: " \u2022 **Flurry of Blows**:\nYou can expend 1 Focus Point to make two Unarmed Strikes as a Bonus Action.\n \u2022 **Patient Defense**:\nYou can take the Disengage action as a Bonus Action. Alternatively, you can expend 1 Focus Point to take both the Disengage and the Dodge actions as a Bonus Action.\n \u2022 **Step of the Wind**:\nYou can take the Dash action as a Bonus Action. Alternatively, you can expend 1 Focus Point to take both the Disengage and Dash actions as a Bonus Action, and your jump distance is doubled for the turn."
+        description: " - **Flurry of Blows**:\nYou can expend 1 Focus Point to make two Unarmed Strikes as a Bonus Action.\n - **Patient Defense**:\nYou can take the Disengage action as a Bonus Action. Alternatively, you can expend 1 Focus Point to take both the Disengage and the Dodge actions as a Bonus Action.\n - **Step of the Wind**:\nYou can take the Dash action as a Bonus Action. Alternatively, you can expend 1 Focus Point to take both the Disengage and Dash actions as a Bonus Action, and your jump distance is doubled for the turn."
       }
     ],
     "4": [
@@ -948,7 +1402,7 @@ var monk_default = {
     "10": [
       {
         name: "Heightened Focus",
-        description: "Your Flurry of Blows, Patient Defense, and Step of the Wind gain the following benefits:\n \u2022 **Flurry of Blows**: You can expend 1 Focus Point to use Flurry of Blows and make three Unarmed Strikes with it instead of two.\n \u2022 **Patient Defense**: When you expend a Focus Point to use Patient Defense, you gain a number of Temporary Hit Points equal to two rolls of your Martial Arts die.\n \u2022 **Step of the Wind**: When you expend a Focus Point to use Step of the Wind, you can choose a willing creature within 5 feet of yourself that is Large or smaller. You move the creature with you until the end of your turn. The creature's movement doesn't provoke Opportunity Attacks."
+        description: "Your Flurry of Blows, Patient Defense, and Step of the Wind gain the following benefits:\n - **Flurry of Blows**: You can expend 1 Focus Point to use Flurry of Blows and make three Unarmed Strikes with it instead of two.\n - **Patient Defense**: When you expend a Focus Point to use Patient Defense, you gain a number of Temporary Hit Points equal to two rolls of your Martial Arts die.\n - **Step of the Wind**: When you expend a Focus Point to use Step of the Wind, you can choose a willing creature within 5 feet of yourself that is Large or smaller. You move the creature with you until the end of your turn. The creature's movement doesn't provoke Opportunity Attacks."
       },
       {
         name: "Self-Restoration",
@@ -994,6 +1448,18 @@ var monk_default = {
   }
 };
 
+// rulebook/classes/paladin-subclasses.json
+var paladin_subclasses_default = {
+  "<Subclass_Name>": {
+    "<Level>": [
+      {
+        name: "<Feature_Name>",
+        description: "<Feature_Description>"
+      }
+    ]
+  }
+};
+
 // rulebook/classes/paladin.json
 var paladin_default = {
   class: "Paladin",
@@ -1006,7 +1472,7 @@ var paladin_default = {
         longsword: 1,
         javelin: 6,
         "holy-symbol": 1,
-        "priest-pack": 1
+        "priests-pack": 1
       },
       gold: 9
     },
@@ -1022,22 +1488,55 @@ var paladin_default = {
   }
 };
 
+// rulebook/classes/ranger-subclasses.json.json
+var ranger_subclasses_json_default = {
+  "<Subclass_Name>": {
+    "<Level>": [
+      {
+        name: "<Feature_Name>",
+        description: "<Feature_Description>"
+      }
+    ]
+  }
+};
+
 // rulebook/classes/ranger.json
 var ranger_default = {
   class: "Ranger",
   subclassFile: "ranger-subclasses",
   "starting-equipment": {
     A: {
-      items: {},
-      gold: 0
+      items: {
+        "studded-leather-armor": 1,
+        scimitar: 1,
+        shortsword: 1,
+        longbow: 1,
+        arrows: 20,
+        quiver: 1,
+        "druidic-focus": 1,
+        "explorers-pack": 1
+      },
+      gold: 7
     },
-    B: { items: {}, gold: 0 }
+    B: { items: {}, gold: 150 }
   },
   features: {
     "1": [
       {
         name: "",
         description: ""
+      }
+    ]
+  }
+};
+
+// rulebook/classes/rogue-subclasses.json
+var rogue_subclasses_default = {
+  "<Subclass_Name>": {
+    "<Level>": [
+      {
+        name: "<Feature_Name>",
+        description: "<Feature_Description>"
       }
     ]
   }
@@ -1049,16 +1548,37 @@ var rogue_default = {
   subclassFile: "rogue-subclasses",
   "starting-equipment": {
     A: {
-      items: {},
-      gold: 0
+      items: {
+        "leather-armor": 1,
+        dagger: 1,
+        shortsword: 1,
+        shortbow: 1,
+        arrow: 20,
+        quiver: 1,
+        "thieves-tools": 1,
+        "burglars-pack": 1
+      },
+      gold: 8
     },
-    B: { items: {}, gold: 0 }
+    B: { items: {}, gold: 100 }
   },
   features: {
     "1": [
       {
         name: "",
         description: ""
+      }
+    ]
+  }
+};
+
+// rulebook/classes/sorcerer-subclasses.json
+var sorcerer_subclasses_default = {
+  "<Subclass_Name>": {
+    "<Level>": [
+      {
+        name: "<Feature_Name>",
+        description: "<Feature_Description>"
       }
     ]
   }
@@ -1070,16 +1590,33 @@ var sorcerer_default = {
   subclassFile: "sorcerer-subclasses",
   "starting-equipment": {
     A: {
-      items: {},
-      gold: 0
+      items: {
+        spear: 1,
+        dagger: 2,
+        "arcane-focus": 1,
+        "dungeoneers-pack": 1
+      },
+      gold: 28
     },
-    B: { items: {}, gold: 0 }
+    B: { items: {}, gold: 50 }
   },
   features: {
     "1": [
       {
         name: "",
         description: ""
+      }
+    ]
+  }
+};
+
+// rulebook/classes/warlock-subclasses.json
+var warlock_subclasses_default = {
+  "<Subclass_Name>": {
+    "<Level>": [
+      {
+        name: "<Feature_Name>",
+        description: "<Feature_Description>"
       }
     ]
   }
@@ -1091,10 +1628,17 @@ var warlock_default = {
   subclassFile: "warlock-subclasses",
   "starting-equipment": {
     A: {
-      items: {},
-      gold: 0
+      items: {
+        "leather-armor": 1,
+        sickle: 1,
+        dagger: 2,
+        "arcane-focus": 1,
+        book: 1,
+        "scholars-pack": 1
+      },
+      gold: 15
     },
-    B: { items: {}, gold: 0 }
+    B: { items: {}, gold: 100 }
   },
   features: {
     "1": [
@@ -1106,16 +1650,34 @@ var warlock_default = {
   }
 };
 
+// rulebook/classes/wizard-subclasses.json
+var wizard_subclasses_default = {
+  "<Subclass_Name>": {
+    "<Level>": [
+      {
+        name: "<Feature_Name>",
+        description: "<Feature_Description>"
+      }
+    ]
+  }
+};
+
 // rulebook/classes/wizard.json
 var wizard_default = {
   class: "Wizard",
   subclassFile: "wizard-subclasses",
   "starting-equipment": {
     A: {
-      items: {},
-      gold: 0
+      items: {
+        dagger: 2,
+        "arcane-focus": 1,
+        robe: 1,
+        spellbook: 1,
+        "scholars-pack": 1
+      },
+      gold: 5
     },
-    B: { items: {}, gold: 0 }
+    B: { items: {}, gold: 55 }
   },
   features: {
     "1": [
@@ -1136,7 +1698,7 @@ var ability_score_improvement_default = {
 // rulebook/feats/alert.json
 var alert_default = {
   name: "Alert",
-  description: " \u2022 **Initiative Proficiency**:\nWhen you roll Initiative, you can add your Proficiency Bonus to the roll.\n \u2022 **Initiative Swap**:\nImmediately after you roll Initiative, you can swap your Initiative with the Initiative of one willing ally in the same combat. You can't make this swap if you or the ally has the Incapacitated condition."
+  description: " \u2022 **Initiative Proficiency**:\nWhen you roll Initiative, you can add your Proficiency Bonus to the roll.\n - **Initiative Swap**:\nImmediately after you roll Initiative, you can swap your Initiative with the Initiative of one willing ally in the same combat. You can't make this swap if you or the ally has the Incapacitated condition."
 };
 
 // rulebook/feats/crafter.json
@@ -2355,7 +2917,7 @@ var studded_leather_armor_default = {
 
 // rulebook/items/thieves-tools.json
 var thieves_tools_default = {
-  name: "Thieve's Tools",
+  name: "Thieves' Tools",
   type: "artisans-tool",
   description: "Pick a lock (DC 15), or disarm a trap (DC 15)",
   weight: 1,
@@ -2453,7 +3015,7 @@ var classRegistry = {
   "bard": bard_default,
   "cleric": cleric_default,
   "druid": druid_default,
-  "figher": figher_default,
+  "fighter": fighter_default,
   "monk": monk_default,
   "paladin": paladin_default,
   "ranger": ranger_default,
@@ -2463,9 +3025,18 @@ var classRegistry = {
   "wizard": wizard_default
 };
 var subclassRegistry = {
+  "barbarian-subclasses": barbarian_subclasses_default,
   "bard-subclasses": bard_subclasses_default,
   "cleric-subclasses": cleric_subclasses_default,
-  "monk-subclasses": monk_subclasses_default
+  "druid-subclasses": druid_subclasses_default,
+  "fighter-subclasses": fighter_subclasses_default,
+  "monk-subclasses": monk_subclasses_default,
+  "paladin-subclasses": paladin_subclasses_default,
+  "ranger-subclasses.json": ranger_subclasses_json_default,
+  "rogue-subclasses": rogue_subclasses_default,
+  "sorcerer-subclasses": sorcerer_subclasses_default,
+  "warlock-subclasses": warlock_subclasses_default,
+  "wizard-subclasses": wizard_subclasses_default
 };
 var featRegistry = {
   "ability-score-improvement": ability_score_improvement_default,
@@ -2816,12 +3387,52 @@ var DnDFeaturesPlugin = class extends import_obsidian2.Plugin {
   // --- Helper: Safely Render Markdown and Fix Spacing ---
   async renderDndMarkdown(text, container, sourcePath, component) {
     if (!text) return;
-    const cleanText = text.trim();
+    const cleanText = text.trim().replace(/\t/g, "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;");
     await import_obsidian2.MarkdownRenderer.render(this.app, cleanText, container, sourcePath, component);
+    const firstChild = container.firstElementChild;
+    if (firstChild && firstChild.tagName.match(/^H[1-6]$/i)) {
+      firstChild.style.marginTop = "0";
+    }
     const lastChild = container.lastElementChild;
     if (lastChild) {
       lastChild.style.marginBottom = "0";
     }
+    const blockElements = container.querySelectorAll("h1, h2, h3, h4, h5, h6, p, ul, ol, li, blockquote, pre, table, hr");
+    blockElements.forEach((el) => {
+      const htmlEl = el;
+      const tag = htmlEl.tagName.toLowerCase();
+      htmlEl.style.marginTop = "0";
+      htmlEl.style.marginBottom = "0";
+      if (["h1", "h2", "h3", "h4", "h5", "h6", "table", "blockquote", "pre", "hr"].includes(tag)) {
+        htmlEl.style.marginTop = "0.5em";
+        htmlEl.style.marginBottom = "0.5em";
+      } else if (tag === "p" && htmlEl.closest("li")) {
+        htmlEl.style.display = "inline";
+      } else if (tag === "ul" || tag === "ol") {
+        htmlEl.style.paddingTop = "0";
+        htmlEl.style.marginLeft = "0";
+        htmlEl.style.paddingLeft = "0";
+      } else if (tag === "li") {
+        htmlEl.style.listStyleType = "none";
+        htmlEl.style.paddingLeft = "0";
+        htmlEl.style.marginLeft = "0";
+        htmlEl.style.textIndent = "1.05em";
+        htmlEl.style.position = "relative";
+        if (!htmlEl.getAttribute("data-custom-bullet")) {
+          const bulletSpan = document.createElement("span");
+          bulletSpan.innerHTML = "&bull;";
+          bulletSpan.style.position = "absolute";
+          bulletSpan.style.left = "0";
+          bulletSpan.style.textIndent = "0";
+          bulletSpan.style.lineHeight = "1";
+          bulletSpan.style.top = "-0.175em";
+          bulletSpan.style.color = "var(--dnd-text-secondary)";
+          bulletSpan.style.fontSize = "2em";
+          htmlEl.insertBefore(bulletSpan, htmlEl.firstChild);
+          htmlEl.setAttribute("data-custom-bullet", "true");
+        }
+      }
+    });
   }
   async processDnDFeaturesBlock(source, el, ctx) {
     const renderChild = new import_obsidian2.MarkdownRenderChild(el);

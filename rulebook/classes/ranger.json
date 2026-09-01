@@ -4,9 +4,17 @@
     "starting-equipment": {
         "A": {
             "items": {
-            }, "gold": 0
+                "studded-leather-armor": 1,
+                "scimitar": 1,
+                "shortsword": 1,
+                "longbow": 1,
+                "arrows": 20,
+                "quiver": 1,
+                "druidic-focus": 1,
+                "explorers-pack": 1
+            }, "gold": 7
         },
-        "B": { "items": {}, "gold": 0 }
+        "B": { "items": {}, "gold": 150 }
     },
     "features": {
         "1": [

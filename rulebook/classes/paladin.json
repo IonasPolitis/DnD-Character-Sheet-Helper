@@ -9,7 +9,7 @@
                 "longsword": 1,
                 "javelin": 6,
                 "holy-symbol": 1,
-                "priest-pack": 1
+                "priests-pack": 1
             }, "gold": 9
         },
         "B": { "items": {}, "gold": 150 }

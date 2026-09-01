@@ -4,9 +4,13 @@
     "starting-equipment": {
         "A": {
             "items": {
-            }, "gold": 0
+                "spear": 1,
+                "dagger": 2,
+                "arcane-focus": 1,
+                "dungeoneers-pack": 1
+            }, "gold": 28
         },
-        "B": { "items": {}, "gold": 0 }
+        "B": { "items": {}, "gold": 50 }
     },
     "features": {
         "1": [

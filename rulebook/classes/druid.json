@@ -4,15 +4,55 @@
     "starting-equipment": {
         "A": {
             "items": {
-            }, "gold": 0
+                "leather-armor": 1,
+                "shield": 1,
+                "sickle": 1,
+                "quarterstaff": 1,
+                "explorers-pack": 1,
+                "herbalism-kit": 1
+            }, "gold": 9
         },
-        "B": { "items": {}, "gold": 0 }
+        "B": { "items": {}, "gold": 50 }
     },
     "features": {
         "1": [
             {
-                "name": "",
-                "description": ""
+                "name": "Druidic",
+                "description": "While learning Druidic you also unlocked the magic of communicating with animals; you always have the Speak with Animals spell prepared.\n  You can use Druidic to leave hidden messages. You and others who know Druidic automatically spot such a message. Others spot the message's presence with a successful DC 15 Intelligence (Investigation) check but can't decipher it without magic"
+            }
+        ],
+        "2": [
+            {
+                "name": "Wild Shape",
+                "description": "As a Bonus Action, you shape-shift into a Beast form that you have learned for this feature. You stay in that form for a number of hours equal to half your Druid level or until you use Wild Shape again, have the Incapacitated condition, or die. You can also leave the form early as a Bonus Action.\n  **Number of Uses**: You can use Wild Shape twice. You regain one expended use when you finish a Short Rest, and you regain all expended uses when you finish a Long Rest.\n  Whenever you finish a Long Rest, you can replace one of your known forms with another eligible form.\n  **Temporary Hit Points**: When you assume a Wild Shape form, you gain a number of Temporary Hit Points equal to your Druid level."
+            },
+            {
+                "name": "Wild Companion",
+                "description": "You can summon a nature spirit that assumes an animal form to aid you. As a Magic action, you can expend a spell slot or a use of Wild Shape to cast the Find Familiar spell without Material components.\n  When you cast the spell in this way, the familiar is Fey and disappears when you finish a Long Rest."
+            }
+        ],
+        "5": [
+            {
+                "name": "Wild Resurgence",
+                "description": "Once on each of your turns, if you have no uses of Wild Shape left, you can give yourself one use by expending a spell slot (no action required).\n  In addition, you can expend one use of Wild Shape (no action required) to give yourself a level 1 spell slot, but you can't do so again until you finish a Long Rest."
+            }
+        ],
+        "7": [
+            {
+                "name": "Elemental Fury",
+                "description": "The might of the elements flows through you. You gain one of the following options of your choice.\n - **Potent Spellcasting**: Add your Wisdom modifier to the damage you deal with any Druid cantrip.\n - **Primal Strike**: Once on each of your turns when you hit a creature with an attack roll using a weapon or a Beast form's attack in Wild Shape, you can cause the target to take an extra ld8 Cold, Fire, Lightning, or Thunder damage (choose when you hit)."
+            }
+        ],
+        "19": [
+            {
+                "name": "Beast Spells",
+                "description": "While using Wild Shape, you can cast spells in Beast form, except for any spell that has a Material component with a cost specified or that consumes its Material component."
+            }
+        ],
+        "20": [
+            {
+                "name": "Archdruid",
+                "description": "The vitality of nature constantly blooms within you, granting you the following benefits.\n - **Evergreen Wild Shape**: Whenever you roll Initiative and have no uses of Wild Shape left, you regain one expended use of it.\n - **Nature Magician**: You can convert uses of Wild Shape into a spell slot (no action required). Choose a number of your unexpended uses of Wild Shape and convert them into a single spell slot, with each use contributing 2 spell levels. For example, if you convert two uses of Wild Shape, you produce a level 4 spell slot. Once you use this benefit, you can't do so again until you finish a Long Rest.\n - **Longevity**: The primal magic that you wield causes you to age more slowly. For every ten years that pass, your body ages only one year."
             }
         ]
       }

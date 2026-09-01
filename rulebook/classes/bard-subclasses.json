@@ -3,7 +3,7 @@
             "3": [
                   {
                         "name": "Dazzling Footwork",
-                        "description": " • **Dance Virtuoso**: You have Advantage on any Charisma (Performance) check you make that involves you dancing.\n  • **Agile Strikes**: When you expend a use of your Bardic Inspiration as part of an action, a Bonus Action, or a Reaction, you can make one Unarmed Strike as part of that action, Bonus Action, or Reaction\n  • **Bardic Damage**: You can use Dexterity instead of Strength for the attack rolls of your Unarmed Strikes. When you deal damage with an Unarmed Strike, you can deal Bludgeoning damage equal to a roll of your Bardic Inspiration die plus your Dexterity modifier, instead of the strike's normal damage. This roll doesn't expend the die."
+                        "description": " - **Dance Virtuoso**: You have Advantage on any Charisma (Performance) check you make that involves you dancing.\n - **Agile Strikes**: When you expend a use of your Bardic Inspiration as part of an action, a Bonus Action, or a Reaction, you can make one Unarmed Strike as part of that action, Bonus Action, or Reaction\n - **Bardic Damage**: You can use Dexterity instead of Strength for the attack rolls of your Unarmed Strikes. When you deal damage with an Unarmed Strike, you can deal Bludgeoning damage equal to a roll of your Bardic Inspiration die plus your Dexterity modifier, instead of the strike's normal damage. This roll doesn't expend the die."
                   }
             ],
             "6": [
@@ -71,7 +71,7 @@
             "3": [
                   {
                         "name": "",
-                        "description": "A creature that has a Bardic Inspiration die from you can use it for one of the following effects.\n  • **Defense**: When the creature is hit by an attack roll, that creature can use its Reaction to roll the Bardic Inspiration die and add the number rolled to its AC against that attack, potentially causing the attack to miss.\n  • **Offense**: Immediately after the creature hits a target with an attack roll, the creature can roll the Bardic Inspiration die and add the number rolled to the attack's damage against the target."
+                        "description": "A creature that has a Bardic Inspiration die from you can use it for one of the following effects.\n - **Defense**: When the creature is hit by an attack roll, that creature can use its Reaction to roll the Bardic Inspiration die and add the number rolled to its AC against that attack, potentially causing the attack to miss.\n - **Offense**: Immediately after the creature hits a target with an attack roll, the creature can roll the Bardic Inspiration die and add the number rolled to the attack's damage against the target."
                   }
             ],
             "6": [
