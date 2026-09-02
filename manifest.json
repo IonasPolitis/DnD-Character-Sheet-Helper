@@ -1,6 +1,6 @@
 {
 	"id": "dnd-character-sheet-helper",
-	"name": "D&D Character Sheet Helper",
+	"name": "DnD Character Sheet Helper",
 	"version": "1.2.0",
 	"minAppVersion": "1.13.7",
 	"description": "Renders D&D 5.5e character features, weapons and an inventory from frontmatter properties.",
