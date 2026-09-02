@@ -3,7 +3,7 @@ name: Build and Update -Release
 on:
   push:
     branches:
-      - main
+
 
 jobs:
   build-and-release:
@@ -38,7 +38,7 @@ jobs:
 
           # 1. Extract version from manifest.json using jq
           VERSION=$(jq -r .version manifest.json)
-          TAG_NAME="v${VERSION}"
+          TAG_NAME="${VERSION}"
           
           echo "Target tag is $TAG_NAME"
 
