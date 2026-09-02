@@ -1638,13 +1638,107 @@ var paladin_default = {
   }
 };
 
-// rulebook/classes/ranger-subclasses.json.json
-var ranger_subclasses_json_default = {
-  "<Subclass_Name>": {
-    "<Level>": [
+// rulebook/classes/ranger-subclasses.json
+var ranger_subclasses_default = {
+  "Beast Master": {
+    "1": [
       {
-        name: "<Feature_Name>",
-        description: "<Feature_Description>"
+        name: "Primal Companion",
+        description: " - **The Beast in Combat**: In combat, the beast acts during your turn. It can move and use its Reaction on its own, but the only action it takes is the Dodge action unless you take a Bonus Action to command it to take an action in its stat block or some other action. You can also sacrifice one of your attacks when you take the Attack action to command the beast to take the Beast's Strike action. If you have the Incapacitated condition, the beast acts on its own and isn't limited to the Dodge action.\n - **Restoring or Replacing the Beast**: If the beast has died within the last hour, you can take a Magic action to touch it and expend a spell slot. The beast returns to life after 1 minute wi th a ll its Hit Points restored.\n	Whenever you finish a Long Rest, you can summon a different primal beast, which appears in an unoccupied space within 5 fe et of yo1 .1. You choose its stat block and appearance. If you \xB7 !ready have a beast from this feature, the old one van ishes when the new one appears."
+      }
+    ],
+    "7": [
+      {
+        name: "Exceptional Training",
+        description: "When you take a Bonus Action to command your Primal Companion beast to take an action, you can also command it to take the Dash, Disengage, Dodge, or Help action using its Bonus Action.\n	In addition, whenever it hits with an attack roll and deals damage, it can deal your choice of Force damage or its normal damage type."
+      }
+    ],
+    "11": [
+      {
+        name: "Beastial Fury",
+        description: "When you command your Primal Companion beast to take the Beast's Strike action, the beast can use it twice.\n	In addition, the first time each turn it hits a creature under the effect of your Hunter's Mark spell, the beast deals extra Force damage equal to the bonus damage of that spell."
+      }
+    ]
+  },
+  "Fey Wanderer": {
+    "3": [
+      {
+        name: "Fey Wanderer Spells",
+        description: "When you reach a Ranger level specified in the Fey Wanderer Spells table, you thereafter always have the listed spells prepared.\n#### Fey Wanderer Spells\n\n| Level 3 | Level 5 | Level 9 | Level 13 | Level 17 |\n| ----- | ----- | ----- | ----- | ----- |\n| Charm Person | Misty Step | Summon Fey | Dimension Door | Mislead |"
+      }
+    ],
+    "7": [
+      {
+        name: "Beguiling Twist",
+        description: "Whenever you or a creature you can see within 120 feet of you succeeds on a saving throw to avoid or end the Charmed or Frightened condition, you can take a Reaction to force a different creature you can see within 120 feet of yourself to make a Wisdom save against your spell save DC. On a failed save, the target is Charmed or Frightened (your choice) for 1 minute. The target repeats the save at the end of each of its turns, ending the effect on itself on a success."
+      }
+    ],
+    "11": [
+      {
+        name: "Fey Reinforcements",
+        description: "You can cast Summon Fey without a Material component. You can also cast it once without a spell slot, and you regain the ability to cast it in this way when you finish a Long Rest.\n	Whenever you start casting the spell, you can modify it so that it doesn't require Concentration. If you do so, the spell's duration becomes 1 minute for that casting."
+      }
+    ],
+    "15": [
+      {
+        name: "Misty Wanderer",
+        description: "You can cast Misty Step without expending a spell slot. You can do so a number of times equal to your Wisdom modifier (minimum of once), and you regain all expended uses when you finish a Long Rest.\n	In addition, whenever you cast Misty Step, you can bring along one willing creature you can see within 5 feet of yourself. That creature teleports to an unoccupied space of your choice within 5 feet of your destination space."
+      }
+    ]
+  },
+  "Gloom Stalker": {
+    "3": [
+      {
+        name: "Dread Ambusher",
+        description: "You have mastered the art of creating fearsome ambushes, granting you the following benefits.\n - **Ambusher's Leap**: At the start of your first turn of each combat, your Speed increases by 10 feet until the end of that turn.\n - **Dreadful Strike**: When you attack a creature and hit it with a weapon, you can deal an extra 2d6 Psychic damage. You can use this benefit only once per turn, you can use it a number of times equal to your Wisdom modifier {minimum of once), and you regain all expended uses when you finish a Long Rest.\n - **Initiative Bonus**: When you roll Initiative, you can add your Wisdom modifier to the roll."
+      },
+      {
+        name: "Gloom Stalker Spells",
+        description: "When you reach a Ranger level specified in the Gloom Stalker Spells table, you ther eafter always have the listed spells prepared.\n#### Gloom Stalker Spells\n\n| Level 3 | Level 5 | Level 9 | Level 13  | Level 17 |\n| ----- | ----- | ----- | ----- | ----- |\n| Disguise Self | Rope Trick | Fear | Greater Invisibility | Seeming |"
+      },
+      {
+        name: "Umbral Sight",
+        description: "You gain Dark vision with a range of 60 feet.\n	You are also adept at evading creatures that rely on Darkvision. While entirely in Darkness, you have the Invisible condition to any creature that relies on Darkvision to see you in that Darkness."
+      }
+    ],
+    "11": [
+      {
+        name: "Staler's Fury",
+        description: "The Psychic damage of your Dreadful Strike becomes 2d8. In addition, when you use the Dreadful Strike effect of your Dread Ambusher feature, you can cause one of the following additional effects.\n - **Sudden Strike**: You can make another attack with the same weapon against a different creature that is within 5 feet of the original target and that is within the weapon's range.\n - **Mass Fear**: The target and each creature within 10 feet of it must make a Wisdom saving throw against your spell save DC. On a failed save, a creature has the Frightened condition until the start of your next turn."
+      }
+    ],
+    "15": [
+      {
+        name: "Shadowy Dodge",
+        description: "When a creature makes an attack roll against you, you can take a Reaction to impose Disadvantage on that roll. Whether the attack hi ts or m isses, you can then teleport up to 30 feet to an unoccupied space you can see."
+      }
+    ]
+  },
+  Hunter: {
+    "3": [
+      {
+        name: "Hunter's Lore",
+        description: "You can call on the forces of nature to reveal certain strengths and weaknesses of your prey. While a creature is marked by your Hunter's Mark, you know whether that creature has any Immunities, Resistances, or Vulnerabilities, and if the creature has any, you know what they are."
+      },
+      {
+        name: "Hunter's Prey",
+        description: "You gain one of the following feature options of your choice. Whenever you finish a Short or Long Rest, you can replace the chosen option with the other one.\n - **Colossus Slayer**: Your tenacity can wear down even the most resilient foes. When you hit a creature with a weapon, the weapon deals an extra ld8 damage to the target if it's missing any of its Hit Points. You can deal this extra damage only once per turn.\n - **Horde Breaker**: Once on each of your turns when you make an attack with a weapon, you can make another attack with the same weapon against a different creature that is within 5 feet of the original target, that is within the weapon's range, and that you haven't attacked this turn."
+      },
+      {
+        name: "Defensive Tactics",
+        description: "You gain one of the following feature options of your choice. Whenever you finish a Short or Long Rest, you can replace the chosen option with the other one.\n - **Escape the Horde**: Opportunity Attacks have Disadvantage against you.\n - **Multiattack Defense**: When a creature hits you with an attack roll, that creature has Disadvantage on all other attack rolls against you this turn."
+      }
+    ],
+    "11": [
+      {
+        name: "Superior Hunter's Prey",
+        description: "Once per turn when you deal damage to a creature marked by your Hunter's Mark, you can also deal that spell's extra damage to a different creature that you can see within 30 feet of the first creature."
+      }
+    ],
+    "15": [
+      {
+        name: "Superior Hunter's Defense",
+        description: "When you take damage, you can take a Reaction to give yourself Resistance to that damage and any other damage of the same type until the end of the current turn."
       }
     ]
   }
@@ -1673,8 +1767,50 @@ var ranger_default = {
   features: {
     "1": [
       {
-        name: "",
-        description: ""
+        name: "Favored Enemy",
+        description: "You always have the Hunter's Mark spell prepared. You can cast it twice without expending a spell slot, and you regain all expended uses of this ability when you finish a Long Rest."
+      }
+    ],
+    "2": [
+      {
+        name: "Weapon Mastery",
+        description: "Whenever you finish a Long Rest, you can change the kinds of weapons you chose. For example, you could switch to using the mastery properties of Scimitars and Longswords."
+      }
+    ],
+    "5": [
+      {
+        name: "Extra Attack",
+        description: "You can attack twice instead of once whenever you take the Attack action on you r turn."
+      }
+    ],
+    "10": [
+      {
+        name: "Tireless",
+        description: "Primal forces now help fuel you on your journeys, granting you the following benefits:\n - **Temporary Hit Poinfs**: As a Magic action, you can give yourself a number of Temporary Hit Points equal to ld8 plus your Wisdom modifier (minimum of 1). You can use this action a number of times equal to your Wisdom modifier (minimum of once), and you regain all expended uses when you finish a Long Rest.\n - **Decrease Exhaustion**: Whenever you finish a Short Rest, your Exhaustion level, if any, decreases by 1."
+      }
+    ],
+    "13": [
+      {
+        name: "Relentless Hunter",
+        description: "Taking damage can't break your Concentration on Hunter's Mark."
+      }
+    ],
+    "14": [
+      {
+        name: "Nature's Veil",
+        description: "You invoke spirits of nature to magically hide your-self. As a Bonus Action, you can give yourself the Invisible condition until the end of your next turn.\n	You can use this feature a number of times equal to your Wisdom modifier (minimum of once), and you regain all expended uses when you finish a Long Rest."
+      }
+    ],
+    "17": [
+      {
+        name: "Precise Hunter",
+        description: "You have Advantage on attack rolls against the creature currently marked by your Hunter's Mark."
+      }
+    ],
+    "18": [
+      {
+        name: "Feral Senses",
+        description: "Your connection to the forces of nature grants you Blindsight with a range of 30 feet."
       }
     ]
   }
@@ -1682,11 +1818,111 @@ var ranger_default = {
 
 // rulebook/classes/rogue-subclasses.json
 var rogue_subclasses_default = {
-  "<Subclass_Name>": {
-    "<Level>": [
+  "Arcane Trickster": {
+    "3": [
       {
-        name: "<Feature_Name>",
-        description: "<Feature_Description>"
+        name: "Mage Hand Legerdemain",
+        description: "You can cast and controll Mage Hand as a Bonus Action, make Dexterity (Sleight of Hand) checks through it, and make the spectral hand Invisible"
+      }
+    ],
+    "9": [
+      {
+        name: "Magical Ambush",
+        description: "If you have the Invisible condition when you cast a spell on a creature, it has Disadvantage on any saving throw it makes against the spell on the same turn."
+      }
+    ],
+    "13": [
+      {
+        name: "Versatile Trickster",
+        description: "You gain the ability to distract targets with your Mage Hand. When you use the Trip option of your Cunning Strike on a creature, you can also use that option on another creature within 5 feet of the spectral hand."
+      }
+    ],
+    "17": [
+      {
+        name: "Spell Thief",
+        description: "You gain the ability to magically steal the knowledge of how to cast a spell from another spellcaster.\n	Immediately after a creature casts a spell that targets you or includes you in its area of effect, you can take a Reaction to force the creature to make an Intelligence saving throw. The DC equals your spell save DC. On a failed save, you negate the spell's effect against you, and you steal the knowledge of the spell if it is at least level 1 and of a level you can cast (it doesn't need to be a Wizard spell). For the next 8 hours, you have the spell prepared. The creature can't cast it until the 8 hours have passed.\n	Once you steal a spell with this feature, you can't use this feature again until you finish a Long Rest."
+      }
+    ]
+  },
+  Assasin: {
+    "3": [
+      {
+        name: "Assasinate",
+        description: "You're adept at ambushing a target, granting you the following benefits.\n - **Initiative**: You have Advantage on Initiative rolls.\n - **Surprising Strikes**: During the first round of each combat, you have Advantage on attack rolls against any creature that hasn't taken a turn. If your Sneak Attack hits any target during that round, the target takes extra damage of the weapon's type equal to your Rogue level."
+      }
+    ],
+    "9": [
+      {
+        name: "Infiltration Expertise",
+        description: "You are expert at the following techniques that aid your infiltrations.\n - **Masterful Mimicry**: You can unerringly mimic another person's speech, handwrit ing, or both if you have spent at least 1 hour studying them.\n - **Roving Aim**: Your Speed isn't reduced to O by using Steady Aim."
+      }
+    ],
+    "13": [
+      {
+        name: "Envenom Weapons",
+        description: "When you use the Poison option of your Cunning Strike, the target also takes 2d6 Poison damage whenever it fails the saving throw. This damage ignores Resistance to Poison damage."
+      }
+    ],
+    "17": [
+      {
+        name: "Death Strike",
+        description: "When you hit with your Sneak Attack on the first round of a combat, the target must succeed on a Constitution saving throw (DC 8 plus your Dexterity modifier and Proficiency Bonus), or the attack's damage is doubled against the ta rget."
+      }
+    ]
+  },
+  Soulknife: {
+    "3": [
+      {
+        name: "Psionic Power",
+        description: "- **Psi-Bolstered Knack**: If you fail an ability check using a skill or tool with which you have proficiency, you can roll one Psionic Energy Die and add the number rolled to the check, potentially turning failure into success. The die is expended only if the roll then succeeds.\n - **Psychic Whispers**: You can establish telepathic communication between yourself and others. As a Magic action, choose one or more creatures you can see, up to a number of creatures equal to your Proficiency Bonus, and then roll one Psionic Energy Die. For a number of hours equal to the number rolled, the chosen creatures can speak telepathically with you. and you can speak telepathically with them. To send or receive a message (no action required), you ,, nd the other creature must be within 1 mile of each other. A creature can end the telepathic connection at any time (no action required).\n	The first time you use this power after each Long Rest, you don't expend the Psionic Energy Die. All other times you use the power, you expend the die."
+      },
+      {
+        name: "Psychic Blades",
+        description: "You can manifest shimmering blades of psychic energy. Whenever you take the Attack action or make an Opportunity Attack, you can manifest a Psychic Blade in your free hand and make the attack with that blade. The magic blade has the following traits:\n	**Weapon Category**: Simple Melee\n	**Damage in a Hit**: ld6 Psychic plus the ability modifier used for the attack roll\n	**Properties**: Finesse, Thrown (range 60/120 feet)\n	**Mastery**: Vex (you can use this property, and it doesn't count against the number of properties you can use with Weapon Mastery)\n	The blade vanishes immediately after it hits or misses its target, and it leaves no mark if it deals damage.\n	After you attack with the blade on your turn, you can make a melee or ranged attack with a second psychic blade as a Bonus Action on the same turn if your other hand is free to create it. The damage die of this bonus attack is ld4 instead of ld6."
+      }
+    ],
+    "9": [
+      {
+        name: "Soul Blades",
+        description: "You can now use the following powers with your Psychic Blades.\n - **Homing Strikes**: If you make an attack roll with your Psychic Blade and miss the target, you can roll one Psionic Energy Die and add the number rolled to the attack roll. If this causes the attack to hit, the die is expended.\n - **Phychic Teleportation**: As a Bonus Action, you manifest a Psychic Blade, expend one Psionic Energy Die and roll it, and throw the blade at an unoccupied space you can see up to a number of feet away equal to 10 times the number rolled. You then teleport to that space, and the blade vanishes."
+      }
+    ],
+    "13": [
+      {
+        name: "Psychic Veil",
+        description: "You can weave a veil of psychic static to mask your-self. As a Magic action, you gain the Invisible condition for 1 hour or until you dismiss this effect (no action required). This invisibility ends early immediately after you deal damage to a creature or you force a creature to make a saving throw.\n	Once you use this feature, you can't do so again until you finish a Long Rest unless you expend a Psionic Energy Die (no action required) to restore your use of it."
+      }
+    ],
+    "17": [
+      {
+        name: "Rend Mind",
+        description: "You can sweep your Psychic Blades through a creature's mind. When you use your Psychic Blades to deal Sneak Attack damage to a creature, you can force that target to make a Wisdom saving throw (DC 8 plus your Dexterity modifier and Proficiency Bonus). If the save fails, the target has the Stunned condition for 1 minute. The Stunned target repeats the save at the end of each of its turns, ending the effect on itself on a success.\n	Once you use this feature, you can't do so again until you finish a Long Rest unless you expend three Psionic Energy Dice (no action required) to restore your use of it."
+      }
+    ]
+  },
+  Thief: {
+    "3": [
+      {
+        name: "Fast Hands",
+        description: "As a Bonus Action, you can do one of the following.\n - **Sleight of Hand**: Make a Dexterity (Sleight of Hand) check to pick a lock or disarm a trap with Thieves' Tools or to pick a pocket.\n - **Use an Object**: Take the Utilize action, or take the Magic action to use a magic item that requires that action."
+      }
+    ],
+    "9": [
+      {
+        name: "Supreme Sneak",
+        description: "You gain the following Cunning Strike option.\n - **Stealth Attack** (1d6): If you have the Hide action's Invisible condition, this attack doesn't end that condition on you if you end the turn behind Three-Quarters Cover or Total Cover."
+      }
+    ],
+    "13": [
+      {
+        name: "You've learned how to maximize use of magic items, granting you the following benefits.\n - **Charges**: Whenever you use a magic item property that expends charges, roll ld6. On a roll of 6, you use the property without expending the charges.\n - **Scrolls**: You can use any Spell Scroll, using Intelligence as your spellcasting ability for the spell. If the spell is a cantrip or a level 1 spell, you can cast it reliably. If the scroll contains a higher-level spell, you must first succeed on an Intelligence (Arcana) check (DC 10 plus the spell's level). On a successful check, you cast the spell from the scroll. On a failed check, the scroll disintegrates.",
+        description: ""
+      }
+    ],
+    "17": [
+      {
+        name: "Thief's Reflexes",
+        description: "You are adept at laying ambushes and quickly escaping danger. You can take two turns during the first round of any combat. You take your first turn at your normal Initiative and your second turn at your Initiative minus 10 "
       }
     ]
   }
@@ -1710,13 +1946,76 @@ var rogue_default = {
       },
       gold: 8
     },
-    B: { items: {}, gold: 100 }
+    B: {
+      items: {},
+      gold: 100
+    }
   },
   features: {
     "1": [
       {
-        name: "",
-        description: ""
+        name: "Sneak Attack",
+        description: "You know how to strike subtly and exploit a foe's distraction. Once per turn, you can deal an extra ld6 damage to one creature you hit with an attack roll if you have Advantage on the roll and the attack uses a Finesse or a Ranged weapon. The extra damage's type is the same as the weapon's type.\n	You don't need Advantage on the attack roll if at least one of your allies is within 5 feet of the target, the ally doesn't have the Incapacitated condition, and you don't have Disadvantage on the attack roll.\n	The extra damage increases as you gain Rogue levels, as shown in the Sneak Attack column of the Rogue Features table."
+      },
+      {
+        name: "Weapon Mastery",
+        description: "Your training with weapons allows you to use the mastery properties of two kinds of weapons of your choice with which you have proficiency, such as Daggers and Shortbows.\n	Whenever you finish a Long Rest, you can change the kinds of weapons you chose. For example, you could switch to using the mastery properties of Scimitars and Shortswords."
+      }
+    ],
+    "2": [
+      {
+        name: "Cunning Action",
+        description: "Your quick thinking and agility allow you to move and act quickly. On your turn, you can take one of the following actions as a Bonus Action: Dash, Disengage, or Hide."
+      }
+    ],
+    "3": [
+      {
+        name: "Steady Aim",
+        description: "As a Bonus Action, you give yourself Advantage on your next attack roll on the current turn. You can use this feature only if you haven't moved during this turn, and after you use it, your Speed is O until the end of the current turn."
+      }
+    ],
+    "5": [
+      {
+        name: "Cunning Strike",
+        description: "You've developed cunning ways to use your Sneak Attack. When you deal Sneak Attack damage, you can add one of the following Cunning Strike effects.\n - **Poison** (1d6): You add a toxin to your strike, forcing the target to make a Constitution saving throw. On a failed save, the target has the Poisoned condition for 1 minute. At the end of each of its turns, the Poisoned target repeats the save, ending the effect on itself on a success.\n	To use this effect, you must have a Poisoner's Kit on your person.\n - **Trip** (1d6): If the target is Large or smaller, it must succeed on a Dexterity saving throw or have the Prone condition.\n - **Withdraw** (1d6): Immediately after the attack, you move up to half your Speed without provoking Opportunity Attacks."
+      },
+      {
+        name: "Uncanny Dodge",
+        description: "When an attacker that you can see hits you with an attack roll, you can take a Reaction to halve the attack's damage against you (round down)."
+      }
+    ],
+    "7": [
+      {
+        name: "Evasion",
+        description: "You can nimbly dodge out of the way of certain dangers. When you're subjected to an effect that allows you to make a Dexterity saving throw to take only half damage, you instead take no damage if you succeed on the saving throw and only half damage if you fail. You can't use this feature if you have the Incapacitated condition."
+      },
+      {
+        name: "Reliable Talent",
+        description: "Whenever you make an ability check that uses one of your skill or tool proficiencies, you can treat a d20 roll of 9 or lower as a 10."
+      }
+    ],
+    "11": [
+      {
+        name: "Improved Cunning Strike",
+        description: "You can use up to two Cunning Strike effects when you deal Sneak Attack damage, paying the die cost for each effect."
+      }
+    ],
+    "14": [
+      {
+        name: "Devious Strikes",
+        descripton: "You've practiced new ways to use your Sneak Attack deviously. The following effects are now among your Cunning Strike options.\n - **Dace** (2d6): The target must succeed on a Constitution saving throw, or on its next turn, it can do only one of the following: move or take an action or a Bonus Action.\n - **Knock Out** (6d6): The target must succeed on a Constitution saving throw, or it has the Unconscious condition for 1 minute or until it takes any damage. The Unconscious target repeats the save at the end of each of its turns, ending the effect on itself on a success.\n - **Obscure** (3d6): The target must succeed on a Dexterity saving throw, or it has the Blinded condition until the end of its next turn."
+      }
+    ],
+    "18": [
+      {
+        name: "Elusice",
+        description: "You're so evasive that attackers rarely gain the upper hand against you. No attack roll can have Advantage against you unless you have the Incapacitated condition."
+      }
+    ],
+    "20": [
+      {
+        name: "Stroke of Luck",
+        description: "You have a marvelous knack for succeeding when you need to. If you fail a D20 Test, you can turn the roll into a 20.\n	Once you use this feature, you can't use it again until you finish a Short or Long Rest."
       }
     ]
   }
@@ -1724,11 +2023,131 @@ var rogue_default = {
 
 // rulebook/classes/sorcerer-subclasses.json
 var sorcerer_subclasses_default = {
-  "<Subclass_Name>": {
-    "<Level>": [
+  "Aberrant Sorcery": {
+    "3": [
       {
-        name: "<Feature_Name>",
-        description: "<Feature_Description>"
+        name: "Psionic Spells",
+        description: "When you reach a Sorcerer level specified in the Psionic Spells table, you thereafter always have the listed spells prepared.\n#### Psionic Spells\n\n| Level 3 | Level 5 | Level 7 | Level 9 |\n| ----- | ----- | ----- | ----- |\n| Arms of Hadar, Calm Emotions, Detect Thoughts, Dissonant Whispers, Mind Sliver | Hunger of Hadar, Sending | Evard's Black Tentacles, Summon Aberration | Rary's Telepathic Bond, Telekinesis |"
+      },
+      {
+        name: "Telepathic Speech",
+        description: "You can form a telepathic connection between your mind and the mind of another. As a Bonus Action, choose one creature you can see within 30 feet of yourself. You and the chosen creature can communicate telepathically with each other while the two of you are within a number of miles of each other equal to your Charisma modifier (minimum of 1 mile). To understand each other, you each must mentally use a language the other knows.\n	The telepathic connection lasts for a number of minutes equal to your Sorcerer level. It ends early if you use this ability to form a connection with a different creature."
+      }
+    ],
+    "6": [
+      {
+        name: "Psionoic Sorcery",
+        description: "When you cast any level 1+ spell from your Psionic Spells feature, you can cast it by expending a spell slot as normal or by spending a number of Sorcery Points equal to the spell's level. If you cast the spell using Sorcery Points, it requires no Verbal or Somatic components, and it requires no Material components unless they are consumed by the spell or have a cost specified in it."
+      },
+      {
+        name: "Psychic Defenses",
+        description: "You have Resistance to Psychic damage, and you have Advantage on saving throws to avoid or end the Charmed or Frightened condition."
+      }
+    ],
+    "14": [
+      {
+        name: "Revelation in Flesh",
+        description: "You can unleash the aberrant truth hidden within yourself. As a Bonus Action, you can spend 1 Sorcery Point or more to magically alter your body for 10 minutes. For each Sorcery Point you spend, you gain one of the following benefits of your choice, the effects of which last until the alteration ends.\n - **Aquatic Adaptetion**: You gain a Swim Speed equal to hvice your Speed, and you can breathe underwater. Gills grow from your neck or flare behind your ears, and your fingers become webbed or you grow wriggling cilia.\n - **Glistening Flight**: You gain a Fly Speed equal to your Speed, and you can hover. As you fly, your skin glistens with mucus or otherworldly light.\n - **See the Invisible**: You can see any Invisible creature within 60 feet of yourself that isn't behind Total Cover. Your eyes also turn black or become writhing sensory tendrils.\n - **Wormlike Movement**: Your body, along with any equipment you are wearing or carrying, becomes slimy and pliable. You can move through any space as narrow as 1 inch, and you can spend 5 feet of movement to escape from nonmagical restraints or the Grappled condition."
+      }
+    ],
+    "18": [
+      {
+        name: "Warping Impolsion",
+        description: "You can unleash a space-warping anomaly. As a Magic action, you teleport to an unoccupied space you can see within 120 feet of yourself. Immediately after you disappear, each creature within 30 feet of the space you left must make a Strength saving throw against your spell save DC. On a failed save, a creature takes 3d10 Force damage and is pulled straight toward the space you left, ending in an unoccupied space as close to your former space as pos-sible. On a successful save, the creature takes half as much damage only.\n	Once you use this feature, you can't do so again until you finish a Long Rest unless you spend 5 Sorcery Points (no action required) to restore your use of it."
+      }
+    ]
+  },
+  "Clockwork Sorcery": {
+    "3": [
+      {
+        name: "Psionic Spells",
+        description: "When you reach a Sorcerer level specified in the Clockwork Spells table, you thereafter always have the listed spells prepared.\n#### Clockwork Spells\n\n| Level 3 | Level 5 | Level 7 | Level 9 |\n| ----- | ----- | ----- | ----- |\n| Aid, Alarm, Lesser Restoration, Protection from Evil and Good | Dispel Magic, Protection from Energy | Freedom of Movement, Summon Construct | Greater Restoration, Wall of Force |"
+      },
+      {
+        name: "Restore Balance",
+        description: "Your connection to the plane of absolute order allows you to equalize chaotic moments. When a creature you can see within 60 feet of yourself is about to roll a d20 with Advantage or Dis-advantage, you can take a Reaction to prevent the roll from being affected by Advantage and Disadvantage.\n	You can use this feature a number of times equal to your Charisma modifier (minimum of once), and you regain all expended uses when you finish a Long Rest."
+      }
+    ],
+    "6": [
+      {
+        name: "Bastion of Law",
+        description: "You can tap into the grand equation of existence to imbue a creature with a shimmering shield of order. As a Magic action, you can expend 1 to 5 Sorcery Points to create a magical ward around yourself or another creature you can see within 30 feet of yourself. The ward is represented by a number of d8s equal to the number of Sorcery Points spent to create it. When the warded creature takes damage, it can expend a number of those dice, roll them, and reduce the damage taken by the total rolled on those dice.\n	The ward lasts until you finish a Long Rest or until you use this feature again."
+      },
+      {
+        name: "Psychic Defenses",
+        description: "You have Resistance to Psychic damage, and you have Advantage on saving throws to avoid or end the Charmed or Frightened condition."
+      }
+    ],
+    "14": [
+      {
+        name: "Trance of Order",
+        description: "You gain the ability to align your consciousness with the endless calculations of Mechanus. As a Bonus Action, you can enter this state for 1 minute. For the duration, attack rolls against you can't benefit from Advantage, and whenever you make a D20 Test, you can treat a roll of 9 or lower on the d20 as a 10.\n	Once you use this feature, you can't use it again until you finish a Long Rest unless you spend 5 Sorcery Points (no action required) to restore your use of it."
+      }
+    ],
+    "18": [
+      {
+        name: "Clockwork Cavalcade",
+        description: "You momentarily summon spirits of order to expunge disorder around you. As a Magic action, you summon the spirits in a 30-foot Cube originating from you. The spirits look like modrons or other Constructs of your choice. The spirits are intangible and invulnerable, and they create the effects below within the Cube before vanishing. Once you use this action, you can't use it again until you finish a Long Rest unless you spend 7 Sorcery Points (no action required) to restore your use of it.\n - **Heal**: The spirits restore up to 100 Hit Points, divided as you choose among any number of creatures of your choice in the Cube.\n - **Repair**: Any damaged objects entirely in the Cube are repaired instantly.\n - **Dispel**: Every spell of level 6 and lower ends on creatures and objects of your choice in the Cube."
+      }
+    ]
+  },
+  "Draconic Sorcery": {
+    "3": [
+      {
+        name: "Draconic Spells",
+        description: "When you reach a Sorcerer level specified in the Draconic Spells table, you thereafter always have the listed spells prepared.\n#### Draconic Spells\n\n| Level 3 | Level 5 | Level 7 | Level 9 |\n| ----- | ----- | ----- | ----- |\n| Alter Self, Chromatic Orb, Command, Dragon's Breath | Fear, Fly | Arcane Eye, Charm Monster | Legend Lore, Summon Dragon |"
+      }
+    ],
+    "6": [
+      {
+        name: "Elemental Affinity",
+        description: "Your draconic magic has an affinity with a damage type associated with dragons. Choose one of those types: Acid, Cold, Fire, Lightning, or Poison. You have Resistance to that damage type, and when you cast a spell that deals damage of that type, you can add your Charisma modifier to one damage roll of that spell."
+      },
+      {
+        name: "Dragon Wings",
+        description: "As a Bonus Action, you can cause draconic wings to appear on your back. The wings last for 1 hour or until you dismiss them (no action required). For the duration, you have a Fly Speed of 60 feet.\n	Once you use this feature, you can't use it again until you finish a Long Rest unless you spend 3 Sorcery Points (no action required) to restore your use of it."
+      }
+    ],
+    "14": [
+      {
+        name: "Trance of Order",
+        description: "You gain the ability to align your consciousness with the endless calculations of Mechanus. As a Bonus Action, you can enter this state for 1 minute. For the duration, attack rolls against you can't benefit from Advantage, and whenever you make a D20 Test, you can treat a roll of 9 or lower on the d20 as a 10.\n	Once you use this feature, you can't use it again until you finish a Long Rest unless you spend 5 Sorcery Points (no action required) to restore your use of it."
+      }
+    ],
+    "18": [
+      {
+        name: "Dragon Companion",
+        description: "You can cast Summon Dragon without a Material component. You can also cast it once without a spell slot, and you regain the ability to cast it in this way when you finish a Long Rest.\n	Whenever you start casting the spell, you can modify it so that it doesn't require Concentration. If you do so, the spell's duration becomes 1 minute for that casting."
+      }
+    ]
+  },
+  "Wild Magic Sorcery": {
+    "3": [
+      {
+        name: "Wild Magic Surge",
+        description: "Your spellcasting can unleash surges of untamed magic. Once per turn, you can roll ld20 immediately after you cast a Sorcerer spell with a spell slot. If you roll a 20, roll on the [**Wild Magic Surge table**](note:wild-magic-surge) to create a magical effect. If the magical effect is a spell, it is too wild to be affected by you r Meta magic."
+      },
+      {
+        name: "Tides of Chaos",
+        description: "You can manipulate chaos itself to give yourself Advantage on one D20 Test before you roll the d20. Once you do so, you must cast a Sorcerer spell with a spell slot or finish a Long Rest before you can use this feature again. If you do cast a Sorcerer spell with a spell slot before you finish a Long Rest, you automatically roll on the [**Wild Magic Surge table**](note:wild-magic-surge)."
+      }
+    ],
+    "6": [
+      {
+        name: "Bend Luck",
+        description: "You have the ability to twist fate using your wild magic. Immediately after another creature you can see rolls the d20 for a D20 Test, you can take a Reaction and spend 1 Sorcery Point to roll 1d4 and apply the number rolled as a bonus or penalty (your choice) to the d20 roll."
+      }
+    ],
+    "14": [
+      {
+        name: "Controlled Chaos",
+        description: "You gain a modicum of control over the surges of your wild magic. Whenever you roll on the [**Wild Magic Surge table**](note:wild-magic-surge), you can roll twice and use either number."
+      }
+    ],
+    "18": [
+      {
+        name: "Tamed Surge",
+        description: "Immediately after you cast a Sorcerer spell with a spell slot, you can create an effect of your choice from the [**Wild Magic Surge table**](note:wild-magic-surge) instead of rolling on that table. You can choose any effect in the table except for the final row, and if the chosen effect involves a roll, you must make it.\n	Once you use this feature, you can't do so again until you finish a Long Rest."
       }
     ]
   }
@@ -1753,8 +2172,26 @@ var sorcerer_default = {
   features: {
     "1": [
       {
-        name: "",
-        description: ""
+        name: "Inate Sorcery",
+        description: "An event in your past left an indelible mark on you, infusing you with simmering magic. As a Bonus Action, you can unleash that magic for 1 minute, during which you gain the following benefits:\n - The spell save DC of your Sorcerer spells increases by 1.\n - You have Advantage on the attack rolls of Sorcerer spells you cast.\nYou can use this feature twice, and you regain all expended uses of it when you fin ish a Long Rest."
+      }
+    ],
+    "2": [
+      {
+        name: "Matemagic",
+        description: "You can use only one Metamagic option on a spell when you cast it unless otherwise noted in one of those options."
+      }
+    ],
+    "7": [
+      {
+        name: "Sorcery Incarnate",
+        description: "If you have no uses of Innate Sorcery left, you can use it if you spend 2 Sorcery Points when you take the Bonus Action to activate it.\n	In addition, while your Innate Sorcery feature is active, you can use up to two of your Meta magic options on each spell you cast."
+      }
+    ],
+    "20": [
+      {
+        name: "Arcane Apotheosis",
+        description: "While your Innate Sorcery feature is active, you can use one Meta magic option on each of your turns without spending Sorcery Points on it."
       }
     ]
   }
@@ -1762,11 +2199,127 @@ var sorcerer_default = {
 
 // rulebook/classes/warlock-subclasses.json
 var warlock_subclasses_default = {
-  "<Subclass_Name>": {
-    "<Level>": [
+  "Archfey Patron": {
+    "3": [
       {
-        name: "<Feature_Name>",
-        description: "<Feature_Description>"
+        name: "Archfey Spells",
+        description: "The magic of your patron ensures you always have certain spells ready.\n#### Archgey Spells\n| Level 3 | Level 5 | Level 7 | Level 9 |\n| ----- | ----- | ----- | ----- |\n| Calm Emotions, Faerie Fire, Misty Step, Phantasmal Force, Sleep | Blink, Plant Growth | Dominate Beast, Greater Invisibility | Dominate Person, Seeming |"
+      },
+      {
+        name: "Steps of the Fey",
+        description: "Your patron grants you the ability to move between the boundaries of the planes. You can cast Misty Step without expending a spell slot a number of times equal to your Charisma modifier (minimum of once), and you regain all expended uses when you finish a Long Rest.\n	In addition, whenever you cast that spell, you can choose one of the following additional effects.\n - **Refreshing Step**: Immediately after you teleport, you or one creature you can see within 10 feet of yourself gains ldlO Temporary Hit Points.\n - **Taunting Step**: Creatures within 5 feet of the space you left must succeed on a Wisdom saving throw against your spell save DC or have Disadvantage on attack rolls against creatures other than you until the start of your next turn."
+      }
+    ],
+    "6": [
+      {
+        name: "Misty Escape",
+        description: "You can cast Misty Step as a Reaction in response to taking damage.\n	In addition, the following effects are now among your Steps of the Fey options.\n - **Disappearing Step**: You have the Invisible condition until the start of your next turn or until immediately after you make an attack roll, deal damage, or cast a spell.\n - **Dreadful Step**: Creatures within 5 feet of the space you left or the space you appear in (your choice) must succeed on a Wisdom saving throw against your spell save DC or take 2d10 Psychic damage."
+      }
+    ],
+    "10": [
+      {
+        name: "Beguiling Defenses",
+        description: "Your patron teaches you how to guard your mind and body. You are immune to the Charmed condition.\n	In addition, immediately after a creature you can see hits you with an attack roll, you can take a Reaction to reduce the damage you take by half (round down), and you can force the attacker to make a Wisdom saving throw against your spell save DC. On a failed save, the attacker takes Psychic damage equal to the damage you take. Once you use this Re-action, you can't use it again until you finish a Long Rest unless you expend a Pact Magic spell slot (no action required) to restore your use of it."
+      }
+    ],
+    "14": [
+      {
+        name: "Bewitching Magic",
+        description: "Your patron grants you the ability to weave your magic with teleportation. Immediately after you cast an Enchantment or Illusion spell using an action and a spell slot, you can cast Misty Step as part of the same action and without expending a spell slot."
+      }
+    ]
+  },
+  "Celestial Patron": {
+    "3": [
+      {
+        name: "Celestial Spells",
+        description: "The magic of your patron ensures you always have certain spells ready.\n#### Celestial Spells\n| Level 3 | Level 5 | Level 7 | Level 9 |\n| ----- | ----- | ----- | ----- |\n| Aid, Cure Wounds, Guiding Bolt, Lesser Restoration, Light, Sacred Flame | Daylight, Revivify | Guardian of Faith, Wall of Fire | Greater Restoration, Summon Celestial |"
+      },
+      {
+        name: "Healing Light",
+        description: "You gain the ability to channel celestial energy to heal wounds. You have a pool of d6s to fuel this healing. The number of dice in the pool equals 1 plus your Warlock level.\n	As a Bonus Action, you can heal yourself or one creature you can see within 60 feet of yourself, expending dice from the pool. The maximum number of dice you can expend at once equals your Charisma modifier (minimum of one die). Roll the dice you expend, and restore a number of Hit Points equal to the roll's total. Your pool regains all expended dice when you finish a Long Rest."
+      }
+    ],
+    "6": [
+      {
+        name: "Radiant Soul",
+        description: "Your link to your patron allows you to serve as a conduit for radiant energy. You have Resistance to Radiant damage. Once per turn, when a spell you cast deals Radiant or Fire damage, you can add your Charisma modifier to that spell's damage against one of the spell's targets."
+      }
+    ],
+    "10": [
+      {
+        name: "Celestial Resilience",
+        description: "You gain Temporary Hit Points whenever you use your Magical Cunning feature or finish a Short or Long Rest. These Temporary Hit Points equal your Warlock level plus your Charisma modifier. Additionally, choose up to five creatures you can see when you gain the points. Those creatures each gain Temporary Hit Points equal to half your Warlock level plus your Charisma modifier."
+      }
+    ],
+    "14": [
+      {
+        name: "Searing Vengeance",
+        description: "When you or an ally within 60 feet of you is about to make a Death Saving Throw, you can unleash radiant energy to save the creature. The creature regains Hit Points equal to half its Hit Point maximum and can end the Prone condition on itself. Each creature of your choice that is within 30 feet of the creature takes Radiant damage equal to 2d8 plus your Charisma modifier, and each has the Blinded condition until the end of the current turn.\n	Once you use this feature, you can't use it again until you finish a Long Rest."
+      }
+    ]
+  },
+  "Fiend Patron": {
+    "3": [
+      {
+        name: "Dark One's Blessing",
+        description: "When you reduce an enemy to O Hit Points, you gain Temporary Hit Points equal to your Charisma modifier plus your Warlock level (minimum of 1 Temporary Hit Point). You also gain this benefit if someone else reduces an enemy within 10 feet of you to 0 Hit Points."
+      },
+      {
+        name: "Fiend Spells",
+        description: "The magic of your patron ensures you always have certain spells ready.\n#### Fiend Spells\n| Level 3 | Level 5 | Level 7 | Level 9 |\n| ----- | ----- | ----- | ----- |\n| Burning Hands, Command, Scorching Ray, Suggestion | F ireball, Stinking Cloud | Fire Shield, Wall of Fire | Geas, Insect Plague |"
+      }
+    ],
+    "6": [
+      {
+        name: "Dark One's Own Luck",
+        description: "You can call on your fiendish patron to alter fate in your favor. When you make an ability check or a saving throw, you can use this feature to add 1d10 to your roll. You can do so after seeing the roll but before any of the roll's effects occur.\n	You can use this feature a number of times equal to your Charisma modifier (minimum of once), but you can use it no more than once per roll. You regain all expended uses when you finish a Long Rest."
+      }
+    ],
+    "10": [
+      {
+        name: "Fiendish Resilience",
+        description: "Choose one damage type, other than Force, whenever you finish a Short or Long Rest. You have Resistance to that damage type until you choose a different one w ith this feature."
+      }
+    ],
+    "14": [
+      {
+        name: "Hurl Through Hell",
+        description: "Once per turn when you hit a creature with an attack roll, you can try to instantly transport the target through the Lower Planes. The target must succeed on a Charisma saving throw against your spell save DC, or the target disappears and hurtles through a nightmare landscape. The target takes 8d10 Psychic damage if it isn't a Fiend, and it has the Incapacitated condition until the end of your next turn, when it returns to the space it previously occupied or the nearest unoccupied space.\n	Once you use this feature, you can't use it again until you finish a Long Rest unless you expend a Pact Magic spell slot (no action required) to restore your use of it."
+      }
+    ]
+  },
+  "Great Old Onef Patron": {
+    "3": [
+      {
+        name: "Awakened Mind",
+        description: "You can form a telepathic connection between your mind and the mind of another. As a Bonus Action, choose one creature you can see within 30 feet of yourself. You and the chosen creature can communicate telepathically with each other while the two of you are within a number of miles of each other equal to your Charisma modifier (minimum of 1 mile). To understand each other, you each must mentally use a language the other knows.\n	The telepathic connection lasts for a number of minutes equal to your Warlock level. It ends early if you use this feature to connect with a different creature."
+      },
+      {
+        name: "Great Old One Spells",
+        description: "The magic of your patron ensures you always have certain spells ready.\n#### Great Old One Spells\n| Level 3 | Level 5 | Level 7 | Level 9 |\n| ----- | ----- | ----- | ----- |\n| Detect Thoughts, Dissonant Whis-pers, Phantasmal Force, Tasha's Hideous Laughter | Clairvoyance, Hunger of Hadar | Confusion, Summon Aberration | Modify Memory, Telekinesis |"
+      },
+      {
+        name: "Psychic Spells",
+        description: "When you cast a Warlock spell that deals damage, you can change its damage type to Psychic. In addition, when you cast a Warlock spell that is an Enchantment or Illusion, you can do so without Verbal or Somatic components."
+      }
+    ],
+    "6": [
+      {
+        name: "Clairvoyant Combatant",
+        description: "When you form a telepathic bond with a creature using your Awakened Mind, you can force that creature to make a Wisdom saving throw against your spell save DC. On a failed save, the creature has Disadvantage on attack rolls against you, and you have Advantage on attack rolls against that creature for the duration of the bond.\n	Once you use this feature, you can't use it again until you finish a Short or Long Rest unless you expend a Pact Magic spell slot (no action required) to restore your use of it."
+      }
+    ],
+    "10": [
+      {
+        name: "Eldritch Hex",
+        description: "Your alien patron grants you a powerful curse. You always have the Hex spell prepared. When you cast Hex and choose an ability, the target also has Disadvantage on saving throws of the chosen ability for the duration of the spell."
+      }
+    ],
+    "14": [
+      {
+        name: "Thought Shield",
+        description: "Your thoughts can't be read by telepathy or other means unless you allow it. You also have Resistance to Psychic damage, and whenever a creature deals Psychic damage to you, that creature takes the same amount of damage that you take."
       }
     ]
   }
@@ -1791,10 +2344,28 @@ var warlock_default = {
     B: { items: {}, gold: 100 }
   },
   features: {
-    "1": [
+    "2": [
       {
-        name: "",
-        description: ""
+        name: "Magical Cunning",
+        description: "You can perform an esoteric rite for 1 minute. At the end of it, you regain expended Pact Magic spell slots but no more than a number equal to half your maximum (round up). Once you use this feature, you can't do so again until you finish a Long Rest."
+      }
+    ],
+    "9": [
+      {
+        name: "Contract Patron",
+        description: "In the past, you usually contacted your patron through intermediaries. Now you can communicate directly: you always have the Contact Other Plane spell prepared. With this feature, you can cast the spell without expending a spell slot to contact your patron, and you automatically succeed on the spell's saving throw.\n	Once you cast the spell with this feature, you can't do so in this way again until you finish a Long Rest."
+      }
+    ],
+    "11": [
+      {
+        name: "Mystic Arcanum",
+        description: "Your patron grants you a magical secret called an arcanum.\n	You can cast your arcanum spell once without expending a spell slot, and you must finish a Long Rest before you can cast it in this way again.\n	As shown in the Warlock Features table, you gain another Warlock spell of your choice that can be cast in this way when you reach Warlock levels 13 (level 7 spell), 15 (level 8 spell), and 17 (level 9 spell).\n	You regain all uses of your Mystic Arcanum when you finish a Long Rest.\n	Whenever you gain a Warlock level, you can replace one of your arcanum spells with another Warlock spell of the same level."
+      }
+    ],
+    "20": [
+      {
+        name: "Eldritch Master",
+        description: "When you use your Magical Cunning feature, you regain all your expended Pact Magic spell slots."
       }
     ]
   }
@@ -1802,11 +2373,123 @@ var warlock_default = {
 
 // rulebook/classes/wizard-subclasses.json
 var wizard_subclasses_default = {
-  "<Subclass_Name>": {
-    "<Level>": [
+  Abjurer: {
+    "3": [
       {
-        name: "<Feature_Name>",
-        description: "<Feature_Description>"
+        name: "Abjuration Savant",
+        description: "Whenever you gain access to a new level of spell slots in this class, you can add one Wizard spell from the Abjuration school to your spellbook for free. The chosen spell must be of a level for which you have spell slots."
+      },
+      {
+        name: "Arcane Ward",
+        description: "You can weave magic around yourself for protec-tion. When you cast an Abjuration spell with a spell slot, you can simultaneously use a strand of the spell's magic to create a magical ward on yourself that lasts until you finish a Long Rest. The ward has a Hit Point maximum equal to twice your Wizard level plus your Intelligence modifier. Whenever you take damage, the ward takes the damage instead, and if you have any Resistances or Vulnerabilities, apply them before reducing the ward's Hit Points. If the damage reduces the ward to 0 Hit Points, you take any remaining damage. While the ward has O Hit Points, it can't absorb damage, but its magic remains.\n	Whenever you cast an Abjuration spell with a spell slot, the ward regains a number of Hit Points equal to twice the level of the spell slot. Alterna-tively, as a Bonus Action, you can expend a spell slot, and the ward regains a number of Hit Points equal to twice the level of the spell slot expended.\n	Once you create the ward, you can't create it again until you finish a Long Rest."
+      }
+    ],
+    "6": [
+      {
+        name: "Project Ward",
+        description: "When a creature that you can see within 30 feet of yourself takes damage, you can take a Reaction to cause your Arcane Ward to absorb that damage. If this damage reduces the ward to 0 Hit Points, the warded creature takes any remaining damage. If that creature has any Resistances or Vulnerabilities apply them before reducing the ward's Hit Points."
+      }
+    ],
+    "10": [
+      {
+        name: "Spell Breaker",
+        description: "You always have the Counterspell and Dispel Magic spells prepared. In addition, you can cast Dispel Magic as a Bonus Action, and you can add your Pro ficiency Bonus to its ability check.\n	When you cast either spell with a spell slot, that slot isn't expended if the spell fails to stop a spell."
+      }
+    ],
+    "14": [
+      {
+        name: "Spell Resistance",
+        description: "You have Advantage on saving throws against spells, and you have Resistance to the damage of spells."
+      }
+    ]
+  },
+  Diviner: {
+    "3": [
+      {
+        name: "Divination Savant",
+        description: "Whenever you gain access to a new level of spell slots in this class, you can add one Wizard spell from the Divination school to your spellbook for free. The chosen spell must be of a level for which you have spell slots."
+      },
+      {
+        name: "Portent",
+        description: "Glimpses of the future begin to press on your awareness. Whenever you finish a Long Rest, roll two d20s and record the numbers rolled. You can replace any D20 Test made by you or a creature that you can see with one of these foretelling rolls. You must choose to do so before the roll, and you can replace a roll in this way only once per turn.\n	Each foretelling roll can be used only once. When you finish a Long Rest, you lose any unused foretelling rolls."
+      }
+    ],
+    "6": [
+      {
+        name: "Expert Divination",
+        description: "Casting Divination spells comes so easily to you that it expends only a fraction of your spellcasting ef-forts. When you cast a Divination spell using a level 2+ spell slot, you regain one expended spell slot. The slot you regain must be of a level lower than the slot you expended and can't be higher than level 5."
+      }
+    ],
+    "10": [
+      {
+        name: "The Third Eye",
+        description: "You can increase your powers of perception. As a Bonus Action, choose one of the following benefits, which lasts until you start a Short or Long Rest. You can't use this feature again until you finish a Short or Long Rest.\n - **Darkvision**: You gain Darkvision with a range of 120 feet.\n - **Greater Comprehension**: You can read any language.\n - **See Invisibility**: You can cast See Invisibility without expending a spell slot."
+      }
+    ],
+    "14": [
+      {
+        name: "Spell Portent",
+        description: "The visions in your dreams intensify and paint a more accurate picture in your mind of what is to come. Roll three d20s for your Portent feature rather than two."
+      }
+    ]
+  },
+  Evoker: {
+    "3": [
+      {
+        name: "Evocation Savant",
+        description: "Whenever you gain access to a new level of spell slots in this class, you can add one Wizard spell from the Evocation school to your spellbook for free . The chosen spell must be of a level for which you have spell slots."
+      },
+      {
+        name: "Potent Cantrip",
+        description: "Your damaging cantrips affect even creatures that avoid the brunt of the effect. When you cast a can-trip at a creature and you miss with the attack roll or the target succeeds on a saving throw against the cantrip, the target takes half the cantrip's damage (if any) but suffers no additional effect from the cantrip."
+      }
+    ],
+    "6": [
+      {
+        name: "Sculpt Spells",
+        description: "You can create pockets of relative safety within the effects of your evocations. When you cast an Evocation spell that affects other creatures that you can see, you can choose a number of them equal to 1 plus the spell's level. The chosen creatures automatically succeed on their saving throws against the spell, and they take no damage if they would normally take half damage on a successful save."
+      }
+    ],
+    "10": [
+      {
+        name: "Empowered Evocation",
+        description: "Whenever you cast a Wizard spell from the Evocation school, you can add your Intelligence modifier to one damage roll of that spell."
+      }
+    ],
+    "14": [
+      {
+        name: "Overchannel",
+        description: "You can increase the power of your spells. When you cast a Wizard spell with a spell slot of levels 1-5 that deals damage, you can deal maximum damage with that spell on the turn you cast it.\n	The first time you do so, you suffer no adverse ef-fect. If you use this feature again before you finish a Long Rest, you take 2d12 Necrotic damage for each level of the spell slot immediately after you cast it. This damage ignores Resistance and Immunity.\n	Each time you use this feature again before finishing a Long Rest, the Necrotic damage per spell level increases by 1d12."
+      }
+    ]
+  },
+  Illusionist: {
+    "3": [
+      {
+        name: "Illusion Savant",
+        description: "Whenever you gain access to a new level of spell slots in this class, you can add one Wizard spell from the Illusion school to your spellbook for free. The chosen spell must be of a level for which you have spell slots."
+      },
+      {
+        name: "Improved Illusions",
+        description: "You can cast Illusion spells without providing Verbal components, and if an Illusion spell you cast has a range of 10+ feet, the range increases by 60 feet.\n	You also know the Minor Illusion cantrip. If you already know it, you learn a different Wizard cantrip of your choice. The cantrip doesn't count against your number of cantrips known. You can create both a sound and an image with a single casting of Minor Illusion, and you can cast it as a Bonus Action."
+      }
+    ],
+    "6": [
+      {
+        name: "Phantasmal Creatures",
+        description: "You always have the Summon Beast and Summon Fey spells prepared. Whenever you cast either spell, you can change its school to Illusion, which causes the summoned creature to appear spectral. You can cast the Illusion version of each spell without expending a spell slot, but casting it without a slot halves the creature's Hit Points. Once you cast either spell without a spell slot, you must finish a Long Rest before you can cast the spell in that way again."
+      }
+    ],
+    "10": [
+      {
+        name: "Illusory Self",
+        description: "When a creature hits you with an attack roll, you can take a Reaction to interpose an illusory duplicate of yourself between the attacker and yourself. The attack automatically misses you, then the illusion dissipates.\n	Once you use this feature, you can't use it again until you finish a Short or Long Rest. You can also restore your use of it by expending a level 2+ spell slot (no action required)."
+      }
+    ],
+    "14": [
+      {
+        name: "Illusory Reality",
+        description: "You have learned to weave shadow magic into your illusions to give them a semi-reality. When you cast an Illusion spell with a spell slot, you can choose one inanimate, nonmagical object that is part of the illusion and make that object real. You can do this on your turn as a Bonus Action while the spell is on-going. The object remains real for 1 minute, during which it can't deal damage or give any conditions. For example, you can create an illusion of a bridge over a chasm and then make it real and cross it."
       }
     ]
   }
@@ -1832,8 +2515,26 @@ var wizard_default = {
   features: {
     "1": [
       {
-        name: "",
-        description: ""
+        name: "Arcane Recovery",
+        description: "You can regain some of your magical energy by studying your spellbook. When you finish a Short Rest, you can choose expended spell slots to recover. The spell slots can have a combined level equal to no more than half your Wizard level (round up), and none of the slots can be level 6 or higher. For exam-ple, if you're a level 4 Wizard, you can recover up to two levels' worth of spell slots, regaining either one level 2 spell slot or two level 1 spell slots.\n	Once you use this feature, you can't do so again until you finish a Long Rest."
+      }
+    ],
+    "5": [
+      {
+        name: "Memorize Spells",
+        description: "Whenever you finish a Short Rest, you can study your spellbook and replace one of the level 1+ Wizard spells you have prepared for your Spellcasting feature with another level 1+ spell from the book."
+      }
+    ],
+    "18": [
+      {
+        name: "Spell Mastery",
+        description: "You have achieved such mastery over certain spells that you can cast them at will. Choose a level 1 and a level 2 spell in your spellbook that have a casting time of an action. You always have those spells pre-pared, and you can cast them at their lowest level without expending a spell slot. To cast either spell at a higher levei, you must expend a spell slot.\n	Whenever you finish a Long Rest, you can study your spellbook and replace one of those spells with an eligible spell of the same level from the book."
+      }
+    ],
+    "20": [
+      {
+        name: "Signature Spells",
+        description: "Choose two level 3 spells in your spellbook as your signature spells. You always have these spells pre-pared, and you can cast each of them once at level 3 without expending a spell slot. When you do so, you can't cast them in this way again until you finish a Short or Long Rest. To cast either spell at a higher level, you must expend a spell slot."
       }
     ]
   }
@@ -3182,7 +3883,7 @@ var subclassRegistry = {
   "fighter-subclasses": fighter_subclasses_default,
   "monk-subclasses": monk_subclasses_default,
   "paladin-subclasses": paladin_subclasses_default,
-  "ranger-subclasses.json": ranger_subclasses_json_default,
+  "ranger-subclasses": ranger_subclasses_default,
   "rogue-subclasses": rogue_subclasses_default,
   "sorcerer-subclasses": sorcerer_subclasses_default,
   "warlock-subclasses": warlock_subclasses_default,
@@ -3539,6 +4240,21 @@ var DnDFeaturesPlugin = class extends import_obsidian2.Plugin {
     if (!text) return;
     const cleanText = text.trim().replace(/\t/g, "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;");
     await import_obsidian2.MarkdownRenderer.render(this.app, cleanText, container, sourcePath, component);
+    container.addEventListener("click", (event) => {
+      let target = event.target;
+      const closestLink = target.closest("a");
+      if (closestLink) {
+        target = closestLink;
+      }
+      if (target.tagName === "A") {
+        const href = target.getAttribute("href");
+        if (href && href.startsWith("note:")) {
+          event.preventDefault();
+          const noteKey = href.replace("note:", "").toLowerCase();
+          new NoteModal(this.app, this, noteKey).open();
+        }
+      }
+    });
     const firstChild = container.firstElementChild;
     if (firstChild && firstChild.tagName.match(/^H[1-6]$/i)) {
       firstChild.style.marginTop = "0";
@@ -3836,6 +4552,10 @@ var DnDFeaturesPlugin = class extends import_obsidian2.Plugin {
     ctx.addChild(renderChild);
     const renderContent = async () => {
       const wrapper = document.createElement("div");
+      const tooltipWindow = document.body.createDiv({
+        cls: "dnd-inventory-tooltip",
+        attr: { style: "position: fixed; display: none; z-index: 9999; background: var(--dnd-bg-secondary); border: 1px solid var(--dnd-border-primary); border-radius: 6px; padding: 12px; width: 300px; box-shadow: 0 8px 16px rgba(0,0,0,0.6); pointer-events: none;" }
+      });
       let blockData;
       try {
         blockData = (0, import_obsidian2.parseYaml)(source);
@@ -4019,7 +4739,16 @@ var DnDFeaturesPlugin = class extends import_obsidian2.Plugin {
       addBtn.onclick = () => this.updateGoldFrontmatter(ctx.sourcePath, "added", Number(amountInput.value) || 0);
       subBtn.onclick = () => this.updateGoldFrontmatter(ctx.sourcePath, "spent", Number(amountInput.value) || 0);
       const backpackWindow = wrapper.createDiv({ cls: "dnd-features-window" });
-      backpackWindow.createEl("h4", { text: "Backpack Contents", cls: "dnd-class-header", attr: { style: "margin: 0 0 10px 0; border-bottom: 1px solid var(--dnd-border-primary); padding-bottom: 8px;" } });
+      const backpackHeader = backpackWindow.createDiv({
+        cls: "dnd-class-header",
+        attr: { style: "display: flex; justify-content: space-between; align-items: center; margin: 0 0 10px 0; border-bottom: 1px solid var(--dnd-border-primary); padding-bottom: 8px;" }
+      });
+      backpackHeader.createEl("h4", { text: "Backpack Contents", attr: { style: "color: var(--dnd-text-primary); margin: 0; border: none; padding: 0;" } });
+      const weightTracker = backpackHeader.createEl("span", {
+        text: "Weight: 0 lbs",
+        attr: { style: "font-size: 0.85em; color: var(--dnd-text-muted); font-weight: normal; letter-spacing: 0.5px;" }
+      });
+      let totalWeight = 0;
       const renderPool = async (pool, title) => {
         const validItems = Object.entries(pool).filter(([_, qty]) => qty > 0);
         if (validItems.length === 0) return;
@@ -4034,7 +4763,35 @@ var DnDFeaturesPlugin = class extends import_obsidian2.Plugin {
           const fallbackName = itemId.replace(/\b\w/g, (c) => c.toUpperCase()).replace(/-/g, " ");
           if (!data) data = { name: fallbackName, description: "" };
           const itemRow = gridContainer.createEl("span", {
-            attr: { style: "display: flex; flex-direction: row; align-items: center; width: 100%; padding: 3px 0;" }
+            attr: { style: "display: flex; flex-direction: row; align-items: center; width: 100%; padding: 3px 0; cursor: default;" }
+          });
+          const X_OFFSET = 12;
+          const Y_OFFSET = 15;
+          itemRow.addEventListener("mouseenter", async (e) => {
+            tooltipWindow.empty();
+            tooltipWindow.createEl("h4", { text: data.name, attr: { style: "margin: 0 0 4px 0; color: var(--dnd-text-bright); font-size: 1.1em;" } });
+            if (data.type) {
+              tooltipWindow.createEl("div", { text: data.type.toUpperCase(), attr: { style: "font-size: 0.75em; color: var(--dnd-text-secondary); letter-spacing: 1px; margin-bottom: 8px;" } });
+            }
+            const statsDiv = tooltipWindow.createDiv({ attr: { style: "display: flex; gap: 15px; margin-bottom: 8px; font-size: 0.85em; color: var(--dnd-text-muted);" } });
+            if (data.weight) statsDiv.createEl("span", { text: `Weight: ${data.weight} lbs` });
+            if (data.cost) statsDiv.createEl("span", { text: `Cost: ${data.cost} GP` });
+            if (data.description) {
+              const descDiv = tooltipWindow.createDiv({ attr: { style: "font-size: 0.9em; line-height: 1.4; color: var(--dnd-text-primary);" } });
+              await this.renderDndMarkdown(data.description, descDiv, ctx.sourcePath, renderChild);
+            }
+            tooltipWindow.style.display = "block";
+            tooltipWindow.style.left = `${e.clientX + X_OFFSET}px`;
+            tooltipWindow.style.top = `${e.clientY + Y_OFFSET}px`;
+          });
+          itemRow.addEventListener("mousemove", (e) => {
+            const xPos = e.clientX + X_OFFSET;
+            const safeX = xPos + 300 > window.innerWidth ? e.clientX - 300 - X_OFFSET : xPos;
+            tooltipWindow.style.left = `${safeX}px`;
+            tooltipWindow.style.top = `${e.clientY + Y_OFFSET}px`;
+          });
+          itemRow.addEventListener("mouseleave", () => {
+            tooltipWindow.style.display = "none";
           });
           itemRow.createEl("span", { text: `x${qty}`, cls: "dnd-level-badge", attr: { style: "margin: 0 10px 0 0; flex-shrink: 0;" } });
           const hasExtraInfo = !!(data.weight || data.cost);
@@ -4045,6 +4802,7 @@ var DnDFeaturesPlugin = class extends import_obsidian2.Plugin {
           });
           if (data.weight) {
             rightSide.createEl("span", { text: `${data.weight * qty}lbs,  ` });
+            totalWeight += data.weight * qty;
           }
           if (data.cost) {
             rightSide.createEl("span", { text: `${data.cost}GP` });
@@ -4053,6 +4811,7 @@ var DnDFeaturesPlugin = class extends import_obsidian2.Plugin {
       };
       await renderPool(startingItemCounts);
       await renderPool(extraItemCounts, "Extra Items");
+      weightTracker.setText(`Weight: ${totalWeight % 1 === 0 ? totalWeight : totalWeight.toFixed(1)} lbs`);
       el.empty();
       el.appendChild(wrapper);
     };
@@ -4062,6 +4821,33 @@ var DnDFeaturesPlugin = class extends import_obsidian2.Plugin {
         if (file.path === ctx.sourcePath) renderContent();
       })
     );
+  }
+};
+var NoteModal = class extends import_obsidian2.Modal {
+  plugin;
+  noteKey;
+  constructor(app, plugin, noteKey) {
+    super(app);
+    this.plugin = plugin;
+    this.noteKey = noteKey;
+  }
+  async onOpen() {
+    const { contentEl, titleEl } = this;
+    const formattedTitle = this.noteKey.split("-").map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(" ");
+    titleEl.setText(formattedTitle);
+    const filePath = `${this.plugin.manifest.dir}/${this.noteKey}.md`;
+    try {
+      const fileContent = await this.app.vault.adapter.read(filePath);
+      import_obsidian2.MarkdownRenderer.render(this.app, fileContent, contentEl, "", null);
+    } catch (error) {
+      contentEl.createEl("p", {
+        text: `Error: Could not find "${this.noteKey}.md" in the root of the plugin folder.`,
+        cls: "dnd-error-text"
+      });
+    }
+  }
+  onClose() {
+    this.contentEl.empty();
   }
 };
 var DnDSettingsTab = class extends import_obsidian2.PluginSettingTab {
