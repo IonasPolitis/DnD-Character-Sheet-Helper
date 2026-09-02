@@ -28,7 +28,7 @@ jobs:
       - name: Build Project
         run: npm run build
 
-      - name: Update Tag and Beta-Release
+      - name: Update Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
