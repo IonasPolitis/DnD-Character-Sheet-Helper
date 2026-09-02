@@ -1,5 +1,6 @@
 import { App, Plugin, PluginSettingTab, Setting, MarkdownPostProcessorContext, parseYaml, MarkdownRenderChild, MarkdownRenderer, TFile, Modal } from 'obsidian';
 import { getClassData, getSubclassData, getBackgroundData, getRaceData, getExtraFeat, getItemData } from './data';
+import { MarkdownNotes } from './registry';
 
 // 1. Define the shape of our settings
 interface DnDPluginSettings {
@@ -1030,19 +1031,17 @@ class NoteModal extends Modal {
         const formattedTitle = this.noteKey.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
         titleEl.setText(formattedTitle);
 
-        // Construct the strict path to the file inside your hidden plugin folder
-        const filePath = `${this.plugin.manifest.dir}/${this.noteKey}.md`;
+        // --- BUNDLED REGISTRY LOOKUP ---
+        // Fetch the text directly from memory instead of the file system!
+        const fileContent = MarkdownNotes[this.noteKey];
 
-        try {
-            // Read the physical file dynamically!
-            const fileContent = await this.app.vault.adapter.read(filePath);
-            
+        if (fileContent) {
             // Render the fetched markdown into the pop-up
             MarkdownRenderer.render(this.app, fileContent, contentEl, "", null as any);
-        } catch (error) {
-            // Fallback if the file doesn't exist or is spelled wrong
+        } else {
+            // Updated fallback message so you know it is checking the registry correctly
             contentEl.createEl("p", { 
-                text: `Error: Could not find "${this.noteKey}.md" in the root of the plugin folder.`,
+                text: `Error: Could not find "${this.noteKey}" in the bundled Markdown registry. Make sure you ran the generation script!`,
                 cls: "dnd-error-text"
             });
         }
