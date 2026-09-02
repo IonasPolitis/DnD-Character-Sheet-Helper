@@ -5,6 +5,5 @@
 	"minAppVersion": "1.13.7",
 	"description": "Renders D&D 5.5e character features, weapons and an inventory from frontmatter properties.",
 	"author": "Ionas Politis",
-	"authorUrl": "",
 	"isDesktopOnly": false
 }
