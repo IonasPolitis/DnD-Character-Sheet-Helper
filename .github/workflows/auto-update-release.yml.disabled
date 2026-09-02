@@ -1,4 +1,4 @@
-name: Build and Update -Release
+name: Auto-Update Release
 
 on:
   push:
