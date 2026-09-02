@@ -1,9 +1,109 @@
 {
-      "<Subclass_Name>": {
-            "<Level>": [
+      "Arcane Trickster": {
+            "3": [
                   {
-                        "name": "<Feature_Name>",
-                        "description": "<Feature_Description>"
+                        "name": "Mage Hand Legerdemain",
+                        "description": "You can cast and controll Mage Hand as a Bonus Action, make Dexterity (Sleight of Hand) checks through it, and make the spectral hand Invisible"
+                  }
+            ],
+            "9": [
+                  {
+                        "name": "Magical Ambush",
+                        "description": "If you have the Invisible condition when you cast a spell on a creature, it has Disadvantage on any saving throw it makes against the spell on the same turn."
+                  }
+            ],
+            "13": [
+                  {
+                        "name": "Versatile Trickster",
+                        "description": "You gain the ability to distract targets with your Mage Hand. When you use the Trip option of your Cunning Strike on a creature, you can also use that option on another creature within 5 feet of the spectral hand."
+                  }
+            ],
+            "17": [
+                  {
+                        "name": "Spell Thief",
+                        "description": "You gain the ability to magically steal the knowledge of how to cast a spell from another spellcaster.\n\tImmediately after a creature casts a spell that targets you or includes you in its area of effect, you can take a Reaction to force the creature to make an Intelligence saving throw. The DC equals your spell save DC. On a failed save, you negate the spell's effect against you, and you steal the knowledge of the spell if it is at least level 1 and of a level you can cast (it doesn't need to be a Wizard spell). For the next 8 hours, you have the spell prepared. The creature can't cast it until the 8 hours have passed.\n\tOnce you steal a spell with this feature, you can't use this feature again until you finish a Long Rest."
+                  }
+            ]
+      },
+      "Assasin": {
+            "3": [
+                  {
+                        "name": "Assasinate",
+                        "description": "You're adept at ambushing a target, granting you the following benefits.\n - **Initiative**: You have Advantage on Initiative rolls.\n - **Surprising Strikes**: During the first round of each combat, you have Advantage on attack rolls against any creature that hasn't taken a turn. If your Sneak Attack hits any target during that round, the target takes extra damage of the weapon's type equal to your Rogue level."
+                  }
+            ],
+            "9": [
+                  {
+                        "name": "Infiltration Expertise",
+                        "description": "You are expert at the following techniques that aid your infiltrations.\n - **Masterful Mimicry**: You can unerringly mimic another person's speech, handwrit ing, or both if you have spent at least 1 hour studying them.\n - **Roving Aim**: Your Speed isn't reduced to O by using Steady Aim."
+                  }
+            ],
+            "13": [
+                  {
+                        "name": "Envenom Weapons",
+                        "description": "When you use the Poison option of your Cunning Strike, the target also takes 2d6 Poison damage whenever it fails the saving throw. This damage ignores Resistance to Poison damage."
+                  }
+            ],
+            "17": [
+                  {
+                        "name": "Death Strike",
+                        "description": "When you hit with your Sneak Attack on the first round of a combat, the target must succeed on a Constitution saving throw (DC 8 plus your Dexterity modifier and Proficiency Bonus), or the attack's damage is doubled against the ta rget."
+                  }
+            ]
+      },
+      "Soulknife": {
+            "3": [
+                  {
+                        "name": "Psionic Power",
+                        "description": "- **Psi-Bolstered Knack**: If you fail an ability check using a skill or tool with which you have proficiency, you can roll one Psionic Energy Die and add the number rolled to the check, potentially turning failure into success. The die is expended only if the roll then succeeds.\n - **Psychic Whispers**: You can establish telepathic communication between yourself and others. As a Magic action, choose one or more creatures you can see, up to a number of creatures equal to your Proficiency Bonus, and then roll one Psionic Energy Die. For a number of hours equal to the number rolled, the chosen creatures can speak telepathically with you. and you can speak telepathically with them. To send or receive a message (no action required), you ,, nd the other creature must be within 1 mile of each other. A creature can end the telepathic connection at any time (no action required).\n\tThe first time you use this power after each Long Rest, you don't expend the Psionic Energy Die. All other times you use the power, you expend the die."
+                  },
+                  {
+                        "name": "Psychic Blades",
+                        "description": "You can manifest shimmering blades of psychic energy. Whenever you take the Attack action or make an Opportunity Attack, you can manifest a Psychic Blade in your free hand and make the attack with that blade. The magic blade has the following traits:\n\t**Weapon Category**: Simple Melee\n\t**Damage in a Hit**: ld6 Psychic plus the ability modifier used for the attack roll\n\t**Properties**: Finesse, Thrown (range 60/120 feet)\n\t**Mastery**: Vex (you can use this property, and it doesn't count against the number of properties you can use with Weapon Mastery)\n\tThe blade vanishes immediately after it hits or misses its target, and it leaves no mark if it deals damage.\n\tAfter you attack with the blade on your turn, you can make a melee or ranged attack with a second psychic blade as a Bonus Action on the same turn if your other hand is free to create it. The damage die of this bonus attack is ld4 instead of ld6."
+                  }
+            ],
+            "9": [
+                  {
+                        "name": "Soul Blades",
+                        "description": "You can now use the following powers with your Psychic Blades.\n - **Homing Strikes**: If you make an attack roll with your Psychic Blade and miss the target, you can roll one Psionic Energy Die and add the number rolled to the attack roll. If this causes the attack to hit, the die is expended.\n - **Phychic Teleportation**: As a Bonus Action, you manifest a Psychic Blade, expend one Psionic Energy Die and roll it, and throw the blade at an unoccupied space you can see up to a number of feet away equal to 10 times the number rolled. You then teleport to that space, and the blade vanishes."
+                  }
+            ],
+            "13": [
+                  {
+                        "name": "Psychic Veil",
+                        "description": "You can weave a veil of psychic static to mask your-self. As a Magic action, you gain the Invisible condition for 1 hour or until you dismiss this effect (no action required). This invisibility ends early immediately after you deal damage to a creature or you force a creature to make a saving throw.\n\tOnce you use this feature, you can't do so again until you finish a Long Rest unless you expend a Psionic Energy Die (no action required) to restore your use of it."
+                  }
+            ],
+            "17": [
+                  {
+                        "name": "Rend Mind",
+                        "description": "You can sweep your Psychic Blades through a creature's mind. When you use your Psychic Blades to deal Sneak Attack damage to a creature, you can force that target to make a Wisdom saving throw (DC 8 plus your Dexterity modifier and Proficiency Bonus). If the save fails, the target has the Stunned condition for 1 minute. The Stunned target repeats the save at the end of each of its turns, ending the effect on itself on a success.\n\tOnce you use this feature, you can't do so again until you finish a Long Rest unless you expend three Psionic Energy Dice (no action required) to restore your use of it."
+                  }
+            ]
+      },
+      "Thief": {
+            "3": [
+                  {
+                        "name": "Fast Hands",
+                        "description": "As a Bonus Action, you can do one of the following.\n - **Sleight of Hand**: Make a Dexterity (Sleight of Hand) check to pick a lock or disarm a trap with Thieves' Tools or to pick a pocket.\n - **Use an Object**: Take the Utilize action, or take the Magic action to use a magic item that requires that action."
+                  }
+            ],
+            "9": [
+                  {
+                        "name": "Supreme Sneak",
+                        "description": "You gain the following Cunning Strike option.\n - **Stealth Attack** (1d6): If you have the Hide action's Invisible condition, this attack doesn't end that condition on you if you end the turn behind Three-Quarters Cover or Total Cover."
+                  }
+            ],
+            "13": [
+                  {
+                        "name": "You've learned how to maximize use of magic items, granting you the following benefits.\n - **Charges**: Whenever you use a magic item property that expends charges, roll ld6. On a roll of 6, you use the property without expending the charges.\n - **Scrolls**: You can use any Spell Scroll, using Intelligence as your spellcasting ability for the spell. If the spell is a cantrip or a level 1 spell, you can cast it reliably. If the scroll contains a higher-level spell, you must first succeed on an Intelligence (Arcana) check (DC 10 plus the spell's level). On a successful check, you cast the spell from the scroll. On a failed check, the scroll disintegrates.",
+                        "description": ""
+                  }
+            ],
+            "17": [
+                  {
+                        "name": "Thief's Reflexes",
+                        "description": "You are adept at laying ambushes and quickly escaping danger. You can take two turns during the first round of any combat. You take your first turn at your normal Initiative and your second turn at your Initiative minus 10 "
                   }
             ]
       }

@@ -15,10 +15,28 @@
         "B": { "items": {}, "gold": 100 }
     },
     "features": {
-        "1": [
+        "2": [
             {
-                "name": "",
-                "description": ""
+                "name": "Magical Cunning",
+                "description": "You can perform an esoteric rite for 1 minute. At the end of it, you regain expended Pact Magic spell slots but no more than a number equal to half your maximum (round up). Once you use this feature, you can't do so again until you finish a Long Rest."
+            }
+        ],
+        "9": [
+            {
+                "name": "Contract Patron",
+                "description": "In the past, you usually contacted your patron through intermediaries. Now you can communicate directly: you always have the Contact Other Plane spell prepared. With this feature, you can cast the spell without expending a spell slot to contact your patron, and you automatically succeed on the spell's saving throw.\n\tOnce you cast the spell with this feature, you can't do so in this way again until you finish a Long Rest."
+            }
+        ],
+        "11": [
+            {
+                "name": "Mystic Arcanum",
+                "description": "Your patron grants you a magical secret called an arcanum.\n\tYou can cast your arcanum spell once without expending a spell slot, and you must finish a Long Rest before you can cast it in this way again.\n\tAs shown in the Warlock Features table, you gain another Warlock spell of your choice that can be cast in this way when you reach Warlock levels 13 (level 7 spell), 15 (level 8 spell), and 17 (level 9 spell).\n\tYou regain all uses of your Mystic Arcanum when you finish a Long Rest.\n\tWhenever you gain a Warlock level, you can replace one of your arcanum spells with another Warlock spell of the same level."
+            }
+        ],
+        "20": [
+            {
+                "name": "Eldritch Master",
+                "description": "When you use your Magical Cunning feature, you regain all your expended Pact Magic spell slots."
             }
         ]
       }
