@@ -62,7 +62,7 @@ jobs:
           ALL_BETA_TAGS=$(git tag -l "*-beta" --sort=-v:refname)
           
           # Use tail to skip the first 5 tags and capture the rest for deletion
-          TAGS_TO_DELETE=$(echo "$ALL_BETA_TAGS" | tail -n +6)
+          TAGS_TO_DELETE=$(echo "$ALL_BETA_TAGS" | tail -n +4)
 
           # 7. Delete the older tags
           if [ -n "$TAGS_TO_DELETE" ]; then
