@@ -54,28 +54,3 @@ jobs:
 
           # 5. Upload assets
           gh release upload "$TAG_NAME" main.js styles.css manifest.json --clobber
-
-          # 6. Find old tags to delete (Keep the 5 highest versions)
-          # --sort=-v:refname sorts tags by semantic version descending (highest version at the top)
-          ALL_BETA_TAGS=$(git tag -l "*-beta" --sort=-v:refname)
-          
-          # Use tail to skip the first 5 tags and capture the rest for deletion
-          TAGS_TO_DELETE=$(echo "$ALL_BETA_TAGS" | tail -n +4)
-
-          # 7. Delete the older tags
-          if [ -n "$TAGS_TO_DELETE" ]; then
-            for tag in $TAGS_TO_DELETE; do
-              echo "Cleaning up old beta: $tag"
-              
-              # Delete the GitHub release and its underlying tag
-              gh release delete "$tag" --yes --cleanup-tag 2>/dev/null || true
-              
-              # Delete remote tag
-              git push origin --delete "$tag" 2>/dev/null || true
-              
-              # Delete local tag
-              git tag -d "$tag" 2>/dev/null || true
-            done
-          else
-            echo "Fewer than 5 beta releases exist. No cleanup needed."
-          fi
