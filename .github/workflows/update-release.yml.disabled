@@ -3,7 +3,7 @@ name: Build and Update -Release
 on:
   push:
     branches:
-
+      - main
 
 jobs:
   build-and-release:
