@@ -874,7 +874,7 @@ export default class DnDFeaturesPlugin extends Plugin {
                 cls: "dnd-class-header", 
                 attr: { style: "display: flex; justify-content: space-between; align-items: center; margin: 0 0 10px 0; border-bottom: 1px solid var(--dnd-border-primary); padding-bottom: 8px;" } 
             });
-            backpackHeader.createEl("h4", { text: "Backpack Contents", attr: { style: "color: var(--dnd-text-muted); margin: 0; border: none; padding: 0;" } });
+            backpackHeader.createEl("h4", { text: "Backpack Contents", attr: { style: "color: var(--dnd-text-primary); margin: 0; border: none; padding: 0;" } });
             
             const weightTracker = backpackHeader.createEl("span", { 
                 text: "Weight: 0 lbs", 
