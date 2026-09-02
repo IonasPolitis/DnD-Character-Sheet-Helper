@@ -36,10 +36,11 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          # 1. Extract version from manifest.json using jq
           VERSION=$(jq -r .version manifest.json)
           TAG_NAME="${VERSION}"
-          
+
+          NOTES=""
+
           echo "Target tag is $TAG_NAME"
 
           git fetch --tags
@@ -47,8 +48,6 @@ jobs:
           git tag -f "$TAG_NAME"
           git push -f origin "$TAG_NAME"
 
-          # 4. Create release if missing, or update if it exists
-          gh release view "$TAG_NAME" >/dev/null 2>&1 || gh release create "$TAG_NAME" --title "First Public Release - $TAG_NAME" --notes "Hopefully added to the Obsidian Community plugin Store."
+          gh release view "$TAG_NAME" >/dev/null 2>&1 || gh release create "$TAG_NAME" --title "$TAG_NAME" --notes "$NOTES"
 
-          # 5. Upload assets
           gh release upload "$TAG_NAME" main.js styles.css manifest.json --clobber
