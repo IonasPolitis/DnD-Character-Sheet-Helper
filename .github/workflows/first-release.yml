@@ -52,7 +52,7 @@ jobs:
           git push -f origin "$TAG_NAME"
 
           # 4. Create release if missing, or update if it exists
-          gh release view "$TAG_NAME" >/dev/null 2>&1 || gh release create "$TAG_NAME" --title "Latest Release ($TAG_NAME)" --notes "Automated build"
+          gh release view "$TAG_NAME" >/dev/null 2>&1 || gh release create "$TAG_NAME" --title "First Public Release ($TAG_NAME)" --notes "Hopefully added to the Obsidian Community plugin Store."
 
           # 5. Upload assets
           gh release upload "$TAG_NAME" main.js styles.css manifest.json --clobber
