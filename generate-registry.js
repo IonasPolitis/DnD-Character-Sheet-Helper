@@ -66,7 +66,7 @@ out += `\nexport { classesMap, backgroundsMap, racesMap, itemsMap };\n\n`;
 // 3. Generate the Registry Maps
 out += `export const classRegistry: Record<string, any> = {\n`;
 classes.forEach(c => {
-    if (!c.includes('subclass')) out += `    "${c}": class_${c.replace(/[^a-zA-Z0-9]/g, '')},\n`;
+    if (!c.includes('class')) out += `    "${c}": class_${c.replace(/[^a-zA-Z0-9]/g, '')},\n`;
 });
 out += `};\n\n`;
 

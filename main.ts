@@ -1,4 +1,4 @@
-import { App, Plugin, PluginSettingTab, Setting, MarkdownPostProcessorContext, parseYaml, MarkdownRenderChild, MarkdownRenderer, TFile } from 'obsidian';
+import { App, Plugin, PluginSettingTab, Setting, MarkdownPostProcessorContext, parseYaml, MarkdownRenderChild, MarkdownRenderer, TFile, Modal } from 'obsidian';
 import { getClassData, getSubclassData, getBackgroundData, getRaceData, getExtraFeat, getItemData } from './data';
 
 // 1. Define the shape of our settings
@@ -101,6 +101,32 @@ export default class DnDFeaturesPlugin extends Plugin {
 
         // 2. Render the markdown securely
         await MarkdownRenderer.render(this.app, cleanText, container, sourcePath, component);
+
+        // 2.5 Intercept custom "note:" links to open our pop-up modal!
+        container.addEventListener('click', (event) => {
+            let target = event.target as HTMLElement;
+            
+            // BUG FIX: If the user clicked bold or italic text inside the link, 
+            // the target is <strong> or <em>. We must climb up to find the actual <a> tag!
+            const closestLink = target.closest('a');
+            if (closestLink) {
+                target = closestLink;
+            }
+
+            if (target.tagName === 'A') {
+                const href = target.getAttribute('href');
+                // Listen for your new generic "note:" syntax
+                if (href && href.startsWith('note:')) {
+                    event.preventDefault(); // Stop Obsidian from navigating away
+                    
+                    // Extract the filename (e.g., "note:wild-magic-surge" -> "wild-magic-surge")
+                    const noteKey = href.replace('note:', '').toLowerCase(); 
+                    
+                    // Pass 'this' (the plugin instance) so the Modal can find the plugin folder!
+                    new NoteModal(this.app, this, noteKey).open();
+                }
+            }
+        });
 
         // 3. If a header is the VERY first item in the text, completely remove its top margin!
         const firstChild = container.firstElementChild as HTMLElement;
@@ -540,6 +566,14 @@ export default class DnDFeaturesPlugin extends Plugin {
 
         const renderContent = async () => {
             const wrapper = document.createElement('div');
+            
+            // --- THE INVENTORY TOOLTIP ---
+            // Attached to document.body so coordinate (0,0) is always the true screen origin
+            const tooltipWindow = document.body.createDiv({
+                cls: "dnd-inventory-tooltip",
+                attr: { style: "position: fixed; display: none; z-index: 9999; background: var(--dnd-bg-secondary); border: 1px solid var(--dnd-border-primary); border-radius: 6px; padding: 12px; width: 300px; box-shadow: 0 8px 16px rgba(0,0,0,0.6); pointer-events: none;" }
+            });
+
             let blockData;
             try {
                 blockData = parseYaml(source);
@@ -835,7 +869,18 @@ export default class DnDFeaturesPlugin extends Plugin {
             // -----------------------------------------------------------
             // Restored the window class so the outer box appears!
             const backpackWindow = wrapper.createDiv({ cls: "dnd-features-window" });
-            backpackWindow.createEl("h4", { text: "Backpack Contents", cls: "dnd-class-header", attr: {style: "margin: 0 0 10px 0; border-bottom: 1px solid var(--dnd-border-primary); padding-bottom: 8px;" } });
+            
+            const backpackHeader = backpackWindow.createDiv({ 
+                cls: "dnd-class-header", 
+                attr: { style: "display: flex; justify-content: space-between; align-items: center; margin: 0 0 10px 0; border-bottom: 1px solid var(--dnd-border-primary); padding-bottom: 8px;" } 
+            });
+            backpackHeader.createEl("h4", { text: "Backpack Contents", attr: { style: "color: var(--dnd-text-muted); margin: 0; border: none; padding: 0;" } });
+            
+            const weightTracker = backpackHeader.createEl("span", { 
+                text: "Weight: 0 lbs", 
+                attr: { style: "font-size: 0.85em; color: var(--dnd-text-muted); font-weight: normal; letter-spacing: 0.5px;" } 
+            });
+            let totalWeight = 0;
 
             const renderPool = async (pool: Record<string, number>, title?: string) => {
                 // Filter out items with 0 quantity so we only create headers/grids if there are items to show
@@ -860,7 +905,52 @@ export default class DnDFeaturesPlugin extends Plugin {
                     // STRICT ONE LINE CONTAINER 
                     // Using createEl("span") safely breaks the '.dnd-features-window > div > div' CSS rule!
                     const itemRow = gridContainer.createEl("span", {
-                        attr: { style: "display: flex; flex-direction: row; align-items: center; width: 100%; padding: 3px 0;" }
+                        attr: { style: "display: flex; flex-direction: row; align-items: center; width: 100%; padding: 3px 0; cursor: default;" }
+                    });
+
+                    // --- HOVER TOOLTIP ENGINE ---
+                    const X_OFFSET = 12; // Pixels to the right of the cursor
+                    const Y_OFFSET = 15; // Pixels below the cursor
+
+                    itemRow.addEventListener('mouseenter', async (e) => {
+                        tooltipWindow.empty(); // Wipe the previous item's data
+
+                        // 1. Name & Category
+                        tooltipWindow.createEl("h4", { text: data.name, attr: { style: "margin: 0 0 4px 0; color: var(--dnd-text-bright); font-size: 1.1em;" } });
+                        if (data.type) {
+                            tooltipWindow.createEl("div", { text: data.type.toUpperCase(), attr: { style: "font-size: 0.75em; color: var(--dnd-text-secondary); letter-spacing: 1px; margin-bottom: 8px;" } });
+                        }
+
+                        // 2. Stats (Weight & Cost)
+                        const statsDiv = tooltipWindow.createDiv({ attr: { style: "display: flex; gap: 15px; margin-bottom: 8px; font-size: 0.85em; color: var(--dnd-text-muted);" } });
+                        
+                        if (data.weight) statsDiv.createEl("span", { text: `Weight: ${data.weight} lbs` });
+                        if (data.cost) statsDiv.createEl("span", { text: `Cost: ${data.cost} GP` });
+
+                        // 3. Description (Rendered securely with your Markdown engine!)
+                        if (data.description) {
+                            const descDiv = tooltipWindow.createDiv({ attr: { style: "font-size: 0.9em; line-height: 1.4; color: var(--dnd-text-primary);" } });
+                            await this.renderDndMarkdown(data.description, descDiv, ctx.sourcePath, renderChild);
+                        }
+
+                        // Make visible and position using your custom variables
+                        tooltipWindow.style.display = "block";
+                        tooltipWindow.style.left = `${e.clientX + X_OFFSET}px`;
+                        tooltipWindow.style.top = `${e.clientY + Y_OFFSET}px`; 
+                    });
+
+                    // Smoothly follow the mouse, using your custom variables
+                    itemRow.addEventListener('mousemove', (e) => {
+                        const xPos = e.clientX + X_OFFSET; 
+                        const safeX = (xPos + 300 > window.innerWidth) ? e.clientX - 300 - X_OFFSET : xPos;
+                        
+                        tooltipWindow.style.left = `${safeX}px`;
+                        tooltipWindow.style.top = `${e.clientY + Y_OFFSET}px`;
+                    });
+
+                    // Hide it instantly when the mouse leaves the row
+                    itemRow.addEventListener('mouseleave', () => {
+                        tooltipWindow.style.display = "none";
                     });
 
                     // 1. Badge 
@@ -881,6 +971,8 @@ export default class DnDFeaturesPlugin extends Plugin {
 
                     if (data.weight) {
                         rightSide.createEl("span", { text: `${data.weight * qty}lbs,  ` });
+                        
+                        totalWeight += (data.weight * qty);
                     }
                     if (data.cost) {
                         rightSide.createEl("span", { text: `${data.cost}GP` });
@@ -890,7 +982,8 @@ export default class DnDFeaturesPlugin extends Plugin {
 
             await renderPool(startingItemCounts);
             await renderPool(extraItemCounts, "Extra Items");
-
+            weightTracker.setText(`Weight: ${totalWeight % 1 === 0 ? totalWeight : totalWeight.toFixed(1)} lbs`);
+            
             el.empty();
             el.appendChild(wrapper);
         };
@@ -904,6 +997,60 @@ export default class DnDFeaturesPlugin extends Plugin {
         );
     }
 
+}
+
+// --- REFERENCE RULES DATABASE ---
+// You can add all your hardcoded notes here! 
+const REFERENCE_RULES: Record<string, { title: string, text: string }> = {
+    "incapacitated": {
+        title: "Incapacitated",
+        text: "An incapacitated creature can't take **Actions** or **Reactions**."
+    },
+    "beast": {
+        title: "Beast (Creature Type)",
+        text: "Beasts are nonhumanoid creatures that are a natural part of the fantasy ecology. Some of them have magical powers, but most are unintelligent and lack any society or language."
+    }
+};
+
+// --- THE POP-UP UI ---
+class NoteModal extends Modal {
+    plugin: DnDFeaturesPlugin;
+    noteKey: string;
+
+    constructor(app: App, plugin: DnDFeaturesPlugin, noteKey: string) {
+        super(app);
+        this.plugin = plugin;
+        this.noteKey = noteKey;
+    }
+
+    async onOpen() {
+        const { contentEl, titleEl } = this;
+        
+        // Formats the title nicely (e.g., "wild-magic-surge" becomes "Wild Magic Surge")
+        const formattedTitle = this.noteKey.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+        titleEl.setText(formattedTitle);
+
+        // Construct the strict path to the file inside your hidden plugin folder
+        const filePath = `${this.plugin.manifest.dir}/${this.noteKey}.md`;
+
+        try {
+            // Read the physical file dynamically!
+            const fileContent = await this.app.vault.adapter.read(filePath);
+            
+            // Render the fetched markdown into the pop-up
+            MarkdownRenderer.render(this.app, fileContent, contentEl, "", null as any);
+        } catch (error) {
+            // Fallback if the file doesn't exist or is spelled wrong
+            contentEl.createEl("p", { 
+                text: `Error: Could not find "${this.noteKey}.md" in the root of the plugin folder.`,
+                cls: "dnd-error-text"
+            });
+        }
+    }
+
+    onClose() {
+        this.contentEl.empty();
+    }
 }
 
 // --- Settings Tab UI ---
