@@ -1,6 +1,7 @@
 # DnD Character Sheet Helper
 
-The DnD Character Sheet Helper is an Obsidian Plugin that brings the DnD Rulebook 5.5e (2024) right inside your Digital Character Sheet. This is not a replacement for the DnD Player's Handbook, but just a handyy tool that gives you only the information you might need, or you wouldn't remeber on top of your mind, while playing.
+> [!EXAMPLE]
+> The DnD Character Sheet Helper is an Obsidian Plugin that brings the DnD Rulebook 5.5e (2024) right inside your Digital Character Sheet. This is not a replacement for the DnD Player's Handbook, but just a handyy tool that gives you only the information you might need, or you wouldn't remeber on top of your mind, while playing.
 (If text has anything written wrong please make an Issue Report on GitHub. I maintaine it myself)
 
 ## DnD Character Features:
@@ -58,6 +59,7 @@ The Gold section is always visible and will have as base rate the gold provided 
 
 The Backpack section is also always visible and wil be automatically populated with the items given to your character from their class and backround. If given the choise between items from your class or background you will have to use the *class-chosen-items* and *background-chosen-items*.
 
+> [!TIP]
 > The aforementioned variables are used to select an Artisan's Tool, a Musical Instrument, or a Gaming Set depeding on what's provided by the class or background. For more information on your choices always look through the actual DnD Player's Handbook.
 
 ## Extra Features:
@@ -96,6 +98,7 @@ rulebook/
 
 The backgrounds.json, classes.json and races.json work as router files to the specific feat, class, or race JSON is needed for better modularity.
 
+> [!TIP]
 > All text fields support the markdown format with some custom spacing so that information can more easily fit inside the UI. Use `\n` for line-break and `\t` for tabs as normal.
 
 The structure of each JSON file is as follows:
