@@ -1,11 +1,11 @@
-name: Build and Update Beta-Release
+name: Build and Update -Release
 
 on:
   push:
     branches:
       - main
     paths:
-      - '-manifest.json'
+      - 'manifest.json'
 
 jobs:
   build-and-release:
@@ -40,7 +40,7 @@ jobs:
 
           # 1. Extract version from manifest.json using jq
           VERSION=$(jq -r .version manifest.json)
-          TAG_NAME="v${VERSION}-beta"
+          TAG_NAME="v${VERSION}"
           
           echo "Target tag is $TAG_NAME"
 
@@ -52,7 +52,7 @@ jobs:
           git push -f origin "$TAG_NAME"
 
           # 4. Create release if missing, or update if it exists
-          gh release view "$TAG_NAME" >/dev/null 2>&1 || gh release create "$TAG_NAME" --prerelease --title "Beta Release ($TAG_NAME)" --notes "Automated beta build"
+          gh release view "$TAG_NAME" >/dev/null 2>&1 || gh release create "$TAG_NAME" --title "Latest Release ($TAG_NAME)" --notes "Automated build"
 
           # 5. Upload assets
           gh release upload "$TAG_NAME" main.js styles.css manifest.json --clobber
