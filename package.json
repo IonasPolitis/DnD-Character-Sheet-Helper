@@ -4,18 +4,20 @@
   "description": "> [!NOTE] > The DnD Character Sheet Helper is an Obsidian Plugin that brings the DnD Rulebook 5.5e (2024) right inside your Digital Character Sheet. This is not a replacement for the DnD Player's Handbook, but just a handyy tool that gives you only the information you might need, or you wouldn't remeber on top of your mind, while playing. (If text has anything written wrong please make an Issue Report on GitHub. I maintaine it myself)",
   "main": "main.js",
   "dependencies": {
-    "crelt": "^1.0.7",
-    "esbuild": "^0.28.2",
-    "moment": "^2.29.4",
-    "obsidian": "^1.13.1",
-    "style-mod": "^4.1.3",
-    "typescript": "^7.0.2",
-    "w3c-keyname": "^2.2.8"
+    "crelt": "1.0.7",
+    "esbuild": "0.28.2",
+    "moment": "2.29.4",
+    "obsidian": "1.13.1",
+    "style-mod": "4.1.3",
+    "typescript": "7.0.2",
+    "w3c-keyname": "2.2.8"
   },
   "devDependencies": {},
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
+  "dev": "node esbuild.config.mjs",
+  "prebuild": "node generate-registry.js",
+  "build": "esbuild main.ts --bundle --platform=node --target=es2022 --external:obsidian --outfile=main.js"
+},
   "repository": {
     "type": "git",
     "url": "git+https://github.com/IonasPolitis/DnD-Character-Sheet-Helper.git"
