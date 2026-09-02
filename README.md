@@ -29,6 +29,9 @@ Write down a Feature's name as in on the screen inside the variable *hide* to hi
 
 The rest of the variables should be self-explanatory.
 
+> [!TIP]
+> Sometimes a class feature may have you select one of many options permenantly. Those specific features have duplicates with each one being one of the options you might choose. You can use the *hide* variable to hide the options you did not choose.
+
 ## DnD Character Inventory:
 
 An easy way to manage your character's inventory including. There is a section for managing your Gold, a section for Weapon / Armor, a section for starter items and a section for extra items added in later on.
