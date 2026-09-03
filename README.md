@@ -130,13 +130,13 @@ The structure of each JSON file is as follows:
 - class.json:
 ```json
 {
-    "class": "<Class_Name>>",
+    "class": "<Class_Name>",
     "subclassFile": "<Subclass_File_Name>",
     "starting-equipment": {
         "A": {
             "items": {
-                "<Item_File_Name>>": 0,
-                "<Item_File_Name>>": 0,
+                "<Item_File_Name>": 0,
+                "<Item_File_Name>": 0,
                 "musical-instrument|": 0, // <optional_DnD_item_type>
                 "artisans-tool|musical-instrument": 0, // <optional_DnD_multiple_items_w/_type>
 		    "<item_type|>" : 0 // <optional_homebrew_item_type>
@@ -148,7 +148,9 @@ The structure of each JSON file is as follows:
         "<Level>": [
             {
                 "name": "<Feature_Name>",
-                "description": "<Feature_Description>"
+                "description": "<Feature_Description>",
+                "badge": "<Custom_Badge_Text_Inplace_of_Level>", // <optional>
+                "grantedFeats": "<Feat_Name>"
             }
         ]
       }
@@ -157,6 +159,8 @@ The structure of each JSON file is as follows:
 Sometimes DnD classes or backgrounds offer a choice of an item category (like any Musical Instrument or Artisan's Tool) rather than a specific item. To handle this you can use items' Type instead of a single item's filename
 
 By adding a pipe character (|) to an item key in your class.json or backgrounds.json (e.g: "musical-instrument|": 1 or "artisans-tool|musical-instrument": 1), you tell the plugin to wait for the player's choice. The plugin will automatically scan the player's *class-chosen-items* or *background-chosen-items* variables in their note, find an item whose "type" matches the requirement, and seamlessly add it to their inventory.
+
+The *granted-feat* variables automatically grants the player a certain feat when that level is reached and can be viewd in the "Extra Feats" section.
 
 - $class-subclasses.json:
 ```json

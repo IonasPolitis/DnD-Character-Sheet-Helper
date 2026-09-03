@@ -1,0 +1,27 @@
+{
+    "class": "Desperate Measures",
+    "features": {
+        "1": [
+            {
+                "name": "One Death Save",
+                "description": " - The player can immediately take dash and disengage as extra actions.\n - The player can give themself a +5 bonus to any d20 test they just failed.\n - The player can reroll a failed d20 attack roll.",
+                "badge": "Homebrew Rule"
+            },
+            {
+                "name": "Two Death Save",
+                "description": " - If an attack roll hits, each damage die deals maximum damage.",
+                "badge": "Homebrew Rule"
+            },
+            {
+                "name": "Three Death Save",
+                "description": " - The player can immediately take the Attack or Magic action as an extra action.\n - The player immediately regains an expended spell slot of Level 1 through 5.",
+                "badge": "Homebrew Rule"
+            },
+            {
+                "name": "WHile Unconscious",
+                "description": "Every round, a character can choose to give another character within sight Heroic Inspiration, or alternatively, if they have no death save failures, they can choose to stabilize themselves.",
+                "badge": "Homebrew Rule"
+            }
+        ]
+      }
+}
