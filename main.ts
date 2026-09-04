@@ -113,8 +113,6 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
         container.addEventListener('click', (event) => {
             let target = event.target as HTMLElement;
 
-            // BUG FIX: If the user clicked bold or italic text inside the link, 
-            // the target is <strong> or <em>. We must climb up to find the actual <a> tag!
             const closestLink = target.closest('a');
             if (closestLink) {
                 target = closestLink;
@@ -252,7 +250,6 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
             const extraFeats = resolveValue(blockData['extra-feats']);
             const hideRaw = resolveValue(blockData.hide);
 
-            // --- THE GATEKEEPER SETUP ---
             // Normalize the 'hide' variable into a clean array of lowercased strings to prevent typo-misses
             let hiddenFeatures: string[] = [];
             if (Array.isArray(hideRaw)) {
@@ -344,7 +341,6 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
             // Loop through the user's custom section order using a for...of loop to support async/await
             for (const sectionName of this.settings.sectionOrder) {
                 // 1. CONDITIONAL RENDERING: Skip this section entirely if the user didn't provide the variable
-                // Notice how we use 'continue' now instead of 'return' so we don't break the async loop!
                 if (sectionName === "Class" && !dndClass) continue;
                 if (sectionName === "Subclass" && (!subclass || this.settings.combineClassSubclass || Number(level) < 3)) continue;
                 if (sectionName === "Race" && !race) continue;
@@ -404,7 +400,6 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
 
                             if (this.settings.combineClassSubclass && subclassArray[index] && classData.subclassFile) {
                                 const subclassName = subclassArray[index];
-                                // Added await and passed this.app, this.settings
                                 const subclassData = await getSubclassData(this.app, this.settings, classData.subclassFile, subclassName);
                                 const subLevelFeatures = subclassData ? subclassData[i.toString()] : null;
 
@@ -473,12 +468,9 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
 
                     if (raceData && raceData.traits) {
                         for (const trait of raceData.traits) {
-                            // --- THE GATEKEEPER LOGIC ---
                             if (trait.name && hiddenFeatures.includes(trait.name.toLowerCase())) continue;
 
-                            // If this trait has a specific lineage flag...
                             if (trait.lineage) {
-                                // ...skip rendering it if the user didn't provide a lineage OR if it doesn't match!
                                 if (!raceLineage || trait.lineage.toLowerCase() !== String(raceLineage).toLowerCase()) {
                                     continue;
                                 }
@@ -504,7 +496,6 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
 
                 // Render Background Section
                 else if (sectionName === "Background") {
-                    // Fetch the updated background object, then fetch the specific feat data based on the new structure
                     const bgData = await getBackgroundData(this.app, this.settings, background);
                     const featData = bgData && bgData.feat ? await getExtraFeat(this.app, this.settings, bgData.feat) : null;
 
@@ -524,9 +515,7 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
 
                 // Render Extra Feats Section
                 else if (sectionName === "Extra Feats") {
-                    // Changed to a for...of loop so it properly respects the await command!
                     for (const featId of finalExtraFeats) {
-                        // Ensure featId is a string before passing it
                         const safeFeatId = typeof featId === 'string' ? featId : String(featId);
                         const featData = await getExtraFeat(this.app, this.settings, safeFeatId);
 
@@ -546,11 +535,10 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                         }
                     }
                 }
-            } // <-- This closes the sectionName loop perfectly!
-            // Now that all async fetching and rendering is 100% complete, push it to the screen!
+            }
             el.empty();
             el.appendChild(wrapper);
-        }; // <-- This closes our new renderContent() function
+        };
 
         // 3. Initial Render
         renderContent();
@@ -558,7 +546,6 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
         // 4. Register Event Listener for Frontmatter Changes
         renderChild.registerEvent(
             this.app.metadataCache.on('changed', (file) => {
-                // If the file that changed is the one we are currently looking at, re-render!
                 if (file.path === ctx.sourcePath) {
                     renderContent();
                 }
@@ -574,7 +561,6 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
             const wrapper = document.createElement('div');
 
             // --- THE INVENTORY TOOLTIP ---
-            // Attached to document.body so coordinate (0,0) is always the true screen origin
             const tooltipWindow = document.body.createDiv({
                 cls: "dnd-inventory-tooltip",
                 attr: { style: "position: fixed; display: none; z-index: 9999; background: var(--dnd-bg-secondary); border: 1px solid var(--dnd-border-primary); border-radius: 6px; padding: 12px; width: 300px; box-shadow: 0 8px 16px rgba(0,0,0,0.6); pointer-events: none;" }
@@ -613,7 +599,7 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
 
             // --- Phase 1 & 2: Pre-Pass & Build the "Available Choices" Pools ---
             const classChosenItemsRaw = resolveValue(blockData['class-chosen-items']);
-            const bgChosenItemsRaw = resolveValue(blockData['background-chosen-items']); // New variable
+            const bgChosenItemsRaw = resolveValue(blockData['background-chosen-items']);
 
             // Helper to sanitize items natively
             const sanitizeItem = (val: any) => {
@@ -648,7 +634,6 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
             const extraItemCounts: Record<string, number> = {};
 
             // --- Phase 3: The Greedy Matcher Engine ---
-            // We now pass a specific 'sourcePool' so the engine knows WHICH choices it is allowed to consume!
             const addItemsToPool = (eqData: any, targetPool: Record<string, number>, sourcePool: { id: string, type: string }[]) => {
                 if (!eqData) return;
                 if (eqData.gold) grantedGold += Number(eqData.gold);
@@ -693,10 +678,8 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                                 // Add it to the backpack
                                 targetPool[poolItem.id] = (targetPool[poolItem.id] || 0) + 1;
                                 amountNeeded -= 1;
-
-                                // Remove it from the specific pool so it can't be used twice!
                                 sourcePool.splice(i, 1);
-                                i--; // Adjust index since we mutated the array
+                                i--;
                             }
                         }
                     }
@@ -706,7 +689,6 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
             if (dndClass && classEq) {
                 const primaryClass = Array.isArray(dndClass) ? dndClass[0] : dndClass;
                 const classData = await getClassData(this.app, this.settings, primaryClass);
-                // Fill the pool strictly using the class's chosen items!
                 if (classData?.['starting-equipment']) addItemsToPool(classData['starting-equipment'][classEq], startingItemCounts, classChosenItemsPool);
             }
 
@@ -715,7 +697,6 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                 // Fetch the background data
                 const bgData = await getBackgroundData(this.app, this.settings, background);
 
-                // Fill the pool strictly using the background's chosen items, routing through the A/B choice!
                 if (bgData?.['starting-equipment']) {
                     addItemsToPool(bgData['starting-equipment'][bgEq], startingItemCounts, bgChosenItemsPool);
                 }
@@ -726,7 +707,6 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
             if (Array.isArray(extraItemsRaw)) {
                 extraItems = extraItemsRaw;
             } else if (typeof extraItemsRaw === 'string') {
-                // Split comma-separated strings into a proper array
                 extraItems = extraItemsRaw.split(',');
             } else if (extraItemsRaw) {
                 extraItems = [String(extraItemsRaw)];
@@ -760,7 +740,6 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
             const equippedArmor = consumeItem(armorSlot);
 
             // --- 4. RENDER UI ---
-
             wrapper.createEl("h3", { text: "Equipment, Wealth & Items:", cls: "dnd-section-header" });
 
             // -----------------------------------------------------------
@@ -789,7 +768,6 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                     let data = await getItemData(this.app, this.settings, safeName);
 
                     // 2. Type-Checking: Ensure the item exists AND matches the expected type
-                    // Using .includes() safely handles sub-types like "Melee Weapon" or "Light Armor"
                     const isRecognizedType = data && data.type && String(data.type).toLowerCase().includes(expectedType.toLowerCase());
 
                     // Default to fallback behavior (raw name, manual stat, no description)
@@ -908,8 +886,7 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                     const fallbackName = itemId.replace(/\b\w/g, c => c.toUpperCase()).replace(/-/g, ' ');
                     if (!data) data = { name: fallbackName, description: "" };
 
-                    // STRICT ONE LINE CONTAINER 
-                    // Using createEl("span") safely breaks the '.dnd-features-window > div > div' CSS rule!
+                    // STRICT ONE LINE CONTAINER
                     const itemRow = gridContainer.createEl("span", {
                         attr: { style: "display: flex; flex-direction: row; align-items: center; width: 100%; padding: 3px 0; cursor: default;" }
                     });
@@ -967,8 +944,6 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                     const colon = hasExtraInfo ? ": " : "";
 
                     itemRow.createEl("strong", { text: data.name + colon, attr: { style: "color: var(--dnd-text-bright); margin-right: 4px" } });
-
-                    // (Description has been completely removed to prepare for the hover implementation!)
 
                     // 3. Weight & Cost (Fixed the 'display: color:' typo here)
                     const rightSide = itemRow.createEl("span", {
@@ -1075,12 +1050,8 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
             // Fix 3: Actually append the fully built wrapper to Obsidian's element
             el.empty();
             el.appendChild(wrapper);
-        }; // <-- Closes renderContent()
-
-        // Execute the render function initially
+        };
         renderContent();
-
-        // Register the event listener so it updates automatically if the frontmatter changes
         renderChild.registerEvent(
             this.app.metadataCache.on('changed', (file) => {
                 if (file.path === ctx.sourcePath) renderContent();
@@ -1103,12 +1074,10 @@ class NoteModal extends Modal {
     async onOpen() {
         const { contentEl, titleEl } = this;
 
-        // Formats the title nicely (e.g., "wild-magic-surge" becomes "Wild Magic Surge")
         const formattedTitle = this.noteKey.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
         titleEl.setText(formattedTitle);
 
         // --- BUNDLED REGISTRY LOOKUP ---
-        // Fetch the text directly from memory instead of the file system!
         const fileContent = MarkdownNotes[this.noteKey];
 
         if (fileContent) {
@@ -1151,7 +1120,7 @@ class DnDSettingsTab extends PluginSettingTab {
                 .onChange(async (value) => {
                     this.plugin.settings.combineClassSubclass = value;
                     await this.plugin.saveSettings();
-                    this.display(); // Visually refresh the settings tab to hide/show Subclass
+                    this.display();
                 }));
 
         // --- Custom Rulebook Settings ---
@@ -1188,13 +1157,11 @@ class DnDSettingsTab extends PluginSettingTab {
 
         // Loop through our saved array to build the UI
         this.plugin.settings.sectionOrder.forEach((sectionName) => {
-            // Hide the Subclass item if the toggle is active
             if (this.plugin.settings.combineClassSubclass && sectionName === 'Subclass') return;
 
             const item = listContainer.createDiv({ text: sectionName, cls: 'dnd-draggable-item' });
             item.draggable = true;
 
-            // HTML5 Drag and Drop Event Listeners
             item.addEventListener('dragstart', () => {
                 dragSource = item;
                 item.style.opacity = '0.4';
@@ -1247,9 +1214,9 @@ class DnDSettingsTab extends PluginSettingTab {
                 .setValue(this.plugin.settings.themeChoice)
                 .onChange(async (value) => {
                     this.plugin.settings.themeChoice = value as "default" | "custom";
-                    this.plugin.applyTheme(); // Instantly apply changes
+                    this.plugin.applyTheme();
                     await this.plugin.saveSettings();
-                    this.display(); // Refresh UI to show/hide color pickers
+                    this.display();
                 }));
 
         // Only show color pickers if "Custom" is selected
@@ -1269,7 +1236,7 @@ class DnDSettingsTab extends PluginSettingTab {
                 containerEl.createEl('h4', { text: groupName, cls: 'dnd-settings-subgroup' });
 
                 variables.forEach((variable) => {
-                    const cleanName = variable.replace('--dnd-', '').replace(/-/g, ' '); // E.g., "--dnd-bg-primary" becomes "bg primary"
+                    const cleanName = variable.replace('--dnd-', '').replace(/-/g, ' ');
 
                     new Setting(containerEl)
                         .setName(cleanName.charAt(0).toUpperCase() + cleanName.slice(1)) // Capitalize first letter
