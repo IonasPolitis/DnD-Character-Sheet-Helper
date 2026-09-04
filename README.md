@@ -62,6 +62,19 @@ The Backpack section is also always visible and wil be automatically populated w
 > [!TIP]
 > The aforementioned variables are used to select an Artisan's Tool, a Musical Instrument, or a Gaming Set depeding on what's provided by the class or background. For more information on your choices always look through the actual DnD Player's Handbook.
 
+## Rules Block:
+
+A way to add Custom Rules to your Character Sheet.
+
+A Sample of the Code Block looks like this:
+````markdown
+```dnd-inventory
+rules: $list$
+```
+````
+#### Critical Role:
+I have also added Critcal Role's Campaign 4 Desperate Measures mechanic as a *"class"*. ItJust thought it was an interesting mechanic and I've used it in my campaigns ever since I found out about it.
+
 ## Extra Features:
 
  - Code Blocks have frontmatter support by using the key-word "frontmatter." + a note property's name.
@@ -90,10 +103,14 @@ rulebook/
 │   └── <add your custom items>
 ├── races/
 │   └── <add your custom races>
+├── rules/
+│   └── <add your custom rules>
 ├── backgrounds.json
 ├── classes.json
 ├── items.json
-└── races.json
+├── races.json
+└── rules.json
+
 ```
 
 The backgrounds.json, classes.json and races.json work as router files to the specific feat, class, or race JSON is needed for better modularity.
@@ -102,10 +119,10 @@ The backgrounds.json, classes.json and races.json work as router files to the sp
 > All text fields support the markdown format with some custom spacing so that information can more easily fit inside the UI. Use `\n` for line-break and `\t` for tabs as normal.
 
 The structure of each JSON file is as follows:
-- classes/races/items.json:
+- classes/races/items/rules.json:
 ```json
 {
-	"<Class/Race/Item_Name>": "<Class/Race/Item_File_Name>"
+	"<Class/Race/Item/Rule_Name>": "<Class/Race/Item/Rule_File_Name>"
 }
 ```
 
@@ -208,6 +225,20 @@ The *lineage* variable in the race.json is a Flag, making it so that this trait 
       "damage": "<Damage_Dice+Damage_Type>", // <optional>
       "ac": "<Armor's_Base_AC>", // <optional>
       "cost": 0
+}
+```
+
+- rule.json:
+```json
+{
+    "name": "Desperate Measures",
+    "rules": [
+            {
+                "name": "<Rule_Section_Name>",
+                "description": "<Rule_Section_Description>",
+                "badge": "<Custom_Badge_Text>" // <optional>
+            }
+    ]
 }
 ```
 

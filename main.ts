@@ -1,5 +1,5 @@
 import { App, Plugin, PluginSettingTab, Setting, MarkdownPostProcessorContext, parseYaml, MarkdownRenderChild, MarkdownRenderer, TFile, Modal } from 'obsidian';
-import { getClassData, getSubclassData, getBackgroundData, getRaceData, getExtraFeat, getItemData } from './data';
+import { getClassData, getSubclassData, getBackgroundData, getRaceData, getExtraFeat, getItemData, getRuleData } from './data';
 import { MarkdownNotes } from './registry';
 
 // 1. Define the shape of our settings
@@ -30,7 +30,7 @@ const DEFAULT_SETTINGS: DnDPluginSettings = {
     }
 }
 
-export default class DnDFeaturesPlugin extends Plugin {
+export default class DnDCharacterSheetHelperPlugin extends Plugin {
     // Add the settings property
     settings: DnDPluginSettings;
 
@@ -54,6 +54,12 @@ export default class DnDFeaturesPlugin extends Plugin {
         this.registerMarkdownCodeBlockProcessor(
             "dnd-inventory",
             this.processDnDInventoryBlock.bind(this)
+        );
+
+        // Register the processor for the inventory block
+        this.registerMarkdownCodeBlockProcessor(
+            "dnd-rules",
+            this.processDnDRulesBlock.bind(this)
         );
     }
 
@@ -106,7 +112,7 @@ export default class DnDFeaturesPlugin extends Plugin {
         // 2.5 Intercept custom "note:" links to open our pop-up modal!
         container.addEventListener('click', (event) => {
             let target = event.target as HTMLElement;
-            
+
             // BUG FIX: If the user clicked bold or italic text inside the link, 
             // the target is <strong> or <em>. We must climb up to find the actual <a> tag!
             const closestLink = target.closest('a');
@@ -119,10 +125,10 @@ export default class DnDFeaturesPlugin extends Plugin {
                 // Listen for your new generic "note:" syntax
                 if (href && href.startsWith('note:')) {
                     event.preventDefault(); // Stop Obsidian from navigating away
-                    
+
                     // Extract the filename (e.g., "note:wild-magic-surge" -> "wild-magic-surge")
-                    const noteKey = href.replace('note:', '').toLowerCase(); 
-                    
+                    const noteKey = href.replace('note:', '').toLowerCase();
+
                     // Pass 'this' (the plugin instance) so the Modal can find the plugin folder!
                     new NoteModal(this.app, this, noteKey).open();
                 }
@@ -134,7 +140,7 @@ export default class DnDFeaturesPlugin extends Plugin {
         if (firstChild && firstChild.tagName.match(/^H[1-6]$/i)) {
             firstChild.style.marginTop = '0';
         }
-        
+
         // 4. Strip the bottom margin from the very last child to eliminate dead space!
         const lastChild = container.lastElementChild as HTMLElement;
         if (lastChild) {
@@ -146,11 +152,11 @@ export default class DnDFeaturesPlugin extends Plugin {
         blockElements.forEach((el: Element) => {
             const htmlEl = el as HTMLElement;
             const tag = htmlEl.tagName.toLowerCase();
-            
+
             // 1. BASELINE: Zero out vertical margins for every single element by default
             htmlEl.style.marginTop = '0';
             htmlEl.style.marginBottom = '0';
-            
+
             // 2. EXCEPTIONS: Standard block elements that NEED breathing room
             if (['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'table', 'blockquote', 'pre', 'hr'].includes(tag)) {
                 htmlEl.style.marginTop = '0.5em';
@@ -162,38 +168,38 @@ export default class DnDFeaturesPlugin extends Plugin {
             }
             // 4. LIST CONTAINERS: Strip hidden padding/margins and flush to the left edge
             else if (tag === 'ul' || tag === 'ol') {
-                htmlEl.style.paddingTop = '0'; 
-                htmlEl.style.marginLeft = '0'; 
+                htmlEl.style.paddingTop = '0';
+                htmlEl.style.marginLeft = '0';
                 htmlEl.style.paddingLeft = '0'; // Flushed completely left!
             }
             // 5. BULLET POINTS: The Custom Styled Injection
             else if (tag === 'li') {
                 // 1. Hide the rigid native bullet
                 htmlEl.style.listStyleType = 'none';
-                 
+
                 // 2. List's Text
                 htmlEl.style.paddingLeft = '0'; // 'paddingLeft' is 0 so wrapped text hits the edge
                 htmlEl.style.marginLeft = '0'; // 'textIndent' pushes ONLY the first line inward
                 htmlEl.style.textIndent = '1.05em'; // Adjust List Text (text after a bullet-point) placement
-                
+
                 // 3. Set relative positioning so our custom bullet can float inside this space
-                htmlEl.style.position = 'relative'; 
-                
+                htmlEl.style.position = 'relative';
+
                 // 4. Bullet-Point adjustment.
                 if (!htmlEl.getAttribute('data-custom-bullet')) {
                     const bulletSpan = document.createElement('span');
                     bulletSpan.innerHTML = '&bull;'; // Standard bullet entity
-                    
+
                     // Style it to match Obsidian's native look perfectly!
                     bulletSpan.style.position = 'absolute';
                     bulletSpan.style.left = '0'; // Adjust bullet-point placement 
                     bulletSpan.style.textIndent = '0'; // Ensure the absolute bullet ignores the text-indent of the parent
-                    
+
                     bulletSpan.style.lineHeight = '1';
                     bulletSpan.style.top = '-0.175em'; // Adjust height position
                     bulletSpan.style.color = 'var(--dnd-text-secondary)'; // Adjust colour pallete
                     bulletSpan.style.fontSize = '2em'; // Adjust size
-                    
+
                     htmlEl.insertBefore(bulletSpan, htmlEl.firstChild);
                     htmlEl.setAttribute('data-custom-bullet', 'true');
                 }
@@ -297,7 +303,6 @@ export default class DnDFeaturesPlugin extends Plugin {
             let finalExtraFeats = Array.isArray(extraFeats) ? [...extraFeats] : (extraFeats ? [extraFeats] : []);
 
             if (dndClass) {
-                // Changed from forEach to a standard for-loop so we can await the data!
                 for (let index = 0; index < classArray.length; index++) {
                     const className = classArray[index];
                     const currentClassLevel = (classArray.length > 1 && Array.isArray(classLevels) && classLevels.length > index)
@@ -502,7 +507,7 @@ export default class DnDFeaturesPlugin extends Plugin {
                     // Fetch the updated background object, then fetch the specific feat data based on the new structure
                     const bgData = await getBackgroundData(this.app, this.settings, background);
                     const featData = bgData && bgData.feat ? await getExtraFeat(this.app, this.settings, bgData.feat) : null;
-                    
+
                     if (featData && !hiddenFeatures.includes(featData.name.toLowerCase())) {
                         const featureBlock = sectionDiv.createDiv({ cls: "dnd-feature-block" });
                         const titleContainer = featureBlock.createDiv({ cls: "dnd-feature-title" });
@@ -567,7 +572,7 @@ export default class DnDFeaturesPlugin extends Plugin {
 
         const renderContent = async () => {
             const wrapper = document.createElement('div');
-            
+
             // --- THE INVENTORY TOOLTIP ---
             // Attached to document.body so coordinate (0,0) is always the true screen origin
             const tooltipWindow = document.body.createDiv({
@@ -605,11 +610,11 @@ export default class DnDFeaturesPlugin extends Plugin {
             const armorSlot = resolveValue(blockData.armor);
             const armorAc = resolveValue(blockData.armor_ac);
             const extraItemsRaw = resolveValue(blockData['extra-items']);
-            
+
             // --- Phase 1 & 2: Pre-Pass & Build the "Available Choices" Pools ---
             const classChosenItemsRaw = resolveValue(blockData['class-chosen-items']);
             const bgChosenItemsRaw = resolveValue(blockData['background-chosen-items']); // New variable
-            
+
             // Helper to sanitize items natively
             const sanitizeItem = (val: any) => {
                 if (!val) return null;
@@ -682,13 +687,13 @@ export default class DnDFeaturesPlugin extends Plugin {
                         // Search the SPECIFIC source pool for matching items
                         for (let i = 0; i < sourcePool.length && amountNeeded > 0; i++) {
                             const poolItem = sourcePool[i];
-                            
+
                             // If the item's type matches one of the slot's accepted types...
                             if (acceptedTypes.includes(poolItem.type)) {
                                 // Add it to the backpack
                                 targetPool[poolItem.id] = (targetPool[poolItem.id] || 0) + 1;
                                 amountNeeded -= 1;
-                                
+
                                 // Remove it from the specific pool so it can't be used twice!
                                 sourcePool.splice(i, 1);
                                 i--; // Adjust index since we mutated the array
@@ -709,7 +714,7 @@ export default class DnDFeaturesPlugin extends Plugin {
             if (background && bgEq) {
                 // Fetch the background data
                 const bgData = await getBackgroundData(this.app, this.settings, background);
-                
+
                 // Fill the pool strictly using the background's chosen items, routing through the A/B choice!
                 if (bgData?.['starting-equipment']) {
                     addItemsToPool(bgData['starting-equipment'][bgEq], startingItemCounts, bgChosenItemsPool);
@@ -731,7 +736,7 @@ export default class DnDFeaturesPlugin extends Plugin {
                 // Use our global helper to sanitize the string instantly
                 const safeItem = sanitizeItem(item);
                 if (!safeItem) continue;
-                
+
                 // Directly load the item! No variantMap interception is needed.
                 extraItemCounts[safeItem] = (extraItemCounts[safeItem] || 0) + 1;
             }
@@ -741,14 +746,14 @@ export default class DnDFeaturesPlugin extends Plugin {
                 // Using the helper protects against stray quotes in the frontmatter!
                 const safeName = sanitizeItem(rawItemName);
                 if (!safeName) return null;
-                
+
                 if (startingItemCounts[safeName] && startingItemCounts[safeName] > 0) {
                     startingItemCounts[safeName] -= 1;
                 } else if (extraItemCounts[safeName] && extraItemCounts[safeName] > 0) {
                     extraItemCounts[safeName] -= 1;
                 }
                 // Return clean, exact text (without quotes) for fallback display
-                return String(rawItemName).replace(/['"]/g, '').trim(); 
+                return String(rawItemName).replace(/['"]/g, '').trim();
             };
 
             const equippedWeapon = consumeItem(weaponSlot);
@@ -763,8 +768,8 @@ export default class DnDFeaturesPlugin extends Plugin {
             // -----------------------------------------------------------
             if (equippedWeapon || equippedArmor) {
                 // Main container with attr to ensure Flexbox works
-                const equipGrid = wrapper.createDiv({ 
-                    attr: { style: "display: flex; gap: 10px;" } 
+                const equipGrid = wrapper.createDiv({
+                    attr: { style: "display: flex; gap: 10px;" }
                 });
 
                 const renderSlot = async (
@@ -780,9 +785,9 @@ export default class DnDFeaturesPlugin extends Plugin {
 
                     // Use the global helper so item mapping is always perfectly consistent
                     const safeName = sanitizeItem(rawItemInput) as string;
-                    
+
                     let data = await getItemData(this.app, this.settings, safeName);
-                    
+
                     // 2. Type-Checking: Ensure the item exists AND matches the expected type
                     // Using .includes() safely handles sub-types like "Melee Weapon" or "Light Armor"
                     const isRecognizedType = data && data.type && String(data.type).toLowerCase().includes(expectedType.toLowerCase());
@@ -801,29 +806,29 @@ export default class DnDFeaturesPlugin extends Plugin {
                     }
 
                     // Card styling
-                    const card = equipGrid.createDiv({ 
-                        cls: "dnd-features-window", 
-                        attr: { style: "flex: 1; display: flex; flex-direction: column; padding: 10px; text-align: center; margin: 0; justify-content: center; gap: 6px;" } 
+                    const card = equipGrid.createDiv({
+                        cls: "dnd-features-window",
+                        attr: { style: "flex: 1; display: flex; flex-direction: column; padding: 10px; text-align: center; margin: 0; justify-content: center; gap: 6px;" }
                     });
-                    
+
                     // TOP: Item Name
-                    card.createDiv({ 
-                        text: displayName.toUpperCase(), 
-                        attr: { style: "font-size: 0.85em; color: var(--dnd-text-secondary); letter-spacing: 1.5px; font-weight: 600;" } 
+                    card.createDiv({
+                        text: displayName.toUpperCase(),
+                        attr: { style: "font-size: 0.85em; color: var(--dnd-text-secondary); letter-spacing: 1.5px; font-weight: 600;" }
                     });
-                    
+
                     // MIDDLE: The Stat
-                    card.createDiv({ 
+                    card.createDiv({
                         text: displayStat,
-                        attr: { style: "font-size: 1.6em; font-weight: bold; color: var(--dnd-text-bright);" } 
+                        attr: { style: "font-size: 1.6em; font-weight: bold; color: var(--dnd-text-bright);" }
                     });
-                    
+
                     // BOTTOM: Description 
                     if (displayDesc) {
-                        const noteDiv = card.createDiv({ 
-                            attr: { style: "font-size: 0.9em; color: var(--dnd-text-sublabel); line-height: 1.3;" } 
+                        const noteDiv = card.createDiv({
+                            attr: { style: "font-size: 0.9em; color: var(--dnd-text-sublabel); line-height: 1.3;" }
                         });
-                        
+
                         await this.renderDndMarkdown(displayDesc, noteDiv, ctx.sourcePath, renderChild);
 
                         // Strip Obsidian's block paragraph margins so the card stays beautifully compact
@@ -870,16 +875,16 @@ export default class DnDFeaturesPlugin extends Plugin {
             // -----------------------------------------------------------
             // Restored the window class so the outer box appears!
             const backpackWindow = wrapper.createDiv({ cls: "dnd-features-window" });
-            
-            const backpackHeader = backpackWindow.createDiv({ 
-                cls: "dnd-class-header", 
-                attr: { style: "display: flex; justify-content: space-between; align-items: center; margin: 0 0 10px 0; border-bottom: 1px solid var(--dnd-border-primary); padding-bottom: 8px;" } 
+
+            const backpackHeader = backpackWindow.createDiv({
+                cls: "dnd-class-header",
+                attr: { style: "display: flex; justify-content: space-between; align-items: center; margin: 0 0 10px 0; border-bottom: 1px solid var(--dnd-border-primary); padding-bottom: 8px;" }
             });
             backpackHeader.createEl("h4", { text: "Backpack Contents", attr: { style: "color: var(--dnd-text-primary); margin: 0; border: none; padding: 0;" } });
-            
-            const weightTracker = backpackHeader.createEl("span", { 
-                text: "Weight: 0 lbs", 
-                attr: { style: "font-size: 0.85em; color: var(--dnd-text-muted); font-weight: normal; letter-spacing: 0.5px;" } 
+
+            const weightTracker = backpackHeader.createEl("span", {
+                text: "Weight: 0 lbs",
+                attr: { style: "font-size: 0.85em; color: var(--dnd-text-muted); font-weight: normal; letter-spacing: 0.5px;" }
             });
             let totalWeight = 0;
 
@@ -924,7 +929,7 @@ export default class DnDFeaturesPlugin extends Plugin {
 
                         // 2. Stats (Weight & Cost)
                         const statsDiv = tooltipWindow.createDiv({ attr: { style: "display: flex; gap: 15px; margin-bottom: 8px; font-size: 0.85em; color: var(--dnd-text-muted);" } });
-                        
+
                         if (data.weight) statsDiv.createEl("span", { text: `Weight: ${data.weight} lbs` });
                         if (data.cost) statsDiv.createEl("span", { text: `Cost: ${data.cost} GP` });
 
@@ -937,14 +942,14 @@ export default class DnDFeaturesPlugin extends Plugin {
                         // Make visible and position using your custom variables
                         tooltipWindow.style.display = "block";
                         tooltipWindow.style.left = `${e.clientX + X_OFFSET}px`;
-                        tooltipWindow.style.top = `${e.clientY + Y_OFFSET}px`; 
+                        tooltipWindow.style.top = `${e.clientY + Y_OFFSET}px`;
                     });
 
                     // Smoothly follow the mouse, using your custom variables
                     itemRow.addEventListener('mousemove', (e) => {
-                        const xPos = e.clientX + X_OFFSET; 
+                        const xPos = e.clientX + X_OFFSET;
                         const safeX = (xPos + 300 > window.innerWidth) ? e.clientX - 300 - X_OFFSET : xPos;
-                        
+
                         tooltipWindow.style.left = `${safeX}px`;
                         tooltipWindow.style.top = `${e.clientY + Y_OFFSET}px`;
                     });
@@ -955,12 +960,12 @@ export default class DnDFeaturesPlugin extends Plugin {
                     });
 
                     // 1. Badge 
-                    itemRow.createEl("span", { text: `x${qty}`, cls: "dnd-level-badge", attr: {style: "margin: 0 10px 0 0; flex-shrink: 0;" } });
+                    itemRow.createEl("span", { text: `x${qty}`, cls: "dnd-level-badge", attr: { style: "margin: 0 10px 0 0; flex-shrink: 0;" } });
 
                     // 2. Name (Conditional Colon!)
                     const hasExtraInfo = !!(data.weight || data.cost);
                     const colon = hasExtraInfo ? ": " : "";
-                    
+
                     itemRow.createEl("strong", { text: data.name + colon, attr: { style: "color: var(--dnd-text-bright); margin-right: 4px" } });
 
                     // (Description has been completely removed to prepare for the hover implementation!)
@@ -972,7 +977,7 @@ export default class DnDFeaturesPlugin extends Plugin {
 
                     if (data.weight) {
                         rightSide.createEl("span", { text: `${data.weight * qty}lbs,  ` });
-                        
+
                         totalWeight += (data.weight * qty);
                     }
                     if (data.cost) {
@@ -984,7 +989,7 @@ export default class DnDFeaturesPlugin extends Plugin {
             await renderPool(startingItemCounts);
             await renderPool(extraItemCounts, "Extra Items");
             weightTracker.setText(`Weight: ${totalWeight % 1 === 0 ? totalWeight : totalWeight.toFixed(1)} lbs`);
-            
+
             el.empty();
             el.appendChild(wrapper);
         };
@@ -998,27 +1003,98 @@ export default class DnDFeaturesPlugin extends Plugin {
         );
     }
 
-}
+    async processDnDRulesBlock(source: string, el: HTMLElement, ctx: MarkdownPostProcessorContext) {
+        // 1. Create a Render Child to manage the lifecycle and reactivity
+        const renderChild = new MarkdownRenderChild(el);
+        ctx.addChild(renderChild);
 
-// --- REFERENCE RULES DATABASE ---
-// You can add all your hardcoded notes here! 
-const REFERENCE_RULES: Record<string, { title: string, text: string }> = {
-    "incapacitated": {
-        title: "Incapacitated",
-        text: "An incapacitated creature can't take **Actions** or **Reactions**."
-    },
-    "beast": {
-        title: "Beast (Creature Type)",
-        text: "Beasts are nonhumanoid creatures that are a natural part of the fantasy ecology. Some of them have magical powers, but most are unintelligent and lack any society or language."
+        // 2. Wrap our entire rendering logic into a reusable function
+        const renderContent = async () => {
+            // Create a temporary wrapper to prevent UI flickering while awaiting data
+            const wrapper = document.createElement('div');
+
+            // Parse the user's code block using Obsidian's built-in YAML parser
+            let blockData;
+            try {
+                blockData = parseYaml(source);
+            } catch (error) {
+                wrapper.createEl("p", { text: "Error: Invalid format in dnd-rules block.", cls: "dnd-error" });
+                el.empty();
+                el.appendChild(wrapper);
+                return;
+            }
+
+            // 2. Fetch the frontmatter for the current active file
+            const fileCache = this.app.metadataCache.getCache(ctx.sourcePath);
+            const frontmatter = fileCache?.frontmatter || {};
+
+            // 3. Helper function to resolve "frontmatter.property" values
+            const resolveValue = (val: any) => {
+                if (typeof val === 'string' && val.startsWith('frontmatter.')) {
+                    const key = val.replace('frontmatter.', '');
+                    return frontmatter[key];
+                }
+                return val;
+            };
+
+            // 4. Resolve all core variables
+            const hbRule = resolveValue(blockData.rules)
+
+            // 6. Setup the Registry Lookup (Preparation for Data Fetching)
+            const rulesArray = Array.isArray(hbRule) ? hbRule : (hbRule ? [hbRule] : []);
+
+            if (rulesArray.length > 0) {
+                const sectionWindow = wrapper.createDiv({ cls: "dnd-features-window" });
+                const sectionDiv = sectionWindow.createDiv({ cls: `dnd-section-rules` });
+
+                for (const ruleKey of rulesArray) {
+                    const ruleData = await getRuleData(this.app, this.settings, ruleKey);
+
+                    // Fix 2: Check for ruleData.rules instead of ruleData.rule
+                    if (ruleData && ruleData.rules) {
+                        // Use the JSON's main name for the header, or fallback to the key
+                        const headerName = ruleData.name ? ruleData.name : ruleKey;
+                        sectionDiv.createEl("h4", { text: `${headerName}:`, cls: "dnd-class-header" });
+
+                        for (const rule of ruleData.rules) {
+                            const featureBlock = sectionDiv.createDiv({ cls: "dnd-feature-block" });
+                            const titleContainer = featureBlock.createDiv({ cls: "dnd-feature-title" });
+
+                            titleContainer.createEl("span", { text: rule.badge ? rule.badge : "Rule", cls: "dnd-level-badge" });
+                            titleContainer.createEl("span", { text: rule.name, cls: "dnd-feature-name" });
+
+                            const descDiv = featureBlock.createDiv({ cls: "dnd-feature-desc" });
+                            await this.renderDndMarkdown(rule.description, descDiv, ctx.sourcePath, renderChild);
+                        }
+                    } else {
+                        sectionDiv.createEl("p", { text: `Data for rule "${ruleKey}" not found.`, cls: "dnd-error-text" });
+                    }
+                }
+            }
+
+            // Fix 3: Actually append the fully built wrapper to Obsidian's element
+            el.empty();
+            el.appendChild(wrapper);
+        }; // <-- Closes renderContent()
+
+        // Execute the render function initially
+        renderContent();
+
+        // Register the event listener so it updates automatically if the frontmatter changes
+        renderChild.registerEvent(
+            this.app.metadataCache.on('changed', (file) => {
+                if (file.path === ctx.sourcePath) renderContent();
+            })
+        );
     }
-};
+}
 
 // --- THE POP-UP UI ---
 class NoteModal extends Modal {
-    plugin: DnDFeaturesPlugin;
+    plugin: DnDCharacterSheetHelperPlugin;
     noteKey: string;
 
-    constructor(app: App, plugin: DnDFeaturesPlugin, noteKey: string) {
+    constructor(app: App, plugin: DnDCharacterSheetHelperPlugin, noteKey: string) {
         super(app);
         this.plugin = plugin;
         this.noteKey = noteKey;
@@ -1026,7 +1102,7 @@ class NoteModal extends Modal {
 
     async onOpen() {
         const { contentEl, titleEl } = this;
-        
+
         // Formats the title nicely (e.g., "wild-magic-surge" becomes "Wild Magic Surge")
         const formattedTitle = this.noteKey.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
         titleEl.setText(formattedTitle);
@@ -1040,7 +1116,7 @@ class NoteModal extends Modal {
             MarkdownRenderer.render(this.app, fileContent, contentEl, "", null as any);
         } else {
             // Updated fallback message so you know it is checking the registry correctly
-            contentEl.createEl("p", { 
+            contentEl.createEl("p", {
                 text: `Error: Could not find "${this.noteKey}" in the bundled Markdown registry. Make sure you ran the generation script!`,
                 cls: "dnd-error-text"
             });
@@ -1054,9 +1130,9 @@ class NoteModal extends Modal {
 
 // --- Settings Tab UI ---
 class DnDSettingsTab extends PluginSettingTab {
-    plugin: DnDFeaturesPlugin;
+    plugin: DnDCharacterSheetHelperPlugin;
 
-    constructor(app: App, plugin: DnDFeaturesPlugin) {
+    constructor(app: App, plugin: DnDCharacterSheetHelperPlugin) {
         super(app, plugin);
         this.plugin = plugin;
     }

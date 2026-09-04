@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const { RegularExpressionFlags } = require('typescript/unstable/ast');
 
 const rulebookDir = path.join(__dirname, 'rulebook');
 const outputFile = path.join(__dirname, 'registry.ts');
@@ -17,6 +18,7 @@ const classes = scanFolder('classes');
 const feats = scanFolder('feats');
 const races = scanFolder('races');
 const items = scanFolder('items');
+const rules = scanFolder('rules');
 
 // --- MARKDOWN NOTE SCANNER ---
 // Scans the root directory for any .md files (ignoring the README)
@@ -50,6 +52,11 @@ if (fs.existsSync(path.join(rulebookDir, 'items.json'))) {
 } else {
     out += `const itemsMap = {};\n`;
 }
+if (fs.existsSync(path.join(rulebookDir, 'rules.json'))) {
+    out += `import rulesMap from './rulebook/rules.json';\n`;
+} else {
+    out += `const rulesMap = {};\n`;
+}
 
 // 2. Generate Imports for Sub-folders
 classes.forEach(c => {
@@ -69,8 +76,12 @@ items.forEach(i => {
     const safeName = i.replace(/[^a-zA-Z0-9]/g, '');
     out += `import item_${safeName} from './rulebook/items/${i}.json';\n`;
 });
+rules.forEach(i => {
+    const safeName = i.replace(/[^a-zA-Z0-9]/g, '');
+    out += `import rule_${safeName} from './rulebook/rules/${i}.json';\n`;
+});
 
-out += `\nexport { classesMap, backgroundsMap, racesMap, itemsMap };\n\n`;
+out += `\nexport { classesMap, backgroundsMap, racesMap, itemsMap, rulesMap };\n\n`;
 
 // 3. Generate the Registry Maps
 out += `export const classRegistry: Record<string, any> = {\n`;
@@ -100,6 +111,12 @@ out += `};\n`;
 out += `export const itemRegistry: Record<string, any> = {\n`;
 items.forEach(i => {
     out += `    "${i}": item_${i.replace(/[^a-zA-Z0-9]/g, '')},\n`;
+});
+out += `};\n`;
+
+out += `export const ruleRegistry: Record<string, any> = {\n`;
+rules.forEach(i => {
+    out += `    "${i}": rule_${i.replace(/[^a-zA-Z0-9]/g, '')},\n`;
 });
 out += `};\n`;
 

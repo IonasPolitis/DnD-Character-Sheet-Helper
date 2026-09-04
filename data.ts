@@ -4,10 +4,12 @@ import {
     featRegistry, 
     raceRegistry,
     itemRegistry,
+    ruleRegistry,
     classesMap, 
     backgroundsMap,
     racesMap,
-    itemsMap
+    itemsMap,
+    rulesMap
 } from './registry';
 
 import { App, normalizePath } from 'obsidian';
@@ -216,5 +218,29 @@ export async function getItemData(app: App, settings: FetchSettings, itemName: s
         }
     }
     // No custom path set: Native only
+    return fetchNative();
+}
+
+// --- Logic for Fetching Rule Data ---
+export async function getRuleData(app: App, settings: FetchSettings, rule: string) {
+    const fetchNative = () => {
+        const ruleId = getIgnoreCase(rulesMap as Record<string, string>, rule);
+        return ruleId ? getIgnoreCase(ruleRegistry, ruleId) : null;
+    };
+    
+    const fetchCustom = async () => {
+        if (!settings.customRulebookPath) return null;
+        const raceId = await getCustomMappedName(app, settings.customRulebookPath, 'rules.json', rule);
+        if (!raceId) return null;
+        return await readCustomJson(app, normalizePath(`${settings.customRulebookPath}/rules/${raceId}.json`));
+    };
+
+    if (settings.customRulebookPath) {
+        if (settings.customRulebookPriority) {
+            return (await fetchCustom()) || fetchNative();
+        } else {
+            return fetchNative() || (await fetchCustom());
+        }
+    }
     return fetchNative();
 }
