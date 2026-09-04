@@ -22,14 +22,6 @@ jobs:
         with:
           node-version: '24'
       
-      - name: Generate artifact attestation
-        uses: actions/attest@v4
-        with:
-          subject-path: |
-            main.js
-            styles.css
-            manifest.json
-      
       - name: Install Dependencies
         run: npm install
 
@@ -59,3 +51,11 @@ jobs:
           gh release view "$TAG_NAME" >/dev/null 2>&1 || gh release create "$TAG_NAME" --title "$TAG_NAME" --notes "$NOTES"
 
           gh release upload "$TAG_NAME" main.js styles.css manifest.json --clobber
+
+      - name: Generate artifact attestation
+        uses: actions/attest@v4
+        with:
+          subject-path: |
+            main.js
+            styles.css
+            manifest.json
