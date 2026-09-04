@@ -1,7 +1,7 @@
 # DnD Character Sheet Helper
 
 > [!NOTE]
-> The DnD Character Sheet Helper is an Obsidian Plugin that brings the DnD Rulebook 5.5e (2024) right inside your Digital Character Sheet. This is not a replacement for the DnD Player's Handbook, but just a handyy tool that gives you only the information you might need, or you wouldn't remeber on top of your mind, while playing.
+> DnD Character Sheet Helper is an Obsidian Plugin that brings the DnD Rulebook 5.5e (2024) right inside your Digital Character Sheet. This is not a replacement for the DnD Player's Handbook, but just a handy tool that gives you only the information you might need, or you wouldn't remember on top of your mind, while playing.
 (If text has anything written wrong please make an Issue Report on GitHub. I maintaine it myself)
 
 ## DnD Character Features:
