@@ -7,7 +7,7 @@ interface DnDPluginSettings {
     combineClassSubclass: boolean;
     sectionOrder: string[];
     themeChoice: "default" | "custom";
-    customColors: Record<string, string>; // Stores our 18 variables as key-value pairs
+    customColors: Record<string, string>; // Stores the 18 variables as key-value pairs
     customRulebookPath: string;           // Path to the user's homebrew folder
     customRulebookPriority: boolean;      // If true, homebrew overwrites native data
 }
