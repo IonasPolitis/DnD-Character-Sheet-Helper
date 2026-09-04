@@ -73,7 +73,7 @@ rules: $list$
 ```
 ````
 #### Critical Role:
-I have also added Critcal Role's Campaign 4 Desperate Measures mechanic as a *"class"*. ItJust thought it was an interesting mechanic and I've used it in my campaigns ever since I found out about it.
+I have also added Critcal Role's Campaign 4 *Desperate Measures* mechanic. I just thought it was an interesting mechanic and I've used it in my campaigns ever since I found out about it. To use it you just add `Desperate Measures` into the Rules Block
 
 ## Extra Features:
 
