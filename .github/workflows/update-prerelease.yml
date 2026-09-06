@@ -22,11 +22,14 @@ jobs:
         with:
           node-version: '24'
       
-      - name: Install Dependencies
+      - name: Install Dependencies & Add manifest
         run: npm install
 
       - name: Build Project
         run: npm run build
+
+      - name: Set the manifest.json
+        run: cp manifest/beta-manifest.json manifest.json
 
       - name: Generate artifact attestation
         uses: actions/attest@v4
@@ -58,4 +61,4 @@ jobs:
 
           gh release view "$TAG_NAME" >/dev/null 2>&1 || gh release create "$TAG_NAME" --prerelease --title "$TAG_NAME" --notes "$NOTES"
 
-          gh release upload "$TAG_NAME" main.js styles.css beta/manifest.json --clobber
+          gh release upload "$TAG_NAME" main.js styles.css manifest.json --clobber
