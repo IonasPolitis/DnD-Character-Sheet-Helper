@@ -56,6 +56,6 @@ jobs:
           git tag -f "$TAG_NAME"
           git push -f origin "$TAG_NAME"
 
-          gh release view "$TAG_NAME" >/dev/null 2>&1 || gh release create "$TAG_NAME" --title "$TAG_NAME" --notes "$NOTES"
+          gh release view "$TAG_NAME" >/dev/null 2>&1 || gh release create "$TAG_NAME" --prerelease --title "$TAG_NAME" --notes "$NOTES"
 
           gh release upload "$TAG_NAME" main.js styles.css /beta/manifest.json --clobber
