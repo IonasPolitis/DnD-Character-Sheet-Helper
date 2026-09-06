@@ -129,6 +129,44 @@ markdownNotes.forEach(note => {
 });
 out += `};\n`;
 
+// --- 5. Generate Past Editions Registry ---
+const pastEditionsDir = path.join(rulebookDir, '#past-editions');
+out += `\nexport const pastEditionsRegistry: Record<string, any> = {};\n`;
+
+if (fs.existsSync(pastEditionsDir)) {
+    // Find all folders inside #past-editions (e.g., "5e")
+    const editions = fs.readdirSync(pastEditionsDir).filter(f => fs.statSync(path.join(pastEditionsDir, f)).isDirectory());
+    
+    editions.forEach(edition => {
+        out += `pastEditionsRegistry["${edition}"] = {\n`;
+        out += `    classesMap: {}, backgroundsMap: {}, racesMap: {}, itemsMap: {}, rulesMap: {},\n`;
+        out += `    classRegistry: {}, subclassRegistry: {}, featRegistry: {}, raceRegistry: {}, itemRegistry: {}, ruleRegistry: {}\n`;
+        out += `};\n`;
+        
+        // Bundle the maps
+        const maps = ['classes', 'backgrounds', 'races', 'items', 'rules'];
+        maps.forEach(map => {
+            if (fs.existsSync(path.join(pastEditionsDir, edition, `${map}.json`))) {
+                out += `pastEditionsRegistry["${edition}"].${map}Map = require('./rulebook/#past-editions/${edition}/${map}.json');\n`;
+            }
+        });
+
+        // Bundle the registries
+        const folders = ['classes', 'feats', 'races', 'items', 'rules'];
+        folders.forEach(folder => {
+            const folderPath = path.join(pastEditionsDir, edition, folder);
+            if (fs.existsSync(folderPath)) {
+                const files = fs.readdirSync(folderPath).filter(file => file.endsWith('.json')).map(file => file.replace('.json', ''));
+                files.forEach(file => {
+                    // Separate subclasses into their own registry if the filename contains 'subclass'
+                    const regName = folder === 'classes' ? (file.includes('subclass') ? 'subclassRegistry' : 'classRegistry') : `${folder.replace(/s$/, '')}Registry`;
+                    out += `pastEditionsRegistry["${edition}"].${regName}["${file}"] = require('./rulebook/#past-editions/${edition}/${folder}/${file}.json');\n`;
+                });
+            }
+        });
+    });
+}
+
 // Write the compiled text into registry.ts
 fs.writeFileSync(outputFile, out);
 console.log('✅ Auto-generated registry.ts successfully!');

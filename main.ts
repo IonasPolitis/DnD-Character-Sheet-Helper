@@ -249,6 +249,14 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
             const background = resolveValue(blockData.background);
             const extraFeats = resolveValue(blockData['extra-feats']);
             const hideRaw = resolveValue(blockData.hide);
+            const edition = resolveValue(blockData.edition);
+
+            // Create a localized settings object that injects the block's edition variable 
+            // without modifying the user's global plugin settings.
+            const fetchOptions = {
+                ...this.settings,
+                edition: edition ? String(edition) : undefined
+            };
 
             // Normalize the 'hide' variable into a clean array of lowercased strings to prevent typo-misses
             let hiddenFeatures: string[] = [];
@@ -296,8 +304,11 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
             const rawSubclassArray = Array.isArray(subclass) ? subclass : (subclass ? [subclass] : []);
             const subclassArray = classArray.map((_, i) => rawSubclassArray[i] || null);
 
-            // 7. PRE-PASS: Gather all auto-granted feats from classes and subclasses
+            // 7. PRE-PASS: Gather all auto-granted feats and determine dynamic subclass level
             let finalExtraFeats = Array.isArray(extraFeats) ? [...extraFeats] : (extraFeats ? [extraFeats] : []);
+            
+            // This flag will tell our renderer if the character is high enough level to show the subclass
+            let hasActiveSubclass = false;
 
             if (dndClass) {
                 for (let index = 0; index < classArray.length; index++) {
@@ -306,8 +317,8 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                         ? Number(classLevels[index])
                         : Number(level);
 
-                    // Await the new async fetcher and pass app/settings
-                    const classData = await getClassData(this.app, this.settings, className);
+                    // Use fetchOptions instead of this.settings!
+                    const classData = await getClassData(this.app, fetchOptions, className);
 
                     if (classData && classData.features) {
                         for (let i = 1; i <= currentClassLevel; i++) {
@@ -321,8 +332,20 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                             }
 
                             if (classData.subclassFile && subclassArray[index]) {
-                                // Await subclass data as well
-                                const subclassData = await getSubclassData(this.app, this.settings, classData.subclassFile, subclassArray[index]);
+                                // Use fetchOptions instead of this.settings!
+                                const subclassData = await getSubclassData(this.app, fetchOptions, classData.subclassFile, subclassArray[index]);
+                                
+                                // DYNAMIC SUBCLASS LEVEL CHECK
+                                if (subclassData) {
+                                    // Extract all the keys (levels) from the subclass data, convert them to numbers, and find the lowest one.
+                                    const subclassStartLevel = Math.min(...Object.keys(subclassData).map(Number));
+                                    
+                                    // If the current class level meets or exceeds the start level, flag it as active!
+                                    if (currentClassLevel >= subclassStartLevel) {
+                                        hasActiveSubclass = true;
+                                    }
+                                }
+
                                 const subLevelFeatures = subclassData ? subclassData[i.toString()] : null;
                                 if (subLevelFeatures) {
                                     subLevelFeatures.forEach((feature: any) => {
@@ -342,7 +365,7 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
             for (const sectionName of this.settings.sectionOrder) {
                 // 1. CONDITIONAL RENDERING: Skip this section entirely if the user didn't provide the variable
                 if (sectionName === "Class" && !dndClass) continue;
-                if (sectionName === "Subclass" && (!subclass || this.settings.combineClassSubclass || Number(level) < 3)) continue;
+                if (sectionName === "Subclass" && (!subclass || this.settings.combineClassSubclass || !hasActiveSubclass)) continue;
                 if (sectionName === "Race" && !race) continue;
                 if (sectionName === "Background" && !background) continue;
                 if (sectionName === "Extra Feats" && finalExtraFeats.length === 0) continue;
@@ -373,7 +396,7 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                         }
 
                         // Added await and passed this.app, this.settings
-                        const classData = await getClassData(this.app, this.settings, className);
+                        const classData =await getClassData(this.app, fetchOptions, className);
 
                         if (!classData || !classData.features) {
                             sectionDiv.createEl("p", { text: `Data for ${className} not found.`, cls: "dnd-error-text" });
@@ -400,7 +423,7 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
 
                             if (this.settings.combineClassSubclass && subclassArray[index] && classData.subclassFile) {
                                 const subclassName = subclassArray[index];
-                                const subclassData = await getSubclassData(this.app, this.settings, classData.subclassFile, subclassName);
+                                const subclassData = await getSubclassData(this.app, fetchOptions, classData.subclassFile, subclassName);
                                 const subLevelFeatures = subclassData ? subclassData[i.toString()] : null;
 
                                 if (subLevelFeatures && subLevelFeatures.length > 0) {
@@ -430,7 +453,7 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                         const subclassName = subclassArray[index];
 
                         // Added await and passed this.app, this.settings
-                        const classData = await getClassData(this.app, this.settings, className);
+                        const classData = await getClassData(this.app, fetchOptions, className);
 
                         if (subclassName && classData && classData.subclassFile) {
                             if (classArray.length > 1) {
@@ -464,7 +487,7 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
 
                 // Render Race Section
                 else if (sectionName === "Race") {
-                    const raceData = await getRaceData(this.app, this.settings, race);
+                    const raceData = await getRaceData(this.app, fetchOptions, race);
 
                     if (raceData && raceData.traits) {
                         for (const trait of raceData.traits) {
@@ -496,8 +519,8 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
 
                 // Render Background Section
                 else if (sectionName === "Background") {
-                    const bgData = await getBackgroundData(this.app, this.settings, background);
-                    const featData = bgData && bgData.feat ? await getExtraFeat(this.app, this.settings, bgData.feat) : null;
+                    const bgData = await getBackgroundData(this.app, fetchOptions, background);
+                    const featData = bgData && bgData.feat ? await getExtraFeat(this.app, fetchOptions, bgData.feat) : null;
 
                     if (featData && !hiddenFeatures.includes(featData.name.toLowerCase())) {
                         const featureBlock = sectionDiv.createDiv({ cls: "dnd-feature-block" });
@@ -517,7 +540,7 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                 else if (sectionName === "Extra Feats") {
                     for (const featId of finalExtraFeats) {
                         const safeFeatId = typeof featId === 'string' ? featId : String(featId);
-                        const featData = await getExtraFeat(this.app, this.settings, safeFeatId);
+                        const featData = await getExtraFeat(this.app, fetchOptions, safeFeatId);
 
                         if (featData) {
                             if (featData.name && hiddenFeatures.includes(featData.name.toLowerCase())) continue;
@@ -596,6 +619,12 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
             const armorSlot = resolveValue(blockData.armor);
             const armorAc = resolveValue(blockData.armor_ac);
             const extraItemsRaw = resolveValue(blockData['extra-items']);
+            const edition = resolveValue(blockData.edition);
+
+            const fetchOptions = {
+                ...this.settings,
+                edition: edition ? String(edition) : undefined
+            };
 
             // --- Phase 1 & 2: Pre-Pass & Build the "Available Choices" Pools ---
             const classChosenItemsRaw = resolveValue(blockData['class-chosen-items']);
@@ -615,7 +644,7 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                     const safeId = sanitizeItem(item);
                     if (!safeId) continue;
 
-                    const data = await getItemData(this.app, this.settings, safeId);
+                    const data = await getItemData(this.app, fetchOptions, safeId);
                     if (data && data.type) {
                         // Fully sanitize the type to match class requirements perfectly
                         pool.push({ id: safeId, type: sanitizeItem(data.type) as string });
@@ -688,14 +717,14 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
 
             if (dndClass && classEq) {
                 const primaryClass = Array.isArray(dndClass) ? dndClass[0] : dndClass;
-                const classData = await getClassData(this.app, this.settings, primaryClass);
+                const classData = await getClassData(this.app, fetchOptions, primaryClass);
                 if (classData?.['starting-equipment']) addItemsToPool(classData['starting-equipment'][classEq], startingItemCounts, classChosenItemsPool);
             }
 
             // Check for both the background name AND the A/B choice variable
             if (background && bgEq) {
                 // Fetch the background data
-                const bgData = await getBackgroundData(this.app, this.settings, background);
+                const bgData = await getBackgroundData(this.app, fetchOptions, background);
 
                 if (bgData?.['starting-equipment']) {
                     addItemsToPool(bgData['starting-equipment'][bgEq], startingItemCounts, bgChosenItemsPool);
@@ -765,7 +794,7 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                     // Use the global helper so item mapping is always perfectly consistent
                     const safeName = sanitizeItem(rawItemInput) as string;
 
-                    let data = await getItemData(this.app, this.settings, safeName);
+                    let data = await getItemData(this.app, fetchOptions, safeName);
 
                     // 2. Type-Checking: Ensure the item exists AND matches the expected type
                     const isRecognizedType = data && data.type && String(data.type).toLowerCase().includes(expectedType.toLowerCase());
@@ -882,7 +911,7 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                 });
 
                 for (const [itemId, qty] of validItems) {
-                    let data = await getItemData(this.app, this.settings, itemId);
+                    let data = await getItemData(this.app, fetchOptions, itemId);
                     const fallbackName = itemId.replace(/\b\w/g, c => c.toUpperCase()).replace(/-/g, ' ');
                     if (!data) data = { name: fallbackName, description: "" };
 
@@ -1013,7 +1042,13 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
             };
 
             // 4. Resolve all core variables
-            const hbRule = resolveValue(blockData.rules)
+            const hbRule = resolveValue(blockData.rules);
+            const edition = resolveValue(blockData.edition);
+
+            const fetchOptions = {
+                ...this.settings,
+                edition: edition ? String(edition) : undefined
+            };
 
             // 6. Setup the Registry Lookup (Preparation for Data Fetching)
             const rulesArray = Array.isArray(hbRule) ? hbRule : (hbRule ? [hbRule] : []);
@@ -1023,7 +1058,7 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                 const sectionDiv = sectionWindow.createDiv({ cls: `dnd-section-rules` });
 
                 for (const ruleKey of rulesArray) {
-                    const ruleData = await getRuleData(this.app, this.settings, ruleKey);
+                    const ruleData = await getRuleData(this.app, fetchOptions, ruleKey);
 
                     // Fix 2: Check for ruleData.rules instead of ruleData.rule
                     if (ruleData && ruleData.rules) {
