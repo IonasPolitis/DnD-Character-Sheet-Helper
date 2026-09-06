@@ -1,0 +1,8 @@
+{
+      "name": "Chain Mail",
+      "type": "armor",
+      "description": "16 -- Stealth Disadvantage",
+      "weight": 55,
+      "ac": "16",
+      "cost": 75
+}

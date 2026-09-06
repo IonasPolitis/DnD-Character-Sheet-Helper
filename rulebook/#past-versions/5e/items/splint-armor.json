@@ -1,0 +1,8 @@
+{
+      "name": "Splint Armor",
+      "type": "Armor",
+      "description": "17 -- Stealth Disadvantage",
+      "weight": 60,
+      "ac": "17",
+      "cost": 200
+}

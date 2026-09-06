@@ -1,0 +1,7 @@
+{
+      "name": "Herbalism Kit",
+      "type": "gear",
+      "description": "Identify a plant (DC 10)",
+      "weight": 3,
+      "cost": 5
+}
