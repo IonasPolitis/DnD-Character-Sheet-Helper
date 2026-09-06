@@ -48,7 +48,7 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
           VERSION=$(jq -r .version manifest.json)
-          TAG_NAME="${VERSION}"
+          TAG_NAME="${VERSION}-beta"
 
           NOTES=""
 
