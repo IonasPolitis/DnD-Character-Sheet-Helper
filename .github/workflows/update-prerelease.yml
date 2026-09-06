@@ -58,4 +58,4 @@ jobs:
 
           gh release view "$TAG_NAME" >/dev/null 2>&1 || gh release create "$TAG_NAME" --prerelease --title "$TAG_NAME" --notes "$NOTES"
 
-          gh release upload "$TAG_NAME" main.js styles.css /beta/manifest.json --clobber
+          gh release upload "$TAG_NAME" main.js styles.css beta/manifest.json --clobber
