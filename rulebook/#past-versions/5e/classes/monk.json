@@ -4,25 +4,52 @@
   "starting-equipment": {
         "A": {
             "items": {
-                "spear": 1,
-                "dagger": 5,
-                "artisans-tool|musical-instrument": 1,
-                "explorers-pack": 1
-            }, "gold": 11
+                "shortsword": 1,
+                "dungeoneers-pack": 1,
+                "darts": 10
+            }, "gold": 0
         },
-        "B": { "items": {}, "gold": 50 }
+        "B": {
+            "items": {
+                "dungeoneers-pack": 1,
+                "darts": 10
+            }, "gold": 0
+        },
+        "C": {
+            "items": {
+                "shortsword": 1,
+                "explorers-pack": 1,
+                "darts": 10
+            }, "gold": 0
+        },
+        "D": {
+            "items": {
+                "explorers-pack": 1,
+                "darts": 10
+            }, "gold": 0
+        }
     },
   "features": {
     "1": [
       {
         "name": "Martial Arts",
-        "description": "You can make an Unarmed Strike as a Bonus Action."
+        "description": "- You can roll a d4 in place of the normal damage of your unarmed strike or monk weapon. This die changes as you gain monk levels, as shown in the Martial Arts column of the Monk table.\n - When you use the Attack action with an unarmed strike or a monk weapon on your turn, you can make one unarmed strike as a bonus action."
       }
     ],
     "2": [
       {
-        "name": "Monk's Focus",
-        "description": " - **Flurry of Blows**:\nYou can expend 1 Focus Point to make two Unarmed Strikes as a Bonus Action.\n - **Patient Defense**:\nYou can take the Disengage action as a Bonus Action. Alternatively, you can expend 1 Focus Point to take both the Disengage and the Dodge actions as a Bonus Action.\n - **Step of the Wind**:\nYou can take the Dash action as a Bonus Action. Alternatively, you can expend 1 Focus Point to take both the Disengage and Dash actions as a Bonus Action, and your jump distance is doubled for the turn."
+        "name": "Ki",
+        "description": " - **Flurry of Blows**:\nImmediately after you take the Attack action on your turn, you can spend 1 ki point to make two unarmed strikes as a bonus action.\n - **Patient Defense**:\nYou can spend 1 ki point to take the Dodge action as a bonus action on your turn.\n - **Step of the Wind**:\nYou can spend 1 ki point to take the Disengage or Dash action as a bonus action on your turn, and your jump distance is doubled for the turn."
+      },
+      {
+        "name": "Dedicated Weapon (Optional)",
+        "description": "Whenever you finish a short or long rest, you can touch one weapon, focus your ki on it, and then count that weapon as a monk weapon until you use this feature again. The chosen weapon must:\n - Be a simple or martial weapon\n - You must be proficient with it.\n - Lack the heavy and special properties."
+      }
+    ],
+    "3": [
+      {
+        "name": "",
+        "description": ""
       }
     ],
     "4": [
