@@ -28,8 +28,8 @@ jobs:
       - name: Build Project
         run: npm run build
 
-      - name: Set the manifest.json
-        run: cp manifest/beta-manifest.json manifest.json
+      - name: Set Beta manifest.json
+        run: mv manifest.json release-manifest.json && mv beta-manifest.json manifest.json
 
       - name: Generate artifact attestation
         uses: actions/attest@v4
