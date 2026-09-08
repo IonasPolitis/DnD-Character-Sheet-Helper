@@ -15,14 +15,14 @@
     "features": {
         "1": [
             {
-                "name": "Inate Sorcery",
+                "name": "Innate Sorcery",
                 "description": "An event in your past left an indelible mark on you, infusing you with simmering magic. As a Bonus Action, you can unleash that magic for 1 minute, during which you gain the following benefits:\n - The spell save DC of your Sorcerer spells increases by 1.\n - You have Advantage on the attack rolls of Sorcerer spells you cast.\nYou can use this feature twice, and you regain all expended uses of it when you fin ish a Long Rest."
             }
         ],
         "2": [
             {
-                "name": "Matemagic",
-                "description": "You can use only one Metamagic option on a spell when you cast it unless otherwise noted in one of those options."
+                "name": "Metamagic",
+                "description": "Because your magic flows from within, you can alter your spells to suit your needs; you gain two [Metamagic Options](note:metamagic-options) of your choice. You use the chosen options to temporarily modify spells you cast. To use an option, you must spend the number of Sorcery Points that it costs.\n\tYou can use only one Metamagic option on a spell when you cast it unless otherwise noted in one of those options."
             }
         ],
         "7": [
