@@ -1,7 +1,7 @@
 {
 	"id": "dnd-character-sheet-helper-beta",
 	"name": "DnD Character Sheet Helper - Beta",
-	"version": "1.3.2",
+	"version": "1.3.3",
 	"minAppVersion": "1.13.7",
 	"description": "Renders D&D 5.5e (& 5e) character features, weapons, an inventory and extra rules with frontmatter properties support.",
 	"author": "Ionas Politis",
