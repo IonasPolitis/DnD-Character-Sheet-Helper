@@ -37,7 +37,7 @@ jobs:
           subject-path: |
             main.js
             styles.css
-            beta/manifest.json
+            manifest.json
 
       - name: Update Release
         env:
