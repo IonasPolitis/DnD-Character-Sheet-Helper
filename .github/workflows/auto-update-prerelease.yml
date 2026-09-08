@@ -54,7 +54,7 @@ jobs:
           VERSION=$(jq -r .version manifest.json)
           TAG_NAME="${VERSION}-beta"
 
-          NOTES=""
+          NOTES=$(jq -r .notes pre-release-notes.json)
 
           echo "Target tag is $TAG_NAME"
 

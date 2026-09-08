@@ -47,7 +47,7 @@ jobs:
           VERSION=$(jq -r .version manifest.json)
           TAG_NAME="${VERSION}"
 
-          NOTES=""
+          NOTES=$(jq -r .notes release-notes.json)
 
           echo "Target tag is $TAG_NAME"
 
