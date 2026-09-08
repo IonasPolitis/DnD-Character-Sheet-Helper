@@ -77,13 +77,9 @@ export async function getClassData(app: App, settings: FetchSettings, className:
     
     const fetchCustom = async () => {
         if (!settings.customRulebookPath) return null;
-        const basePath = settings.edition 
-            ? normalizePath(`${settings.customRulebookPath}/#past-editions/${settings.edition}`)
-            : settings.customRulebookPath;
-
-        const customFileId = await getCustomMappedName(app, basePath, 'classes.json', className);
+        const customFileId = await getCustomMappedName(app, settings.customRulebookPath, 'classes.json', className);
         if (!customFileId) return null;
-        return await readCustomJson(app, normalizePath(`${basePath}/classes/${customFileId}.json`));
+        return await readCustomJson(app, normalizePath(`${settings.customRulebookPath}/classes/${customFileId}.json`));
     };
 
     if (settings.customRulebookPath) {
@@ -108,11 +104,7 @@ export async function getSubclassData(app: App, settings: FetchSettings, subclas
     
     const fetchCustom = async () => {
         if (!settings.customRulebookPath) return null;
-        const basePath = settings.edition 
-            ? normalizePath(`${settings.customRulebookPath}/#past-editions/${settings.edition}`)
-            : settings.customRulebookPath;
-
-        const fileData = await readCustomJson(app, normalizePath(`${basePath}/classes/${subclassFile}.json`));
+        const fileData = await readCustomJson(app, normalizePath(`${settings.customRulebookPath}/classes/${subclassFile}.json`));
         return fileData ? getIgnoreCase(fileData, subclassName) : null;
     };
 
@@ -135,11 +127,7 @@ export async function getBackgroundData(app: App, settings: FetchSettings, backg
     
     const fetchCustom = async () => {
         if (!settings.customRulebookPath) return null;
-        const basePath = settings.edition 
-            ? normalizePath(`${settings.customRulebookPath}/#past-editions/${settings.edition}`)
-            : settings.customRulebookPath;
-
-        return await getCustomMappedName(app, basePath, 'backgrounds.json', backgroundName);
+        return await getCustomMappedName(app, settings.customRulebookPath, 'backgrounds.json', backgroundName);
     };
 
     if (settings.customRulebookPath) {
@@ -164,13 +152,9 @@ export async function getRaceData(app: App, settings: FetchSettings, raceName: s
     
     const fetchCustom = async () => {
         if (!settings.customRulebookPath) return null;
-        const basePath = settings.edition 
-            ? normalizePath(`${settings.customRulebookPath}/#past-editions/${settings.edition}`)
-            : settings.customRulebookPath;
-
-        const raceId = await getCustomMappedName(app, basePath, 'races.json', raceName);
+        const raceId = await getCustomMappedName(app, settings.customRulebookPath, 'races.json', raceName);
         if (!raceId) return null;
-        return await readCustomJson(app, normalizePath(`${basePath}/races/${raceId}.json`));
+        return await readCustomJson(app, normalizePath(`${settings.customRulebookPath}/races/${raceId}.json`));
     };
 
     if (settings.customRulebookPath) {
@@ -196,11 +180,7 @@ export async function getExtraFeat(app: App, settings: FetchSettings, featName: 
     
     const fetchCustom = async () => {
         if (!settings.customRulebookPath) return null;
-        const basePath = settings.edition 
-            ? normalizePath(`${settings.customRulebookPath}/#past-editions/${settings.edition}`)
-            : settings.customRulebookPath;
-
-        return await readCustomJson(app, normalizePath(`${basePath}/feats/${featId}.json`));
+        return await readCustomJson(app, normalizePath(`${settings.customRulebookPath}/feats/${featId}.json`));
     };
 
     if (settings.customRulebookPath) {
@@ -227,13 +207,9 @@ export async function getItemData(app: App, settings: FetchSettings, itemName: s
     
     const fetchCustom = async () => {
         if (!settings.customRulebookPath) return null;
-        const basePath = settings.edition 
-            ? normalizePath(`${settings.customRulebookPath}/#past-editions/${settings.edition}`)
-            : settings.customRulebookPath;
-
-        const itemId = await getCustomMappedName(app, basePath, 'items.json', itemName);
+        const itemId = await getCustomMappedName(app, settings.customRulebookPath, 'items.json', itemName);
         if (!itemId) return null;
-        return await readCustomJson(app, normalizePath(`${basePath}/items/${itemId}.json`));
+        return await readCustomJson(app, normalizePath(`${settings.customRulebookPath}/items/${itemId}.json`));
     };
 
     if (settings.customRulebookPath) {
@@ -258,13 +234,9 @@ export async function getRuleData(app: App, settings: FetchSettings, rule: strin
     
     const fetchCustom = async () => {
         if (!settings.customRulebookPath) return null;
-        const basePath = settings.edition 
-            ? normalizePath(`${settings.customRulebookPath}/#past-editions/${settings.edition}`)
-            : settings.customRulebookPath;
-
-        const ruleId = await getCustomMappedName(app, basePath, 'rules.json', rule);
+        const ruleId = await getCustomMappedName(app, settings.customRulebookPath, 'rules.json', rule);
         if (!ruleId) return null;
-        return await readCustomJson(app, normalizePath(`${basePath}/rules/${ruleId}.json`));
+        return await readCustomJson(app, normalizePath(`${settings.customRulebookPath}/rules/${ruleId}.json`));
     };
 
     if (settings.customRulebookPath) {
