@@ -306,7 +306,7 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
 
             // 7. PRE-PASS: Gather all auto-granted feats and determine dynamic subclass level
             let finalExtraFeats = Array.isArray(extraFeats) ? [...extraFeats] : (extraFeats ? [extraFeats] : []);
-            
+
             // This flag will tell our renderer if the character is high enough level to show the subclass
             let hasActiveSubclass = false;
 
@@ -334,12 +334,12 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                             if (classData.subclassFile && subclassArray[index]) {
                                 // Use fetchOptions instead of this.settings!
                                 const subclassData = await getSubclassData(this.app, fetchOptions, classData.subclassFile, subclassArray[index]);
-                                
+
                                 // DYNAMIC SUBCLASS LEVEL CHECK
                                 if (subclassData) {
                                     // Extract all the keys (levels) from the subclass data, convert them to numbers, and find the lowest one.
                                     const subclassStartLevel = Math.min(...Object.keys(subclassData).map(Number));
-                                    
+
                                     // If the current class level meets or exceeds the start level, flag it as active!
                                     if (currentClassLevel >= subclassStartLevel) {
                                         hasActiveSubclass = true;
@@ -396,7 +396,7 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                         }
 
                         // Added await and passed this.app, this.settings
-                        const classData =await getClassData(this.app, fetchOptions, className);
+                        const classData = await getClassData(this.app, fetchOptions, className);
 
                         if (!classData || !classData.features) {
                             sectionDiv.createEl("p", { text: `Data for ${className} not found.`, cls: "dnd-error-text" });
@@ -807,8 +807,7 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                     // 3. Apply Official Data if recognized
                     if (isRecognizedType) {
                         displayName = data.name || actualName;
-                        // Ignore manual overrides and pull natively
-                        displayStat = expectedType === "Weapon" ? (data.damage || "-") : (data.ac || "-");
+                        displayStat = manualStat ? String(manualStat) : (expectedType === "Weapon" ? (data.damage || "-") : (data.ac || "-"));
                         displayDesc = data.description || "";
                     }
 
