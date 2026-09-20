@@ -2,7 +2,7 @@
 
 > [!NOTE]
 > DnD Character Sheet Helper is an Obsidian Plugin that brings the DnD Rulebook 5.5e (2024) right inside your Digital Character Sheet. This is not a replacement for the DnD Player's Handbook, but just a handy tool that gives you only the information you might need, or you wouldn't remember on top of your mind, while playing.
-> -
+> 
 > Template using my plugin and [hay-kot's Obsidian DnD UI Toolkit](https://github.com/hay-kot/obsidian-dnd-ui-toolkit) on this repo: [template link](https://github.com/IonasPolitis/Ionas-Obsidian-DnD-Character-Sheet-Template)!
 
 > If there are any races or classes you want me to add to this plugin, make a feature request on GitHub.
