@@ -63,17 +63,36 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
         );
 
         this.addCommand({
-            id: 'character-sheet-template',
-            name: 'Set Character Sheet Template',
-            editorCallback: async (editor: Editor, view: MarkdownView) => {
+            id: 'csh-character-sheet-template',
+            name: 'Character Sheet Helper: Set Character Sheet Template',
+            callback: async () => {
+                // 1. Get the currently active Markdown note
+                const view = this.app.workspace.getActiveViewOfType(MarkdownView);
+
+                if (!view) {
+                    new Notice("Please open a note first to insert the template.");
+                    return;
+                }
+
                 try {
-                    const filePath = `${this.manifest.dir}/<DnD_Character_TEMPLATE>.md`;
+                    // 2. Check if the note is in Reading mode. If so, switch to Editing (source) mode.
+                    const currentState = view.getState();
+                    if (currentState.mode !== 'source') {
+                        currentState.mode = 'source';
+                        await view.setState(currentState, { history: false });
+                    }
+
+                    // 3. Read the template file
+                    // (Note: I highly recommend renaming your file to remove the < > characters as they cause file path errors on some OSs)
+                    const filePath = `${this.manifest.dir}/DnD_Character_TEMPLATE.md`;
                     const content = await this.app.vault.adapter.read(filePath);
-                    editor.replaceSelection(content);
+
+                    // 4. Paste the content using the editor
+                    view.editor.replaceSelection(content);
 
                 } catch (error) {
-                    console.error("Failed to read the plugin file:", error);
-                    new Notice("Error: Could not find or read the file.");
+                    console.error("Failed to insert template:", error);
+                    new Notice("Error: Could not read template file.");
                 }
             }
         });
