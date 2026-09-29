@@ -210,3 +210,10 @@
     margin-bottom: 0.5rem;
     color: var(--text-accent);
 }
+
+/* ==========================================
+   7. Note CSS
+   ========================================== */
+.character-sheet {
+  --file-line-width: 1200px;
+}
