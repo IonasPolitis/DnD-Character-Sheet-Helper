@@ -1,4 +1,4 @@
-import { App, Plugin, PluginSettingTab, Setting, MarkdownPostProcessorContext, parseYaml, MarkdownRenderChild, MarkdownRenderer, TFile, Modal } from 'obsidian';
+import { App, Plugin, PluginSettingTab, Setting, MarkdownPostProcessorContext, parseYaml, MarkdownRenderChild, MarkdownRenderer, TFile, Modal, Editor, Notice, MarkdownView } from 'obsidian';
 import { getClassData, getSubclassData, getBackgroundData, getRaceData, getExtraFeat, getItemData, getRuleData } from './data';
 import { MarkdownNotes } from './registry';
 
@@ -61,6 +61,22 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
             "dnd-rules",
             this.processDnDRulesBlock.bind(this)
         );
+
+        this.addCommand({
+            id: 'character-sheet-template',
+            name: 'Set Character Sheet Template',
+            editorCallback: async (editor: Editor, view: MarkdownView) => {
+                try {
+                    const filePath = `${this.manifest.dir}/<DnD_Character_TEMPLATE>.md`;
+                    const content = await this.app.vault.adapter.read(filePath);
+                    editor.replaceSelection(content);
+
+                } catch (error) {
+                    console.error("Failed to read the plugin file:", error);
+                    new Notice("Error: Could not find or read the file.");
+                }
+            }
+        });
     }
 
     // Helper functions for Obsidian to read/write settings
