@@ -144,7 +144,7 @@ rules.forEach(i => {
 out += `};\n`;
 
 // 4. Generate the Markdown Notes Registry
-out = `\nexport const MarkdownNotes: Record<string, string> = {\n`;
+out += `\nexport const MarkdownNotes: Record<string, string> = {\n`;
 
 markdownNotes.forEach(note => {
     const content = fs.readFileSync(note.filePath, 'utf-8');
