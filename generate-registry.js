@@ -123,7 +123,7 @@ out += `};\n`;
 // 4. Generate the Markdown Notes Registry
 out += `\nexport const MarkdownNotes: Record<string, string> = {\n`;
 markdownNotes.forEach(note => {
-    const filePath = path.join(__dirname, `rulebook/markdown/${note}.md`);
+    const filePath = path.join(__dirname, `rulebook/markdown`,`${note}.md`);
     const content = fs.readFileSync(filePath, 'utf-8');
     out += `    "${note}": ${JSON.stringify(content)},\n`;
 });
