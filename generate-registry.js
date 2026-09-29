@@ -21,12 +21,35 @@ const items = scanFolder('items');
 const rules = scanFolder('rules');
 
 // --- MARKDOWN NOTE SCANNER ---
-// Scans the root directory for any .md files (ignoring the README)
 function scanMarkdownNotes() {
-    return fs.readdirSync(__dirname)
+    const notes = [];
+
+    // 1. Scan Root directory (ignoring README.md)
+    fs.readdirSync(__dirname)
         .filter(file => file.endsWith('.md') && file.toLowerCase() !== 'readme.md')
-        .map(file => file.replace('.md', ''));
+        .forEach(file => {
+            notes.push({
+                name: file.replace('.md', ''),
+                filePath: path.join(__dirname, file) // Save exact root path
+            });
+        });
+
+    // 2. Scan rulebook/markdown directory
+    const rulebookDir = path.join(__dirname, 'rulebook', 'markdown');
+    if (fs.existsSync(rulebookDir)) { // Check if folder exists to prevent crashes
+        fs.readdirSync(rulebookDir)
+            .filter(file => file.endsWith('.md'))
+            .forEach(file => {
+                notes.push({
+                    name: file.replace('.md', ''),
+                    filePath: path.join(rulebookDir, file) // Save exact rulebook path
+                });
+            });
+    }
+
+    return notes;
 }
+
 const markdownNotes = scanMarkdownNotes();
 
 // Start building the file text
@@ -121,12 +144,13 @@ rules.forEach(i => {
 out += `};\n`;
 
 // 4. Generate the Markdown Notes Registry
-out += `\nexport const MarkdownNotes: Record<string, string> = {\n`;
+out = `\nexport const MarkdownNotes: Record<string, string> = {\n`;
+
 markdownNotes.forEach(note => {
-    const filePath = path.join(__dirname, `rulebook/markdown`,`${note}.md`);
-    const content = fs.readFileSync(filePath, 'utf-8');
-    out += `    "${note}": ${JSON.stringify(content)},\n`;
+    const content = fs.readFileSync(note.filePath, 'utf-8');
+    out += `    "${note.name}": ${JSON.stringify(content)},\n`;
 });
+
 out += `};\n`;
 
 // --- 5. Generate Past Editions Registry ---
