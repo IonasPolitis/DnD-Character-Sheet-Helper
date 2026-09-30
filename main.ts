@@ -82,17 +82,20 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                         await view.setState(currentState, { history: false });
                     }
 
-                    // 3. Read the template file
-                    // (Note: I highly recommend renaming your file to remove the < > characters as they cause file path errors on some OSs)
-                    const filePath = `${this.manifest.dir}/rulebook/markdown/DnD_Character_TEMPLATE.md`;
-                    const content = await this.app.vault.adapter.read(filePath);
+                    // 3. Grab the template from the pre-bundled registry instead of the disk!
+                    const content = MarkdownNotes['dnd_character_template'];
+
+                    if (!content) {
+                        new Notice("Error: Template not found in the registry.");
+                        return;
+                    }
 
                     // 4. Paste the content using the editor
                     view.editor.replaceSelection(content);
 
                 } catch (error) {
                     console.error("Failed to insert template:", error);
-                    new Notice("Error: Could not read template file.");
+                    new Notice("Error: Could not insert template file.");
                 }
             }
         });
