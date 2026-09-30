@@ -64,7 +64,7 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
 
         this.addCommand({
             id: 'csh-character-sheet-template',
-            name: 'Character Sheet Helper: Set Character Sheet Template',
+            name: 'Set Character Sheet Template',
             callback: async () => {
                 const view = this.app.workspace.getActiveViewOfType(MarkdownView);
 

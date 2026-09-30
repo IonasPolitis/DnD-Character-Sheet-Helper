@@ -188,5 +188,3 @@ duration: Instantaneous
 | INT |  -   | --->  | --->  | --->  |  --->  |  --->  |  --->  |
 | WIS |  -   | --->  | --->  | --->  |  --->  |  --->  |  --->  |
 | CHA |  -   | --->  | --->  | --->  |  --->  |  --->  |  --->  |
-
-<%tp.file.rename("<Name> Character Sheet")%>
