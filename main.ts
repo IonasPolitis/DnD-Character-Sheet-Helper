@@ -74,20 +74,15 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                 }
 
                 try {
-                    // 1. Check if the note is in Reading mode and switch to Editing mode
                     const currentState = view.getState();
                     if (currentState.mode !== 'source') {
                         currentState.mode = 'source';
                         await view.setState(currentState, { history: false });
                     }
-
-                    // 2. Give Obsidian 100ms to initialize the editor UI after a mode switch
                     setTimeout(() => {
-                        // Grab the template from the pre-bundled registry
                         const content = MarkdownNotes['dnd_character_template'];
 
                         if (!content) {
-                            // DEBUGGER: If the file name is slightly different, this will tell you exactly what keys exist!
                             const available = Object.keys(MarkdownNotes).join(', ');
                             new Notice(`Template missing! Available files: ${available}`);
                             return;
