@@ -66,7 +66,6 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
             id: 'csh-character-sheet-template',
             name: 'Character Sheet Helper: Set Character Sheet Template',
             callback: async () => {
-                // 1. Get the currently active Markdown note
                 const view = this.app.workspace.getActiveViewOfType(MarkdownView);
 
                 if (!view) {
@@ -75,23 +74,28 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                 }
 
                 try {
-                    // 2. Check if the note is in Reading mode. If so, switch to Editing (source) mode.
+                    // 1. Check if the note is in Reading mode and switch to Editing mode
                     const currentState = view.getState();
                     if (currentState.mode !== 'source') {
                         currentState.mode = 'source';
                         await view.setState(currentState, { history: false });
                     }
 
-                    // 3. Grab the template from the pre-bundled registry instead of the disk!
-                    const content = MarkdownNotes['dnd_character_template'];
+                    // 2. Give Obsidian 100ms to initialize the editor UI after a mode switch
+                    setTimeout(() => {
+                        // Grab the template from the pre-bundled registry
+                        const content = MarkdownNotes['dnd_character_template'];
 
-                    if (!content) {
-                        new Notice("Error: Template not found in the registry.");
-                        return;
-                    }
+                        if (!content) {
+                            // DEBUGGER: If the file name is slightly different, this will tell you exactly what keys exist!
+                            const available = Object.keys(MarkdownNotes).join(', ');
+                            new Notice(`Template missing! Available files: ${available}`);
+                            return;
+                        }
 
-                    // 4. Paste the content using the editor
-                    view.editor.replaceSelection(content);
+                        // Paste the content
+                        view.editor.replaceSelection(content);
+                    }, 100);
 
                 } catch (error) {
                     console.error("Failed to insert template:", error);
