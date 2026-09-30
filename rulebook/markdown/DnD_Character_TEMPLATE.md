@@ -31,6 +31,7 @@ DnD_armor_ac:
 dnd_gold_added:
 dnd_gold_spent:
 cssclasses: character-sheet
+obsidianUIMode: preview
 ---
 
 ## Board
