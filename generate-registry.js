@@ -29,20 +29,22 @@ function scanMarkdownNotes() {
         .filter(file => file.endsWith('.md') && file.toLowerCase() !== 'readme.md')
         .forEach(file => {
             notes.push({
-                name: file.replace('.md', ''),
-                filePath: path.join(__dirname, file) // Save exact root path
+                // ADDED .toLowerCase() HERE
+                name: file.replace('.md', '').toLowerCase(),
+                filePath: path.join(__dirname, file)
             });
         });
 
     // 2. Scan rulebook/markdown directory
     const rulebookDir = path.join(__dirname, 'rulebook', 'markdown');
-    if (fs.existsSync(rulebookDir)) { // Check if folder exists to prevent crashes
+    if (fs.existsSync(rulebookDir)) {
         fs.readdirSync(rulebookDir)
             .filter(file => file.endsWith('.md'))
             .forEach(file => {
                 notes.push({
-                    name: file.replace('.md', ''),
-                    filePath: path.join(rulebookDir, file) // Save exact rulebook path
+                    // ADDED .toLowerCase() HERE
+                    name: file.replace('.md', '').toLowerCase(),
+                    filePath: path.join(rulebookDir, file)
                 });
             });
     }
@@ -84,7 +86,7 @@ if (fs.existsSync(path.join(rulebookDir, 'rules.json'))) {
 // 2. Generate Imports for Sub-folders
 classes.forEach(c => {
     // Upgraded Regex: Strips ALL non-alphanumeric characters so JavaScript never breaks
-    const safeName = c.replace(/[^a-zA-Z0-9]/g, ''); 
+    const safeName = c.replace(/[^a-zA-Z0-9]/g, '');
     out += `import class_${safeName} from './rulebook/classes/${c}.json';\n`;
 });
 feats.forEach(f => {
@@ -160,13 +162,13 @@ out += `\nexport const pastEditionsRegistry: Record<string, any> = {};\n`;
 if (fs.existsSync(pastEditionsDir)) {
     // Find all folders inside #past-editions (e.g., "5e")
     const editions = fs.readdirSync(pastEditionsDir).filter(f => fs.statSync(path.join(pastEditionsDir, f)).isDirectory());
-    
+
     editions.forEach(edition => {
         out += `pastEditionsRegistry["${edition}"] = {\n`;
         out += `    classesMap: {}, backgroundsMap: {}, racesMap: {}, itemsMap: {}, rulesMap: {},\n`;
         out += `    classRegistry: {}, subclassRegistry: {}, featRegistry: {}, raceRegistry: {}, itemRegistry: {}, ruleRegistry: {}\n`;
         out += `};\n`;
-        
+
         // Bundle the maps
         const maps = ['classes', 'backgrounds', 'races', 'items', 'rules'];
         maps.forEach(map => {

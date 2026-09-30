@@ -84,7 +84,7 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
 
                     // 3. Read the template file
                     // (Note: I highly recommend renaming your file to remove the < > characters as they cause file path errors on some OSs)
-                    const filePath = `${this.manifest.dir}/DnD_Character_TEMPLATE.md`;
+                    const filePath = `${this.manifest.dir}/rulebook/markdown/DnD_Character_TEMPLATE.md`;
                     const content = await this.app.vault.adapter.read(filePath);
 
                     // 4. Paste the content using the editor
