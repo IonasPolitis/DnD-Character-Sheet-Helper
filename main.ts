@@ -99,6 +99,22 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
         );
 
         this.addCommand({
+            id: 'csh-launch-character-wizard',
+            name: 'Launch Character Creation Wizard',
+            callback: () => {
+                const view = this.app.workspace.getActiveViewOfType(MarkdownView);
+
+                if (!view) {
+                    new Notice("Please open a note first to launch the Wizard.");
+                    return;
+                }
+
+                // Launch our new multi-step wizard!
+                new CharacterWizardModal(this.app, this).open();
+            }
+        });
+
+        this.addCommand({
             id: 'csh-character-sheet-template',
             name: 'Set Character Sheet Template',
             callback: async () => {
