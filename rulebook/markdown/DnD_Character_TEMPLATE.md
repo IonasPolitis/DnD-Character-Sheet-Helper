@@ -1,17 +1,20 @@
 ---
-level:
+level: 
 proficiency_bonus:
 DnD_race:
-DnD_race_lineage:
-DnD_class:
-DnD_class_subclass:
-DnD_class-chosen-items:
+DnD_race_lineage: 
+DnD_class: 
+DnD_classLevels
+DnD_Subclass:
+DnD_classEquipment: 
+DnD_classChosenItems:
 DnD_languages:
-DnD_background:
-DnD_background_feat:
-DnD_background-chosen-items:
+DnD_background: 
+DnD_backgroundFeat: 
+DnD_backgroundEquipment: 
+DnD_backgroundChosenItems:
 DnD_extra_feats:
-spellcasting_ability:
+spellcastingAbility:
 DnD_maxHealth:
 DnD_attack:
 DnD_speed:
@@ -22,15 +25,14 @@ DnD_intelligence:
 DnD_wisdom:
 DnD_charisma:
 DnD_hide_feature:
-DnD_class-equipment:
-DnD_background-equipment:
 DnD_weapon:
-DnD_weapon_damage:
+DnD_weaponDamage:
 DnD_armor:
-DnD_armor_ac:
+DnD_armorAc:
 dnd_gold_added:
 dnd_gold_spent:
-cssclasses: character-sheet
+cssclasses:
+  - character-sheet
 obsidianUIMode: preview
 ---
 
@@ -128,16 +130,16 @@ bonuses:
 
 ```dnd-inventory
 class: frontmatter.DnD_class
-class-equipment: frontmatter.DnD_class-equipment
-class-chosen-items: frontmatter.DnD_class-chosen-items
+classEquipment: frontmatter.DnD_classEquipment
+classChosenItems: frontmatter.DnD_classChosenItems
 background: frontmatter.DnD_background
-background-equipment: frontmatter.DnD_background-equipment
-background-chosen-items: frontmatter.DnD_background-chosen-items
+backgroundEquipment: frontmatter.DnD_backgroundEquipment
+backgroundChosenItems: frontmatter.DnD_backgroundChosenItems
 weapon: frontmatter.DnD_weapon
-weapon_damage: frontmatter.DnD_weapon_damage
+weaponDamage: frontmatter.DnD_weaponDamage
 armor: frontmatter.DnD_armor
-armor_ac: frontmatter.DnD_armor_ac
-extra-items: frontmatter.DnD_extra_items
+armorAc: frontmatter.DnD_armorAc
+extraItems: frontmatter.DnD_extraItems
 ```
 <font size=5>**Consumables:**</font>
 ```consumable
@@ -151,13 +153,13 @@ items:
 ```dnd-features
 level: frontmatter.level
 class: frontmatter.DnD_class
-class-levels: frontmatter.DnD_class_levels
-subclass: frontmatter.DnD_class_subclass
+classLevels: frontmatter.DnD_classLevels
+subclass: frontmatter.DnD_Subclass
 race: frontmatter.DnD_race
-race-lineage: frontmatter.DnD_race_lineage
+raceLineage: frontmatter.DnD_raceLineage
 background: frontmatter.DnD_background
-extra-feats: frontmatter.DnD_extra_feats
-hide: frontmatter.DnD_hide_feature
+extraFeats: frontmatter.DnD_extraFeats
+hide: frontmatter.DnD_hideFeature
 ```
 
 <font size=5>**Abilities:**</font>

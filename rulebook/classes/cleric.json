@@ -1,7 +1,7 @@
 {
     "class": "Cleric",
     "subclassFile": "cleric-subclasses",
-    "starting-equipment": {
+    "startingEquipment": {
         "A": {
             "items": {
                 "chain-shirt": 1,

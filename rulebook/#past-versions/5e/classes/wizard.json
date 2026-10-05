@@ -1,7 +1,7 @@
 {
     "class": "Wizard",
     "subclassFile": "wizard-subclasses",
-    "starting-equipment": {
+    "startingEquipment": {
         "A": {
             "items": {
                 "dagger": 2,

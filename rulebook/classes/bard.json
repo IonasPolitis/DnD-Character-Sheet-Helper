@@ -1,7 +1,7 @@
 {
     "class": "Bard",
     "subclassFile": "bard-subclasses",
-    "starting-equipment": {
+    "startingEquipment": {
         "A": {
             "items": {
                 "leather-armor": 1,

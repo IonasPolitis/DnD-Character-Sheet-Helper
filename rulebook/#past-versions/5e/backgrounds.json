@@ -1,7 +1,7 @@
 {
       "Acolyte": {
             "feat": "magic-initiate-cleric",
-            "starting-equipment": {
+            "startingEquipment": {
                   "A": {
                         "items": {
                               "calligraphers-supplies": 1,
@@ -16,7 +16,7 @@
       },
       "Artisan": {
             "feat": "crafter",
-            "starting-equipment": {
+            "startingEquipment": {
                   "A": {
                         "items": {
                               "artisans-tool|": 1,
@@ -29,7 +29,7 @@
       },
       "Charlatan": {
             "feat": "skilled",
-            "starting-equipment": {
+            "startingEquipment": {
                   "A": {
                         "items": {
                               "forgery-kit": 1,
@@ -42,7 +42,7 @@
       },
       "Criminal": {
             "feat": "alert",
-            "starting-equipment": {
+            "startingEquipment": {
                   "A": {
                         "items": {
                               "dagger": 2,
@@ -57,7 +57,7 @@
       },
       "Entertainer": {
             "feat": "musician",
-            "starting-equipment": {
+            "startingEquipment": {
                   "A": {
                         "items": {
                               "musical-instrument|": 1,
@@ -72,7 +72,7 @@
       },
       "Farmer": {
             "feat": "tough",
-            "starting-equipment": {
+            "startingEquipment": {
                   "A": {
                         "items": {
                               "sickle": 1,
@@ -88,7 +88,7 @@
       },
       "Guard": {
             "feat": "alert",
-            "starting-equipment": {
+            "startingEquipment": {
                   "A": {
                         "items": {
                               "spear": 1,
@@ -106,7 +106,7 @@
       },
       "Guide": {
             "feat": "magic-initiate-druid",
-            "starting-equipment": {
+            "startingEquipment": {
                   "A": {
                         "items": {
                               "shortbow": 1,
@@ -123,7 +123,7 @@
       },
       "Hermit": {
             "feat": "healer",
-            "starting-equipment": {
+            "startingEquipment": {
                   "A": {
                         "items": {
                               "quarterstaff": 1,
@@ -140,7 +140,7 @@
       },
       "Merchant": {
             "feat": "lucky",
-            "starting-equipment": {
+            "startingEquipment": {
                   "A": {
                         "items": {
                               "navigators-tools": 1,
@@ -153,7 +153,7 @@
       },
       "Noble": {
             "feat": "skilled",
-            "starting-equipment": {
+            "startingEquipment": {
                   "A": {
                         "items": {
                               "gaming-set|": 1,
@@ -166,7 +166,7 @@
       },
       "Sage": {
             "feat": "magic-initiate-wizard",
-            "starting-equipment": {
+            "startingEquipment": {
                   "A": {
                         "items": {
                               "quarterstaff": 1,
@@ -181,7 +181,7 @@
       },
       "Sailor": {
             "feat": "tavern-brawler",
-            "starting-equipment": {
+            "startingEquipment": {
                   "A": {
                         "items": {
                               "dagger": 1,
@@ -195,7 +195,7 @@
       },
       "Scribe": {
             "feat": "skilled",
-            "starting-equipment": {
+            "startingEquipment": {
                   "A": {
                         "items": {
                               "calligraphers-supplies": 1,
@@ -210,7 +210,7 @@
       },
       "Soldier": {
             "feat": "savage-attacker",
-            "starting-equipment": {
+            "startingEquipment": {
                   "A": {
                         "items": {
                               "spear": 1,
@@ -227,7 +227,7 @@
       },
       "Wayfarer": {
             "feat": "lucky",
-            "starting-equipment": {
+            "startingEquipment": {
                   "A": {
                         "items": {
                               "dagger": 2,

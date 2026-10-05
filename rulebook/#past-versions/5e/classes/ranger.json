@@ -1,7 +1,7 @@
 {
     "class": "Ranger",
     "subclassFile": "ranger-subclasses",
-    "starting-equipment": {
+    "startingEquipment": {
         "A": {
             "items": {
                 "studded-leather-armor": 1,

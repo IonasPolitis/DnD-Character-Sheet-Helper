@@ -1,7 +1,7 @@
 {
     "class": "Rogue",
     "subclassFile": "rogue-subclasses",
-    "starting-equipment": {
+    "startingEquipment": {
         "A": {
             "items": {
                 "leather-armor": 1,

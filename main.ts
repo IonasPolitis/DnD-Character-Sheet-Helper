@@ -318,11 +318,11 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
             const level = resolveValue(blockData.level);
             const dndClass = resolveValue(blockData.class);
             const subclass = resolveValue(blockData.subclass);
-            const classLevels = resolveValue(blockData['class-levels']);
+            const classLevels = resolveValue(blockData['classLevels']);
             const race = resolveValue(blockData.race);
-            const raceLineage = resolveValue(blockData['race-lineage']);
+            const raceLineage = resolveValue(blockData['raceLineage']);
             const background = resolveValue(blockData.background);
-            const extraFeats = resolveValue(blockData['extra-feats']);
+            const extraFeats = resolveValue(blockData['extraFeats']);
             const hideRaw = resolveValue(blockData.hide);
             const edition = resolveValue(blockData.edition);
 
@@ -687,13 +687,13 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
             // 1. Resolve Variables
             const dndClass = resolveValue(blockData.class);
             const background = resolveValue(blockData.background);
-            const classEq = resolveValue(blockData['class-equipment']);
-            const bgEq = resolveValue(blockData['background-equipment']);
+            const classEq = resolveValue(blockData['classEquipment']);
+            const bgEq = resolveValue(blockData['backgroundEquipment']);
             const weaponSlot = resolveValue(blockData.weapon);
-            const weaponDamage = resolveValue(blockData.weapon_damage);
+            const weaponDamage = resolveValue(blockData.weaponDamage);
             const armorSlot = resolveValue(blockData.armor);
-            const armorAc = resolveValue(blockData.armor_ac);
-            const extraItemsRaw = resolveValue(blockData['extra-items']);
+            const armorAc = resolveValue(blockData.armorAc);
+            const extraItemsRaw = resolveValue(blockData['extraItems']);
             const edition = resolveValue(blockData.edition);
 
             const fetchOptions = {
@@ -702,8 +702,8 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
             };
 
             // --- Phase 1 & 2: Pre-Pass & Build the "Available Choices" Pools ---
-            const classChosenItemsRaw = resolveValue(blockData['class-chosen-items']);
-            const bgChosenItemsRaw = resolveValue(blockData['background-chosen-items']);
+            const classChosenItemsRaw = resolveValue(blockData['classChosenItems']);
+            const bgChosenItemsRaw = resolveValue(blockData['backgroundChosenItems']);
 
             // Helper to sanitize items natively
             const sanitizeItem = (val: any) => {
@@ -793,7 +793,7 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
             if (dndClass && classEq) {
                 const primaryClass = Array.isArray(dndClass) ? dndClass[0] : dndClass;
                 const classData = await getClassData(this.app, fetchOptions, primaryClass);
-                if (classData?.['starting-equipment']) addItemsToPool(classData['starting-equipment'][classEq], startingItemCounts, classChosenItemsPool);
+                if (classData?.['startingEquipment']) addItemsToPool(classData['startingEquipment'][classEq], startingItemCounts, classChosenItemsPool);
             }
 
             // Check for both the background name AND the A/B choice variable
@@ -801,8 +801,8 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                 // Fetch the background data
                 const bgData = await getBackgroundData(this.app, fetchOptions, background);
 
-                if (bgData?.['starting-equipment']) {
-                    addItemsToPool(bgData['starting-equipment'][bgEq], startingItemCounts, bgChosenItemsPool);
+                if (bgData?.['startingEquipment']) {
+                    addItemsToPool(bgData['startingEquipment'][bgEq], startingItemCounts, bgChosenItemsPool);
                 }
             }
 
@@ -1168,6 +1168,8 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
         );
     }
 }
+
+
 
 // --- THE POP-UP UI ---
 class NoteModal extends Modal {

@@ -1,7 +1,7 @@
 {
     "class": "Warlock",
     "subclassFile": "warlock-subclasses",
-    "starting-equipment": {
+    "startingEquipment": {
         "A": {
             "items": {
                 "leather-armor": 1,

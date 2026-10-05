@@ -137,7 +137,7 @@ The structure of each JSON file is as follows:
 {
       "<Background>": {
             "feat": "<Feat_Given>",
-            "starting-equipment": {
+            "startingEquipment": {
                   "A": {
                         "items": {
                               "<item>": 0,
@@ -155,7 +155,9 @@ The structure of each JSON file is as follows:
 {
     "class": "<Class_Name>",
     "subclassFile": "<Subclass_File_Name>",
-    "starting-equipment": {
+      "hitDice": "D8",
+    "spellcasting_abilities": [""],
+    "startingEquipment": {
         "A": {
             "items": {
                 "<Item_File_Name>": 0,

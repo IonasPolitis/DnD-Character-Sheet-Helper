@@ -1,7 +1,7 @@
 {
     "class": "Fighter",
     "subclassFile": "fighter-subclasses",
-    "starting-equipment": {
+    "startingEquipment": {
         "A": {
             "items": {
                 "chain-mail": 1,

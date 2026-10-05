@@ -1,7 +1,9 @@
 {
     "class": "Warlock",
     "subclassFile": "warlock-subclasses",
-    "starting-equipment": {
+    "hitDice": "D8",
+    "spellcastingAbilities": ["Charisma"],
+    "startingEquipment": {
         "A": {
             "items": {
                 "leather-armor": 1,

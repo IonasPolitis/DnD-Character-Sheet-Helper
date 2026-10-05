@@ -1,7 +1,7 @@
 {
     "class": "Sorcerer",
     "subclassFile": "sorcerer-subclasses",
-    "starting-equipment": {
+    "startingEquipment": {
         "A": {
             "items": {
                 "spear": 1,

@@ -1,7 +1,7 @@
 {
     "class": "Barbarian",
     "subclassFile": "barbarian-subclasses",
-    "starting-equipment": {
+    "startingEquipment": {
         "A": {
             "items": {
                 "greataxe": 1,
