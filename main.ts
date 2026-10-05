@@ -182,8 +182,12 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
     async updateGoldFrontmatter(filePath: string, type: 'base' | 'added' | 'spent', amount: number) {
         const file = this.app.vault.getAbstractFileByPath(filePath);
         if (file instanceof TFile) {
-            await this.app.fileManager.processFrontMatter(file, (frontmatter) => {
-                const key = `DnD_Gold${type.charAt(0).toUpperCase() + type.slice(1)}`;
+            // Explicitly type the frontmatter parameter to prevent TS errors
+            await this.app.fileManager.processFrontMatter(file, (frontmatter: Record<string, any>) => {
+                // Safely map the union type to the exact string key without string manipulation
+                const keyMap = { base: 'DnD_GoldBase', added: 'DnD_GoldAdded', spent: 'DnD_GoldSpent' };
+                const key = keyMap[type];
+                
                 const current = Number(frontmatter[key]) || 0;
                 frontmatter[key] = current + amount;
             });
@@ -319,7 +323,7 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
 
             // 2. Fetch the frontmatter for the current active file
             const fileCache = this.app.metadataCache.getCache(ctx.sourcePath);
-            const frontmatter = fileCache?.frontmatter || {};
+            const frontmatter: Record<string, any> = fileCache?.frontmatter || {};
 
             // 3. Helper function to resolve "frontmatter.property" values
             const resolveValue = (val: any) => {
@@ -1477,7 +1481,103 @@ class CharacterWizardModal extends Modal {
     }
 
     async finishWizard() {
-        new Notice("Wizard logic will go here!");
+        const view = this.app.workspace.getActiveViewOfType(MarkdownView);
+        if (!view) {
+            new Notice("Error: Please open a note to generate the character sheet.");
+            return;
+        }
+
+        // 1. Generate unique state keys based on Character Name
+        const rawName = this.wizardData.name || "hero";
+        const safeName = rawName.toLowerCase().replace(/[^a-z0-9]/g, '');
+        const randomId = Math.random().toString(36).substring(2, 6);
+        const stateKey = `${safeName}_${randomId}`;
+
+        // 2. Fetch Dynamic Data from Class JSON
+        let hitDice = "d8";
+        let proficiencies = ["<chosen ability>", "<chosen ability>"];
+        
+        if (this.wizardData.dndClass) {
+            // Using your existing helper to grab the JSON data!
+            const classData = await getClassData(this.app, this.plugin.settings, this.wizardData.dndClass);
+            if (classData) {
+                if (classData.hit_dice) hitDice = classData.hit_dice;
+                
+                // If you ever add saving_throws to your JSONs, it automatically reads them here!
+                if (classData.saving_throws && Array.isArray(classData.saving_throws)) {
+                    proficiencies = classData.saving_throws.map((st: string) => st.charAt(0).toUpperCase() + st.slice(1));
+                }
+            }
+        }
+
+        // 3. Prepare the Template string
+        let finalContent = MarkdownNotes['dnd_character_template'] || "";
+        if (!finalContent) {
+            new Notice("Error: Template missing from registry!");
+            return;
+        }
+
+        // 4. Inject Frontmatter Data (Safely maps directly to your Template's keys)
+        const injectYAML = (key: string, value: any) => {
+            if (value !== undefined && value !== "") {
+                const regex = new RegExp(`^${key}:.*$`, "m");
+                finalContent = finalContent.replace(regex, `${key}: ${value}`);
+            }
+        };
+
+        // Core variables
+        injectYAML("level", this.wizardData.level);
+        injectYAML("DnD_race", this.wizardData.race);
+        injectYAML("DnD_class", this.wizardData.dndClass);
+        injectYAML("DnD_background", this.wizardData.background);
+        injectYAML("spellcastingAbility", this.wizardData.spellcastingAbility);
+        injectYAML("DnD_classEquipment", this.wizardData.classEquipment);
+        injectYAML("DnD_backgroundEquipment", this.wizardData.backgroundEquipment);
+
+        // Equipment variables
+        injectYAML("DnD_weapon", this.wizardData.weapon);
+        injectYAML("DnD_weaponDamage", this.wizardData.weaponDamage);
+        injectYAML("DnD_armor", this.wizardData.armor);
+        injectYAML("DnD_armorAc", this.wizardData.armorAc);
+
+        // Stat variables
+        injectYAML("DnD_strength", this.wizardData.strength);
+        injectYAML("DnD_dexterity", this.wizardData.dexterity);
+        injectYAML("DnD_constitution", this.wizardData.constitution);
+        injectYAML("DnD_intelligence", this.wizardData.intelligence);
+        injectYAML("DnD_wisdom", this.wizardData.wisdom);
+        injectYAML("DnD_charisma", this.wizardData.charisma);
+
+        // 5. Replace Code Block Placeholders
+        finalContent = finalContent.replace(/<class_hit_dice>/g, hitDice);
+        finalContent = finalContent.replace(/din_health/g, `${stateKey}_health`);
+        finalContent = finalContent.replace(/din_consumable/g, `${stateKey}_consumable`);
+        
+        // Replace the first two instances of <chosen ability> with the saving throws (or fallback)
+        finalContent = finalContent.replace(/<chosen ability>/, proficiencies[0] || "<chosen ability>");
+        finalContent = finalContent.replace(/<chosen ability>/, proficiencies[1] || "<chosen ability>");
+
+        // Armor block fallback
+        if (this.wizardData.armorAc) {
+            finalContent = finalContent.replace(/<same_as_armour_value>/g, String(this.wizardData.armorAc));
+        }
+
+        // 6. Paste to Editor
+        try {
+            const currentState = view.getState();
+            if (currentState.mode !== 'source') {
+                currentState.mode = 'source';
+                await view.setState(currentState, { history: false });
+            }
+            setTimeout(() => {
+                view.editor.replaceSelection(finalContent);
+                new Notice("Character Sheet Generated Successfully!");
+            }, 100);
+        } catch (error) {
+            console.error("Failed to insert template:", error);
+            new Notice("Error: Could not insert template file.");
+        }
+
         this.close();
     }
 }
