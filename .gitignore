@@ -4,3 +4,5 @@ main.js
 registry.ts
 nan.js
 manifest.json
+package-lock.json
+package.json
