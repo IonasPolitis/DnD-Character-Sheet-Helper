@@ -1222,45 +1222,37 @@ class CharacterWizardModal extends Modal {
         this.contentEl.empty();
     }
 
-    // Safely fetch keys from the router JSON files or use native fallbacks
+    // Safely fetch keys from the Custom Homebrew folder and merge them with native bases
     async fetchDropdownData() {
-        const getKeysFromJSON = async (fileName: string, fallbackKeys: string[]) => {
-            try {
-                // We use a Set to automatically prevent duplicate entries!
-                let keys: Set<string> = new Set(fallbackKeys);
+        const getKeys = async (fileName: string, baseKeys: string[]) => {
+            // 1. Start with our native base keys
+            let keys: Set<string> = new Set(baseKeys);
 
-                // 1. Try to read from the plugin's internal directory 
-                const nativePath = `${this.plugin.manifest.dir}/${fileName}`;
-                if (await this.app.vault.adapter.exists(nativePath)) {
-                    const content = await this.app.vault.adapter.read(nativePath);
-                    Object.keys(JSON.parse(content)).forEach(k => keys.add(k));
-                }
-
-                // 2. Try to read from the Custom Homebrew Folder
-                if (this.plugin.settings.customRulebookPath) {
-                    const customPath = `${this.plugin.settings.customRulebookPath}/${fileName}`;
+            // 2. Dynamically add any keys from the Custom Homebrew Folder
+            if (this.plugin.settings.customRulebookPath) {
+                const customPath = `${this.plugin.settings.customRulebookPath}/${fileName}`;
+                try {
                     if (await this.app.vault.adapter.exists(customPath)) {
                         const content = await this.app.vault.adapter.read(customPath);
                         Object.keys(JSON.parse(content)).forEach(k => keys.add(k));
                     }
+                } catch (e) {
+                    console.error(`Wizard Error: Could not read custom homebrew file at ${customPath}`, e);
                 }
-
-                // Convert the Set back to a sorted array for a clean dropdown
-                return Array.from(keys).sort();
-            } catch (e) {
-                console.error(`Wizard Error: Could not read ${fileName}`, e);
-                return fallbackKeys; // If everything fails, return the fallbacks
             }
+
+            // 3. Convert the Set back to a sorted array for a clean dropdown
+            return Array.from(keys).sort();
         };
 
-        // Fallbacks based strictly on the standard native files you provided
-        const defaultClasses = ["Barbarian", "Bard", "Blood Hunter", "Cleric", "Druid", "Fighter", "Monk", "Paladin", "Ranger", "Rogue", "Sorcerer", "Warlock", "Wizard", "XXX"];
-        const defaultRaces = ["Aasimar", "Dragonborn", "Dwarf", "Elf", "Gnome", "Goliath", "Half-Orc", "Halfling", "Human", "Orc", "Tiefling", "YYY"];
-        const defaultBackgrounds = ["Acolyte", "Artisan", "Charlatan", "Criminal", "Entertainer", "Farmer", "Guard", "Guide", "Hermit", "Merchant", "Noble", "Sage", "Sailor", "Scribe", "Soldier", "Wayfarer", "ZZZ"];
+        // Base native lists perfectly mapped to your router JSONs
+        const baseClasses = ["Barbarian", "Bard", "Blood Hunter", "Cleric", "Druid", "Fighter", "Monk", "Paladin", "Ranger", "Rogue", "Sorcerer", "Warlock", "Wizard"];
+        const baseRaces = ["Aasimar", "Dragonborn", "Dwarf", "Elf", "Gnome", "Goliath", "Half-Orc", "Halfling", "Human", "Orc", "Tiefling"];
+        const baseBackgrounds = ["Acolyte", "Artisan", "Charlatan", "Criminal", "Entertainer", "Farmer", "Guard", "Guide", "Hermit", "Merchant", "Noble", "Sage", "Sailor", "Scribe", "Soldier", "Wayfarer"];
 
-        this.availableClasses = await getKeysFromJSON("classes.json", defaultClasses);
-        this.availableRaces = await getKeysFromJSON("races.json", defaultRaces);
-        this.availableBackgrounds = await getKeysFromJSON("backgrounds.json", defaultBackgrounds);
+        this.availableClasses = await getKeys("classes.json", baseClasses);
+        this.availableRaces = await getKeys("races.json", baseRaces);
+        this.availableBackgrounds = await getKeys("backgrounds.json", baseBackgrounds);
     }
 
     // Main rendering engine for the Wizard
@@ -1269,7 +1261,7 @@ class CharacterWizardModal extends Modal {
         contentEl.empty();
 
         // 1. Header
-        contentEl.createEl("h2", { 
+        contentEl.createEl("h2", {
             text: `Character Creation Wizard (Step ${this.currentStep} of ${this.totalSteps})`,
             cls: "dnd-section-header"
         });
@@ -1288,8 +1280,8 @@ class CharacterWizardModal extends Modal {
         }
 
         // 3. Navigation Buttons Container
-        const navContainer = contentEl.createDiv({ 
-            attr: { style: "display: flex; justify-content: space-between; margin-top: 20px;" } 
+        const navContainer = contentEl.createDiv({
+            attr: { style: "display: flex; justify-content: space-between; margin-top: 20px;" }
         });
 
         // Back Button
@@ -1303,11 +1295,11 @@ class CharacterWizardModal extends Modal {
         };
 
         // Next / Finish Button
-        const nextBtn = navContainer.createEl("button", { 
+        const nextBtn = navContainer.createEl("button", {
             text: this.currentStep === this.totalSteps ? "Finish & Generate" : "Next",
             cls: "mod-cta" // Obsidian's native class for a primary highlighted button
         });
-        
+
         nextBtn.onclick = async () => {
             if (this.currentStep < this.totalSteps) {
                 this.currentStep++;
@@ -1320,9 +1312,9 @@ class CharacterWizardModal extends Modal {
 
     renderStepOne(container: HTMLElement) {
         container.createEl("h3", { text: "Core Details", cls: "dnd-class-header" });
-        
+
         // Character Name Input
-        const nameDiv = container.createDiv({ attr: { style: "margin-bottom: 12px;" }});
+        const nameDiv = container.createDiv({ attr: { style: "margin-bottom: 12px;" } });
         nameDiv.createEl("label", { text: "Character Name: ", attr: { style: "display: block; margin-bottom: 4px;" } });
         const nameInput = nameDiv.createEl("input", { type: "text", value: this.wizardData.name });
         nameInput.style.width = "100%";
@@ -1330,7 +1322,7 @@ class CharacterWizardModal extends Modal {
         nameInput.onchange = (e) => this.wizardData.name = (e.target as HTMLInputElement).value;
 
         // Level Input
-        const levelDiv = container.createDiv({ attr: { style: "margin-bottom: 12px;" }});
+        const levelDiv = container.createDiv({ attr: { style: "margin-bottom: 12px;" } });
         levelDiv.createEl("label", { text: "Level: ", attr: { style: "display: block; margin-bottom: 4px;" } });
         const levelInput = levelDiv.createEl("input", { type: "number", value: String(this.wizardData.level) });
         levelInput.min = "1";
@@ -1339,7 +1331,7 @@ class CharacterWizardModal extends Modal {
         levelInput.onchange = (e) => this.wizardData.level = Number((e.target as HTMLInputElement).value);
 
         // Race Dropdown
-        const raceDiv = container.createDiv({ attr: { style: "margin-bottom: 12px;" }});
+        const raceDiv = container.createDiv({ attr: { style: "margin-bottom: 12px;" } });
         raceDiv.createEl("label", { text: "Race: ", attr: { style: "display: block; margin-bottom: 4px;" } });
         const raceSelect = raceDiv.createEl("select");
         raceSelect.style.width = "100%";
@@ -1349,7 +1341,7 @@ class CharacterWizardModal extends Modal {
         raceSelect.onchange = (e) => this.wizardData.race = (e.target as HTMLSelectElement).value;
 
         // Class Dropdown
-        const classDiv = container.createDiv({ attr: { style: "margin-bottom: 12px;" }});
+        const classDiv = container.createDiv({ attr: { style: "margin-bottom: 12px;" } });
         classDiv.createEl("label", { text: "Class: ", attr: { style: "display: block; margin-bottom: 4px;" } });
         const classSelect = classDiv.createEl("select");
         classSelect.style.width = "100%";
@@ -1361,20 +1353,20 @@ class CharacterWizardModal extends Modal {
 
     async renderStepTwo(container: HTMLElement) {
         container.createEl("h3", { text: "Stats & Abilities", cls: "dnd-class-header" });
-        
+
         // 1. Render Base Stats (STR, DEX, CON, INT, WIS, CHA) in a Grid
-        const statsGrid = container.createDiv({ attr: { style: "display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px;" }});
-        
+        const statsGrid = container.createDiv({ attr: { style: "display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px;" } });
+
         const stats = ["Strength", "Dexterity", "Constitution", "Intelligence", "Wisdom", "Charisma"];
-        
+
         stats.forEach(stat => {
             const statKey = stat.toLowerCase(); // e.g., 'strength'
             // Initialize default value in wizardData to 10 if not present
             if (this.wizardData[statKey] === undefined) this.wizardData[statKey] = 10;
-            
+
             const statDiv = statsGrid.createDiv();
             statDiv.createEl("label", { text: `${stat}:`, attr: { style: "display: block; font-size: 0.9em; margin-bottom: 4px;" } });
-            
+
             const statInput = statDiv.createEl("input", { type: "number", value: String(this.wizardData[statKey]) });
             statInput.style.width = "100%";
             statInput.onchange = (e) => this.wizardData[statKey] = Number((e.target as HTMLInputElement).value);
@@ -1384,20 +1376,20 @@ class CharacterWizardModal extends Modal {
         if (this.wizardData.dndClass) {
             // We use your existing getClassData helper!
             const classData = await getClassData(this.app, this.plugin.settings, this.wizardData.dndClass);
-            
+
             if (classData && classData.spellcastingAbilities && Array.isArray(classData.spellcastingAbilities)) {
-                const spellDiv = container.createDiv({ attr: { style: "margin-top: 15px; padding-top: 15px; border-top: 1px solid var(--dnd-border-primary);" }});
+                const spellDiv = container.createDiv({ attr: { style: "margin-top: 15px; padding-top: 15px; border-top: 1px solid var(--dnd-border-primary);" } });
                 spellDiv.createEl("label", { text: "Primary Spellcasting Ability: ", attr: { style: "display: block; margin-bottom: 4px; color: var(--dnd-accent-teal);" } });
-                
+
                 const spellSelect = spellDiv.createEl("select");
                 spellSelect.style.width = "100%";
                 spellSelect.createEl("option", { text: "-- Select Ability --", value: "" });
-                
+
                 // Populate options from the class JSON array
                 classData.spellcastingAbilities.forEach((ability: string) => {
                     spellSelect.createEl("option", { text: ability, value: ability });
                 });
-                
+
                 spellSelect.value = this.wizardData.spellcastingAbility || "";
                 spellSelect.onchange = (e) => this.wizardData.spellcastingAbility = (e.target as HTMLSelectElement).value;
             }
@@ -1411,7 +1403,7 @@ class CharacterWizardModal extends Modal {
         container.createEl("h3", { text: "Background & Equipment", cls: "dnd-class-header" });
 
         // Background Dropdown
-        const bgDiv = container.createDiv({ attr: { style: "margin-bottom: 12px;" }});
+        const bgDiv = container.createDiv({ attr: { style: "margin-bottom: 12px;" } });
         bgDiv.createEl("label", { text: "Background: ", attr: { style: "display: block; margin-bottom: 4px;" } });
         const bgSelect = bgDiv.createEl("select");
         bgSelect.style.width = "100%";
@@ -1421,7 +1413,7 @@ class CharacterWizardModal extends Modal {
         bgSelect.onchange = (e) => this.wizardData.background = (e.target as HTMLSelectElement).value;
 
         // Class Equipment Choice (A or B)
-        const classEqDiv = container.createDiv({ attr: { style: "margin-bottom: 12px;" }});
+        const classEqDiv = container.createDiv({ attr: { style: "margin-bottom: 12px;" } });
         classEqDiv.createEl("label", { text: "Class Starting Equipment Choice: ", attr: { style: "display: block; margin-bottom: 4px;" } });
         const classEqSelect = classEqDiv.createEl("select");
         classEqSelect.style.width = "100%";
@@ -1432,7 +1424,7 @@ class CharacterWizardModal extends Modal {
         if (!this.wizardData.classEquipment) this.wizardData.classEquipment = "A";
 
         // Background Equipment Choice (A or B)
-        const bgEqDiv = container.createDiv({ attr: { style: "margin-bottom: 12px;" }});
+        const bgEqDiv = container.createDiv({ attr: { style: "margin-bottom: 12px;" } });
         bgEqDiv.createEl("label", { text: "Background Starting Equipment Choice: ", attr: { style: "display: block; margin-bottom: 4px;" } });
         const bgEqSelect = bgEqDiv.createEl("select");
         bgEqSelect.style.width = "100%";
@@ -1444,9 +1436,9 @@ class CharacterWizardModal extends Modal {
 
         // Weapon Section
         container.createEl("h4", { text: "Equipped Items", attr: { style: "margin-top: 20px; margin-bottom: 10px; color: var(--dnd-text-muted);" } });
-        
-        const weaponGrid = container.createDiv({ attr: { style: "display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px;" }});
-        
+
+        const weaponGrid = container.createDiv({ attr: { style: "display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px;" } });
+
         const weaponNameDiv = weaponGrid.createDiv();
         weaponNameDiv.createEl("label", { text: "Weapon Name: ", attr: { style: "display: block; font-size: 0.9em; margin-bottom: 4px;" } });
         const weaponInput = weaponNameDiv.createEl("input", { type: "text", value: this.wizardData.weapon || "" });
@@ -1462,8 +1454,8 @@ class CharacterWizardModal extends Modal {
         weaponDmgInput.onchange = (e) => this.wizardData.weaponDamage = (e.target as HTMLInputElement).value;
 
         // Armor Section
-        const armorGrid = container.createDiv({ attr: { style: "display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px;" }});
-        
+        const armorGrid = container.createDiv({ attr: { style: "display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px;" } });
+
         const armorNameDiv = armorGrid.createDiv();
         armorNameDiv.createEl("label", { text: "Armor Name: ", attr: { style: "display: block; font-size: 0.9em; margin-bottom: 4px;" } });
         const armorInput = armorNameDiv.createEl("input", { type: "text", value: this.wizardData.armor || "" });
