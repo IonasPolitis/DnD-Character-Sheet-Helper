@@ -1,6 +1,7 @@
-import { App, Plugin, PluginSettingTab, Setting, MarkdownPostProcessorContext, parseYaml, MarkdownRenderChild, MarkdownRenderer, TFile, Modal, Editor, Notice, MarkdownView } from 'obsidian';
+import { App, Plugin, PluginSettingTab, Setting, MarkdownPostProcessorContext, parseYaml, MarkdownRenderChild, MarkdownRenderer, TFile, Modal, Notice, MarkdownView, ListItemCache } from 'obsidian';
 import { getClassData, getSubclassData, getBackgroundData, getRaceData, getExtraFeat, getItemData, getRuleData } from './data';
 import { MarkdownNotes } from './registry';
+import { NamedTupleMember } from 'typescript/unstable/ast';
 
 // 1. Define the shape of our settings
 interface DnDPluginSettings {
@@ -10,6 +11,41 @@ interface DnDPluginSettings {
     customColors: Record<string, string>; // Stores the 18 variables as key-value pairs
     customRulebookPath: string;           // Path to the user's homebrew folder
     customRulebookPriority: boolean;      // If true, homebrew overwrites native data
+}
+
+interface CharacterSheetVariables {
+    level: number;
+    proficiency_bonus: number;
+    DnD_race: string[];
+    DnD_race_lineage: string;
+    DnD_class: string[];
+    DnD_class_subclass: string[];
+    DnD_class_chosen_items: string;
+    DnD_languages: string[];
+    DnD_background: string;
+    DnD_background_feat: string;
+    DnD_background_chosen_items: string;
+    DnD_extra_feats: string[];
+    spellcasting_ability: string;
+    DnD_maxHealth: number;
+    DnD_speed: number;
+    DnD_strength: number;
+    DnD_dexterity: number;
+    DnD_constitution: number;
+    DnD_intelligence: number;
+    DnD_wisdom: number;
+    DnD_charisma: number;
+    DnD_hide_feature: string[];
+    DnD_class_equipment: string;
+    DnD_background_equipment: string;
+    DnD_weapon: string;
+    DnD_weapon_damage: number;
+    DnD_armor: string;
+    DnD_armor_ac: number;
+    dnd_gold_added: number;
+    dnd_gold_spent: number;
+    cssclasses: string;
+    obsidianUIMode:  string;
 }
 
 // 2. Set the default values
@@ -98,6 +134,8 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                 }
             }
         });
+
+
     }
 
     // Helper functions for Obsidian to read/write settings
