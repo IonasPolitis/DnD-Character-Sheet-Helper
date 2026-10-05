@@ -14,7 +14,7 @@ DnD_backgroundFeat:
 DnD_backgroundEquipment: 
 DnD_backgroundChosenItems:
 DnD_extra_feats:
-spellcastingAbility:
+DnD_spellcastingAbility:
 DnD_maxHealth:
 DnD_attack:
 DnD_speed:

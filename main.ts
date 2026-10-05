@@ -45,7 +45,7 @@ interface CharacterSheetVariables {
     dnd_gold_added: number;
     dnd_gold_spent: number;
     cssclasses: string;
-    obsidianUIMode:  string;
+    obsidianUIMode: string;
 }
 
 // 2. Set the default values
@@ -167,7 +167,7 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
         const file = this.app.vault.getAbstractFileByPath(filePath);
         if (file instanceof TFile) {
             await this.app.fileManager.processFrontMatter(file, (frontmatter) => {
-                const key = `dnd_gold_${type}`;
+                const key = `DnD_Gold${type.charAt(0).toUpperCase() + type.slice(1)}`;
                 const current = Number(frontmatter[key]) || 0;
                 frontmatter[key] = current + amount;
             });
@@ -929,9 +929,9 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
             // -----------------------------------------------------------
             // B. WEALTH
             // -----------------------------------------------------------
-            const goldBase = Number(frontmatter['dnd_gold_base']) || 0;
-            const goldAdded = Number(frontmatter['dnd_gold_added']) || 0;
-            const goldSpent = Number(frontmatter['dnd_gold_spent']) || 0;
+            const goldBase = Number(frontmatter['DnD_GoldBase']) || 0;
+            const goldAdded = Number(frontmatter['DnD_GoldAdded']) || 0;
+            const goldSpent = Number(frontmatter['DnD_GoldSpent']) || 0;
             const totalGold = goldBase + goldAdded + grantedGold - goldSpent;
 
             const wealthWindow = wrapper.createDiv({
@@ -1169,7 +1169,224 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
     }
 }
 
+// --- CHARACTER CREATION WIZARD UI ---
+class CharacterWizardModal extends Modal {
+    plugin: DnDCharacterSheetHelperPlugin;
+    currentStep: number = 1;
+    totalSteps: number = 4;
 
+    // Data pools for our dropdowns
+    availableClasses: string[] = [];
+    availableRaces: string[] = [];
+    availableBackgrounds: string[] = [];
+
+    // Temporary storage for user choices
+    wizardData: Record<string, any> = {
+        name: "",
+        level: 1,
+        race: "",
+        dndClass: "",
+        spellcastingAbility: "",
+        // ... we will expand this as we build the steps
+    };
+
+    constructor(app: App, plugin: DnDCharacterSheetHelperPlugin) {
+        super(app);
+        this.plugin = plugin;
+    }
+
+    async onOpen() {
+        // Show a brief loading message while we fetch the JSONs
+        this.contentEl.createEl("h3", { text: "Loading rulebook data...", cls: "dnd-section-header" });
+        await this.fetchDropdownData();
+        this.renderStep();
+    }
+
+    onClose() {
+        this.contentEl.empty();
+    }
+
+    // Safely fetch keys from the router JSON files
+    async fetchDropdownData() {
+        const getKeysFromJSON = async (fileName: string) => {
+            try {
+                let filePath = fileName; 
+                // Prioritize custom homebrew folder if it exists
+                if (this.plugin.settings.customRulebookPath) {
+                    filePath = `${this.plugin.settings.customRulebookPath}/${fileName}`;
+                }
+                
+                const exists = await this.app.vault.adapter.exists(filePath);
+                if (exists) {
+                    const content = await this.app.vault.adapter.read(filePath);
+                    const parsed = JSON.parse(content);
+                    return Object.keys(parsed);
+                }
+            } catch (e) {
+                console.error(`Wizard Error: Could not read ${fileName}`, e);
+            }
+            return [];
+        };
+
+        this.availableClasses = await getKeysFromJSON("classes.json");
+        this.availableRaces = await getKeysFromJSON("races.json");
+        this.availableBackgrounds = await getKeysFromJSON("backgrounds.json");
+    }
+
+    // Main rendering engine for the Wizard
+    async renderStep() {
+        const { contentEl } = this;
+        contentEl.empty();
+
+        // 1. Header
+        contentEl.createEl("h2", { 
+            text: `Character Creation Wizard (Step ${this.currentStep} of ${this.totalSteps})`,
+            cls: "dnd-section-header"
+        });
+
+        // 2. Content Container for the current step
+        const stepContainer = contentEl.createDiv({ cls: "dnd-features-window" });
+
+        if (this.currentStep === 1) {
+            this.renderStepOne(stepContainer);
+        } else if (this.currentStep === 2) {
+            this.renderStepTwo(stepContainer);
+        } else if (this.currentStep === 3) {
+            this.renderStepThree(stepContainer);
+        } else if (this.currentStep === 4) {
+            this.renderStepFour(stepContainer);
+        }
+
+        // 3. Navigation Buttons Container
+        const navContainer = contentEl.createDiv({ 
+            attr: { style: "display: flex; justify-content: space-between; margin-top: 20px;" } 
+        });
+
+        // Back Button
+        const backBtn = navContainer.createEl("button", { text: "Back" });
+        backBtn.disabled = this.currentStep === 1;
+        backBtn.onclick = () => {
+            if (this.currentStep > 1) {
+                this.currentStep--;
+                this.renderStep();
+            }
+        };
+
+        // Next / Finish Button
+        const nextBtn = navContainer.createEl("button", { 
+            text: this.currentStep === this.totalSteps ? "Finish & Generate" : "Next",
+            cls: "mod-cta" // Obsidian's native class for a primary highlighted button
+        });
+        
+        nextBtn.onclick = async () => {
+            if (this.currentStep < this.totalSteps) {
+                this.currentStep++;
+                this.renderStep();
+            } else {
+                await this.finishWizard();
+            }
+        };
+    }
+
+    renderStepOne(container: HTMLElement) {
+        container.createEl("h3", { text: "Core Details", cls: "dnd-class-header" });
+        
+        // Character Name Input
+        const nameDiv = container.createDiv({ attr: { style: "margin-bottom: 12px;" }});
+        nameDiv.createEl("label", { text: "Character Name: ", attr: { style: "display: block; margin-bottom: 4px;" } });
+        const nameInput = nameDiv.createEl("input", { type: "text", value: this.wizardData.name });
+        nameInput.style.width = "100%";
+        nameInput.placeholder = "e.g., Din";
+        nameInput.onchange = (e) => this.wizardData.name = (e.target as HTMLInputElement).value;
+
+        // Level Input
+        const levelDiv = container.createDiv({ attr: { style: "margin-bottom: 12px;" }});
+        levelDiv.createEl("label", { text: "Level: ", attr: { style: "display: block; margin-bottom: 4px;" } });
+        const levelInput = levelDiv.createEl("input", { type: "number", value: String(this.wizardData.level) });
+        levelInput.min = "1";
+        levelInput.max = "20";
+        levelInput.style.width = "100%";
+        levelInput.onchange = (e) => this.wizardData.level = Number((e.target as HTMLInputElement).value);
+
+        // Race Dropdown
+        const raceDiv = container.createDiv({ attr: { style: "margin-bottom: 12px;" }});
+        raceDiv.createEl("label", { text: "Race: ", attr: { style: "display: block; margin-bottom: 4px;" } });
+        const raceSelect = raceDiv.createEl("select");
+        raceSelect.style.width = "100%";
+        raceSelect.createEl("option", { text: "-- Select a Race --", value: "" });
+        this.availableRaces.forEach(r => raceSelect.createEl("option", { text: r, value: r }));
+        raceSelect.value = this.wizardData.race;
+        raceSelect.onchange = (e) => this.wizardData.race = (e.target as HTMLSelectElement).value;
+
+        // Class Dropdown
+        const classDiv = container.createDiv({ attr: { style: "margin-bottom: 12px;" }});
+        classDiv.createEl("label", { text: "Class: ", attr: { style: "display: block; margin-bottom: 4px;" } });
+        const classSelect = classDiv.createEl("select");
+        classSelect.style.width = "100%";
+        classSelect.createEl("option", { text: "-- Select a Class --", value: "" });
+        this.availableClasses.forEach(c => classSelect.createEl("option", { text: c, value: c }));
+        classSelect.value = this.wizardData.dndClass;
+        classSelect.onchange = (e) => this.wizardData.dndClass = (e.target as HTMLSelectElement).value;
+    }
+
+    async renderStepTwo(container: HTMLElement) {
+        container.createEl("h3", { text: "Stats & Abilities", cls: "dnd-class-header" });
+        
+        // 1. Render Base Stats (STR, DEX, CON, INT, WIS, CHA) in a Grid
+        const statsGrid = container.createDiv({ attr: { style: "display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px;" }});
+        
+        const stats = ["Strength", "Dexterity", "Constitution", "Intelligence", "Wisdom", "Charisma"];
+        
+        stats.forEach(stat => {
+            const statKey = stat.toLowerCase(); // e.g., 'strength'
+            // Initialize default value in wizardData to 10 if not present
+            if (this.wizardData[statKey] === undefined) this.wizardData[statKey] = 10;
+            
+            const statDiv = statsGrid.createDiv();
+            statDiv.createEl("label", { text: `${stat}:`, attr: { style: "display: block; font-size: 0.9em; margin-bottom: 4px;" } });
+            
+            const statInput = statDiv.createEl("input", { type: "number", value: String(this.wizardData[statKey]) });
+            statInput.style.width = "100%";
+            statInput.onchange = (e) => this.wizardData[statKey] = Number((e.target as HTMLInputElement).value);
+        });
+
+        // 2. Conditional Spellcasting Ability Dropdown
+        if (this.wizardData.dndClass) {
+            // We use your existing getClassData helper!
+            const classData = await getClassData(this.app, this.plugin.settings, this.wizardData.dndClass);
+            
+            if (classData && classData.spellcastingAbilities && Array.isArray(classData.spellcastingAbilities)) {
+                const spellDiv = container.createDiv({ attr: { style: "margin-top: 15px; padding-top: 15px; border-top: 1px solid var(--dnd-border-primary);" }});
+                spellDiv.createEl("label", { text: "Primary Spellcasting Ability: ", attr: { style: "display: block; margin-bottom: 4px; color: var(--dnd-accent-teal);" } });
+                
+                const spellSelect = spellDiv.createEl("select");
+                spellSelect.style.width = "100%";
+                spellSelect.createEl("option", { text: "-- Select Ability --", value: "" });
+                
+                // Populate options from the class JSON array
+                classData.spellcastingAbilities.forEach((ability: string) => {
+                    spellSelect.createEl("option", { text: ability, value: ability });
+                });
+                
+                spellSelect.value = this.wizardData.spellcastingAbility || "";
+                spellSelect.onchange = (e) => this.wizardData.spellcastingAbility = (e.target as HTMLSelectElement).value;
+            }
+        } else {
+            // If they skipped selecting a class in Step 1, gently remind them.
+            container.createEl("p", { text: "Select a class in Step 1 to see conditional class options.", attr: { style: "font-style: italic; color: var(--dnd-text-muted);" } });
+        }
+    }
+
+    renderStepFour(container: HTMLElement) {
+        container.createEl("h3", { text: "Finalization", cls: "dnd-class-header" });
+        container.createEl("p", { text: "Review your choices. Clicking finish will generate the sheet!" });
+    }
+
+    async finishWizard() {
+        new Notice("Wizard logic will go here!");
+        this.close();
+    }
+}
 
 // --- THE POP-UP UI ---
 class NoteModal extends Modal {
