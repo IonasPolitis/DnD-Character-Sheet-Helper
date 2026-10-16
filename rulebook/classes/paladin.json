@@ -1,6 +1,10 @@
 {
     "class": "Paladin",
     "subclassFile": "paladin-subclasses",
+    "hitDice": "D10",
+    "savingThroughProf": ["strength", "charisma"],
+    "skillsPool": [["athletics", "insight", "intimidation", "medicine", "persuasion", "religion"], 2 ],
+    "spellcastingAbilities": ["Charisma"],
     "startingEquipment": {
         "A": {
             "items": {

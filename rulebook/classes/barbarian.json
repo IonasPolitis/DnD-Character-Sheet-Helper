@@ -1,6 +1,9 @@
 {
     "class": "Barbarian",
     "subclassFile": "barbarian-subclasses",
+    "hitDice": "D12",
+    "savingThroughProf": ["strength", "constitution"],
+    "skillsPool": [["animal handling", "athletics", "intimidation", "nature", "perception", "survival"], 2 ],
     "startingEquipment": {
         "A": {
             "items": {

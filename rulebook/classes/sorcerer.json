@@ -1,6 +1,10 @@
 {
     "class": "Sorcerer",
     "subclassFile": "sorcerer-subclasses",
+    "hitDice": "D6",
+    "savingThroughProf": ["constitution", "charisma"],
+    "skillsPool": [["arcana", "deception", "insight", "intimidation", "persuasion", "religion"], 2 ],
+    "spellcastingAbilities": ["Charisma"],
     "startingEquipment": {
         "A": {
             "items": {

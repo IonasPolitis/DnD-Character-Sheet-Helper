@@ -1,6 +1,10 @@
 {
     "class": "Wizard",
     "subclassFile": "wizard-subclasses",
+    "hitDice": "D6",
+    "savingThroughProf": ["intelligence", "wisdom"],
+    "skillsPool": [["arcana", "history", "insight", "investigation", "medicine", "nature", "religion"], 2 ],
+    "spellcastingAbilities": ["Intelligence"],
     "startingEquipment": {
         "A": {
             "items": {

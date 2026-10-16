@@ -1,6 +1,10 @@
 {
     "class": "Druid",
     "subclassFile": "druid-subclasses",
+    "hitDice": "D8",
+    "savingThroughProf": ["inteligence", "wisdom"],
+    "skillsPool": [["arcana", "animal handling", "insight", "medicine", "nature", "perception", "religion", "survival"], 2 ],
+    "spellcastingAbilities": ["Wisdom"],
     "startingEquipment": {
         "A": {
             "items": {

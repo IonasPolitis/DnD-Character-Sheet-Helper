@@ -1,21 +1,20 @@
 {
   "class": "Monk",
   "subclassFile": "monk-subclasses",
+  "hitDice": "D8",
+    "savingThroughProf": ["dexterity", "widosm"],
+    "skillsPool": [["acrobatics", "athletics", "history", "insight", "religion", "stealth"], 2 ],
   "startingEquipment": {
-    "A": {
-      "items": {
-        "spear": 1,
-        "dagger": 5,
-        "artisans-tool|musical-instrument": 1,
-        "explorers-pack": 1
-      },
-      "gold": 11
+        "A": {
+            "items": {
+                "spear": 1,
+                "dagger": 5,
+                "artisans-tool|musical-instrument": 1,
+                "explorers-pack": 1
+            }, "gold": 11
+        },
+        "B": { "items": {}, "gold": 50 }
     },
-    "B": {
-      "items": {},
-      "gold": 50
-    }
-  },
   "features": {
     "1": [
       {
@@ -27,12 +26,6 @@
       {
         "name": "Monk's Focus",
         "description": " - **Flurry of Blows**:\nYou can expend 1 Focus Point to make two Unarmed Strikes as a Bonus Action.\n - **Patient Defense**:\nYou can take the Disengage action as a Bonus Action. Alternatively, you can expend 1 Focus Point to take both the Disengage and the Dodge actions as a Bonus Action.\n - **Step of the Wind**:\nYou can take the Dash action as a Bonus Action. Alternatively, you can expend 1 Focus Point to take both the Disengage and Dash actions as a Bonus Action, and your jump distance is doubled for the turn."
-      }
-    ],
-    "3": [
-      {
-        "name": "Deflect Attacks",
-        "description": "When an attack roll hits you and its damage includes Bludgeoning, Piercing, or Slashing damage, you can take a Reaction to reduce the attack's total damage against you. The reduction equals 1d10 plus your Dexterity modifier and Monk level.\n\tIf you reduce the damage to O, you can expend 1 Focus Point to redirect some of the attack's force. If you do so, choose a creature you can see within 5 feet of yourself if the attack was a melee attack or a creature you can see within 60 feet of yourself that isn't behind Total Cover if the attack was a ranged attack. That creature must succeed on a Dexterity saving throw or take damage equal to two rolls of your Martial Arts die plus your Dexterity modifier. The damage is the same type dealt by the attack."
       }
     ],
     "4": [

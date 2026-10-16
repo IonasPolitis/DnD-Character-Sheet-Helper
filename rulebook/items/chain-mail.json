@@ -4,5 +4,6 @@
       "description": "16 -- Stealth Disadvantage",
       "weight": 55,
       "ac": "16",
+      "category": "heavy",
       "cost": 75
 }

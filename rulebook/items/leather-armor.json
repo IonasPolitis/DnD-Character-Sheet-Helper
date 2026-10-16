@@ -4,5 +4,6 @@
       "description": "11 + Dex modifier",
       "weight": 10,
       "ac": "11",
+      "category": "light",
       "cost": 10
 }

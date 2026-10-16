@@ -2,6 +2,8 @@
     "class": "Warlock",
     "subclassFile": "warlock-subclasses",
     "hitDice": "D8",
+    "savingThroughProf": ["wisdom", "charisma"],
+    "skillsPool": [["arcana", "deception", "history", "intimidation", "investigation", "nature", "religion"], 2 ],
     "spellcastingAbilities": ["Charisma"],
     "startingEquipment": {
         "A": {

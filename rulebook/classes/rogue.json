@@ -1,6 +1,9 @@
 {
     "class": "Rogue",
     "subclassFile": "rogue-subclasses",
+    "hitDice": "D8",
+    "savingThroughProf": ["dexterity", "intelligence"],
+    "skillsPool": [[ "acrobatics", "athletics", "deception", "insight", "intimidation", "investigation", "perception", "persuasion", "sleight of hand", "stealth" ], 4 ],
     "startingEquipment": {
         "A": {
             "items": {

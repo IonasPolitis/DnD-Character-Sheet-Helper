@@ -1,6 +1,8 @@
 {
       "Acolyte": {
             "feat": "magic-initiate-cleric",
+            "abilityBonusPool": ["strength", "dexterity", "intelligence"],
+            "skills": ["insight", "religion"],
             "startingEquipment": {
                   "A": {
                         "items": {
@@ -16,6 +18,8 @@
       },
       "Artisan": {
             "feat": "crafter",
+            "abilityBonusPool": ["strength", "dexterity", "intelligence"],
+            "skills": ["investigation", "persuasion"],
             "startingEquipment": {
                   "A": {
                         "items": {
@@ -29,6 +33,8 @@
       },
       "Charlatan": {
             "feat": "skilled",
+            "abilityBonusPool": ["dexterity", "constitution", "charisma"],
+            "skills": ["deception", "sleight of hand"],
             "startingEquipment": {
                   "A": {
                         "items": {
@@ -42,6 +48,8 @@
       },
       "Criminal": {
             "feat": "alert",
+            "abilityBonusPool": ["dexterity", "constitution", "intelligence"],
+            "skills": ["sleight of hand", "stealth"],
             "startingEquipment": {
                   "A": {
                         "items": {
@@ -57,6 +65,8 @@
       },
       "Entertainer": {
             "feat": "musician",
+            "abilityBonusPool": ["strength", "dexterity", "charisma"],
+            "skills": ["acrobatics", "performance"],
             "startingEquipment": {
                   "A": {
                         "items": {
@@ -72,6 +82,8 @@
       },
       "Farmer": {
             "feat": "tough",
+            "abilityBonusPool": ["strength", "constitution", "wisdom"],
+            "skills": ["animal handling", "nature"],
             "startingEquipment": {
                   "A": {
                         "items": {
@@ -88,6 +100,8 @@
       },
       "Guard": {
             "feat": "alert",
+            "abilityBonusPool": ["strength", "intelligence", "wisdom"],
+            "skills": ["athletics", "perception"],
             "startingEquipment": {
                   "A": {
                         "items": {
@@ -106,6 +120,8 @@
       },
       "Guide": {
             "feat": "magic-initiate-druid",
+            "abilityBonusPool": ["dexterity", "constitution", "wisdom"],
+            "skills": ["stealth", "survival"],
             "startingEquipment": {
                   "A": {
                         "items": {
@@ -123,6 +139,8 @@
       },
       "Hermit": {
             "feat": "healer",
+            "abilityBonusPool": ["constitution", "wisdom", "charisma"],
+            "skills": ["medicine", "religion"],
             "startingEquipment": {
                   "A": {
                         "items": {
@@ -140,6 +158,8 @@
       },
       "Merchant": {
             "feat": "lucky",
+            "abilityBonusPool": ["constitution", "intelligence", "charisma"],
+            "skills": ["animal handling", "persuasion"],
             "startingEquipment": {
                   "A": {
                         "items": {
@@ -153,6 +173,8 @@
       },
       "Noble": {
             "feat": "skilled",
+            "abilityBonusPool": ["strength", "intelligence", "charisma"],
+            "skills": ["history", "persuasion"],
             "startingEquipment": {
                   "A": {
                         "items": {
@@ -166,6 +188,8 @@
       },
       "Sage": {
             "feat": "magic-initiate-wizard",
+            "abilityBonusPool": ["constitution", "intelligence", "wisdom"],
+            "skills": ["arcana", "history"],
             "startingEquipment": {
                   "A": {
                         "items": {
@@ -181,6 +205,8 @@
       },
       "Sailor": {
             "feat": "tavern-brawler",
+            "abilityBonusPool": ["strength", "dexterity", "wisdom"],
+            "skills": ["acrobatics", "perception"],
             "startingEquipment": {
                   "A": {
                         "items": {
@@ -195,6 +221,8 @@
       },
       "Scribe": {
             "feat": "skilled",
+            "abilityBonusPool": ["dexterity", "intelligence", "wisdom"],
+            "skills": ["investigation", "perception"],
             "startingEquipment": {
                   "A": {
                         "items": {
@@ -210,6 +238,8 @@
       },
       "Soldier": {
             "feat": "savage-attacker",
+            "abilityBonusPool": ["strength", "dexterity", "constitution"],
+            "skills": ["athletics", "intimidation"],
             "startingEquipment": {
                   "A": {
                         "items": {
@@ -227,6 +257,8 @@
       },
       "Wayfarer": {
             "feat": "lucky",
+            "abilityBonusPool": ["dexterity", "wisdom", "charisma"],
+            "skills": ["insight", "stealth"],
             "startingEquipment": {
                   "A": {
                         "items": {

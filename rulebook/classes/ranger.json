@@ -1,6 +1,10 @@
 {
     "class": "Ranger",
     "subclassFile": "ranger-subclasses",
+    "hitDice": "D10",
+    "savingThroughProf": ["strength", "dexterity"],
+    "skillsPool": [["animal hqandling", "athletics", "insight", "investigation", "nature", "perception", "stealth", "survival"], 3 ],
+    "spellcastingAbilities": ["Wisdom"],
     "startingEquipment": {
         "A": {
             "items": {

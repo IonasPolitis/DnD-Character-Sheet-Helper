@@ -4,5 +4,6 @@
       "description": "+2",
       "weight": 6,
       "ac": "+2",
+      "category": "shield",
       "cost": 10
 }

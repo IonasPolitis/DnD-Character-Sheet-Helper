@@ -4,5 +4,6 @@
       "description": "14 + Dex modifier (max 2) -- Stealth Disadvantage",
       "weight": 45,
       "ac": "14",
+      "category": "medium",
       "cost": 50
 }

@@ -4,5 +4,6 @@
       "description": "13 + Dex modifier (max 2)",
       "weight": 20,
       "ac": "13",
+      "category": "medium",
       "cost": 50
 }

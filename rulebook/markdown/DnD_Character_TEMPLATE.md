@@ -1,36 +1,38 @@
 ---
+DnD_id:
 level: 
 proficiency_bonus:
 DnD_race:
-DnD_race_lineage: 
+DnD_raceLineage: 
 DnD_class: 
-DnD_classLevels
+DnD_classLevels:
 DnD_Subclass:
 DnD_classEquipment: 
 DnD_classChosenItems:
+spellcasting_ability:
 DnD_languages:
 DnD_background: 
 DnD_backgroundFeat: 
 DnD_backgroundEquipment: 
 DnD_backgroundChosenItems:
-DnD_extra_feats:
-DnD_spellcastingAbility:
+DnD_extraFeats:
 DnD_maxHealth:
-DnD_attack:
 DnD_speed:
+DnD_speedSublabel: 
 DnD_strength:
 DnD_dexterity:
 DnD_constitution:
 DnD_intelligence:
 DnD_wisdom:
 DnD_charisma:
-DnD_hide_feature:
 DnD_weapon:
 DnD_weaponDamage:
 DnD_armor:
 DnD_armorAc:
+DnD_armorAcMod:
 dnd_gold_added:
 dnd_gold_spent:
+DnD_hideFeature:
 cssclasses:
   - character-sheet
 obsidianUIMode: preview
@@ -60,10 +62,10 @@ items:
   sublabel: '{{ frontmatter.DnD_race_lineage }}'
 - label: Class
   value: '{{ frontmatter.DnD_class }}'
-  sublabel: '{{ frontmatter.DnD_class_subclass }}'
+  sublabel: '{{ frontmatter.DnD_Subclass }}'
 - label: Background
   value: '{{ frontmatter.DnD_background }}'
-  sublabel:
+  sublabel: '{{ frontmatter.DnD_backgroundFeat }}'
 - label: Level
   value: '{{ frontmatter.level }}'
   sublabel: "+{{ frontmatter.proficiency_bonus }} Proficency"
@@ -95,16 +97,16 @@ proficiencies:
 items:
   - label: Armor Class
     sublabel: <sublabel>
-    value: <same_as_armour_value>
+    value: '{{ add frontmatter.DnD_armorAc frontmatter.DnD_armorAcMod }}'
   - label: Initiative
-    sublabel: Dexterity Modified
+    sublabel: Dexterity Modifier
     value: '+{{ modifier abilities.dexterity }}'
   - label: Attack Roll
-    sublabel: Strength/Dexterity Modified
-    value: '+{{ add (modifier abilities.strength) 2 }}'
+    sublabel: Strength/Dexterity Modifier
+    value: "+{{ add (modifier abilities.strength) frontmatter.proficiency_bonus }}"
   - label: Speed
-    sublabel: <sublabel>
     value: "{{ frontmatter.DnD_speed }} feet"
+    sublabel: "{{ frontmatter.DnD_speedSublabel }}"
 grid:
   columns: 4
 ```
@@ -112,19 +114,19 @@ grid:
 ```skills
 proficiencies:
   #Class
-  - <chosen ability>
+  - <chosen skills>
   #Background
-  - <chosen ability>
+  - <chosen skills>
 
 expertise:
-  - <chosen ability>
+  - <chosen skills>
 
 half_proficiencies:
-  - <chosen ability>
+  - <chosen skills>
 
 bonuses:
   - name: <Item Name>
-    target: <chosen ability>
+    target: <chosen skill>
     value: <+value>
 ```
 

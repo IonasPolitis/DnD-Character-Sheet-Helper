@@ -1,6 +1,10 @@
 {
     "class": "Cleric",
     "subclassFile": "cleric-subclasses",
+    "hitDice": "D8",
+    "savingThroughProf": ["wisdom", "charisma"],
+    "skillsPool": [["history", "insight", "medicine", "persuasion", "religion"], 2 ],
+    "spellcastingAbilities": ["Wisdom"],
     "startingEquipment": {
         "A": {
             "items": {

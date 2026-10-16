@@ -1,6 +1,9 @@
 {
     "class": "Fighter",
     "subclassFile": "fighter-subclasses",
+    "hitDice": "D10",
+    "savingThroughProf": ["strength", "constitution"],
+    "skillsPool": [["acrobatics", "animal handling", "athletics", "history", "insight", "intimidation", "persuasion", "perception", "survival"], 2 ],
     "startingEquipment": {
         "A": {
             "items": {
@@ -26,7 +29,7 @@
         },
         "C": {
             "items": {},
-            "gold": 0
+            "gold": 155
         }
     },
     "features": {
