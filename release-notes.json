@@ -1,3 +1,3 @@
 {
-      "notes": "Added commadn to paste in the Character Sheet Template I made, added a `chracter-sheet` cssclass to change the readline width, and fixed the markdown scanner."
+      "notes": "Changed JSON structures for upcomming update and fixed release/manifest problems."
 }
