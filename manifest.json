@@ -1,9 +1,9 @@
 {
 	"id": "dnd-character-sheet-helper",
 	"name": "DnD Character Sheet Helper",
-	"version": "1.3.5",
+	"version": "2.0",
 	"minAppVersion": "1.13.7",
-	"description": "Renders D&D 5.5e character features, weapons, an inventory and extra rules with frontmatter properties support.",
+	"description": "Renders D&D 5.5e widgets for a complete Character Sheet right inside your Obsidian Note, saving everything on frontammter, and has an easy creation wizard to create your sheet immediately.",
 	"author": "Ionas Politis",
 	"isDesktopOnly": false
 }
