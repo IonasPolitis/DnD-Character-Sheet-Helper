@@ -1,0 +1,18 @@
+{
+      "name": "Aid",
+      "level": 2,
+      "school": "Abjuration",
+      "castingTime": "Action",
+      "range": "30 feet",
+      "components": [
+            "V",
+            "S",
+            "M"
+      ],
+      "materials": "a strip of white cloth",
+      "duration": "8 hours",
+      "concentration": false,
+      "ritual": false,
+      "classes": "Bard, Cleric, Druid, Paladin, Ranger",
+      "description": "Choose up to three creatures within range. Each target's Hit Point maximum and current Hit Points increase by 5 for the duration.\n\nUsing a Higher-Level Spell Slot. Each target's Hit Points increase by 5 for each spell slot level above 2."
+}

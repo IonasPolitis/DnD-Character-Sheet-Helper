@@ -1,7 +1,7 @@
 # DnD Character Sheet Helper
 
 > [!NOTE]
-> DnD Character Sheet Helper is an Obsidian Plugin that brings the DnD Rulebook 5.5e (2024) right inside your Digital Character Sheet. This is not a replacement for the DnD Player's Handbook, but just a handy tool that gives you only the information you might need, or you wouldn't remember on top of your mind, while playing.
+> DnD Character Sheet Helper is an Obsidian Plugin that brings the DnD Rulebook 5.5e (2024) right inside your Digital Character Sheet. This is not a replacement for the DnD Player's Handbook, but just a handy tool that gives you the information you might need, or you wouldn't remember on top of your mind, while playing.
 > 
 > Template using my plugin and [hay-kot's Obsidian DnD UI Toolkit](https://github.com/hay-kot/obsidian-dnd-ui-toolkit) on this repo: [template link](https://github.com/IonasPolitis/Ionas-Obsidian-DnD-Character-Sheet-Template)! Also available via the command `Set Character Sheet Template` in Obsidian
 
@@ -10,7 +10,83 @@
 > (If any text has been written wrong please make an Issue Report on GitHub. I maintain it myself)
 
 
-## DnD Character Features:
+## DnD Wizard:
+
+You can us the Character Creation Wizard command on an open note and create your new DnD Character Sheet, just fill all the availabe fields and options in the wizard and your Character Sheet will be created for you; just be sure to stick to the rules of the Player's Handbook and read throug it to know which options you want to choose.
+Everything will be placed in appropriate frontmatter variuables (file properties) that then can be fetched by the rest of the code blocks in the Character Sheet Template provided by the creation wizard.
+
+## For creating a Character Sheet on your own, you may use one, or all of the code blocks below to assist you into managing your chracter:
+
+### DnD Information:
+
+There are two modes to this plugin, one of them shows information related to your character and anothe one on combat, with each one having different variables that you may need to fill in.
+
+A Sample of the Code Block looks like this:
+````markdown
+```dnd-info
+mode: character
+race: $array$
+raceLineage: $array$
+class: $array$
+subclass: $array$
+background: $string$
+backgroundFeat: $string$
+level: $num$
+languages: $array$
+```
+````
+or this:
+````markdown
+```dnd-info
+mode: combat
+armor: f$string$
+attackStat: $string$
+speed: $string$
+speedSublabel: $string$
+```
+````
+
+### DnD Ability Scores:
+
+An Ability Scores widget that displays Scores, Modifiers, Saving Throw Proficiencies, and supports Homebrew Abilities with the `extras` variable.
+
+A Sample of the Code Block looks like this:
+````markdown
+```dnd-abilities
+strength: $num$
+dexterity: $num$
+constitution: $num$
+intelligence: $num$
+wisdom: $num$
+charisma: $num$
+proficiencies: $array$
+extras: $array$ //optional
+```
+````
+The `extras` variables allows you to add your own homebrew abilities right besides the standard DnD ones and follows this structure:
+[ ["<Ability-Name>>", "<Ability-Abbreviation>>", "<Ability-Score>", "<Saving-Throw-Modifier>>"], [<second Ability>], [<third Ability>] ]
+
+### DnD Skills:
+
+A Simple widget that displays your character's skills, proficienies, half-proficiencies and experties on those skills, with support for bonuses on certain items.
+
+A Sample of the Code Block looks like this:
+````markdown
+```dnd-skills
+proficiencies: $array$
+expertise: $array$
+half_proficiencies: $array$
+bonuses: $array$
+```
+````
+The `proficiencies` variable array structure looks like this: `[ ["<Skill>", "<class/background/extra>"] ]`, to distinguish to the rest of the plugin the origins of that proficiency. The `bonuses` variable holds bonuses that items may grant and the structure is as follows: `[["<Item-Name>","<Skill>>","<Value-to-Add>"]]`
+
+### DnD Controlls:
+
+This is an array of buttons that control various parts of the character sheet, mainly changing frontmatter (file properties) values that then correspond to changes in the character sheet. The buttons are: Level Up, Equip Items, Manage Character, and Spellbook (which will only appear if the `DnD_spellcasting-ability` frontmatter variable is populated).
+
+
+### DnD Character Features:
 
 Given the appropriate variables and values this plugin can give you useful information of your character directly inside your Obsidian Note. It displays all the Action related Features from your Class (with Multi-class support), Subclass, Race Traits, Background Feat and Extra Feats added at your own disposal.
 
@@ -18,14 +94,14 @@ A Sample of the Code Block looks like this:
 ````markdown
 ```dnd-features
 level: $num$
-class: $list$
-class-levels: $list$
-subclass: $list$
-race: $text$
-race-lineage: $text$
-background: $list$
-extra-feats: $list$
-hide: $list$
+class: $array$
+class-levels: $array$
+subclass: $array$
+race: $string$
+race-lineage: $string$
+background: $array$
+extra-feats: $array$
+hide: $array$
 ```
 ````
 Any of the variables (except for *level*) can be omitted and only the variables with a value will be used and displayed.
@@ -39,24 +115,36 @@ The rest of the variables should be self-explanatory.
 > [!TIP]
 > Sometimes a class feature may have you select one of many options permenantly. Those specific features have duplicates with each one being one of the options you might choose. You can use the *hide* variable to hide the options you did not choose.
 
-## DnD Character Inventory:
+### DnD Spells:
+
+A Widget that uses a certain array strcuture to display DnD spells on your Obsidian Note. 
+
+A Sample of the Code Block looks like this:
+````markdown
+```dnd-spells
+spells: $array$
+```
+````
+The `spells` variabel has this certain structure: `[ [["<Cantrip-1>", "<Cantrip-2>"],"0"], [["<Level-1-Spell>", "<Level-2-Spell>"],"1"] ]`.
+
+### DnD Character Inventory:
 
 An easy way to manage your character's inventory including. There is a section for managing your Gold, a section for Weapon / Armor, a section for starter items and a section for extra items added in later on.
 
 A Sample of the Code Block looks like this:
 ````markdown
 ```dnd-inventory
-weapon: $text$
-weapon_damage: $text$
-armor: $text$
-armor_ac: $text$
-class: $text$
-class-equipment: $text$
-class-chosen-items: $list$ <optional>
-background: $text$
-background-equipment: $text$
-background-chosen-items: $list$ <optional>
-extra-items: $list$
+weapon: $string$
+weapon_damage: $string$
+armor: $string$
+armor_ac: $string$
+class: $string$
+class-equipment: $string$
+class-chosen-items: $array$ <optional>
+background: $string$
+background-equipment: $string$
+background-chosen-items: $array$ <optional>
+extra-items: $array$
 ```
 ````
 Weapons and Amor related varibales are optional and when not set that section will not be made visible.
@@ -68,20 +156,20 @@ The Backpack section is also always visible and wil be automatically populated w
 > [!TIP]
 > The aforementioned variables are used to select an Artisan's Tool, a Musical Instrument, or a Gaming Set depeding on what's provided by the class or background. For more information on your choices always look through the actual DnD Player's Handbook.
 
-## Rules Block:
+### Rules Block:
 
 A way to add Custom Rules to your Character Sheet.
 
 A Sample of the Code Block looks like this:
 ````markdown
 ```dnd-inventory
-rules: $list$
+rules: $array$
 ```
 ````
 #### Critical Role:
 I have also added Critcal Role's Campaign 4 *Desperate Measures* mechanic. I just thought it was an interesting mechanic and I've used it in my campaigns ever since I found out about it. To use it you just add `Desperate Measures` into the Rules Block
 
-## Extra Features:
+### Extra Features:
 
  - Code Blocks have frontmatter support by using the key-word "frontmatter." + a note property's name.
 
@@ -113,10 +201,11 @@ rulebook/
 │   └── <add your custom rules>
 ├── backgrounds.json
 ├── classes.json
+├── epic_boon_feats.json
+├── genral_feats.json
 ├── items.json
 ├── races.json
 └── rules.json
-
 ```
 
 The backgrounds.json, classes.json and races.json work as router files to the specific feat, class, or race JSON is needed for better modularity.
@@ -137,6 +226,8 @@ The structure of each JSON file is as follows:
 {
       "<Background>": {
             "feat": "<Feat_Given>",
+            "abilityBonusPool": ["<List_of_Abilities>"],
+            "skills": ["<List_of_Skills>"],
             "startingEquipment": {
                   "A": {
                         "items": {
@@ -150,34 +241,51 @@ The structure of each JSON file is as follows:
 }
 ```
 
+- spells-list.json:
+```json
+{
+  "<Spell-Slot-Level>": {
+    "<Filename>": "<Spell-Name>",
+  }
+}
+```
+Cantrips are on "Level 0" and the rest of the Spell Levels are as normal.
+
 - class.json:
 ```json
 {
-    "class": "<Class_Name>",
-    "subclassFile": "<Subclass_File_Name>",
-      "hitDice": "D8",
-    "spellcasting_abilities": [""],
-    "startingEquipment": {
-        "A": {
-            "items": {
-                "<Item_File_Name>": 0,
-                "<Item_File_Name>": 0,
-                "musical-instrument|": 0, // <optional_DnD_item_type>
-                "artisans-tool|musical-instrument": 0, // <optional_DnD_multiple_items_w/_type>
-		    "<item_type|>" : 0 // <optional_homebrew_item_type>
-            }, "gold": 0
-        },
-        "B": { "items": {}, "gold": 0 }
-    },
-    "features": {
-        "<Level>": [
-            {
-                "name": "<Feature_Name>",
-                "description": "<Feature_Description>",
-                "badge": "<Custom_Badge_Text_Inplace_of_Level>", // <optional>
-                "grantedFeats": "<Feat_Name>"
-            }
-        ]
+      "class": "<Class_Name>",
+      "subclassFile": "<Subclass_File_Name>",
+      "hitDice": "<Hit_Dice>",
+      "savingThroughProf": ["<List_of_Abilities>"],
+      "skillsPool": [["<List_of_Skills>"], <Number_of_Skills_that_can_be_chosen> ],
+      "startingEquipment": {
+            "A": {
+                  "items": {
+                  "<Item_File_Name>": 0,
+                  "<Item_File_Name>": 0,
+                  "musical-instrument|": 0, // <optional_DnD_item_type>
+                  "artisans-tool|musical-instrument": 0, // <optional_DnD_multiple_items_w/_type>
+                  "<item_type|>" : 0 // <optional_homebrew_item_type>
+                  }, "gold": 0
+            },
+            "B": { "items": {}, "gold": 0 }
+      },
+      "spellcastingAbilities": [ "<Spellcasting-Ability>" ], // <optional>
+      "spellsPool": "<Spells-List-Filename>", // <optional>
+      "spellcasting": {
+            "<Level>": { "cantrips": <num>, "preparedSpells": <num>, "slots": [0, 0, 0, 0, 0, 0, 0, 0, 0] }
+      }, // <optional>
+      "features": {
+            "<Level>": [
+                  {
+                        "name": "<Feature_Name>",
+                        "description": "<Feature_Description>",
+                        "badge": "<Custom_Badge_Text_Inplace_of_Level>", // <optional>
+                        "grantedFeats": ["<ability-score-improvement>", "<Feat_Name>", "<Feat_Router_Filename>"], // <optional>
+                        "hide": true // <optional>
+                  }
+            ]
       }
 }
 ```
@@ -186,6 +294,8 @@ Sometimes DnD classes or backgrounds offer a choice of an item category (like an
 By adding a pipe character (|) to an item key in your class.json or backgrounds.json (e.g: "musical-instrument|": 1 or "artisans-tool|musical-instrument": 1), you tell the plugin to wait for the player's choice. The plugin will automatically scan the player's *class-chosen-items* or *background-chosen-items* variables in their note, find an item whose "type" matches the requirement, and seamlessly add it to their inventory.
 
 The *granted-feat* variables automatically grants the player a certain feat when that level is reached and can be viewd in the "Extra Feats" section.
+
+The *bility-score-improvement* specifically will trigger the option on the Level up button to improve your ability scores as per the Player's Handbook.
 
 - $class-subclasses.json:
 ```json
@@ -232,7 +342,26 @@ The *lineage* variable in the race.json is a Flag, making it so that this trait 
       "weight": 0,
       "damage": "<Damage_Dice+Damage_Type>", // <optional>
       "ac": "<Armor's_Base_AC>", // <optional>
+      "category": "<Light/Medium/Heavy>",
       "cost": 0
+}
+```
+
+- spell.json:
+```json
+{
+      "name": "<Name>",      
+      "level": <1/2/3>,
+      "school": "<Abjuration/Transmutation>",
+      "castingTime": "<Action/Bonus Action>",
+      "range": "<X feet/Self>",
+      "components": ["V", "S", "M"],
+      "materials": "<Material Description>",
+      "duration": "<Instantaneous/1 hour>",
+      "concentration": false,
+      "ritual": false,
+      "classes": "<Classes-that-can-Cast>",
+      "description": "<Description>"
 }
 ```
 
@@ -253,5 +382,3 @@ The *lineage* variable in the race.json is a Flag, making it so that this trait 
 ## Acknowledgements:
 
 This plugin was made because of my want to have a comfortable Character Sheet in Obsidian without hassle. I first stumbled upon [hay-kot's Obsidian DnD UI Toolkit](https://github.com/hay-kot/obsidian-dnd-ui-toolkit) and was the inspiration for the color pallete and the reason I started this project, because if it wasn't for his plugin and making it possible to have some of the crutial DnD Character Sheet elements inside an Obsidian Note, I would have never gone through the trouble of making my own plugin to add to it.
-
-I currently use both plugins for my character sheets and have made a Template uploaded in this repo: https://github.com/IonasPolitis/Ionas-Obsidian-DnD-Character-Sheet-Template

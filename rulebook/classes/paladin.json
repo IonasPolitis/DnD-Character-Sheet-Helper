@@ -2,9 +2,10 @@
     "class": "Paladin",
     "subclassFile": "paladin-subclasses",
     "hitDice": "D10",
-    "savingThroughProf": ["strength", "charisma"],
-    "skillsPool": [["athletics", "insight", "intimidation", "medicine", "persuasion", "religion"], 2 ],
-    "spellcastingAbilities": ["Charisma"],
+    "savingThroughProf": [ "strength", "charisma" ],
+    "proficiencyBonus": [ "2", "2", "2", "2", "3", "3", "3", "3", "4", "4", "4", "4", "5", "5", "5", "5", "6", "6", "6", "6", "7", "7", "7", "7", "8", "8", "8", "8", "9", "9" ],
+    "skillsPool": [ [ "athletics", "insight", "intimidation", "medicine", "persuasion", "religion" ], 2 ],
+    "spellcastingAbilities": [ "Charisma" ],
     "startingEquipment": {
         "A": {
             "items": {
@@ -14,9 +15,36 @@
                 "javelin": 6,
                 "holy-symbol": 1,
                 "priests-pack": 1
-            }, "gold": 9
+            },
+            "gold": 9
         },
-        "B": { "items": {}, "gold": 150 }
+        "B": {
+            "items": {},
+            "gold": 150
+        }
+    },
+    "spellsPool": "paladin-spells",
+    "spellcasting": {
+        "1": { "cantrips": 0, "preparedSpells": 2, "slots": [2, 0, 0, 0, 0, 0, 0, 0, 0] },
+        "2": { "cantrips": 0, "preparedSpells": 3, "slots": [2, 0, 0, 0, 0, 0, 0, 0, 0] },
+        "3": { "cantrips": 0, "preparedSpells": 4, "slots": [3, 0, 0, 0, 0, 0, 0, 0, 0] },
+        "4": { "cantrips": 0, "preparedSpells": 5, "slots": [3, 0, 0, 0, 0, 0, 0, 0, 0] },
+        "5": { "cantrips": 0, "preparedSpells": 6, "slots": [4, 2, 0, 0, 0, 0, 0, 0, 0] },
+        "6": { "cantrips": 0, "preparedSpells": 6, "slots": [4, 2, 0, 0, 0, 0, 0, 0, 0] },
+        "7": { "cantrips": 0, "preparedSpells": 7, "slots": [4, 3, 0, 0, 0, 0, 0, 0, 0] },
+        "8": { "cantrips": 0, "preparedSpells": 7, "slots": [4, 3, 0, 0, 0, 0, 0, 0, 0] },
+        "9": { "cantrips": 0, "preparedSpells": 9, "slots": [4, 3, 2, 0, 0, 0, 0, 0, 0] },
+        "10": { "cantrips": 0, "preparedSpells": 9, "slots": [4, 3, 2, 0, 0, 0, 0, 0, 0] },
+        "11": { "cantrips": 0, "preparedSpells": 10, "slots": [4, 3, 3, 0, 0, 0, 0, 0, 0] },
+        "12": { "cantrips": 0, "preparedSpells": 10, "slots": [4, 3, 3, 0, 0, 0, 0, 0, 0] },
+        "13": { "cantrips": 0, "preparedSpells": 11, "slots": [4, 3, 3, 1, 0, 0, 0, 0, 0] },
+        "14": { "cantrips": 0, "preparedSpells": 11, "slots": [4, 3, 3, 1, 0, 0, 0, 0, 0] },
+        "15": { "cantrips": 0, "preparedSpells": 12, "slots": [4, 3, 3, 2, 0, 0, 0, 0, 0] },
+        "16": { "cantrips": 0, "preparedSpells": 12, "slots": [4, 3, 3, 2, 0, 0, 0, 0, 0] },
+        "17": { "cantrips": 0, "preparedSpells": 14, "slots": [4, 3, 3, 3, 1, 0, 0, 0, 0] },
+        "18": { "cantrips": 0, "preparedSpells": 14, "slots": [4, 3, 3, 3, 1, 0, 0, 0, 0] },
+        "19": { "cantrips": 0, "preparedSpells": 15, "slots": [4, 3, 3, 3, 2, 0, 0, 0, 0] },
+        "20": { "cantrips": 0, "preparedSpells": 15, "slots": [4, 3, 3, 3, 2, 0, 0, 0, 0] }
     },
     "features": {
         "1": [
@@ -27,6 +55,17 @@
             {
                 "name": "Weapon Mastery",
                 "description": "Whenever you finish a Long Rest, you can change the kinds of weapons you chose. For example, you could switch to using the mastery properties of Hal-berds and Flails"
+            }
+        ],
+        "4": [
+            {
+                "name": "Ability Score Improvement",
+                "description": "Choose between increasing your ability scores or selecting a feat.",
+                "grantedFeats": [
+                    "ability-score-improvement",
+                    "general-feats"
+                ],
+                "hide": true
             }
         ],
         "5": [
@@ -45,6 +84,17 @@
                 "description": "You radiate a protective, unseeable aura in a 10-foot Emanation that originates from you. The aura is inactive while you have the Incapacitated condition.\n\tYou and your allies in the aura gain a bonus to saving throws equal to your Charisma modifier (minimum bonus of +1).\n\tIf another Paladin is present, a creature can benefit from only one Aura of Protection at a time; the creat ure chooses which aura while in them."
             }
         ],
+        "8": [
+            {
+                "name": "Ability Score Improvement",
+                "description": "Choose between increasing your ability scores or selecting a feat.",
+                "grantedFeats": [
+                    "ability-score-improvement",
+                    "general-feats"
+                ],
+                "hide": true
+            }
+        ],
         "9": [
             {
                 "name": "Abjure Foes",
@@ -57,10 +107,43 @@
                 "description": "You and your allies have Immunity to the Frightened condition while in your Aura of Protection. If a Frightened ally enters the aura, that condition has no effect on that ally while there."
             }
         ],
+        "12": [
+            {
+                "name": "Ability Score Improvement",
+                "description": "Choose between increasing your ability scores or selecting a feat.",
+                "grantedFeats": [
+                    "ability-score-improvement",
+                    "general-feats"
+                ],
+                "hide": true
+            }
+        ],
         "14": [
             {
                 "name": "Restoring Touch",
                 "description": "When you use Lay On Hands on a creature, you can also remove one or more of the following conditions from the creature: Blinded, Charmed, Deafened, Frightened, Paralyzed, or Stunned. You must expend 5 Hit Points from the healing pool of Lay On Hands for each of these conditions you remove; those points don't also restore Hit Points to the creature."
+            }
+        ],
+        "16": [
+            {
+                "name": "Ability Score Improvement",
+                "description": "Choose between increasing your ability scores or selecting a feat.",
+                "grantedFeats": [
+                    "ability-score-improvement",
+                    "general-feats"
+                ],
+                "hide": true
+            }
+        ],
+        "19": [
+            {
+                "name": "Epic Boon Feat",
+                "description": "You gain an Epic Boon feat (see chapter 5) or another feat of your choice for which you qualify. Boon of Fate is recommended.",
+                "grantedFeats": [
+                    "epic-boon-feats",
+                    "general-feats"
+                ],
+                "hide": true
             }
         ]
     }

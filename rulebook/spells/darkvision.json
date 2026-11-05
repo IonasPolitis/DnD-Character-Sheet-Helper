@@ -1,0 +1,18 @@
+{
+      "name": "Darkvision",
+      "level": 2,
+      "school": "Transmutation",
+      "castingTime": "Action",
+      "range": "Touch",
+      "components": [
+            "V",
+            "S",
+            "M"
+      ],
+      "materials": "a dried carrot",
+      "duration": "8 hours",
+      "concentration": false,
+      "ritual": false,
+      "classes": "Druid, Ranger, Sorcerer, Wizard",
+      "description": "For the duration, a willing creature you touch has Darkvision with a range of 150 feet."
+}

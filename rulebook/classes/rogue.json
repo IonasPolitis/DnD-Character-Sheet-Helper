@@ -3,7 +3,8 @@
     "subclassFile": "rogue-subclasses",
     "hitDice": "D8",
     "savingThroughProf": ["dexterity", "intelligence"],
-    "skillsPool": [[ "acrobatics", "athletics", "deception", "insight", "intimidation", "investigation", "perception", "persuasion", "sleight of hand", "stealth" ], 4 ],
+    "proficiencyBonus": [ "2", "2", "2", "2", "3", "3", "3", "3", "4", "4", "4", "4", "5", "5", "5", "5", "6", "6", "6", "6", "7", "7", "7", "7", "8", "8", "8", "8", "9", "9" ],
+    "skillsPool": [ [ "acrobatics", "athletics", "deception", "insight", "intimidation", "investigation", "perception", "persuasion", "sleight of hand", "stealth" ], 4 ],
     "startingEquipment": {
         "A": {
             "items": {
@@ -32,6 +33,11 @@
             {
                 "name": "Weapon Mastery",
                 "description": "Your training with weapons allows you to use the mastery properties of two kinds of weapons of your choice with which you have proficiency, such as Daggers and Shortbows.\n\tWhenever you finish a Long Rest, you can change the kinds of weapons you chose. For example, you could switch to using the mastery properties of Scimitars and Shortswords."
+            },
+            {
+                "name": "Expertise",
+                "description": "You gain Expertise in two of your skill proficiencies of your choice. Sleight of Hand and Stealth are recommended if you have proficiency in them.\n\tAt Rogue level 6, you gain Expertise in two more of your skill proficiencies of your choice.",
+                "grantedExpertise": [ ["acrobatics", "animal handling", "arcana", "athletics", "deception", "history", "insight", "intimidation", "investigation", "medicine", "nature", "perception", "performance", "persuasion", "religion", "sleight of hand", "stealth", "survival"], 2 ]
             }
         ],
         "2": [
@@ -46,6 +52,17 @@
                 "description": "As a Bonus Action, you give yourself Advantage on your next attack roll on the current turn. You can use this feature only if you haven't moved during this turn, and after you use it, your Speed is O until the end of the current turn."
             }
         ],
+        "4": [
+            {
+                "name": "Ability Score Improvement",
+                "description": "Choose between increasing your ability scores or selecting a feat.",
+                "grantedFeats": [
+                    "ability-score-improvement",
+                    "general-feats"
+                ],
+                "hide": true
+            }
+        ],
         "5": [
             {
                 "name": "Cunning Strike",
@@ -54,6 +71,14 @@
             {
                 "name": "Uncanny Dodge",
                 "description": "When an attacker that you can see hits you with an attack roll, you can take a Reaction to halve the attack's damage against you (round down)."
+            }
+        ],
+        "6": [
+            {
+                "name": "Expertise",
+                "description": "You gain Expertise in two more of your skill proficiencies (four total).",
+                "grantedExpertise": [ ["acrobatics", "animal handling", "arcana", "athletics", "deception", "history", "insight", "intimidation", "investigation", "medicine", "nature", "perception", "performance", "persuasion", "religion", "sleight of hand", "stealth", "survival"], 2 ],
+                "hide": true
             }
         ],
         "7": [
@@ -66,22 +91,66 @@
                 "description": "Whenever you make an ability check that uses one of your skill or tool proficiencies, you can treat a d20 roll of 9 or lower as a 10."
             }
         ],
+        "8": [
+            {
+                "name": "Ability Score Improvement",
+                "description": "Choose between increasing your ability scores or selecting a feat.",
+                "grantedFeats": [
+                    "ability-score-improvement",
+                    "general-feats"
+                ],
+                "hide": true
+            }
+        ],
         "11": [
             {
                 "name": "Improved Cunning Strike",
                 "description": "You can use up to two Cunning Strike effects when you deal Sneak Attack damage, paying the die cost for each effect."
             }
         ],
+        "12": [
+            {
+                "name": "Ability Score Improvement",
+                "description": "Choose between increasing your ability scores or selecting a feat.",
+                "grantedFeats": [
+                    "ability-score-improvement",
+                    "general-feats"
+                ],
+                "hide": true
+            }
+        ],
         "14": [
             {
                 "name": "Devious Strikes",
-                "descripton": "You've practiced new ways to use your Sneak Attack deviously. The following effects are now among your Cunning Strike options.\n - **Dace** (2d6): The target must succeed on a Constitution saving throw, or on its next turn, it can do only one of the following: move or take an action or a Bonus Action.\n - **Knock Out** (6d6): The target must succeed on a Constitution saving throw, or it has the Unconscious condition for 1 minute or until it takes any damage. The Unconscious target repeats the save at the end of each of its turns, ending the effect on itself on a success.\n - **Obscure** (3d6): The target must succeed on a Dexterity saving throw, or it has the Blinded condition until the end of its next turn."
+                "description": "You've practiced new ways to use your Sneak Attack deviously. The following effects are now among your Cunning Strike options.\n - **Dace** (2d6): The target must succeed on a Constitution saving throw, or on its next turn, it can do only one of the following: move or take an action or a Bonus Action.\n - **Knock Out** (6d6): The target must succeed on a Constitution saving throw, or it has the Unconscious condition for 1 minute or until it takes any damage. The Unconscious target repeats the save at the end of each of its turns, ending the effect on itself on a success.\n - **Obscure** (3d6): The target must succeed on a Dexterity saving throw, or it has the Blinded condition until the end of its next turn."
+            }
+        ],
+        "16": [
+            {
+                "name": "Ability Score Improvement",
+                "description": "Choose between increasing your ability scores or selecting a feat.",
+                "grantedFeats": [
+                    "ability-score-improvement",
+                    "general-feats"
+                ],
+                "hide": true
             }
         ],
         "18": [
             {
                 "name": "Elusice",
                 "description": "You're so evasive that attackers rarely gain the upper hand against you. No attack roll can have Advantage against you unless you have the Incapacitated condition."
+            }
+        ],
+        "19": [
+            {
+                "name": "Epic Boon Feat",
+                "description": "You gain an Epic Boon feat (see chapter 5) or another feat of your choice for which you qualify. Boon of Fate is recommended.",
+                "grantedFeats": [
+                    "epic-boon-feats",
+                    "general-feats"
+                ],
+                "hide": true
             }
         ],
         "20": [

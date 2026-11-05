@@ -1,0 +1,75 @@
+{
+  "1": {
+    "alarm": "Alarm",
+    "animal-friendship": "Animal Friendship",
+    "cure-wounds": "Cure Wounds",
+    "detect-magic": "Detect Magic",
+    "detect-poison-and-disease": "Detect Poison and Disease",
+    "ensnaring-strike": "Ensnaring Strike",
+    "entangle": "Entangle",
+    "fog-cloud": "Fog Cloud",
+    "goodberry": "Goodberry",
+    "hail-of-thorns": "Hail of Thorns",
+    "hunters-mark": "Hunter's Mark",
+    "jump": "Jump",
+    "longstrider": "Longstrider",
+    "speak-with-animals": "Speak with Animals"
+  },
+  "2": {
+    "aid": "Aid",
+    "animal-messenger": "Animal Messenger",
+    "barkskin": "Barkskin",
+    "beast-sense": "Beast Sense",
+    "cordon-of-arrows": "Cordon of Arrows",
+    "darkvision": "Darkvision",
+    "enhance-ability": "Enhance Ability",
+    "find-traps": "Find Traps",
+    "gust-of-wind": "Gust of Wind",
+    "lesser-restoration": "Lesser Restoration",
+    "locate-animals-or-plants": "Locate Animals or Plants",
+    "locate-object": "Locate Object",
+    "magic-weapon": "Magic Weapon",
+    "pass-without-trace": "Pass without Trace",
+    "protection-from-poison": "Protection from Poison",
+    "silence": "Silence",
+    "spike-growth": "Spike Growth",
+    "summon-beast": "Summon Beast"
+  },
+  "3": {
+    "conjure-animals": "Conjure Animals",
+    "conjure-barrage": "Conjure Barrage",
+    "daylight": "Daylight",
+    "dispel-magic": "Dispel Magic",
+    "elemental-weapon": "Elemental Weapon",
+    "lightning-arrow": "Lightning Arrow",
+    "meld-into-stone": "Meld into Stone",
+    "nondetection": "Nondetection",
+    "plant-growth": "Plant Growth",
+    "protection-from-energy": "Protection from Energy",
+    "revivify": "Revivify",
+    "speak-with-plants": "Speak with Plants",
+    "summon-fey": "Summon Fey",
+    "water-breathing": "Water Breathing",
+    "water-walk": "Water Walk",
+    "wind-wall": "Wind Wall"
+  },
+  "4": {
+    "conjure-woodland-beings": "Conjure Woodland Beings",
+    "freedom-of-movement": "Freedom of Movement",
+    "grasping-vine": "Grasping Vine",
+    "locate-creature": "Locate Creature",
+    "stoneskin": "Stoneskin",
+    "summon-elemental": "Summon Elemental"
+  },
+  "5": {
+    "commune-with-nature": "Commune with Nature",
+    "conjure-volley": "Conjure Volley",
+    "greater-restoration": "Greater Restoration",
+    "steel-wind-strike": "Steel Wind Strike",
+    "swift-quiver": "Swift Quiver",
+    "tree-stride": "Tree Stride"
+  },
+  "6": {
+    "find-the-path": "Find the Path"
+  }
+}

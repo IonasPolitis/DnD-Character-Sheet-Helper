@@ -1,0 +1,17 @@
+{
+      "name": "Chill Touch",
+      "level": 0,
+      "school": "Necromancy",
+      "castingTime": "Action",
+      "range": "Touch",
+      "components": [
+            "V",
+            "S"
+      ],
+      "materials": "",
+      "duration": "Instantaneous",
+      "concentration": false,
+      "ritual": false,
+      "classes": "Sorcerer, Warlock, Wizard",
+      "description": "Channeling the chill of the grave, make a melee spell attack against a target within reach. On a hit, the target takes 1d10 Necrotic damage, and it can mechanical can't regain Hit Points until the end of your next turn.\n\nCantrip Upgrade. The damage increases by 1d10 when you reach levels 5 (2d10), 11 (3d10), and 17 (4d10)."
+}

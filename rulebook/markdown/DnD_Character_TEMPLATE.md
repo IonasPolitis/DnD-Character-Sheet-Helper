@@ -1,24 +1,31 @@
 ---
 DnD_id:
-level: 
+level:
 proficiency_bonus:
 DnD_race:
-DnD_raceLineage: 
-DnD_class: 
+DnD_raceLineage:
+DnD_class:
 DnD_classLevels:
 DnD_Subclass:
-DnD_classEquipment: 
+DnD_classEquipment:
+DnD_classProficiencies:
 DnD_classChosenItems:
-spellcasting_ability:
+DnD_classChoices:
+DnD_spellcastingAbility:
 DnD_languages:
-DnD_background: 
-DnD_backgroundFeat: 
-DnD_backgroundEquipment: 
+DnD_background:
+DnD_backgroundFeat:
+DnD_backgroundEquipment:
 DnD_backgroundChosenItems:
 DnD_extraFeats:
+DnD_skillProficiencies:
+DnD_skillExpertise:
+DnD_skillHalfProficiencies:
+DnD_skillBonuses:
 DnD_maxHealth:
 DnD_speed:
 DnD_speedSublabel: 
+DnD_attackStat:
 DnD_strength:
 DnD_dexterity:
 DnD_constitution:
@@ -29,7 +36,12 @@ DnD_weapon:
 DnD_weaponDamage:
 DnD_armor:
 DnD_armorAc:
+DnD_armorAcBonus:
 DnD_armorAcMod:
+DnD_attackRollMod:
+DnD_spells:
+DnD_preparedSpells:
+DnD_spellSlots:
 dnd_gold_added:
 dnd_gold_spent:
 DnD_hideFeature:
@@ -37,7 +49,6 @@ cssclasses:
   - character-sheet
 obsidianUIMode: preview
 ---
-
 ## Board
 ```healthpoints
 state_key: din_health
@@ -55,81 +66,47 @@ items:
     value: long-rest
 ```
 <font size=5>Info:</font>
-```stats
-items:
-- label: Race
-  value: '{{ frontmatter.DnD_race }}'
-  sublabel: '{{ frontmatter.DnD_race_lineage }}'
-- label: Class
-  value: '{{ frontmatter.DnD_class }}'
-  sublabel: '{{ frontmatter.DnD_Subclass }}'
-- label: Background
-  value: '{{ frontmatter.DnD_background }}'
-  sublabel: '{{ frontmatter.DnD_backgroundFeat }}'
-- label: Level
-  value: '{{ frontmatter.level }}'
-  sublabel: "+{{ frontmatter.proficiency_bonus }} Proficency"
-
-grid:
-  columns: 4
-```
-```badges
-items:
-- label: Languages
-  value: '{{ frontmatter.DnD_languages }}'
+```dnd-info
+mode: character
+race: frontmatter.DnD_race
+raceLineage: frontmatter.DnD_raceLineage
+class: frontmatter.DnD_class
+subclass: frontmatter.DnD_Subclass
+background: frontmatter.DnD_background
+backgroundFeat: frontmatter.DnD_backgroundFeat
+level: frontmatter.level
+languages: frontmatter.DnD_languages
 ```
 
 <font size=5>Stats:</font>
-```ability
-abilities:
-  strength: '{{ frontmatter.DnD_strength }}'
-  dexterity: '{{ frontmatter.DnD_dexterity }}'
-  constitution: '{{ frontmatter.DnD_constitution }}'
-  intelligence: '{{ frontmatter.DnD_intelligence }}'
-  wisdom: '{{ frontmatter.DnD_wisdom }}'
-  charisma: '{{ frontmatter.DnD_charisma }}'
-
-proficiencies:
-- <chosen ability>
+```dnd-abilities
+strength: frontmatter.DnD_strength
+dexterity: frontmatter.DnD_dexterity
+constitution: frontmatter.DnD_constitution
+intelligence: frontmatter.DnD_intelligence
+wisdom: frontmatter.DnD_wisdom
+charisma: frontmatter.DnD_charisma
+proficiencies: frontmatter.DnD_classProficiencies
 ```
 ---
-```stats
-items:
-  - label: Armor Class
-    sublabel: <sublabel>
-    value: '{{ add frontmatter.DnD_armorAc frontmatter.DnD_armorAcMod }}'
-  - label: Initiative
-    sublabel: Dexterity Modifier
-    value: '+{{ modifier abilities.dexterity }}'
-  - label: Attack Roll
-    sublabel: Strength/Dexterity Modifier
-    value: "+{{ add (modifier abilities.strength) frontmatter.proficiency_bonus }}"
-  - label: Speed
-    value: "{{ frontmatter.DnD_speed }} feet"
-    sublabel: "{{ frontmatter.DnD_speedSublabel }}"
-grid:
-  columns: 4
+```dnd-info
+mode: combat
+armor: frontmatter.DnD_armor
+attackStat: frontmatter.DnD_attackStat
+speed: frontmatter.DnD_speed
+speedSublabel: frontmatter.DnD_speedSublabel
 ```
  ---
-```skills
-proficiencies:
-  #Class
-  - <chosen skills>
-  #Background
-  - <chosen skills>
-
-expertise:
-  - <chosen skills>
-
-half_proficiencies:
-  - <chosen skills>
-
-bonuses:
-  - name: <Item Name>
-    target: <chosen skill>
-    value: <+value>
+```dnd-skills
+proficiencies: frontmatter.DnD_skillProficiencies
+expertise: frontmatter.DnD_skillExpertise
+half_proficiencies: frontmatter.DnD_skillHalfProficiencies
+bonuses: frontmatter.DnD_skillBonuses
 ```
-
+---
+```dnd-controls
+```
+---
 ```dnd-inventory
 class: frontmatter.DnD_class
 classEquipment: frontmatter.DnD_classEquipment
@@ -143,13 +120,12 @@ armor: frontmatter.DnD_armor
 armorAc: frontmatter.DnD_armorAc
 extraItems: frontmatter.DnD_extraItems
 ```
-<font size=5>**Consumables:**</font>
-```consumable
-items:
-  - label: "Consumable Name"
-    state_key: din_consumable
-    uses: 1
-    reset_on: long-rest
+
+```dnd-spells
+DnD_spellcasting_ability: frontmatter.DnD_spellcastingAbility
+spells: frontmatter.DnD_spells
+preparedSpells: frontmatter.DnD_preparedSpells
+spellSlots: frontmatter.DnD_spellSlots
 ```
 
 ```dnd-features
@@ -157,25 +133,13 @@ level: frontmatter.level
 class: frontmatter.DnD_class
 classLevels: frontmatter.DnD_classLevels
 subclass: frontmatter.DnD_Subclass
+classChoices: frontmatter.DnD_classChoices
 race: frontmatter.DnD_race
 raceLineage: frontmatter.DnD_raceLineage
 background: frontmatter.DnD_background
 extraFeats: frontmatter.DnD_extraFeats
 hide: frontmatter.DnD_hideFeature
 ```
-
-<font size=5>**Abilities:**</font>
-```badges
-items:
-- label: <Ability_Name>
-```
-```spell-components
-casting_time: 1 action
-range: 60 feet
-components: <Dice Damage>
-duration: Instantaneous
-```
-
 
 ## Appearance:
 

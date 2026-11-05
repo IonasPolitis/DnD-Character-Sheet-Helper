@@ -1,0 +1,17 @@
+{
+      "name": "Blade Ward",
+      "level": 0,
+      "school": "Abjuration",
+      "castingTime": "Action",
+      "range": "Self",
+      "components": [
+            "V",
+            "S"
+      ],
+      "materials": "",
+      "duration": "1 minute",
+      "concentration": true,
+      "ritual": false,
+      "classes": "Bard, Sorcerer, Warlock, Wizard",
+      "description": "Whenever a creature makes an attack roll against you before the spell ends, the attacker subtracts 1d4 from the attack roll."
+}

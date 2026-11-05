@@ -3,7 +3,8 @@
     "subclassFile": "bard-subclasses",
     "hitDice": "D8",
     "savingThroughProf": ["dexterity", "charisma"],
-    "skillsPool": [["acrobatics", "animal handling", "arcana", "athletics", "deception", "history", "insight", "intimidation", "investigation", "medicine", "nature", "perception", "performance", "persuasion", "religion", "sleight of hand", "stealth", "survival"], 3 ],
+    "proficiencyBonus": [ "2", "2", "2", "2", "3", "3", "3", "3", "4", "4", "4", "4", "5", "5", "5", "5", "6", "6", "6", "6", "7", "7", "7", "7", "8", "8", "8", "8", "9", "9" ],
+    "skillsPool": [ ["acrobatics", "animal handling", "arcana", "athletics", "deception", "history", "insight", "intimidation", "investigation", "medicine", "nature", "perception", "performance", "persuasion", "religion", "sleight of hand", "stealth", "survival"], 3 ],
     "spellcastingAbilities": ["Charisma"],
     "startingEquipment": {
         "A": {
@@ -17,6 +18,7 @@
         },
         "B": { "items": {}, "gold": 0 }
     },
+    "spellsPool": "bard-spells",
     "features": {
         "1": [
             {
@@ -28,6 +30,22 @@
             {
                 "name": "Jack of All Trades",
                 "description": "You can add half your Proficiency Bonus (round down) to any ability check you make that uses a skill proficiency you lack and that doesn't otherwise use your Proficiency Bonus."
+            },
+            {
+                "name": "Expertise",
+                "description": "You gain Expertise (see the rules glossary) in two of your skill proficiencies of your choice. Performance and Persuasion are recommended if you have proficiency in them.\n\tAt Bard level 9, you gain Expertise in two more of your skill proficiencies of your choice.",
+                "grantedExpertise": [ ["acrobatics", "animal handling", "arcana", "athletics", "deception", "history", "insight", "intimidation", "investigation", "medicine", "nature", "perception", "performance", "persuasion", "religion", "sleight of hand", "stealth", "survival"], 2 ]
+            }
+        ],
+        "4": [
+            {
+                "name": "Ability Score Improvement",
+                "description": "Choose between increasing your ability scores or selecting a feat.",
+                "grantedFeats": [
+                    "ability-score-improvement",
+                    "general-feats"
+                ],
+                "hide": true
             }
         ],
         "5": [
@@ -42,10 +60,61 @@
                 "description": "You can use musical notes or words of power to disrupt mind-influencing effects. If you or a creature within 30 feet of you fails a saving throw against an effect that applies the Charmed or Frightened condition, you can take a Reaction to cause the save to be rerolled, and the new roll has Advantage."
             }
         ],
+        "8": [
+            {
+                "name": "Ability Score Improvement",
+                "description": "Choose between increasing your ability scores or selecting a feat.",
+                "grantedFeats": [
+                    "ability-score-improvement",
+                    "general-feats"
+                ],
+                "hide": true
+            }
+        ],
+        "9": [
+            {
+                "name": "Expertise",
+                "description": "You gain Expertise (see the rules glossary) in two of your skill proficiencies of your choice. Performance and Persuasion are recommended if you have proficiency in them.\n\tAt Bard level 9, you gain Expertise in two more of your skill proficiencies of your choice.",
+                "grantedExpertise": [ ["acrobatics", "animal handling", "arcana", "athletics", "deception", "history", "insight", "intimidation", "investigation", "medicine", "nature", "perception", "performance", "persuasion", "religion", "sleight of hand", "stealth", "survival"], 2 ]
+            }
+        ],
+        "12": [
+            {
+                "name": "Ability Score Improvement",
+                "description": "Choose between increasing your ability scores or selecting a feat.",
+                "grantedFeats": [
+                    "ability-score-improvement",
+                    "general-feats"
+                ],
+                "hide": true
+            }
+        ],
+        "16": [
+            {
+                "name": "Ability Score Improvement",
+                "description": "Choose between increasing your ability scores or selecting a feat.",
+                "grantedFeats": [
+                    "ability-score-improvement",
+                    "general-feats"
+                ],
+                "hide": true
+            }
+        ],
         "18": [
             {
                 "name": "Superior Inspiration",
                 "description": "When you roll Initiative, you regain expended uses of Bardic Inspiration until you have two if you have fewer than that"
+            }
+        ],
+        "19": [
+            {
+                "name": "Epic Boon Feat",
+                "description": "You gain an Epic Boon feat (see chapter 5) or another feat of your choice for which you qualify. Boon of Fate is recommended.",
+                "grantedFeats": [
+                    "epic-boon-feats",
+                    "general-feats"
+                ],
+                "hide": true
             }
         ],
         "20": [

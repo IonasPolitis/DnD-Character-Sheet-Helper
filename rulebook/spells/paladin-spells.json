@@ -1,0 +1,62 @@
+{
+  "1": {
+    "bless": "Bless",
+    "command": "Command",
+    "compelled-duel": "Compelled Duel",
+    "cure-wounds": "Cure Wounds",
+    "detect-evil-and-good": "Detect Evil and Good",
+    "detect-magic": "Detect Magic",
+    "detect-poison-and-disease": "Detect Poison and Disease",
+    "divine-favor": "Divine Favor",
+    "divine-smite": "Divine Smite",
+    "heroism": "Heroism",
+    "protection-from-evil-and-good": "Protection from Evil and Good",
+    "purify-food-and-drink": "Purify Food and Drink",
+    "searing-smite": "Searing Smite",
+    "shield-of-faith": "Shield of Faith",
+    "thunderous-smite": "Thunderous Smite",
+    "wrathful-smite": "Wrathful Smite"
+  },
+  "2": {
+    "aid": "Aid",
+    "find-steed": "Find Steed",
+    "gentle-repose": "Gentle Repose",
+    "lesser-restoration": "Lesser Restoration",
+    "locate-object": "Locate Object",
+    "magic-weapon": "Magic Weapon",
+    "prayer-of-healing": "Prayer of Healing",
+    "protection-from-poison": "Protection from Poison",
+    "shining-smite": "Shining Smite",
+    "warding-bond": "Warding Bond",
+    "zone-of-truth": "Zone of Truth"
+  },
+  "3": {
+    "aura-of-vitality": "Aura of Vitality",
+    "blinding-smite": "Blinding Smite",
+    "create-food-and-water": "Create Food and Water",
+    "crusaders-mantle": "Crusader's Mantle",
+    "daylight": "Daylight",
+    "dispel-magic": "Dispel Magic",
+    "elemental-weapon": "Elemental Weapon",
+    "magic-circle": "Magic Circle",
+    "remove-curse": "Remove Curse",
+    "revivify": "Revivify"
+  },
+  "4": {
+    "aura-of-life": "Aura of Life",
+    "aura-of-purity": "Aura of Purity",
+    "banishment": "Banishment",
+    "death-ward": "Death Ward",
+    "locate-creature": "Locate Creature",
+    "staggering-smite": "Staggering Smite"
+  },
+  "5": {
+    "banishing-smite": "Banishing Smite",
+    "destructive-wave": "Destructive Wave",
+    "dispel-evil-and-good": "Dispel Evil and Good",
+    "geas": "Geas",
+    "greater-restoration": "Greater Restoration",
+    "raise-dead": "Raise Dead",
+    "summon-celestial": "Summon Celestial"
+  }
+}

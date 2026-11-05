@@ -1,0 +1,18 @@
+{
+      "name": "Witch Bolt",
+      "level": 1,
+      "school": "Evocation",
+      "castingTime": "Action",
+      "range": "60 feet",
+      "components": [
+            "V",
+            "S",
+            "M"
+      ],
+      "materials": "a twig struck by lightning",
+      "duration": "1 minute",
+      "concentration": true,
+      "ritual": false,
+      "classes": "Sorcerer, Warlock, Wizard",
+      "description": "A beam of crackling energy lances toward a creature within range, forming a sustained arc of lightning between you and the target. Make a ranged spell attack against it. On a hit, the target takes 2d12 Lightning damage.\n\nOn each of your subsequent turns, you can take a Bonus Action to deal 1d12 Lightning damage to the target automatically, even if the first attack missed.\n\nThe spell ends if the target is ever outside the spell's range or if it has Total Cover from you.\n\nUsing a Higher-Level Spell Slot. The initial damage increases by 1d12 for each spell slot level above 1."
+}

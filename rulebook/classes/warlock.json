@@ -2,9 +2,10 @@
     "class": "Warlock",
     "subclassFile": "warlock-subclasses",
     "hitDice": "D8",
-    "savingThroughProf": ["wisdom", "charisma"],
-    "skillsPool": [["arcana", "deception", "history", "intimidation", "investigation", "nature", "religion"], 2 ],
-    "spellcastingAbilities": ["Charisma"],
+    "savingThroughProf": [ "wisdom", "charisma" ],
+    "proficiencyBonus": [ "2", "2", "2", "2", "3", "3", "3", "3", "4", "4", "4", "4", "5", "5", "5", "5", "6", "6", "6", "6", "7", "7", "7", "7", "8", "8", "8", "8", "9", "9" ],
+    "skillsPool": [ [ "arcana", "deception", "history", "intimidation", "investigation", "nature", "religion" ], 2 ],
+    "spellcastingAbilities": [ "Charisma" ],
     "startingEquipment": {
         "A": {
             "items": {
@@ -14,34 +15,300 @@
                 "Arcane Focus (orb)": 1,
                 "Book (occult lore)": 1,
                 "scholars-pack": 1
-            }, "gold": 15
+            },
+            "gold": 15
         },
-        "B": { "items": {}, "gold": 100 }
+        "B": {
+            "items": {},
+            "gold": 100
+        }
+    },
+    "spellcasting": {
+        "1": { "cantrips": 2, "preparedSpells": 2, "slots": [1, 0, 0, 0, 0, 0, 0, 0, 0] },
+        "2": { "cantrips": 2, "preparedSpells": 3, "slots": [2, 0, 0, 0, 0, 0, 0, 0, 0] },
+        "3": { "cantrips": 2, "preparedSpells": 4, "slots": [0, 2, 0, 0, 0, 0, 0, 0, 0] },
+        "4": { "cantrips": 3, "preparedSpells": 5, "slots": [0, 2, 0, 0, 0, 0, 0, 0, 0] },
+        "5": { "cantrips": 3, "preparedSpells": 6, "slots": [0, 0, 2, 0, 0, 0, 0, 0, 0] },
+        "6": { "cantrips": 3, "preparedSpells": 7, "slots": [0, 0, 2, 0, 0, 0, 0, 0, 0] },
+        "7": { "cantrips": 3, "preparedSpells": 8, "slots": [0, 0, 0, 2, 0, 0, 0, 0, 0] },
+        "8": { "cantrips": 3, "preparedSpells": 9, "slots": [0, 0, 0, 2, 0, 0, 0, 0, 0] },
+        "9": { "cantrips": 3, "preparedSpells": 10, "slots": [0, 0, 0, 0, 2, 0, 0, 0, 0] },
+        "10": { "cantrips": 4, "preparedSpells": 10, "slots": [0, 0, 0, 0, 2, 0, 0, 0, 0] },
+        "11": { "cantrips": 4, "preparedSpells": 11, "slots": [0, 0, 0, 0, 3, 0, 0, 0, 0] },
+        "12": { "cantrips": 4, "preparedSpells": 11, "slots": [0, 0, 0, 0, 3, 0, 0, 0, 0] },
+        "13": { "cantrips": 4, "preparedSpells": 12, "slots": [0, 0, 0, 0, 3, 0, 0, 0, 0] },
+        "14": { "cantrips": 4, "preparedSpells": 12, "slots": [0, 0, 0, 0, 3, 0, 0, 0, 0] },
+        "15": { "cantrips": 4, "preparedSpells": 13, "slots": [0, 0, 0, 0, 3, 0, 0, 0, 0] },
+        "16": { "cantrips": 4, "preparedSpells": 13, "slots": [0, 0, 0, 0, 3, 0, 0, 0, 0] },
+        "17": { "cantrips": 4, "preparedSpells": 14, "slots": [0, 0, 0, 0, 4, 0, 0, 0, 0] },
+        "18": { "cantrips": 4, "preparedSpells": 14, "slots": [0, 0, 0, 0, 4, 0, 0, 0, 0] },
+        "19": { "cantrips": 4, "preparedSpells": 15, "slots": [0, 0, 0, 0, 4, 0, 0, 0, 0] },
+        "20": { "cantrips": 4, "preparedSpells": 15, "slots": [0, 0, 0, 0, 4, 0, 0, 0, 0] }
     },
     "features": {
+        "1": [
+            {
+                "name": "Eldritch Invocations",
+                "description": "You have unearthed Eldritch Invocations, pieces of forbidden knowledge that imbue you with an abiding magical ability or other lessons.",
+                "classChoices": [
+                    "eldritch-invocations"
+                ]
+            },
+            {
+                "name": "Pact Magic",
+                "description": "Through occult ceremony, you have formed a pact with a mysterious entity to gain magical powers. The entity is a voice in the shadows -its identity unclear- but its boon to you is concrete: the ability to cast spells."
+            }
+        ],
         "2": [
             {
                 "name": "Magical Cunning",
                 "description": "You can perform an esoteric rite for 1 minute. At the end of it, you regain expended Pact Magic spell slots but no more than a number equal to half your maximum (round up). Once you use this feature, you can't do so again until you finish a Long Rest."
+            },
+            {
+                "name": "Eldritch Invocations",
+                "description": "You have unearthed Eldritch Invocations...",
+                "classChoices": [
+                    "eldritch-invocations", "eldritch-invocations", "eldritch-invocations"
+                ],
+                "hide": true
+            }
+        ],
+        "3": [
+            {
+                "name": "Eldritch Invocations",
+                "description": "You have unearthed Eldritch Invocations...",
+                "classChoices": [
+                    "eldritch-invocations", "eldritch-invocations", "eldritch-invocations"
+                ],
+                "hide": true
+            }
+        ],
+        "4": [
+            {
+                "name": "Eldritch Invocations",
+                "description": "You have unearthed Eldritch Invocations...",
+                "classChoices": [
+                    "eldritch-invocations", "eldritch-invocations", "eldritch-invocations"
+                ],
+                "hide": true
+            },
+            {
+                "name": "Ability Score Improvement",
+                "description": "Choose between increasing your ability scores or selecting a feat.",
+                "grantedFeats": [
+                    "ability-score-improvement",
+                    "general-feats"
+                ],
+                "hide": true
+            }
+        ],
+        "5": [
+            {
+                "name": "Eldritch Invocations",
+                "description": "You have unearthed Eldritch Invocations...",
+                "classChoices": [
+                    "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations"
+                ],
+                "hide": true
+            }
+        ],
+        "6": [
+            {
+                "name": "Eldritch Invocations",
+                "description": "You have unearthed Eldritch Invocations...",
+                "classChoices": [
+                    "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations"
+                ],
+                "hide": true
+            }
+        ],
+        "7": [
+            {
+                "name": "Eldritch Invocations",
+                "description": "You have unearthed Eldritch Invocations...",
+                "classChoices": [
+                    "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations"
+                ],
+                "hide": true
+            }
+        ],
+        "8": [
+            {
+                "name": "Eldritch Invocations",
+                "description": "You have unearthed Eldritch Invocations...",
+                "classChoices": [
+                    "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations"
+                ],
+                "hide": true
+            },
+            {
+                "name": "Ability Score Improvement",
+                "description": "Choose between increasing your ability scores or selecting a feat.",
+                "grantedFeats": [
+                    "ability-score-improvement",
+                    "general-feats"
+                ],
+                "hide": true
             }
         ],
         "9": [
             {
                 "name": "Contract Patron",
                 "description": "In the past, you usually contacted your patron through intermediaries. Now you can communicate directly: you always have the Contact Other Plane spell prepared. With this feature, you can cast the spell without expending a spell slot to contact your patron, and you automatically succeed on the spell's saving throw.\n\tOnce you cast the spell with this feature, you can't do so in this way again until you finish a Long Rest."
+            },
+            {
+                "name": "Eldritch Invocations",
+                "description": "You have unearthed Eldritch Invocations...",
+                "classChoices": [
+                    "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations"
+                ],
+                "hide": true
+            }
+        ],
+        "10": [
+            {
+                "name": "Eldritch Invocations",
+                "description": "You have unearthed Eldritch Invocations...",
+                "classChoices": [
+                    "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations"
+                ],
+                "hide": true
             }
         ],
         "11": [
             {
                 "name": "Mystic Arcanum",
                 "description": "Your patron grants you a magical secret called an arcanum.\n\tYou can cast your arcanum spell once without expending a spell slot, and you must finish a Long Rest before you can cast it in this way again.\n\tAs shown in the Warlock Features table, you gain another Warlock spell of your choice that can be cast in this way when you reach Warlock levels 13 (level 7 spell), 15 (level 8 spell), and 17 (level 9 spell).\n\tYou regain all uses of your Mystic Arcanum when you finish a Long Rest.\n\tWhenever you gain a Warlock level, you can replace one of your arcanum spells with another Warlock spell of the same level."
+            },
+            {
+                "name": "Eldritch Invocations",
+                "description": "You have unearthed Eldritch Invocations...",
+                "classChoices": [
+                    "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations"
+                ],
+                "hide": true
+            }
+        ],
+        "12": [
+            {
+                "name": "Eldritch Invocations",
+                "description": "You have unearthed Eldritch Invocations...",
+                "classChoices": [
+                    "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations"
+                ],
+                "hide": true
+            },
+            {
+                "name": "Ability Score Improvement",
+                "description": "Choose between increasing your ability scores or selecting a feat.",
+                "grantedFeats": [
+                    "ability-score-improvement",
+                    "general-feats"
+                ],
+                "hide": true
+            }
+        ],
+        "13": [
+            {
+                "name": "Eldritch Invocations",
+                "description": "You have unearthed Eldritch Invocations...",
+                "classChoices": [
+                    "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations"
+                ],
+                "hide": true
+            }
+        ],
+        "14": [
+            {
+                "name": "Eldritch Invocations",
+                "description": "You have unearthed Eldritch Invocations...",
+                "classChoices": [
+                    "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations"
+                ],
+                "hide": true
+            }
+        ],
+        "15": [
+            {
+                "name": "Eldritch Invocations",
+                "description": "You have unearthed Eldritch Invocations...",
+                "classChoices": [
+                    "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations"
+                ],
+                "hide": true
+            }
+        ],
+        "16": [
+            {
+                "name": "Eldritch Invocations",
+                "description": "You have unearthed Eldritch Invocations...",
+                "classChoices": [
+                    "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations"
+                ],
+                "hide": true
+            },
+            {
+                "name": "Ability Score Improvement",
+                "description": "Choose between increasing your ability scores or selecting a feat.",
+                "grantedFeats": [
+                    "ability-score-improvement",
+                    "general-feats"
+                ],
+                "hide": true
+            }
+        ],
+        "17": [
+            {
+                "name": "Eldritch Invocations",
+                "description": "You have unearthed Eldritch Invocations...",
+                "classChoices": [
+                    "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations"
+                ],
+                "hide": true
+            }
+        ],
+        "18": [
+            {
+                "name": "Eldritch Invocations",
+                "description": "You have unearthed Eldritch Invocations...",
+                "classChoices": [
+                    "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations"
+                ],
+                "hide": true
+            }
+        ],
+        "19": [
+            {
+                "name": "Eldritch Invocations",
+                "description": "You have unearthed Eldritch Invocations...",
+                "classChoices": [
+                    "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations"
+                ],
+                "hide": true
+            },
+            {
+                "name": "Epic Boon Feat",
+                "description": "You gain an Epic Boon feat (see chapter 5) or another feat of your choice for which you qualify. Boon of Fate is recommended.",
+                "grantedFeats": [
+                    "epic-boon-feats",
+                    "general-feats"
+                ],
+                "hide": true
             }
         ],
         "20": [
             {
                 "name": "Eldritch Master",
                 "description": "When you use your Magical Cunning feature, you regain all your expended Pact Magic spell slots."
+            },
+            {
+                "name": "Eldritch Invocations",
+                "description": "You have unearthed Eldritch Invocations...",
+                "classChoices": [
+                    "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations"
+                ],
+                "hide": true
             }
         ]
-      }
+    }
 }

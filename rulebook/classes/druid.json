@@ -2,9 +2,10 @@
     "class": "Druid",
     "subclassFile": "druid-subclasses",
     "hitDice": "D8",
-    "savingThroughProf": ["inteligence", "wisdom"],
-    "skillsPool": [["arcana", "animal handling", "insight", "medicine", "nature", "perception", "religion", "survival"], 2 ],
-    "spellcastingAbilities": ["Wisdom"],
+    "savingThroughProf": [ "intelligence", "wisdom" ],
+    "proficiencyBonus": [ "2", "2", "2", "2", "3", "3", "3", "3", "4", "4", "4", "4", "5", "5", "5", "5", "6", "6", "6", "6", "7", "7", "7", "7", "8", "8", "8", "8", "9", "9" ],
+    "skillsPool": [ [ "arcana", "animal handling", "insight", "medicine", "nature", "perception", "religion", "survival" ], 2 ],
+    "spellcastingAbilities": [ "Wisdom" ],
     "startingEquipment": {
         "A": {
             "items": {
@@ -14,15 +15,50 @@
                 "quarterstaff": 1,
                 "explorers-pack": 1,
                 "herbalism-kit": 1
-            }, "gold": 9
+            },
+            "gold": 9
         },
-        "B": { "items": {}, "gold": 50 }
+        "B": {
+            "items": {},
+            "gold": 50
+        }
+    },
+    "spellsPool": "druid-spells",
+    "spellcasting": {
+        "1": { "cantrips": 2, "preparedSpells": 4, "slots": [2, 0, 0, 0, 0, 0, 0, 0, 0] },
+        "2": { "cantrips": 2, "preparedSpells": 5, "slots": [3, 0, 0, 0, 0, 0, 0, 0, 0] },
+        "3": { "cantrips": 2, "preparedSpells": 6, "slots": [4, 2, 0, 0, 0, 0, 0, 0, 0] },
+        "4": { "cantrips": 3, "preparedSpells": 7, "slots": [4, 3, 0, 0, 0, 0, 0, 0, 0] },
+        "5": { "cantrips": 3, "preparedSpells": 9, "slots": [4, 3, 2, 0, 0, 0, 0, 0, 0] },
+        "6": { "cantrips": 3, "preparedSpells": 10, "slots": [4, 3, 3, 0, 0, 0, 0, 0, 0] },
+        "7": { "cantrips": 3, "preparedSpells": 11, "slots": [4, 3, 3, 1, 0, 0, 0, 0, 0] },
+        "8": { "cantrips": 3, "preparedSpells": 12, "slots": [4, 3, 3, 2, 0, 0, 0, 0, 0] },
+        "9": { "cantrips": 3, "preparedSpells": 14, "slots": [4, 3, 3, 3, 1, 0, 0, 0, 0] },
+        "10": { "cantrips": 4, "preparedSpells": 15, "slots": [4, 3, 3, 3, 2, 0, 0, 0, 0] },
+        "11": { "cantrips": 4, "preparedSpells": 16, "slots": [4, 3, 3, 3, 2, 1, 0, 0, 0] },
+        "12": { "cantrips": 4, "preparedSpells": 16, "slots": [4, 3, 3, 3, 2, 1, 0, 0, 0] },
+        "13": { "cantrips": 4, "preparedSpells": 17, "slots": [4, 3, 3, 3, 2, 1, 1, 0, 0] },
+        "14": { "cantrips": 4, "preparedSpells": 17, "slots": [4, 3, 3, 3, 2, 1, 1, 0, 0] },
+        "15": { "cantrips": 4, "preparedSpells": 18, "slots": [4, 3, 3, 3, 2, 1, 1, 1, 0] },
+        "16": { "cantrips": 4, "preparedSpells": 18, "slots": [4, 3, 3, 3, 2, 1, 1, 1, 0] },
+        "17": { "cantrips": 4, "preparedSpells": 19, "slots": [4, 3, 3, 3, 2, 1, 1, 1, 1] },
+        "18": { "cantrips": 4, "preparedSpells": 20, "slots": [4, 3, 3, 3, 3, 1, 1, 1, 1] },
+        "19": { "cantrips": 4, "preparedSpells": 21, "slots": [4, 3, 3, 3, 3, 2, 1, 1, 1] },
+        "20": { "cantrips": 4, "preparedSpells": 22, "slots": [4, 3, 3, 3, 3, 2, 2, 1, 1] }
     },
     "features": {
         "1": [
             {
                 "name": "Druidic",
                 "description": "While learning Druidic you also unlocked the magic of communicating with animals; you always have the Speak with Animals spell prepared.\n  You can use Druidic to leave hidden messages. You and others who know Druidic automatically spot such a message. Others spot the message's presence with a successful DC 15 Intelligence (Investigation) check but can't decipher it without magic"
+            },
+            {
+                "name": "Primal Order",
+                "description": "You have dedicated yourself to one of the following sacred roles of your choice.",
+                "classChoices": [
+                    "primal-orders"
+                ],
+                "hide": true
             }
         ],
         "2": [
@@ -33,6 +69,17 @@
             {
                 "name": "Wild Companion",
                 "description": "You can summon a nature spirit that assumes an animal form to aid you. As a Magic action, you can expend a spell slot or a use of Wild Shape to cast the Find Familiar spell without Material components.\n  When you cast the spell in this way, the familiar is Fey and disappears when you finish a Long Rest."
+            }
+        ],
+        "4": [
+            {
+                "name": "Ability Score Improvement",
+                "description": "Choose between increasing your ability scores or selecting a feat.",
+                "grantedFeats": [
+                    "ability-score-improvement",
+                    "general-feats"
+                ],
+                "hide": true
             }
         ],
         "5": [
@@ -47,10 +94,52 @@
                 "description": "The might of the elements flows through you. You gain one of the following options of your choice.\n - **Potent Spellcasting**: Add your Wisdom modifier to the damage you deal with any Druid cantrip.\n - **Primal Strike**: Once on each of your turns when you hit a creature with an attack roll using a weapon or a Beast form's attack in Wild Shape, you can cause the target to take an extra ld8 Cold, Fire, Lightning, or Thunder damage (choose when you hit)."
             }
         ],
+        "8": [
+            {
+                "name": "Ability Score Improvement",
+                "description": "Choose between increasing your ability scores or selecting a feat.",
+                "grantedFeats": [
+                    "ability-score-improvement",
+                    "general-feats"
+                ],
+                "hide": true
+            }
+        ],
+        "12": [
+            {
+                "name": "Ability Score Improvement",
+                "description": "Choose between increasing your ability scores or selecting a feat.",
+                "grantedFeats": [
+                    "ability-score-improvement",
+                    "general-feats"
+                ],
+                "hide": true
+            }
+        ],
+        "16": [
+            {
+                "name": "Ability Score Improvement",
+                "description": "Choose between increasing your ability scores or selecting a feat.",
+                "grantedFeats": [
+                    "ability-score-improvement",
+                    "general-feats"
+                ],
+                "hide": true
+            }
+        ],
         "19": [
             {
                 "name": "Beast Spells",
                 "description": "While using Wild Shape, you can cast spells in Beast form, except for any spell that has a Material component with a cost specified or that consumes its Material component."
+            },
+            {
+                "name": "Epic Boon Feat",
+                "description": "You gain an Epic Boon feat (see chapter 5) or another feat of your choice for which you qualify. Boon of Fate is recommended.",
+                "grantedFeats": [
+                    "epic-boon-feats",
+                    "general-feats"
+                ],
+                "hide": true
             }
         ],
         "20": [
@@ -59,5 +148,5 @@
                 "description": "The vitality of nature constantly blooms within you, granting you the following benefits.\n - **Evergreen Wild Shape**: Whenever you roll Initiative and have no uses of Wild Shape left, you regain one expended use of it.\n - **Nature Magician**: You can convert uses of Wild Shape into a spell slot (no action required). Choose a number of your unexpended uses of Wild Shape and convert them into a single spell slot, with each use contributing 2 spell levels. For example, if you convert two uses of Wild Shape, you produce a level 4 spell slot. Once you use this benefit, you can't do so again until you finish a Long Rest.\n - **Longevity**: The primal magic that you wield causes you to age more slowly. For every ten years that pass, your body ages only one year."
             }
         ]
-      }
+    }
 }

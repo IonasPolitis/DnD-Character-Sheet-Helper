@@ -1,21 +1,52 @@
 import { App, Plugin, PluginSettingTab, Setting, MarkdownPostProcessorContext, parseYaml, MarkdownRenderChild, MarkdownRenderer, TFile, Modal, Notice, MarkdownView, ListItemCache } from 'obsidian';
 import { getClassData, getSubclassData, getBackgroundData, getRaceData, getExtraFeat, getItemData, getRuleData } from './data';
-import { MarkdownNotes } from './registry';
-import { NamedTupleMember } from 'typescript/unstable/ast';
+import { MarkdownNotes, classesMap, racesMap, backgroundsMap } from './registry';
+import { THEMES } from './themes';
 
 // 1. Define the shape of our settings
 interface DnDPluginSettings {
     combineClassSubclass: boolean;
     sectionOrder: string[];
-    themeChoice: "default" | "custom";
-    customColors: Record<string, string>; // Stores the 18 variables as key-value pairs
-    customRulebookPath: string;           // Path to the user's homebrew folder
-    customRulebookPriority: boolean;      // If true, homebrew overwrites native data
+    customRulebookPath: string;
+    customRulebookPriority: boolean;
+
+    // Theme Engine Variables
+    selectedTheme: string;
+    colorBgPrimary: string;
+    colorBgSecondary: string;
+    colorBgTertiary: string;
+    colorBgHover: string;
+    colorBgDarker: string;
+    colorBgGroup: string;
+    colorBgProficient: string;
+    colorTextPrimary: string;
+    colorTextSecondary: string;
+    colorTextSublabel: string;
+    colorTextBright: string;
+    colorTextMuted: string;
+    colorTextGroup: string;
+    colorBorderPrimary: string;
+    colorBorderActive: string;
+    colorBorderFocus: string;
+    colorAccentTeal: string;
+    colorAccentRed: string;
+    colorAccentPurple: string;
+}
+
+// 2. Set the default values
+const DEFAULT_SETTINGS: DnDPluginSettings = {
+    combineClassSubclass: false,
+    sectionOrder: ["Class", "Subclass", "Race", "Background", "Extra Feats"],
+    customRulebookPath: "",
+    customRulebookPriority: false,
+
+    selectedTheme: "default",
+    ...THEMES.default.colors // Spread the default colors directly from the library!
 }
 
 interface CharacterSheetVariables {
-    level: number;
-    proficiency_bonus: number;
+    DnD_level: number;
+    DnD_proficiency_bonus: number;
     DnD_race: string[];
     DnD_race_lineage: string;
     DnD_class: string[];
@@ -26,8 +57,10 @@ interface CharacterSheetVariables {
     DnD_background_feat: string;
     DnD_background_chosen_items: string;
     DnD_extra_feats: string[];
-    spellcasting_ability: string;
+    DnD_spellcasting_ability: string;
     DnD_maxHealth: number;
+    DnD_current_health: number;
+    DnD_hit_dice: string;
     DnD_speed: number;
     DnD_strength: number;
     DnD_dexterity: number;
@@ -41,40 +74,19 @@ interface CharacterSheetVariables {
     DnD_weapon: string;
     DnD_weapon_damage: number;
     DnD_armor: string;
-    DnD_armor_ac: number;
+    DnD_armorAc: number;
     dnd_gold_added: number;
     dnd_gold_spent: number;
     cssclasses: string;
     obsidianUIMode: string;
 }
 
-// 2. Set the default values
-const DEFAULT_SETTINGS: DnDPluginSettings = {
-    combineClassSubclass: false,
-    sectionOrder: ["Class", "Subclass", "Race", "Background", "Extra Feats"],
-    themeChoice: "default",
-    customRulebookPath: "",
-    customRulebookPriority: false,
-    customColors: {
-        // ... (Keep all your existing color variables here exactly as they are) ...
-        "--dnd-bg-primary": "#262A36", "--dnd-bg-secondary": "#323748", "--dnd-bg-tertiary": "#3A4055",
-        "--dnd-bg-hover": "#363B4A", "--dnd-bg-darker": "#303440", "--dnd-bg-group": "#2D334A",
-        "--dnd-text-primary": "#E0E0E0", "--dnd-text-secondary": "#A0A0D0", "--dnd-text-sublabel": "#A0C7D0",
-        "--dnd-text-bright": "#ffffff", "--dnd-text-muted": "#B8B8D0", "--dnd-text-group": "#B8C4FF",
-        "--dnd-border-primary": "#383E54", "--dnd-border-active": "#6D7CBA", "--dnd-border-focus": "#000",
-        "--dnd-accent-teal": "#64D8CB", "--dnd-accent-red": "#E57373", "--dnd-accent-purple": "#B29DDB"
-    }
-}
-
 export default class DnDCharacterSheetHelperPlugin extends Plugin {
-    // Add the settings property
     settings: DnDPluginSettings;
 
     async onload() {
-        // Load settings from disk
+        // --- INITIALIZE PLUGIN & STANDALONE THEME ENGINE ---
         await this.loadSettings();
-
-        // Apply custom colors immediately on startup!
         this.applyTheme();
 
         // Register the settings tab we built
@@ -98,6 +110,66 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
             this.processDnDRulesBlock.bind(this)
         );
 
+        this.registerMarkdownCodeBlockProcessor(
+            "dnd-controls",
+            this.processDnDControlsBlock.bind(this)
+        );
+
+        this.registerMarkdownCodeBlockProcessor(
+            "dnd-spells",
+            this.processDnDSpellsBlock.bind(this)
+        );
+
+        this.registerMarkdownCodeBlockProcessor(
+            "dnd-skills",
+            this.processDnDSkillsBlock.bind(this)
+        );
+
+        this.registerMarkdownCodeBlockProcessor(
+            "dnd-info",
+            this.processDnDInfoBlock.bind(this)
+        );
+
+        this.registerMarkdownCodeBlockProcessor(
+            "dnd-abilities",
+            this.processDnDAbilitiesBlock.bind(this)
+        );
+
+        this.registerMarkdownCodeBlockProcessor(
+            "dnd-health",
+            this.processDnDHealthBlock.bind(this)
+        );
+
+        // Automatically reset expended spell slots (index 1 -> "0") in the 9-element array when Long Rest is clicked
+        this.registerDomEvent(document, 'click', async (evt: MouseEvent) => {
+            const target = evt.target as HTMLElement;
+            const btn = target?.closest('button');
+            if (btn && (btn.textContent?.includes('Long Rest') || btn.getAttribute('value') === 'long-rest')) {
+                const activeFile = this.app.workspace.getActiveFile();
+                if (activeFile) {
+                    await this.app.fileManager.processFrontMatter(activeFile, (fm: Record<string, any>) => {
+                        const slotKey = fm["DnD_spellSlots"] !== undefined ? "DnD_spellSlots" : (fm["DnD_spellsSlots"] !== undefined ? "DnD_spellsSlots" : null);
+                        if (!slotKey) return;
+
+                        let rawSlots = fm[slotKey];
+                        if (typeof rawSlots === "string" && rawSlots.trim().startsWith("[")) {
+                            try { rawSlots = JSON.parse(rawSlots.trim()); } catch { rawSlots = null; }
+                        }
+
+                        if (Array.isArray(rawSlots)) {
+                            const resetSlots = rawSlots.map((pair: any) => {
+                                if (Array.isArray(pair) && pair.length >= 2) {
+                                    return [String(pair[0]), "0"];
+                                }
+                                return ["0", "0"];
+                            });
+                            fm[slotKey] = JSON.stringify(resetSlots);
+                        }
+                    });
+                }
+            }
+        });
+        
         this.addCommand({
             id: 'csh-launch-character-wizard',
             name: 'Launch Character Creation Wizard',
@@ -164,18 +236,32 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
     }
 
     // --- Theme Engine Logic ---
+    private colorCssVars(): [string, string][] {
+        return Object.entries(this.settings)
+            .filter(([key]) => key.startsWith("color"))
+            // Magic Regex: Converts "colorBgPrimary" -> "--dnd-ui-color-bg-primary"
+            .map(([key, value]) => [`--dnd-ui-${key.replace(/([A-Z])/g, "-$1").toLowerCase()}`, value as string]);
+    }
+
     applyTheme() {
-        if (this.settings.themeChoice === "custom") {
-            // Inject custom colors into Obsidian's root DOM
-            for (const [variable, color] of Object.entries(this.settings.customColors)) {
-                document.body.style.setProperty(variable, color);
-            }
-        } else {
-            // Remove custom inline styles to revert to the styles.css defaults
-            for (const variable of Object.keys(this.settings.customColors)) {
-                document.body.style.removeProperty(variable);
-            }
+        // 1. Apply to the main Obsidian window
+        for (const [name, value] of this.colorCssVars()) {
+            document.documentElement.style.setProperty(name, value);
         }
+
+        // 2. Apply to all popped-out windows (if on Desktop)
+        import('obsidian').then(({ Platform }) => {
+            if (Platform.isDesktop) {
+                this.app.workspace.iterateAllLeaves((leaf) => {
+                    const windowDoc = leaf.view.containerEl.ownerDocument;
+                    if (windowDoc) {
+                        for (const [name, value] of this.colorCssVars()) {
+                            windowDoc.documentElement.style.setProperty(name, value);
+                        }
+                    }
+                });
+            }
+        });
     }
 
     // --- Helper: Safely Update Gold Frontmatter ---
@@ -187,9 +273,21 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                 // Safely map the union type to the exact string key without string manipulation
                 const keyMap = { base: 'DnD_GoldBase', added: 'DnD_GoldAdded', spent: 'DnD_GoldSpent' };
                 const key = keyMap[type];
-                
+
                 const current = Number(frontmatter[key]) || 0;
                 frontmatter[key] = current + amount;
+            });
+        }
+    }
+
+    // --- Helper: Safely Update Multiple Frontmatter Variables ---
+    async updateCharacterFrontmatter(filePath: string, updates: Record<string, any>) {
+        const file = this.app.vault.getAbstractFileByPath(filePath);
+        if (file instanceof TFile) {
+            await this.app.fileManager.processFrontMatter(file, (frontmatter: Record<string, any>) => {
+                for (const [key, value] of Object.entries(updates)) {
+                    frontmatter[key] = value;
+                }
             });
         }
     }
@@ -290,7 +388,7 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
 
                     bulletSpan.style.lineHeight = '1';
                     bulletSpan.style.top = '-0.175em'; // Adjust height position
-                    bulletSpan.style.color = 'var(--dnd-text-secondary)'; // Adjust colour pallete
+                    bulletSpan.style.color = 'var(--dnd-ui-color-text-secondary)'; // Adjust colour pallete
                     bulletSpan.style.fontSize = '2em'; // Adjust size
 
                     htmlEl.insertBefore(bulletSpan, htmlEl.firstChild);
@@ -328,14 +426,13 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
             // 3. Helper function to resolve "frontmatter.property" values
             const resolveValue = (val: any) => {
                 if (typeof val === 'string' && val.startsWith('frontmatter.')) {
-                    const key = val.replace('frontmatter.', '');
-                    return frontmatter[key];
+                    return frontmatter[val.replace('frontmatter.', '')];
                 }
                 return val;
             };
 
             // 4. Resolve all core variables
-            const level = resolveValue(blockData.level);
+            const level = resolveValue(blockData.level) ?? frontmatter['DnD_level'];
             const dndClass = resolveValue(blockData.class);
             const subclass = resolveValue(blockData.subclass);
             const classLevels = resolveValue(blockData['classLevels']);
@@ -343,6 +440,11 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
             const raceLineage = resolveValue(blockData['raceLineage']);
             const background = resolveValue(blockData.background);
             const extraFeats = resolveValue(blockData['extraFeats']);
+            let classChoicesRaw = resolveValue(blockData['classChoices']);
+            if (typeof classChoicesRaw === 'string' && classChoicesRaw.trim().startsWith('[')) {
+                try { classChoicesRaw = JSON.parse(classChoicesRaw.trim()); } catch { classChoicesRaw = []; }
+            }
+            const classChoicesArray = Array.isArray(classChoicesRaw) ? classChoicesRaw : [];
             const hideRaw = resolveValue(blockData.hide);
             const edition = resolveValue(blockData.edition);
 
@@ -454,7 +556,35 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                     }
                 }
             }
-            finalExtraFeats = [...new Set(finalExtraFeats)];
+            // Clean up the gathered feats to remove engine mechanics and router files
+            const validFeats: string[] = [];
+            for (const featId of finalExtraFeats) {
+                // 1. Hard-filter our core engine mechanic trigger
+                if (featId === "ability-score-improvement") continue;
+
+                // 2. Dynamically check if this ID is actually a router file in the root rulebook folder
+                let isRouter = false;
+                let routerPath = `${this.manifest.dir}/rulebook/${featId}.json`;
+
+                if (this.settings.customRulebookPath) {
+                    const customPath = `${this.settings.customRulebookPath}/${featId}.json`;
+                    if (await this.app.vault.adapter.exists(customPath)) {
+                        isRouter = true;
+                    }
+                }
+
+                if (!isRouter && await this.app.vault.adapter.exists(routerPath)) {
+                    isRouter = true;
+                }
+
+                // If it is NOT a router file, it's a real feat we should display!
+                if (!isRouter) {
+                    validFeats.push(featId);
+                }
+            }
+
+            // Finalize the array with only valid, unique feats
+            finalExtraFeats = [...new Set(validFeats)];
 
             // Loop through the user's custom section order using a for...of loop to support async/await
             for (const sectionName of this.settings.sectionOrder) {
@@ -490,7 +620,6 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                             sectionDiv.createEl("h4", { text: `${className} Features (Level ${currentClassLevel})`, cls: "dnd-class-header" });
                         }
 
-                        // Added await and passed this.app, this.settings
                         const classData = await getClassData(this.app, fetchOptions, className);
 
                         if (!classData || !classData.features) {
@@ -503,7 +632,8 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
 
                             if (levelFeatures && levelFeatures.length > 0) {
                                 for (const feature of levelFeatures) {
-                                    if (feature.name && hiddenFeatures.includes(feature.name.toLowerCase())) continue;
+                                    // IMPLEMENTED: JSON-level 'hide' boolean check
+                                    if (feature.hide === true || (feature.name && hiddenFeatures.includes(feature.name.toLowerCase()))) continue;
 
                                     const featureBlock = sectionDiv.createDiv({ cls: "dnd-feature-block" });
                                     const titleContainer = featureBlock.createDiv({ cls: "dnd-feature-title" });
@@ -516,6 +646,55 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                                 }
                             }
 
+                            // NEW: Dynamically inject class choices (e.g. Eldritch Invocations, Divine Orders)
+                            for (const choiceTuple of classChoicesArray) {
+                                let routerFile = "";
+                                let choiceKey = "";
+                                let choiceLevel = 0;
+
+                                // Safely handle both ["router_file", "choice_key", level] and ["filename", level] formats
+                                if (Array.isArray(choiceTuple)) {
+                                    if (choiceTuple.length === 3) {
+                                        [routerFile, choiceKey, choiceLevel] = choiceTuple;
+                                    } else if (choiceTuple.length === 2) {
+                                        [choiceKey, choiceLevel] = choiceTuple;
+                                    }
+                                }
+
+                                // If this choice belongs to the current level we are rendering...
+                                if (Number(choiceLevel) === i && choiceKey) {
+                                    try {
+                                        // Directly load the choice file (e.g., 'protector.json') instead of the router file!
+                                        let choicePath = `${this.manifest.dir}/rulebook/classes/classChoices/${choiceKey}.json`;
+                                        if (this.settings.customRulebookPath) {
+                                            const customPath = `${this.settings.customRulebookPath}/classes/classChoices/${choiceKey}.json`;
+                                            if (await this.app.vault.adapter.exists(customPath)) choicePath = customPath;
+                                        }
+
+                                        if (await this.app.vault.adapter.exists(choicePath)) {
+                                            const content = await this.app.vault.adapter.read(choicePath);
+                                            const featureData = JSON.parse(content);
+
+                                            if (featureData && featureData.name) {
+                                                if (featureData.hide === true || (featureData.name && hiddenFeatures.includes(featureData.name.toLowerCase()))) continue;
+
+                                                const featureBlock = sectionDiv.createDiv({ cls: "dnd-feature-block" });
+                                                const titleContainer = featureBlock.createDiv({ cls: "dnd-feature-title" });
+
+                                                const badgeText = featureData.badge || "Choice";
+                                                titleContainer.createEl("span", { text: badgeText, cls: "dnd-level-badge dnd-badge-combined" });
+                                                titleContainer.createEl("span", { text: featureData.name, cls: "dnd-feature-name" });
+
+                                                const descDiv = featureBlock.createDiv({ cls: "dnd-feature-desc" });
+                                                await this.renderDndMarkdown(featureData.description, descDiv, ctx.sourcePath, renderChild);
+                                            }
+                                        }
+                                    } catch (e) {
+                                        console.error(`Failed to load class choice data for ${choiceKey}`, e);
+                                    }
+                                }
+                            }
+
                             if (this.settings.combineClassSubclass && subclassArray[index] && classData.subclassFile) {
                                 const subclassName = subclassArray[index];
                                 const subclassData = await getSubclassData(this.app, fetchOptions, classData.subclassFile, subclassName);
@@ -523,7 +702,8 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
 
                                 if (subLevelFeatures && subLevelFeatures.length > 0) {
                                     for (const feature of subLevelFeatures) {
-                                        if (feature.name && hiddenFeatures.includes(feature.name.toLowerCase())) continue;
+                                        // IMPLEMENTED: JSON-level 'hide' boolean check
+                                        if (feature.hide === true || (feature.name && hiddenFeatures.includes(feature.name.toLowerCase()))) continue;
 
                                         const featureBlock = sectionDiv.createDiv({ cls: "dnd-feature-block" });
                                         const titleContainer = featureBlock.createDiv({ cls: "dnd-feature-title" });
@@ -547,7 +727,6 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                         const currentClassLevel = Array.isArray(classLevels) ? classLevels[index] : level;
                         const subclassName = subclassArray[index];
 
-                        // Added await and passed this.app, this.settings
                         const classData = await getClassData(this.app, fetchOptions, className);
 
                         if (subclassName && classData && classData.subclassFile) {
@@ -555,7 +734,6 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                                 sectionDiv.createEl("h4", { text: `${subclassName} Features`, cls: "dnd-class-header" });
                             }
 
-                            // Added await and passed this.app, this.settings
                             const subclassData = await getSubclassData(this.app, this.settings, classData.subclassFile, subclassName);
                             if (!subclassData) continue;
 
@@ -563,7 +741,8 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                                 const subLevelFeatures = subclassData[i.toString()];
                                 if (subLevelFeatures && subLevelFeatures.length > 0) {
                                     for (const feature of subLevelFeatures) {
-                                        if (feature.name && hiddenFeatures.includes(feature.name.toLowerCase())) continue;
+                                        // IMPLEMENTED: JSON-level 'hide' boolean check
+                                        if (feature.hide === true || (feature.name && hiddenFeatures.includes(feature.name.toLowerCase()))) continue;
 
                                         const featureBlock = sectionDiv.createDiv({ cls: "dnd-feature-block" });
                                         const titleContainer = featureBlock.createDiv({ cls: "dnd-feature-title" });
@@ -586,7 +765,8 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
 
                     if (raceData && raceData.traits) {
                         for (const trait of raceData.traits) {
-                            if (trait.name && hiddenFeatures.includes(trait.name.toLowerCase())) continue;
+                            // IMPLEMENTED: JSON-level 'hide' boolean check
+                            if (trait.hide === true || (trait.name && hiddenFeatures.includes(trait.name.toLowerCase()))) continue;
 
                             if (trait.lineage) {
                                 if (!raceLineage || trait.lineage.toLowerCase() !== String(raceLineage).toLowerCase()) {
@@ -597,7 +777,6 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                             const featureBlock = sectionDiv.createDiv({ cls: "dnd-feature-block" });
                             const titleContainer = featureBlock.createDiv({ cls: "dnd-feature-title" });
 
-                            // Dynamic Badge & Class
                             const defaultBadge = trait.lineage ? "Lineage" : "Trait";
                             const badgeClass = trait.lineage ? "dnd-level-badge dnd-badge-combined" : "dnd-level-badge";
 
@@ -617,7 +796,8 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                     const bgData = await getBackgroundData(this.app, fetchOptions, background);
                     const featData = bgData && bgData.feat ? await getExtraFeat(this.app, fetchOptions, bgData.feat) : null;
 
-                    if (featData && !hiddenFeatures.includes(featData.name.toLowerCase())) {
+                    // IMPLEMENTED: JSON-level 'hide' boolean check
+                    if (featData && featData.hide !== true && !hiddenFeatures.includes(featData.name.toLowerCase())) {
                         const featureBlock = sectionDiv.createDiv({ cls: "dnd-feature-block" });
                         const titleContainer = featureBlock.createDiv({ cls: "dnd-feature-title" });
 
@@ -626,7 +806,7 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
 
                         const descDiv = featureBlock.createDiv({ cls: "dnd-feature-desc" });
                         await this.renderDndMarkdown(featData.description, descDiv, ctx.sourcePath, renderChild);
-                    } else {
+                    } else if (!featData) {
                         sectionDiv.createEl("p", { text: `Data for background "${background}" not found.`, cls: "dnd-error-text" });
                     }
                 }
@@ -638,12 +818,15 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                         const featData = await getExtraFeat(this.app, fetchOptions, safeFeatId);
 
                         if (featData) {
-                            if (featData.name && hiddenFeatures.includes(featData.name.toLowerCase())) continue;
+                            // IMPLEMENTED: JSON-level 'hide' boolean check
+                            if (featData.hide === true || (featData.name && hiddenFeatures.includes(featData.name.toLowerCase()))) continue;
 
                             const featureBlock = sectionDiv.createDiv({ cls: "dnd-feature-block" });
                             const titleContainer = featureBlock.createDiv({ cls: "dnd-feature-title" });
 
-                            titleContainer.createEl("span", { text: featData.badge ? featData.badge : "Feat", cls: "dnd-level-badge" });
+                            // NEW: Dynamically pull the category or fallback to "Feat"
+                            const badgeText = featData.badge ? featData.badge : (featData.category ? featData.category : "Feat");
+                            titleContainer.createEl("span", { text: badgeText, cls: "dnd-level-badge" });
                             titleContainer.createEl("span", { text: featData.name, cls: "dnd-feature-name" });
 
                             const descDiv = featureBlock.createDiv({ cls: "dnd-feature-desc" });
@@ -681,7 +864,7 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
             // --- THE INVENTORY TOOLTIP ---
             const tooltipWindow = document.body.createDiv({
                 cls: "dnd-inventory-tooltip",
-                attr: { style: "position: fixed; display: none; z-index: 9999; background: var(--dnd-bg-secondary); border: 1px solid var(--dnd-border-primary); border-radius: 6px; padding: 12px; width: 300px; box-shadow: 0 8px 16px rgba(0,0,0,0.6); pointer-events: none;" }
+                attr: { style: "position: fixed; display: none; z-index: 9999; background: var(--dnd-ui-color-bg-secondary); border: 1px solid var(--dnd-ui-color-border-primary); border-radius: 6px; padding: 12px; width: 300px; box-shadow: 0 8px 16px rgba(0,0,0,0.6); pointer-events: none;" }
             });
 
             let blockData;
@@ -915,19 +1098,19 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                     // TOP: Item Name
                     card.createDiv({
                         text: displayName.toUpperCase(),
-                        attr: { style: "font-size: 0.85em; color: var(--dnd-text-secondary); letter-spacing: 1.5px; font-weight: 600;" }
+                        attr: { style: "font-size: 0.85em; color: var(--dnd-ui-color-text-secondary); letter-spacing: 1.5px; font-weight: 600;" }
                     });
 
                     // MIDDLE: The Stat
                     card.createDiv({
                         text: displayStat,
-                        attr: { style: "font-size: 1.6em; font-weight: bold; color: var(--dnd-text-bright);" }
+                        attr: { style: "font-size: 1.6em; font-weight: bold; color: var(--dnd-ui-color-text-bright);" }
                     });
 
                     // BOTTOM: Description 
                     if (displayDesc) {
                         const noteDiv = card.createDiv({
-                            attr: { style: "font-size: 0.9em; color: var(--dnd-text-sublabel); line-height: 1.3;" }
+                            attr: { style: "font-size: 0.9em; color: var(--dnd-ui-color-text-sublabel); line-height: 1.3;" }
                         });
 
                         await this.renderDndMarkdown(displayDesc, noteDiv, ctx.sourcePath, renderChild);
@@ -962,9 +1145,9 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
             // 1. The Left Group (Badge + Gold Text remain close together)
             const wealth = wealthWindow.createEl("span", { attr: { style: "display: flex; align-items: center;" } });
             wealth.createEl("span", { text: "Wealth", cls: "dnd-level-badge", attr: { style: "margin-right: 10px;" } });
-            wealth.createEl("strong", { text: `${totalGold} GP`, attr: { style: "font-size: 1.1em; color: var(--dnd-text-bright);" } });
+            wealth.createEl("strong", { text: `${totalGold} GP`, attr: { style: "font-size: 1.1em; color: var(--dnd-ui-color-text-bright);" } });
             // 2. The Controls
-            const amountInput = wealthWindow.createEl("input", { type: "number", value: "1", attr: { style: "text-align: center; background: var(--dnd-bg-darker); border: 1px solid var(--dnd-border-primary); color: var(--dnd-text-bright); border-radius: 4px; padding: 4px; width: 40px;" } });
+            const amountInput = wealthWindow.createEl("input", { type: "number", value: "1", attr: { style: "text-align: center; background: var(--dnd-ui-color-bg-darker); border: 1px solid var(--dnd-ui-color-border-primary); color: var(--dnd-ui-color-text-bright); border-radius: 4px; padding: 4px; width: 40px;" } });
             const addBtn = wealthWindow.createEl("button", { text: "Add" });
             const subBtn = wealthWindow.createEl("button", { text: "Spend" });
 
@@ -979,13 +1162,13 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
 
             const backpackHeader = backpackWindow.createDiv({
                 cls: "dnd-class-header",
-                attr: { style: "display: flex; justify-content: space-between; align-items: center; margin: 0 0 10px 0; border-bottom: 1px solid var(--dnd-border-primary); padding-bottom: 8px;" }
+                attr: { style: "display: flex; justify-content: space-between; align-items: center; margin: 0 0 10px 0; border-bottom: 1px solid var(--dnd-ui-color-border-primary); padding-bottom: 8px;" }
             });
-            backpackHeader.createEl("h4", { text: "Backpack Contents", attr: { style: "color: var(--dnd-text-primary); margin: 0; border: none; padding: 0;" } });
+            backpackHeader.createEl("h4", { text: "Backpack Contents", attr: { style: "color: var(--dnd-ui-color-text-primary); margin: 0; border: none; padding: 0;" } });
 
             const weightTracker = backpackHeader.createEl("span", {
                 text: "Weight: 0 lbs",
-                attr: { style: "font-size: 0.85em; color: var(--dnd-text-muted); font-weight: normal; letter-spacing: 0.5px;" }
+                attr: { style: "font-size: 0.85em; color: var(--dnd-ui-color-text-muted); font-weight: normal; letter-spacing: 0.5px;" }
             });
             let totalWeight = 0;
 
@@ -996,12 +1179,12 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
 
                 if (title) {
                     // Small divider sub-header strictly for Extra Items
-                    backpackWindow.createEl("div", { text: title, attr: { style: "margin: 16px 0 8px 0; font-weight: bold; font-size: 0.85em; text-transform: uppercase; color: var(--dnd-text-sublabel); border-bottom: 1px solid var(--dnd-bg-tertiary); padding-bottom: 4px;" } });
+                    backpackWindow.createEl("div", { text: title, attr: { style: "margin: 16px 0 8px 0; font-weight: bold; font-size: 0.85em; text-transform: uppercase; color: var(--dnd-ui-color-text-sublabel); border-bottom: 1px solid var(--dnd-ui-color-bg-tertiary); padding-bottom: 4px;" } });
                 }
 
-                // --- THE 2-COLUMN GRID CONTAINER ---
+                // --- THE RESPONSIVE GRID CONTAINER ---
                 const gridContainer = backpackWindow.createDiv({
-                    attr: { style: "display: grid; grid-template-columns: 1fr 1fr; column-gap: 20px; row-gap: 4px;" }
+                    cls: "dnd-inventory-grid"
                 });
 
                 for (const [itemId, qty] of validItems) {
@@ -1022,20 +1205,20 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                         tooltipWindow.empty(); // Wipe the previous item's data
 
                         // 1. Name & Category
-                        tooltipWindow.createEl("h4", { text: data.name, attr: { style: "margin: 0 0 4px 0; color: var(--dnd-text-bright); font-size: 1.1em;" } });
+                        tooltipWindow.createEl("h4", { text: data.name, attr: { style: "margin: 0 0 4px 0; color: var(--dnd-ui-color-text-bright); font-size: 1.1em;" } });
                         if (data.type) {
-                            tooltipWindow.createEl("div", { text: data.type.toUpperCase(), attr: { style: "font-size: 0.75em; color: var(--dnd-text-secondary); letter-spacing: 1px; margin-bottom: 8px;" } });
+                            tooltipWindow.createEl("div", { text: data.type.toUpperCase(), attr: { style: "font-size: 0.75em; color: var(--dnd-ui-color-text-secondary); letter-spacing: 1px; margin-bottom: 8px;" } });
                         }
 
                         // 2. Stats (Weight & Cost)
-                        const statsDiv = tooltipWindow.createDiv({ attr: { style: "display: flex; gap: 15px; margin-bottom: 8px; font-size: 0.85em; color: var(--dnd-text-muted);" } });
+                        const statsDiv = tooltipWindow.createDiv({ attr: { style: "display: flex; gap: 15px; margin-bottom: 8px; font-size: 0.85em; color: var(--dnd-ui-color-text-muted);" } });
 
                         if (data.weight) statsDiv.createEl("span", { text: `Weight: ${data.weight} lbs` });
                         if (data.cost) statsDiv.createEl("span", { text: `Cost: ${data.cost} GP` });
 
                         // 3. Description (Rendered securely with your Markdown engine!)
                         if (data.description) {
-                            const descDiv = tooltipWindow.createDiv({ attr: { style: "font-size: 0.9em; line-height: 1.4; color: var(--dnd-text-primary);" } });
+                            const descDiv = tooltipWindow.createDiv({ attr: { style: "font-size: 0.9em; line-height: 1.4; color: var(--dnd-ui-color-text-primary);" } });
                             await this.renderDndMarkdown(data.description, descDiv, ctx.sourcePath, renderChild);
                         }
 
@@ -1066,11 +1249,11 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                     const hasExtraInfo = !!(data.weight || data.cost);
                     const colon = hasExtraInfo ? ": " : "";
 
-                    itemRow.createEl("strong", { text: data.name + colon, attr: { style: "color: var(--dnd-text-bright); margin-right: 4px" } });
+                    itemRow.createEl("strong", { text: data.name + colon, attr: { style: "color: var(--dnd-ui-color-text-bright); margin-right: 4px" } });
 
                     // 3. Weight & Cost (Fixed the 'display: color:' typo here)
                     const rightSide = itemRow.createEl("span", {
-                        attr: { style: "color: var(--dnd-text-muted); font-size: 0.9em; white-space: nowrap; text-align: center;" }
+                        attr: { style: "color: var(--dnd-ui-color-text-muted); font-size: 0.9em; white-space: nowrap; text-align: center;" }
                     });
 
                     if (data.weight) {
@@ -1187,27 +1370,1687 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
             })
         );
     }
+
+    async processDnDControlsBlock(source: string, el: HTMLElement, ctx: MarkdownPostProcessorContext) {
+        // 1. Parse the YAML options (e.g., align: right-up)
+        let blockData: Record<string, any> = {};
+        try {
+            if (source.trim()) {
+                blockData = parseYaml(source) || {};
+            }
+        } catch (error) {
+            el.createEl("p", { text: "Error: Invalid YAML in dnd-controls block.", cls: "dnd-error-text" });
+            return;
+        }
+
+        // 2. Fetch the frontmatter for the active file to check for spellcasting
+        const fileCache = this.app.metadataCache.getCache(ctx.sourcePath);
+        const frontmatter = fileCache?.frontmatter || {};
+
+        // 3. Determine Alignment & Line Shifting
+        let justifyContent = "flex-start";
+        let marginTop = "10px";
+        let marginBottom = "10px";
+        let position = "static";
+        let zIndex = "auto";
+
+        if (blockData.align === "right") justifyContent = "flex-end";
+        if (blockData.align === "center") justifyContent = "center";
+
+        if (blockData.align === "right-up") {
+            justifyContent = "flex-end";
+            marginTop = "-45px";
+            marginBottom = "15px";
+            position = "relative";
+            zIndex = "10";
+        }
+
+        if (blockData.align === "right-down") {
+            justifyContent = "flex-end";
+            marginTop = "25px";
+            marginBottom = "10px";
+        }
+
+        // 4. Create the Button Container
+        const container = el.createDiv({
+            cls: "dnd-controls",
+            attr: { style: `display: flex; gap: 10px; flex-wrap: wrap; justify-content: ${justifyContent}; margin-top: ${marginTop}; margin-bottom: ${marginBottom}; position: ${position}; z-index: ${zIndex};` }
+        });
+
+        // 5. Create the Buttons
+        const addExpBtn = container.createEl("button", { text: "🗡️ Level Up", cls: "mod-cta" });
+        addExpBtn.onclick = () => {
+            new LevelUpModal(this.app, this, ctx.sourcePath).open();
+        };
+
+        const equipItemsBtn = container.createEl("button", { text: "⚔️ Equip Items" });
+        equipItemsBtn.onclick = () => {
+            new EquipItemsModal(this.app, this, ctx.sourcePath).open();
+        };
+
+        const manageCharBtn = container.createEl("button", { text: "⚙️ Manage Character" });
+        manageCharBtn.onclick = () => {
+            new ManageCharacterModal(this.app, this, ctx.sourcePath).open();
+        };
+
+        // Conditionally render the Spellbook button ONLY if DnD_spellcastingAbility exists in frontmatter
+        if (frontmatter["DnD_spellcastingAbility"]) {
+            const spellbookBtn = container.createEl("button", { text: "📖 Spellbook" });
+            spellbookBtn.onclick = () => {
+                new SpellbookModal(this.app, this, ctx.sourcePath).open();
+            };
+        }
+    }
+
+    // Helper: Reads a JSON file from /rulebook/spells/ respecting customRulebookPath & priority
+    async loadSpellFile(fileNameWithoutExt: string): Promise<any | null> {
+        const nativePath = `${this.manifest.dir}/rulebook/spells/${fileNameWithoutExt}.json`;
+        const customPath = this.settings.customRulebookPath
+            ? `${this.settings.customRulebookPath}/spells/${fileNameWithoutExt}.json`
+            : "";
+
+        const tryRead = async (path: string) => {
+            if (path && await this.app.vault.adapter.exists(path)) {
+                try {
+                    const content = await this.app.vault.adapter.read(path);
+                    return JSON.parse(content);
+                } catch (e) {
+                    console.error(`Spell Error: Failed to parse ${path}`, e);
+                }
+            }
+            return null;
+        };
+
+        if (this.settings.customRulebookPriority && customPath) {
+            const customData = await tryRead(customPath);
+            if (customData) return customData;
+        }
+
+        const nativeData = await tryRead(nativePath);
+        if (nativeData) return nativeData;
+
+        if (!this.settings.customRulebookPriority && customPath) {
+            return await tryRead(customPath);
+        }
+
+        return null;
+    }
+
+    async processDnDSpellsBlock(source: string, el: HTMLElement, ctx: MarkdownPostProcessorContext) {
+        const renderChild = new MarkdownRenderChild(el);
+        ctx.addChild(renderChild);
+
+        // Create a single reusable hover tooltip for this block
+        const tooltipWindow = document.body.createDiv({
+            cls: "dnd-inventory-tooltip",
+            attr: { style: "position: fixed; display: none; z-index: 9999; background: var(--dnd-ui-color-bg-secondary); border: 1px solid var(--dnd-ui-color-border-primary); border-radius: 6px; padding: 12px; width: 320px; box-shadow: 0 8px 16px rgba(0,0,0,0.6); pointer-events: none;" }
+        });
+        renderChild.register(() => tooltipWindow.remove());
+
+        const renderContent = async () => {
+            const wrapper = document.createElement('div');
+
+            let blockData: Record<string, any> = {};
+            try {
+                if (source.trim()) {
+                    blockData = parseYaml(source) || {};
+                }
+            } catch (error) {
+                wrapper.createEl("p", { text: "Error: Invalid format in dnd-spells block.", cls: "dnd-error" });
+                el.empty();
+                el.appendChild(wrapper);
+                return;
+            }
+
+            const fileCache = this.app.metadataCache.getCache(ctx.sourcePath);
+            const frontmatter: Record<string, any> = fileCache?.frontmatter || {};
+
+            // Standard helper: Only reads from frontmatter if the user explicitly writes "frontmatter.<key>"
+            const resolveValue = (val: any) => {
+                if (typeof val === 'string') {
+                    const trimmed = val.trim().replace(/^\{\{\s*|\s*\}\}$/g, "");
+                    if (trimmed.startsWith('frontmatter.')) {
+                        return frontmatter[trimmed.replace('frontmatter.', '')];
+                    }
+                }
+                return val;
+            };
+
+            // 1. Resolve DnD_spellcasting_ability strictly from the code block variable
+            const DnD_spellcasting_ability = resolveValue(
+                blockData.DnD_spellcasting_ability ?? blockData.spellcastingAbility ?? blockData["DnD_spellcastingAbility"]
+            ) || "";
+
+            // --- HIDE-AND-SHOW LOGIC ---
+            // If the character has no spellcasting ability, completely abort rendering.
+            if (!DnD_spellcasting_ability || String(DnD_spellcasting_ability).trim().startsWith("<")) {
+                el.empty();
+                return;
+            }
+
+            const spellAbilityKey = String(DnD_spellcasting_ability).toLowerCase().trim();
+            const abilityScore = Number(resolveValue(blockData[spellAbilityKey]) ?? frontmatter[`DnD_${spellAbilityKey}`]) || 10;
+            const abilityMod = Math.floor((abilityScore - 10) / 2);
+            const level = Number(resolveValue(blockData.level) ?? frontmatter["DnD_level"]) || 1;
+            const DnD_proficiency_bonus = Number(
+                resolveValue(blockData.DnD_proficiency_bonus ?? blockData.proficiencyBonus ?? blockData.proficiency_bonus) ?? frontmatter["DnD_proficiencyBonus"]
+            ) || Math.ceil(1 + (level / 4));
+
+            const spellSaveDc = 8 + DnD_proficiency_bonus + abilityMod;
+            const spellAttackMod = DnD_proficiency_bonus + abilityMod;
+            const spellAttackStr = spellAttackMod >= 0 ? `+${spellAttackMod}` : `${spellAttackMod}`;
+
+            // 2. Parse Known & Prepared Spells Tuples strictly from blockData.spells & blockData.preparedSpells
+            const parseTuples = (raw: any): Record<string, string[]> => {
+                const map: Record<string, string[]> = {};
+                if (raw === undefined || raw === null) return map;
+                let parsed = resolveValue(raw);
+                if (typeof parsed === "string") {
+                    const trimmed = parsed.trim();
+                    if (trimmed.startsWith("[")) {
+                        try { parsed = JSON.parse(trimmed); } catch { parsed = []; }
+                    } else {
+                        parsed = [];
+                    }
+                }
+                if (Array.isArray(parsed)) {
+                    for (const rawEntry of parsed) {
+                        const entry = resolveValue(rawEntry);
+                        if (Array.isArray(entry) && entry.length === 2 && Array.isArray(entry[0])) {
+                            map[String(entry[1])] = entry[0].map((s: any) => String(s));
+                        }
+                    }
+                }
+                return map;
+            };
+
+            const knownMap = parseTuples(blockData.spells);
+            const preparedMap = parseTuples(blockData.preparedSpells);
+
+            const hasAnyPrepared = Object.values(preparedMap).some(list => list.length > 0);
+            const showAll = String(blockData.show || "").toLowerCase() === "all" || !hasAnyPrepared;
+            const activeMap = showAll ? knownMap : preparedMap;
+
+            // 3. Parse Consolidated 9-Element Spell Slots Array strictly from blockData.spellSlots (or spellsSlots)
+            // Structure: [ ["<Spell-Slots>", "<Used-Spell-Slots>"], ... (9 items for Levels 1-9) ]
+            const rawSpellSlotsProp = blockData.spellSlots ?? blockData.spellsSlots;
+            const parseAllSpellSlots = (rawInput: any): { max: number; used: number }[] => {
+                const defaultSlots = Array.from({ length: 9 }, () => ({ max: 0, used: 0 }));
+                if (rawInput === undefined || rawInput === null || rawInput === "") return defaultSlots;
+
+                let parsed = resolveValue(rawInput);
+                if (typeof parsed === "string") {
+                    const trimmed = parsed.trim();
+                    if (trimmed.startsWith("[")) {
+                        try { parsed = JSON.parse(trimmed); } catch { parsed = []; }
+                    } else {
+                        return defaultSlots;
+                    }
+                }
+
+                if (Array.isArray(parsed)) {
+                    for (let i = 0; i < 9; i++) {
+                        const pair = resolveValue(parsed[i]);
+                        if (Array.isArray(pair) && pair.length >= 2) {
+                            const max = Number(String(pair[0]).replace(/[^0-9]/g, "")) || 0;
+                            const used = Math.min(max, Math.max(0, Number(String(pair[1]).replace(/[^0-9]/g, "")) || 0));
+                            defaultSlots[i] = { max, used };
+                        }
+                    }
+                }
+                return defaultSlots;
+            };
+
+            const slotsArray = parseAllSpellSlots(rawSpellSlotsProp);
+
+            // Determine which frontmatter key to update when clicking a spell slot pip (defaulting to DnD_spellSlots)
+            let targetSlotsFmKey = "DnD_spellSlots";
+            if (typeof rawSpellSlotsProp === "string" && rawSpellSlotsProp.trim().startsWith("frontmatter.")) {
+                targetSlotsFmKey = rawSpellSlotsProp.trim().replace("frontmatter.", "");
+            }
+
+            // Gather all levels that either have spells OR have > 0 max spell slots in the 9-element array
+            const levelSet = new Set<string>(
+                Object.keys(activeMap).filter(lvl => Array.isArray(activeMap[lvl]) && activeMap[lvl].length > 0)
+            );
+            for (let i = 0; i < 9; i++) {
+                if (slotsArray[i].max > 0) {
+                    levelSet.add(String(i + 1));
+                }
+            }
+
+            const sortedLevels = Array.from(levelSet).sort((a, b) => Number(a) - Number(b));
+
+            wrapper.createEl("h3", { text: "Spellbook & Prepared Spells:", cls: "dnd-section-header" });
+
+            if (sortedLevels.length === 0) {
+                const emptyWindow = wrapper.createDiv({ cls: "dnd-features-window" });
+                emptyWindow.createEl("p", {
+                    text: "No spells prepared or added yet. Click the 📖 Spellbook button to manage your spells!",
+                    attr: { style: "color: var(--dnd-ui-color-text-muted); font-style: italic; margin: 0; text-align: center;" }
+                });
+                el.empty();
+                el.appendChild(wrapper);
+                return;
+            }
+
+            // 4. Render Outer Container Window
+            const spellsWindow = wrapper.createDiv({ cls: "dnd-spells-window" });
+
+            for (const lvl of sortedLevels) {
+                const spellKeys = activeMap[lvl] || [];
+                const preparedForLevel = preparedMap[lvl] || [];
+
+                const isCantrip = String(lvl).toLowerCase().startsWith("cantrip") || lvl === "0";
+                const levelHeaderTitle = isCantrip ? "Cantrips" : `Level ${lvl} Spells`;
+
+                const levelHeader = spellsWindow.createDiv({ cls: "dnd-spells-level-header" });
+                levelHeader.createEl("h4", { text: levelHeaderTitle });
+
+                // Render Native Interactive Spell Slot Tracker from the 9-element array
+                const slotArrayIdx = Number(lvl) - 1;
+                const slotInfo = (!isCantrip && slotArrayIdx >= 0 && slotArrayIdx < 9) ? slotsArray[slotArrayIdx] : { max: 0, used: 0 };
+                const maxSlots = slotInfo.max;
+                const usedSlots = slotInfo.used;
+
+                if (!isCantrip && maxSlots > 0) {
+                    const slotTracker = levelHeader.createDiv({ cls: "dnd-spell-slots-tracker" });
+                    slotTracker.createEl("span", {
+                        text: `Spell Slots:`,
+                        cls: "dnd-spell-slots-label"
+                    });
+
+                    const pipsContainer = slotTracker.createDiv({ cls: "dnd-spell-slots-pips" });
+
+                    for (let slotIdx = 0; slotIdx < maxSlots; slotIdx++) {
+                        const isUsed = slotIdx < usedSlots;
+                        const pip = pipsContainer.createDiv({
+                            cls: `dnd-slot-pip ${isUsed ? "is-used" : ""}`,
+                            attr: { title: isUsed ? "Click to restore slot" : "Click to expend slot" }
+                        });
+
+                        pip.onclick = async (e) => {
+                            e.stopPropagation();
+                            const newUsed = isUsed ? slotIdx : slotIdx + 1;
+                            const updatedTuples: [string, string][] = slotsArray.map((s, idx) => [
+                                String(s.max),
+                                idx === slotArrayIdx ? String(newUsed) : String(s.used)
+                            ]);
+                            await this.updateCharacterFrontmatter(ctx.sourcePath, {
+                                [targetSlotsFmKey]: JSON.stringify(updatedTuples)
+                            });
+                        };
+                    }
+                }
+
+                // If the character has slots for this level (e.g., for upcasting) but no spells prepared at this level
+                if (spellKeys.length === 0) {
+                    spellsWindow.createEl("p", {
+                        text: `No Level ${lvl} spells currently prepared.`,
+                        attr: { style: "color: var(--dnd-ui-color-text-muted); font-style: italic; font-size: 0.85em; margin: 0 0 12px 0;" }
+                    });
+                    continue;
+                }
+
+                // 2-Column Grid (fills top-left to bottom-right just like dnd-inventory)
+                const gridContainer = spellsWindow.createDiv({ cls: "dnd-spells-grid" });
+
+                for (const spellKey of spellKeys) {
+                    const fallbackName = spellKey.replace(/-/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+                    const spellData = (await this.loadSpellFile(spellKey)) || {
+                        name: fallbackName,
+                        level: Number(lvl),
+                        school: "",
+                        castingTime: "-",
+                        range: "-",
+                        components: ["-"],
+                        duration: "-",
+                        description: ""
+                    };
+
+                    const isPrepared = preparedForLevel.includes(spellKey);
+                    const card = gridContainer.createDiv({
+                        cls: `dnd-spell-card ${showAll && isPrepared ? "dnd-spell-card-prepared" : ""}`
+                    });
+
+                    // --- A. INTEGRATED CARD HEADER (Name + School & Badges) ---
+                    const cardHeader = card.createDiv({ cls: "dnd-spell-card-header" });
+                    cardHeader.createEl("span", {
+                        text: (spellData.name || fallbackName).toUpperCase(),
+                        cls: "dnd-spell-card-title"
+                    });
+
+                    const badgeGroup = cardHeader.createDiv({ cls: "dnd-spell-card-badges" });
+                    if (spellData.school) {
+                        badgeGroup.createEl("span", { text: spellData.school, cls: "dnd-spell-school-label" });
+                    }
+                    if (spellData.concentration) {
+                        badgeGroup.createEl("span", { text: "C", cls: "dnd-level-badge", attr: { title: "Concentration", style: "margin: 0; padding: 1px 6px; font-size: 0.75em;" } });
+                    }
+                    if (spellData.ritual) {
+                        badgeGroup.createEl("span", { text: "R", cls: "dnd-level-badge dnd-badge-combined", attr: { title: "Ritual", style: "margin: 0; padding: 1px 6px; font-size: 0.75em;" } });
+                    }
+
+                    // --- B. CARD BODY (Left Combat Math Sidebar + Right 2x2 Metadata Grid) ---
+                    const cardBody = card.createDiv({ cls: "dnd-spell-card-body" });
+
+                    // Left Sidebar: Save DC & Spell Attack
+                    const combatBox = cardBody.createDiv({ cls: "dnd-spell-combat-box" });
+
+                    const dcGroup = combatBox.createDiv({ cls: "dnd-spell-combat-stat" });
+                    dcGroup.createEl("div", { text: `DC ${spellSaveDc}`, cls: "dnd-spell-combat-val" });
+                    dcGroup.createEl("div", { text: "SPELL DC", cls: "dnd-spell-combat-lbl" });
+
+                    const atkGroup = combatBox.createDiv({ cls: "dnd-spell-combat-stat" });
+                    atkGroup.createEl("div", { text: spellAttackStr, cls: "dnd-spell-combat-val" });
+                    atkGroup.createEl("div", { text: "SPELL ATK", cls: "dnd-spell-combat-lbl" });
+
+                    // Right 2x2 Grid: Casting Time, Range, Components, Duration
+                    const metaGrid = cardBody.createDiv({ cls: "dnd-spell-meta-grid" });
+
+                    const createMetaCell = (label: string, value: string) => {
+                        const cell = metaGrid.createDiv({ cls: "dnd-spell-meta-cell" });
+                        cell.createEl("div", { text: label, cls: "dnd-spell-meta-label" });
+                        cell.createEl("div", { text: value || "-", cls: "dnd-spell-meta-val" });
+                    };
+
+                    const compArray = Array.isArray(spellData.components) ? spellData.components.join(", ") : String(spellData.components || "-");
+                    const fullComponents = spellData.materials ? `${compArray} (${spellData.materials})` : compArray;
+
+                    createMetaCell("CASTING TIME", spellData.castingTime || "-");
+                    createMetaCell("RANGE", spellData.range || "-");
+                    createMetaCell("COMPONENTS", fullComponents);
+                    createMetaCell("DURATION", spellData.duration || "-");
+
+                    // --- C. COLLAPSIBLE DESCRIPTION DRAWER (Click Card to Toggle) ---
+                    if (spellData.description) {
+                        const descDrawer = card.createDiv({ cls: "dnd-spell-desc-drawer" });
+                        descDrawer.style.display = "none";
+                        await this.renderDndMarkdown(spellData.description, descDrawer, ctx.sourcePath, renderChild);
+
+                        card.style.cursor = "pointer";
+                        card.onclick = () => {
+                            const isHidden = descDrawer.style.display === "none";
+                            descDrawer.style.display = isHidden ? "block" : "none";
+                        };
+
+                        // --- D. HOVER TOOLTIP (Matches dnd-inventory) ---
+                        const X_OFFSET = 12;
+                        const Y_OFFSET = 15;
+
+                        card.addEventListener('mouseenter', async (e) => {
+                            if (descDrawer.style.display === "block") return; // Don't show tooltip if drawer is already expanded
+                            tooltipWindow.empty();
+
+                            tooltipWindow.createEl("h4", { text: spellData.name || fallbackName, attr: { style: "margin: 0 0 4px 0; color: var(--dnd-ui-color-text-bright); font-size: 1.05em;" } });
+                            const subHeader = lvl === "0" ? `${spellData.school || ""} Cantrip` : `Level ${lvl} ${spellData.school || ""}`;
+                            tooltipWindow.createEl("div", { text: subHeader.trim().toUpperCase(), attr: { style: "font-size: 0.75em; color: var(--dnd-ui-color-text-secondary); letter-spacing: 1px; margin-bottom: 8px;" } });
+
+                            const tipDesc = tooltipWindow.createDiv({ attr: { style: "font-size: 0.9em; line-height: 1.4; color: var(--dnd-ui-color-text-primary);" } });
+                            await this.renderDndMarkdown(spellData.description, tipDesc, ctx.sourcePath, renderChild);
+
+                            tooltipWindow.style.display = "block";
+                            tooltipWindow.style.left = `${e.clientX + X_OFFSET}px`;
+                            tooltipWindow.style.top = `${e.clientY + Y_OFFSET}px`;
+                        });
+
+                        card.addEventListener('mousemove', (e) => {
+                            const xPos = e.clientX + X_OFFSET;
+                            const safeX = (xPos + 320 > window.innerWidth) ? e.clientX - 320 - X_OFFSET : xPos;
+                            tooltipWindow.style.left = `${safeX}px`;
+                            tooltipWindow.style.top = `${e.clientY + Y_OFFSET}px`;
+                        });
+
+                        card.addEventListener('mouseleave', () => {
+                            tooltipWindow.style.display = "none";
+                        });
+                    }
+                }
+            }
+
+            el.empty();
+            el.appendChild(wrapper);
+        };
+
+        renderContent();
+
+        renderChild.registerEvent(
+            this.app.metadataCache.on('changed', (file) => {
+                if (file.path === ctx.sourcePath) renderContent();
+            })
+        );
+    }
+
+    async processDnDSkillsBlock(source: string, el: HTMLElement, ctx: MarkdownPostProcessorContext) {
+        const renderChild = new MarkdownRenderChild(el);
+        ctx.addChild(renderChild);
+
+        const SKILLS_DEFINITION = [
+            { name: "Acrobatics", ability: "dexterity", abbr: "DEX" },
+            { name: "Animal Handling", ability: "wisdom", abbr: "WIS" },
+            { name: "Arcana", ability: "intelligence", abbr: "INT" },
+            { name: "Athletics", ability: "strength", abbr: "STR" },
+            { name: "Deception", ability: "charisma", abbr: "CHA" },
+            { name: "History", ability: "intelligence", abbr: "INT" },
+            { name: "Insight", ability: "wisdom", abbr: "WIS" },
+            { name: "Intimidation", ability: "charisma", abbr: "CHA" },
+            { name: "Investigation", ability: "intelligence", abbr: "INT" },
+            { name: "Medicine", ability: "wisdom", abbr: "WIS" },
+            { name: "Nature", ability: "intelligence", abbr: "INT" },
+            { name: "Perception", ability: "wisdom", abbr: "WIS" },
+            { name: "Performance", ability: "charisma", abbr: "CHA" },
+            { name: "Persuasion", ability: "charisma", abbr: "CHA" },
+            { name: "Religion", ability: "intelligence", abbr: "INT" },
+            { name: "Sleight of Hand", ability: "dexterity", abbr: "DEX" },
+            { name: "Stealth", ability: "dexterity", abbr: "DEX" },
+            { name: "Survival", ability: "wisdom", abbr: "WIS" }
+        ];
+
+        // Normalizes skill names ("sleight-of-hand", "SleightOfHand", "Sleight of Hand" -> "sleight of hand")
+        const normalizeSkillKey = (raw: any): string => {
+            if (!raw) return "";
+            return String(raw)
+                .replace(/([a-z])([A-Z])/g, "$1 $2")
+                .replace(/[-_]/g, " ")
+                .toLowerCase()
+                .trim();
+        };
+
+        const renderContent = async () => {
+            const wrapper = document.createElement("div");
+
+            let blockData: Record<string, any> = {};
+            try {
+                if (source.trim()) {
+                    // Strip YAML comments (like #Class or #Background) before parsing so they never interfere
+                    const cleanSource = source.replace(/^[ \t]*#.*$/gm, "");
+                    blockData = parseYaml(cleanSource) || {};
+                }
+            } catch (error) {
+                wrapper.createEl("p", { text: "Error: Invalid YAML format in dnd-skills block.", cls: "dnd-error-text" });
+                el.empty();
+                el.appendChild(wrapper);
+                return;
+            }
+
+            const fileCache = this.app.metadataCache.getCache(ctx.sourcePath);
+            const frontmatter: Record<string, any> = fileCache?.frontmatter || {};
+
+            // Resolves "frontmatter.Key" or "{{ frontmatter.Key }}"
+            const resolveValue = (val: any) => {
+                if (typeof val === "string") {
+                    const trimmed = val.trim().replace(/^\{\{\s*|\s*\}\}$/g, "");
+                    if (trimmed.startsWith("frontmatter.")) {
+                        return frontmatter[trimmed.replace("frontmatter.", "")];
+                    }
+                }
+                return val;
+            };
+
+            // Recursive Universal Parser for Skill Lists
+            const parseSkillMap = (rawInput: any, map = new Map<string, string>()): Map<string, string> => {
+                if (rawInput === undefined || rawInput === null) return map;
+
+                const resolved = resolveValue(rawInput);
+                if (resolved === undefined || resolved === null) return map;
+
+                if (typeof resolved === "string") {
+                    const trimmed = resolved.trim();
+                    if (!trimmed || trimmed.includes("<chosen")) return map;
+
+                    if (trimmed.startsWith("[")) {
+                        try {
+                            const parsedJson = JSON.parse(trimmed);
+                            return parseSkillMap(parsedJson, map);
+                        } catch {
+                            const fallbackArr = trimmed.slice(1, -1).split(",");
+                            return parseSkillMap(fallbackArr, map);
+                        }
+                    }
+
+                    if (trimmed.includes(",")) {
+                        return parseSkillMap(trimmed.split(","), map);
+                    }
+
+                    const skillKey = normalizeSkillKey(trimmed);
+                    if (skillKey) map.set(skillKey, "");
+                    return map;
+                }
+
+                if (Array.isArray(resolved)) {
+                    const isTuple =
+                        resolved.length === 2 &&
+                        typeof resolved[0] === "string" &&
+                        !resolved[0].trim().startsWith("[") &&
+                        !resolved[0].trim().startsWith("frontmatter.") &&
+                        (typeof resolved[1] === "string" || typeof resolved[1] === "number") &&
+                        (["class", "background", "extra", "race", "feat"].includes(String(resolved[1]).toLowerCase()) || !isNaN(Number(resolved[1])));
+
+                    if (isTuple) {
+                        const skillKey = normalizeSkillKey(resolved[0]);
+                        const sourceTag = String(resolved[1]);
+                        if (skillKey && !skillKey.includes("<chosen")) {
+                            map.set(skillKey, sourceTag);
+                        }
+                    } else {
+                        for (const item of resolved) {
+                            parseSkillMap(item, map);
+                        }
+                    }
+                }
+
+                return map;
+            };
+
+            // Recursive Universal Parser for Item Bonuses
+            const parseBonusesList = (rawInput: any, bonuses: { name: string; target: string; value: number }[] = []): { name: string; target: string; value: number }[] => {
+                if (rawInput === undefined || rawInput === null) return bonuses;
+
+                const resolved = resolveValue(rawInput);
+                if (resolved === undefined || resolved === null) return bonuses;
+
+                if (typeof resolved === "string") {
+                    const trimmed = resolved.trim();
+                    if (!trimmed) return bonuses;
+
+                    if (trimmed.startsWith("[")) {
+                        try {
+                            const parsedJson = JSON.parse(trimmed);
+                            return parseBonusesList(parsedJson, bonuses);
+                        } catch {
+                            return bonuses;
+                        }
+                    }
+
+                    if (trimmed.includes("|")) {
+                        const parts = trimmed.split("|").map(p => p.trim());
+                        if (parts.length >= 3) {
+                            const name = parts[0];
+                            const target = normalizeSkillKey(parts[1]);
+                            const value = Number(parts[2].replace("+", "")) || 0;
+                            if (name && target && !name.includes("<Item") && value !== 0) {
+                                bonuses.push({ name, target, value });
+                            }
+                        }
+                    }
+                    return bonuses;
+                }
+
+                if (Array.isArray(resolved)) {
+                    const isSingleBonusTuple =
+                        resolved.length >= 3 &&
+                        typeof resolved[0] === "string" &&
+                        typeof resolved[1] === "string" &&
+                        !Array.isArray(resolved[0]) &&
+                        !resolved[0].trim().startsWith("[") &&
+                        !resolved[0].trim().startsWith("frontmatter.");
+
+                    if (isSingleBonusTuple) {
+                        const name = String(resolved[0]).trim();
+                        const target = normalizeSkillKey(resolved[1]);
+                        const value = Number(String(resolved[2]).replace("+", "")) || 0;
+                        if (name && target && !name.includes("<Item") && value !== 0) {
+                            bonuses.push({ name, target, value });
+                        }
+                    } else {
+                        for (const item of resolved) {
+                            parseBonusesList(item, bonuses);
+                        }
+                    }
+                    return bonuses;
+                }
+
+                if (typeof resolved === "object") {
+                    const name = String(resolved.name || "Bonus").trim();
+                    const target = normalizeSkillKey(resolved.target || resolved.skill);
+                    const value = Number(String(resolved.value ?? resolved.bonus ?? 0).replace("+", "")) || 0;
+                    if (target && !name.includes("<Item") && value !== 0) {
+                        bonuses.push({ name, target, value });
+                    }
+                }
+
+                return bonuses;
+            };
+
+            // 1. Resolve variables strictly from the code block's YAML properties
+            const profMap = parseSkillMap(blockData.proficiencies);
+            const expMap = parseSkillMap(blockData.expertise);
+            const halfProfMap = parseSkillMap(blockData.half_proficiencies ?? blockData.halfProficiencies);
+            const allBonuses = parseBonusesList(blockData.bonuses);
+
+            // 2. Resolve Level & Proficiency Bonus
+            const level = Number(resolveValue(blockData.level) ?? frontmatter["DnD_level"]) || 1;
+            const DnD_proficiency_bonus = Number(
+                resolveValue(blockData.DnD_proficiency_bonus ?? blockData.proficiencyBonus ?? blockData.proficiency_bonus) ?? frontmatter["DnD_proficiencyBonus"]
+            ) || Math.ceil(1 + (level / 4));
+
+            // 3. Render the 2-Column Skills Window
+            const skillsWindow = wrapper.createDiv({
+                cls: "dnd-skills-window",
+                // Reduced padding to match the screenshots
+                attr: {
+                    style: "width: 100%; border: 1px solid var(--dnd-ui-color-border-primary); background-color: var(--dnd-ui-color-bg-primary); color: var(--dnd-ui-color-text-primary); border-radius: 6px; padding: 10px 14px; margin: 10px 0; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); box-sizing: border-box;"
+                }
+            });
+
+            const skillsGrid = skillsWindow.createDiv({
+                cls: "dnd-skills-grid",
+                attr: {
+                    style: "display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: repeat(9, auto); grid-auto-flow: column; column-gap: 32px; row-gap: 0px;"
+                }
+            });
+
+            for (const skillDef of SKILLS_DEFINITION) {
+                const skillKey = normalizeSkillKey(skillDef.name);
+                const abilityScore = Number(resolveValue(blockData[skillDef.ability]) ?? frontmatter[`DnD_${skillDef.ability}`]) || 10;
+                const abilityMod = Math.floor((abilityScore - 10) / 2);
+
+                const hasExpertise = expMap.has(skillKey);
+                const hasProficiency = profMap.has(skillKey);
+                const hasHalfProf = halfProfMap.has(skillKey);
+
+                let profContribution = 0;
+                let rankTier: "none" | "half" | "proficient" | "expertise" = "none";
+
+                if (hasExpertise) {
+                    profContribution = DnD_proficiency_bonus * 2;
+                    rankTier = "expertise";
+                } else if (hasProficiency) {
+                    profContribution = DnD_proficiency_bonus;
+                    rankTier = "proficient";
+                } else if (hasHalfProf) {
+                    profContribution = Math.floor(DnD_proficiency_bonus / 2);
+                    rankTier = "half";
+                }
+
+                const matchingBonuses = allBonuses.filter(b => b.target === skillKey);
+                const itemBonusTotal = matchingBonuses.reduce((sum, b) => sum + b.value, 0);
+
+                const totalMod = abilityMod + profContribution + itemBonusTotal;
+                const formattedTotal = totalMod >= 0 ? `+${totalMod}` : `${totalMod}`;
+
+                const row = skillsGrid.createDiv({
+                    cls: `dnd-skill-row ${rankTier !== "none" ? `is-${rankTier}` : ""}`,
+                    attr: {
+                        // Added position: relative so the absolute dot anchors perfectly inside this row's left padding
+                        style: `display: flex; justify-content: space-between; align-items: center; padding: 4px 8px; border-radius: 4px; background-color: transparent; position: relative;`
+                    }
+                });
+
+                const leftSide = row.createDiv({
+                    cls: "dnd-skill-left",
+                    attr: {
+                        // Restored gap: 12px since the absolute dot no longer takes up flexbox space!
+                        style: "display: flex; align-items: center; gap: 12px; min-width: 0;"
+                    }
+                });
+
+                // --- NEW: Dynamic Indicator Dot ---
+                leftSide.createEl("span", {
+                    cls: "dnd-skill-dot",
+                    attr: { title: rankTier !== "none" ? rankTier.charAt(0).toUpperCase() + rankTier.slice(1) : "Not Proficient" }
+                });
+
+                leftSide.createEl("span", {
+                    text: skillDef.abbr,
+                    cls: "dnd-skill-abbr",
+                    attr: {
+                        style: "font-size: 0.78em; font-style: italic; font-weight: 500; color: var(--dnd-ui-color-text-muted); width: 32px; display: inline-block; flex-shrink: 0; letter-spacing: 0.5px;"
+                    }
+                });
+
+                leftSide.createEl("span", {
+                    text: skillDef.name,
+                    cls: "dnd-skill-name",
+                    attr: {
+                        style: "font-size: 0.95em; color: var(--dnd-ui-color-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"
+                    }
+                });
+
+                const rightSide = row.createDiv({
+                    cls: "dnd-skill-mod",
+                    attr: {
+                        style: "font-size: 0.95em; font-weight: 400; color: var(--dnd-ui-color-text-primary); margin-left: 12px; flex-shrink: 0;"
+                    }
+                });
+                rightSide.setText(formattedTotal);
+            }
+
+            el.empty();
+            el.appendChild(wrapper);
+        };
+
+        renderContent();
+
+        renderChild.registerEvent(
+            this.app.metadataCache.on("changed", (file) => {
+                if (file.path === ctx.sourcePath) renderContent();
+            })
+        );
+    }
+
+    async processDnDAbilitiesBlock(source: string, el: HTMLElement, ctx: MarkdownPostProcessorContext) {
+        const renderChild = new MarkdownRenderChild(el);
+        ctx.addChild(renderChild);
+
+        const CORE_ABILITIES = [
+            { name: "strength", handle: "STR" },
+            { name: "dexterity", handle: "DEX" },
+            { name: "constitution", handle: "CON" },
+            { name: "intelligence", handle: "INT" },
+            { name: "wisdom", handle: "WIS" },
+            { name: "charisma", handle: "CHA" }
+        ];
+
+        let activeResizeObserver: ResizeObserver | null = null;
+        renderChild.register(() => {
+            if (activeResizeObserver) activeResizeObserver.disconnect();
+        });
+
+        const renderContent = async () => {
+            if (activeResizeObserver) {
+                activeResizeObserver.disconnect();
+                activeResizeObserver = null;
+            }
+
+            const wrapper = document.createElement("div");
+
+            let blockData: Record<string, any> = {};
+            try {
+                if (source.trim()) {
+                    const cleanSource = source.replace(/^[ \t]*#.*$/gm, "");
+                    blockData = parseYaml(cleanSource) || {};
+                }
+            } catch (error) {
+                wrapper.createEl("p", { text: "Error: Invalid YAML format in dnd-abilities block.", cls: "dnd-error-text" });
+                el.empty();
+                el.appendChild(wrapper);
+                return;
+            }
+
+            const fileCache = this.app.metadataCache.getCache(ctx.sourcePath);
+            const frontmatter: Record<string, any> = fileCache?.frontmatter || {};
+
+            const resolveValue = (val: any) => {
+                if (typeof val === "string") {
+                    const trimmed = val.trim().replace(/^\{\{\s*|\s*\}\}$/g, "");
+                    if (trimmed.startsWith("frontmatter.")) {
+                        return frontmatter[trimmed.replace("frontmatter.", "")];
+                    }
+                }
+                return val;
+            };
+
+            // 1. Parse Proficiencies (Supports frontmatter.DnD_classProficiencies, YAML lists, and bracket arrays)
+            const parseProficiencies = (rawInput: any, set = new Set<string>()): Set<string> => {
+                if (rawInput === undefined || rawInput === null) return set;
+
+                const resolved = resolveValue(rawInput);
+                if (resolved === undefined || resolved === null) return set;
+
+                if (typeof resolved === "string") {
+                    const trimmed = resolved.trim();
+                    if (!trimmed || trimmed.includes("<chosen")) return set;
+
+                    if (trimmed.startsWith("[")) {
+                        try {
+                            return parseProficiencies(JSON.parse(trimmed), set);
+                        } catch {
+                            return parseProficiencies(trimmed.slice(1, -1).split(","), set);
+                        }
+                    }
+
+                    if (trimmed.includes(",")) {
+                        return parseProficiencies(trimmed.split(","), set);
+                    }
+
+                    set.add(trimmed.toLowerCase());
+                    return set;
+                }
+
+                if (Array.isArray(resolved)) {
+                    for (const item of resolved) {
+                        parseProficiencies(item, set);
+                    }
+                }
+
+                return set;
+            };
+
+            // 2. Parse Extras: [ ["<ability-name>", "<ability-handle>", "<ability-score>", "<saving-throw>"], ... ]
+            const parseExtras = (rawInput: any): { name: string; handle: string; score: number; saveRaw: any }[] => {
+                const list: { name: string; handle: string; score: number; saveRaw: any }[] = [];
+                if (rawInput === undefined || rawInput === null) return list;
+
+                let resolved = resolveValue(rawInput);
+                if (typeof resolved === "string") {
+                    const trimmed = resolved.trim();
+                    if (trimmed.startsWith("[")) {
+                        try {
+                            resolved = JSON.parse(trimmed);
+                        } catch {
+                            resolved = [];
+                        }
+                    }
+                }
+
+                if (Array.isArray(resolved)) {
+                    // Support both a 2D array of tuples and a single 1D tuple if someone only wrote one array
+                    const tuples = (resolved.length >= 3 && !Array.isArray(resolved[0])) ? [resolved] : resolved;
+
+                    for (const rawTuple of tuples) {
+                        const tuple = resolveValue(rawTuple);
+                        if (!Array.isArray(tuple) || tuple.length < 3) continue;
+
+                        const name = String(resolveValue(tuple[0]) ?? "").trim();
+                        const handle = String(resolveValue(tuple[1]) ?? "").trim();
+                        const scoreRaw = resolveValue(tuple[2]);
+                        const saveRaw = tuple.length >= 4 ? resolveValue(tuple[3]) : "";
+
+                        // Skip unedited template placeholders like "<ability-name>"
+                        if (!name || !handle || name.includes("<ability") || handle.includes("<ability")) continue;
+
+                        const score = Number(scoreRaw);
+                        list.push({
+                            name,
+                            handle: handle.toUpperCase(),
+                            score: isNaN(score) ? 10 : score,
+                            saveRaw
+                        });
+                    }
+                }
+
+                return list;
+            };
+
+            const profSet = parseProficiencies(blockData.proficiencies);
+            const extrasList = parseExtras(blockData.extras);
+
+            const level = Number(resolveValue(blockData.level) ?? frontmatter["DnD_level"]) || 1;
+            const DnD_proficiency_bonus = Number(
+                resolveValue(blockData.DnD_proficiency_bonus ?? blockData.proficiencyBonus ?? blockData.proficiency_bonus) ?? frontmatter["DnD_proficiencyBonus"]
+            ) || Math.ceil(1 + (level / 4));
+
+            // 3. Build Unified List of Ability Cards to Render
+            interface AbilityCardData {
+                name: string;
+                handle: string;
+                score: number;
+                modStr: string;
+                saveStr: string;
+                isProficient: boolean;
+            }
+
+            const cardsToRender: AbilityCardData[] = [];
+
+            // A. Standard 6 Abilities
+            for (const abil of CORE_ABILITIES) {
+                const rawScore = resolveValue(blockData[abil.name] ?? blockData[abil.handle.toLowerCase()]);
+                const score = (rawScore !== undefined && rawScore !== null && rawScore !== "" && !isNaN(Number(rawScore)))
+                    ? Number(rawScore)
+                    : 10;
+
+                const mod = Math.floor((score - 10) / 2);
+                const isProficient = profSet.has(abil.name.toLowerCase()) || profSet.has(abil.handle.toLowerCase());
+                const saveVal = mod + (isProficient ? DnD_proficiency_bonus : 0);
+
+                cardsToRender.push({
+                    name: abil.name,
+                    handle: abil.handle,
+                    score,
+                    modStr: mod >= 0 ? `+${mod}` : `${mod}`,
+                    saveStr: saveVal >= 0 ? `+${saveVal}` : `${saveVal}`,
+                    isProficient
+                });
+            }
+
+            // B. Extra Homebrew Abilities
+            for (const extra of extrasList) {
+                const mod = Math.floor((extra.score - 10) / 2);
+                const nameLower = extra.name.toLowerCase();
+                const handleLower = extra.handle.toLowerCase();
+                const saveStrRaw = String(extra.saveRaw ?? "").trim();
+
+                let isProficient = profSet.has(nameLower) || profSet.has(handleLower);
+                let saveVal = mod + (isProficient ? DnD_proficiency_bonus : 0);
+
+                if (saveStrRaw.toLowerCase() === "proficient" || saveStrRaw.toLowerCase() === "true") {
+                    isProficient = true;
+                    saveVal = mod + DnD_proficiency_bonus;
+                } else if (saveStrRaw !== "" && !saveStrRaw.includes("<saving") && !isNaN(Number(saveStrRaw.replace("+", "")))) {
+                    saveVal = Number(saveStrRaw.replace("+", ""));
+                }
+
+                cardsToRender.push({
+                    name: extra.name,
+                    handle: extra.handle,
+                    score: extra.score,
+                    modStr: mod >= 0 ? `+${mod}` : `${mod}`,
+                    saveStr: saveVal >= 0 ? `+${saveVal}` : `${saveVal}`,
+                    isProficient
+                });
+            }
+
+            // 4. Render Responsive Grid Container
+            const totalCards = cardsToRender.length;
+            const gridEl = wrapper.createDiv({
+                cls: "dnd-abilities-grid",
+                attr: {
+                    style: `display: grid; width: 100%; gap: 10px; margin: 10px 0; grid-template-columns: repeat(${totalCards}, minmax(0, 1fr)); box-sizing: border-box;`
+                }
+            });
+
+            // Dynamically split into 2 equal rows if the note width cannot fit all cards on 1 row
+            const updateGridColumns = () => {
+                const width = gridEl.clientWidth;
+                if (width <= 0) return;
+
+                const MIN_CARD_WIDTH = 105; // Minimum px width before splitting in half
+                const GAP_PX = 10;
+                const requiredSingleRowWidth = (totalCards * MIN_CARD_WIDTH) + ((totalCards - 1) * GAP_PX);
+
+                if (width < requiredSingleRowWidth && totalCards > 1) {
+                    const halfCols = Math.ceil(totalCards / 2);
+                    gridEl.style.gridTemplateColumns = `repeat(${halfCols}, minmax(0, 1fr))`;
+                } else {
+                    gridEl.style.gridTemplateColumns = `repeat(${totalCards}, minmax(0, 1fr))`;
+                }
+            };
+
+            activeResizeObserver = new ResizeObserver(() => updateGridColumns());
+            activeResizeObserver.observe(gridEl);
+
+            // 5. Render Individual Ability Cards
+            for (const card of cardsToRender) {
+                const cardEl = gridEl.createDiv({
+                    cls: `dnd-ability-card ${card.isProficient ? "is-proficient" : ""}`,
+                    attr: {
+                        style: `display: flex; flex-direction: column; border-radius: 8px; overflow: hidden; border: 1px solid ${card.isProficient ? "var(--dnd-ui-color-border-active)" : "var(--dnd-ui-color-border-primary)"}; background-color: ${card.isProficient ? "var(--dnd-ui-color-bg-proficient)" : "var(--dnd-ui-color-bg-primary)"}; box-sizing: border-box;`
+                    }
+                });
+
+                // Top Header Bar: Handle (Left) + Underlined Score (Right)
+                const headerEl = cardEl.createDiv({
+                    cls: "dnd-ability-header",
+                    attr: {
+                        // FIX: Static secondary background prevents the header from blending into the proficient body
+                        style: `display: flex; justify-content: space-between; align-items: center; padding: 6px 12px; background-color: var(--dnd-ui-color-bg-secondary);`
+                    }
+                });
+
+                headerEl.createEl("span", {
+                    text: card.handle,
+                    cls: "dnd-ability-abbr",
+                    attr: {
+                        // Muted text color for abbreviation
+                        style: "font-size: 0.85em; font-weight: 500; letter-spacing: 1px; text-transform: uppercase; color: var(--dnd-ui-color-text-muted);"
+                    }
+                });
+
+                headerEl.createEl("span", {
+                    text: String(card.score),
+                    cls: "dnd-ability-score",
+                    attr: {
+                        // Muted text color for score
+                        style: "font-size: 0.9em; font-weight: 500; color: var(--dnd-ui-color-text-muted); text-decoration: underline; text-underline-offset: 3px;"
+                    }
+                });
+
+                // Card Body: Large Underlined Modifier + Italic Saving Throw
+                const bodyEl = cardEl.createDiv({
+                    cls: "dnd-ability-body",
+                    attr: {
+                        style: "display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 14px 10px 10px 10px; gap: 10px; flex: 1;"
+                    }
+                });
+
+                bodyEl.createEl("div", {
+                    text: card.modStr,
+                    cls: "dnd-ability-mod",
+                    attr: {
+                        // Removed bold text (font-weight changed from 700 to 400)
+                        style: "font-size: 1.65em; font-weight: 400; line-height: 1.1; color: var(--dnd-ui-color-text-bright); text-decoration: underline; text-underline-offset: 6px; text-decoration-thickness: 2px;"
+                    }
+                });
+
+                bodyEl.createEl("div", {
+                    text: `Saving ${card.saveStr}`,
+                    cls: "dnd-ability-save",
+                    attr: {
+                        style: `font-size: 0.82em; font-style: italic; color: ${card.isProficient ? "var(--dnd-ui-color-text-sublabel)" : "var(--dnd-ui-color-text-muted)"};`
+                    }
+                });
+            }
+
+            el.empty();
+            el.appendChild(wrapper);
+            requestAnimationFrame(() => updateGridColumns());
+        };
+
+        renderContent();
+
+        renderChild.registerEvent(
+            this.app.metadataCache.on("changed", (file) => {
+                if (file.path === ctx.sourcePath) renderContent();
+            })
+        );
+    }
+
+    async processDnDInfoBlock(source: string, el: HTMLElement, ctx: MarkdownPostProcessorContext) {
+        const renderChild = new MarkdownRenderChild(el);
+        ctx.addChild(renderChild);
+
+        let activeResizeObserver: ResizeObserver | null = null;
+        renderChild.register(() => {
+            if (activeResizeObserver) activeResizeObserver.disconnect();
+        });
+
+        const renderContent = async () => {
+            if (activeResizeObserver) {
+                activeResizeObserver.disconnect();
+                activeResizeObserver = null;
+            }
+
+            const wrapper = document.createElement("div");
+
+            let blockData: Record<string, any> = {};
+            try {
+                if (source.trim()) {
+                    const cleanSource = source.replace(/^[ \t]*#.*$/gm, "");
+                    blockData = parseYaml(cleanSource) || {};
+                }
+            } catch (error) {
+                wrapper.createEl("p", { text: "Error: Invalid YAML format in dnd-info block.", cls: "dnd-error-text" });
+                el.empty();
+                el.appendChild(wrapper);
+                return;
+            }
+
+            const fileCache = this.app.metadataCache.getCache(ctx.sourcePath);
+            const frontmatter: Record<string, any> = fileCache?.frontmatter || {};
+
+            const resolveValue = (val: any) => {
+                if (typeof val === "string") {
+                    const trimmed = val.trim().replace(/^\{\{\s*|\s*\}\}$/g, "");
+                    if (trimmed.startsWith("frontmatter.")) {
+                        return frontmatter[trimmed.replace("frontmatter.", "")];
+                    }
+                }
+                return val;
+            };
+
+            // Helper to turn strings, YAML arrays, or JSON strings into a clean display string
+            const formatTextValue = (rawVal: any, fallback: string = "-"): string => {
+                const resolved = resolveValue(rawVal);
+                if (resolved === undefined || resolved === null || resolved === "") return fallback;
+
+                if (Array.isArray(resolved)) {
+                    const filtered = resolved
+                        .map(item => String(resolveValue(item) ?? "").trim())
+                        .filter(item => item !== "" && !item.startsWith("<"));
+                    return filtered.length > 0 ? filtered.join(", ") : fallback;
+                }
+
+                if (typeof resolved === "string") {
+                    const trimmed = resolved.trim();
+                    if (!trimmed || trimmed.startsWith("<")) return fallback;
+                    if (trimmed.startsWith("[")) {
+                        try {
+                            const parsed = JSON.parse(trimmed);
+                            return formatTextValue(parsed, fallback);
+                        } catch {
+                            return trimmed;
+                        }
+                    }
+                    return trimmed;
+                }
+
+                return String(resolved);
+            };
+
+            const formatSigned = (num: number): string => (num >= 0 ? `+${num}` : `${num}`);
+
+            const mode = String(resolveValue(blockData.mode) || "character").toLowerCase().trim();
+
+            interface InfoCardItem {
+                label: string;
+                value: string;
+                sublabel: string;
+            }
+
+            const cards: InfoCardItem[] = [];
+            let languagesStr = "";
+
+            if (mode === "combat") {
+                // --- COMBAT MODE: ARMOR CLASS, INITIATIVE, ATTACK ROLL, SPEED ---
+                const dexScore = Number(resolveValue(blockData.dexterity) ?? frontmatter["DnD_dexterity"]) || 10;
+                const dexMod = Math.floor((dexScore - 10) / 2);
+
+                // 1. Armor Class
+                const hasBaseAc = frontmatter["DnD_armorAc"] !== undefined && frontmatter["DnD_armorAc"] !== null && frontmatter["DnD_armorAc"] !== "";
+                const baseAc = hasBaseAc ? Number(frontmatter["DnD_armorAc"]) : 10;
+                const acBonus = (frontmatter["DnD_armorAcBonus"] !== undefined && frontmatter["DnD_armorAcBonus"] !== null && frontmatter["DnD_armorAcBonus"] !== "")
+                    ? Number(frontmatter["DnD_armorAcBonus"])
+                    : (hasBaseAc ? 0 : dexMod);
+                const acMod = Number(frontmatter["DnD_armorAcMod"]) || 0;
+
+                const explicitAc = resolveValue(blockData.armorClass ?? blockData.ac);
+                const finalAc = (explicitAc !== undefined && explicitAc !== null && explicitAc !== "" && !isNaN(Number(explicitAc)))
+                    ? Number(explicitAc)
+                    : (baseAc + acBonus + acMod);
+
+                const armorName = formatTextValue(blockData.armor ?? frontmatter["DnD_armor"], "Unarmored");
+
+                cards.push({
+                    label: "ARMOR CLASS",
+                    value: String(finalAc),
+                    sublabel: armorName
+                });
+
+                // 2. Initiative
+                const explicitInit = resolveValue(blockData.initiative);
+                const initVal = (explicitInit !== undefined && explicitInit !== null && explicitInit !== "" && !isNaN(Number(explicitInit)))
+                    ? Number(explicitInit)
+                    : dexMod;
+                const initSublabel = formatTextValue(blockData.initiativeSublabel, "Dexterity Modifier");
+
+                cards.push({
+                    label: "INITIATIVE",
+                    value: formatSigned(initVal),
+                    sublabel: initSublabel
+                });
+
+                // 3. Attack Roll
+                const attackStatRaw = formatTextValue(blockData.attackStat ?? frontmatter["DnD_attackStat"], "strength").toLowerCase();
+                const attackStatScore = Number(resolveValue(blockData[attackStatRaw]) ?? frontmatter[`DnD_${attackStatRaw}`]) || 10;
+                const attackStatMod = Math.floor((attackStatScore - 10) / 2);
+
+                const level = Number(resolveValue(blockData.level) ?? frontmatter["DnD_level"]) || 1;
+                const DnD_proficiency_bonus = Number(
+                    resolveValue(blockData.DnD_proficiency_bonus ?? blockData.proficiencyBonus ?? blockData.proficiency_bonus) ?? frontmatter["DnD_proficiencyBonus"]
+                ) || Math.ceil(1 + (level / 4));
+                const includeProf = blockData.attackProficiency !== undefined
+                    ? Boolean(resolveValue(blockData.attackProficiency))
+                    : (frontmatter["DnD_attackProficiency"] !== undefined ? Boolean(frontmatter["DnD_attackProficiency"]) : true);
+                const attackRollMod = Number(resolveValue(blockData.attackRollMod) ?? frontmatter["DnD_attackRollMod"]) || 0;
+
+                const explicitAttack = resolveValue(blockData.attackRoll);
+                const totalAttack = (explicitAttack !== undefined && explicitAttack !== null && explicitAttack !== "" && !isNaN(Number(explicitAttack)))
+                    ? Number(explicitAttack)
+                    : (attackStatMod + (includeProf ? DnD_proficiency_bonus : 0) + attackRollMod);
+
+                const capStatName = attackStatRaw.charAt(0).toUpperCase() + attackStatRaw.slice(1);
+                const attackSublabel = formatTextValue(blockData.attackSublabel, `${capStatName} Modifier`);
+
+                cards.push({
+                    label: "ATTACK ROLL",
+                    value: formatSigned(totalAttack),
+                    sublabel: attackSublabel
+                });
+
+                // 4. Speed
+                const rawSpeed = resolveValue(blockData.speed ?? frontmatter["DnD_speed"]);
+                let speedDisplay = "30 feet";
+                if (rawSpeed !== undefined && rawSpeed !== null && String(rawSpeed).trim() !== "") {
+                    const sTrim = String(rawSpeed).trim();
+                    speedDisplay = !isNaN(Number(sTrim)) ? `${sTrim} feet` : sTrim;
+                }
+                const speedSublabel = formatTextValue(blockData.speedSublabel ?? frontmatter["DnD_speedSublabel"], "");
+
+                cards.push({
+                    label: "SPEED",
+                    value: speedDisplay,
+                    sublabel: speedSublabel
+                });
+            } else {
+                // --- CHARACTER MODE: RACE, CLASS, BACKGROUND, LEVEL (+ LANGUAGES) ---
+                const raceVal = formatTextValue(blockData.race ?? frontmatter["DnD_race"], "-");
+                const raceSub = formatTextValue(blockData.raceLineage ?? blockData.lineage ?? frontmatter["DnD_raceLineage"], "");
+
+                const classVal = formatTextValue(blockData.class ?? frontmatter["DnD_class"], "-");
+                const classSub = formatTextValue(blockData.subclass ?? frontmatter["DnD_Subclass"], "");
+
+                const bgVal = formatTextValue(blockData.background ?? frontmatter["DnD_background"], "-");
+                const bgSub = formatTextValue(blockData.backgroundFeat ?? frontmatter["DnD_backgroundFeat"], "");
+
+                const levelNum = Number(resolveValue(blockData.level) ?? frontmatter["DnD_level"]) || 1;
+                const DnD_proficiency_bonus = Number(
+                    resolveValue(blockData.DnD_proficiency_bonus ?? blockData.proficiencyBonus ?? blockData.proficiency_bonus) ?? frontmatter["DnD_proficiencyBonus"]
+                ) || Math.ceil(1 + (levelNum / 4));
+                const levelSub = formatTextValue(blockData.levelSublabel, `${formatSigned(DnD_proficiency_bonus)} Proficiency`);
+
+                cards.push(
+                    { label: "RACE", value: raceVal, sublabel: raceSub },
+                    { label: "CLASS", value: classVal, sublabel: classSub },
+                    { label: "BACKGROUND", value: bgVal, sublabel: bgSub },
+                    { label: "LEVEL", value: String(levelNum), sublabel: levelSub }
+                );
+
+                languagesStr = formatTextValue(blockData.languages ?? frontmatter["DnD_languages"], "");
+            }
+
+            // Render 4-Column Responsive Grid (splits cleanly into 2x2 if narrow)
+            const containerEl = wrapper.createDiv({ cls: "dnd-info-container" });
+
+            const gridEl = containerEl.createDiv({
+                cls: "dnd-info-grid",
+                attr: {
+                    style: "display: grid; width: 100%; gap: 10px; margin: 10px 0 6px 0; grid-template-columns: repeat(4, minmax(0, 1fr)); box-sizing: border-box;"
+                }
+            });
+
+            const updateGridColumns = () => {
+                const width = gridEl.clientWidth;
+                if (width <= 0) return;
+
+                const MIN_CARD_WIDTH = 155;
+                const GAP_PX = 10;
+                const requiredWidth = (4 * MIN_CARD_WIDTH) + (3 * GAP_PX);
+
+                if (width < requiredWidth) {
+                    gridEl.style.gridTemplateColumns = "repeat(2, minmax(0, 1fr))";
+                } else {
+                    gridEl.style.gridTemplateColumns = "repeat(4, minmax(0, 1fr))";
+                }
+            };
+
+            activeResizeObserver = new ResizeObserver(() => updateGridColumns());
+            activeResizeObserver.observe(gridEl);
+
+            // Render Cards
+            for (const c of cards) {
+                const cardEl = gridEl.createDiv({
+                    cls: "dnd-info-card",
+                    attr: {
+                        style: "display: flex; flex-direction: column; align-items: center; justify-content: flex-start; padding: 14px 12px; border-radius: 6px; background-color: var(--dnd-ui-color-bg-primary); color: var(--dnd-ui-color-text-primary); border: 1px solid var(--dnd-ui-color-border-primary); min-height: 92px; box-sizing: border-box; text-align: center;"
+                    }
+                });
+
+                cardEl.createDiv({
+                    text: c.label,
+                    cls: "dnd-info-card-label",
+                    attr: {
+                        style: "font-size: 0.8em; text-transform: uppercase; letter-spacing: 1px; color: var(--dnd-ui-color-text-secondary); margin-bottom: 8px; font-weight: 500;"
+                    }
+                });
+
+                cardEl.createDiv({
+                    text: c.value,
+                    cls: "dnd-info-card-value",
+                    attr: {
+                        style: "font-size: 1.35em; font-weight: 700; color: var(--dnd-ui-color-text-bright); line-height: 1.2;"
+                    }
+                });
+
+                if (c.sublabel) {
+                    cardEl.createDiv({
+                        text: c.sublabel,
+                        cls: "dnd-info-card-sublabel",
+                        attr: {
+                            style: "font-size: 0.78em; color: var(--dnd-ui-color-text-sublabel); margin-top: 6px; line-height: 1.2;"
+                        }
+                    });
+                }
+            }
+
+            // Render Languages Pill Badge in Character Mode (Matching bottom-left of Screenshot 2)
+            if (mode === "character" && languagesStr) {
+                const langRow = containerEl.createDiv({
+                    cls: "dnd-info-languages-row",
+                    attr: {
+                        style: "display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; margin-bottom: 10px;"
+                    }
+                });
+
+                const langBadge = langRow.createDiv({
+                    cls: "dnd-info-languages-badge",
+                    attr: {
+                        style: "display: inline-flex; align-items: center; gap: 8px; padding: 5px 10px; border-radius: 6px; background-color: var(--dnd-ui-color-bg-primary); border: 1px solid var(--dnd-ui-color-border-primary);"
+                    }
+                });
+
+                langBadge.createEl("span", {
+                    text: "LANGUAGES",
+                    cls: "dnd-info-languages-label",
+                    attr: {
+                        style: "font-size: 0.78em; text-transform: uppercase; letter-spacing: 0.8px; color: var(--dnd-ui-color-text-secondary); font-weight: 500;"
+                    }
+                });
+
+                langBadge.createEl("span", {
+                    text: languagesStr,
+                    cls: "dnd-info-languages-value",
+                    attr: {
+                        style: "font-size: 0.85em; font-weight: 700; color: var(--dnd-ui-color-text-bright);"
+                    }
+                });
+            }
+
+            el.empty();
+            el.appendChild(wrapper);
+            requestAnimationFrame(() => updateGridColumns());
+        };
+
+        renderContent();
+
+        renderChild.registerEvent(
+            this.app.metadataCache.on("changed", (file) => {
+                if (file.path === ctx.sourcePath) renderContent();
+            })
+        );
+    }
+
+    async processDnDHealthBlock(source: string, el: HTMLElement, ctx: MarkdownPostProcessorContext) {
+        const renderChild = new MarkdownRenderChild(el);
+        ctx.addChild(renderChild);
+
+        // Persistent session states across frontmatter re-renders
+        let tempHp = 0;
+        let usedHitDice = 0;
+        let manualDeathSavesOpen = false;
+        let deathSaveLeft: boolean[] = [false, false, false];
+        let deathSaveRight: boolean[] = [false, false, false];
+
+        const renderContent = async () => {
+            const wrapper = document.createElement("div");
+
+            let blockData: Record<string, any> = {};
+            try {
+                if (source.trim()) {
+                    const cleanSource = source.replace(/^[ \t]*#.*$/gm, "");
+                    blockData = parseYaml(cleanSource) || {};
+                }
+            } catch (error) {
+                wrapper.createEl("p", { text: "Error: Invalid YAML format in dnd-health block.", cls: "dnd-error-text" });
+                el.empty();
+                el.appendChild(wrapper);
+                return;
+            }
+
+            const fileCache = this.app.metadataCache.getCache(ctx.sourcePath);
+            const frontmatter: Record<string, any> = fileCache?.frontmatter || {};
+
+            const resolveValue = (val: any) => {
+                if (typeof val === "string") {
+                    const trimmed = val.trim().replace(/^\{\{\s*|\s*\}\}$/g, "");
+                    if (trimmed.startsWith("frontmatter.")) {
+                        return frontmatter[trimmed.replace("frontmatter.", "")];
+                    }
+                }
+                return val;
+            };
+
+            // 1. Resolve health (Max HP), hitDice (DnD_hit_dice), and level (DnD_level)
+            const rawMaxHealth = resolveValue(blockData.health ?? blockData.maxHealth);
+            const maxHealth = (rawMaxHealth !== undefined && rawMaxHealth !== null && rawMaxHealth !== "" && !isNaN(Number(rawMaxHealth)))
+                ? Math.max(1, Number(rawMaxHealth))
+                : Math.max(1, Number(frontmatter["DnD_maxHealth"]) || 1);
+
+            let rawHitDice = resolveValue(blockData.hitDice ?? blockData.DnD_hit_dice) ?? frontmatter["DnD_hitDice"];
+            if (!rawHitDice && frontmatter["DnD_class"]) {
+                const primaryClass = Array.isArray(frontmatter["DnD_class"]) ? frontmatter["DnD_class"][0] : frontmatter["DnD_class"];
+                const classData = await getClassData(this.app, this.settings, primaryClass);
+                if (classData) {
+                    rawHitDice = classData.HitDice || classData.hitDice || classData.hit_dice;
+                }
+            }
+            const DnD_hit_dice = String(rawHitDice || "d8").trim().replace(/^<.*>$/, "d8") || "d8";
+
+            const rawLevel = resolveValue(blockData.level ?? blockData.DnD_level);
+            const DnD_level = (rawLevel !== undefined && rawLevel !== null && rawLevel !== "" && !isNaN(Number(rawLevel)))
+                ? Math.max(1, Number(rawLevel))
+                : Math.max(1, Number(frontmatter["DnD_level"]) || 1);
+
+            // Clamp used hit dice to current level
+            if (usedHitDice > DnD_level) usedHitDice = DnD_level;
+
+            // Resolve DnD_current_health from frontmatter.DnD_currentHealth (or block override)
+            let targetCurrentHpKey = "DnD_currentHealth";
+            if (typeof blockData.currentHealth === "string" && blockData.currentHealth.trim().startsWith("frontmatter.")) {
+                targetCurrentHpKey = blockData.currentHealth.trim().replace("frontmatter.", "");
+            }
+
+            const rawCurrentHealth = resolveValue(blockData.currentHealth) ?? frontmatter[targetCurrentHpKey];
+            const DnD_current_health = (rawCurrentHealth !== undefined && rawCurrentHealth !== null && rawCurrentHealth !== "" && !isNaN(Number(rawCurrentHealth)))
+                ? Math.max(0, Math.min(maxHealth, Number(rawCurrentHealth)))
+                : maxHealth;
+
+            // 2. Build Main Health Card Window
+            const healthWindow = wrapper.createDiv({ cls: "dnd-health-window" });
+
+            // Header Label
+            healthWindow.createDiv({
+                text: "HIT POINTS",
+                cls: "dnd-health-label"
+            });
+
+            // Current / Max HP Numbers (+ Temp HP badge if active)
+            const numbersRow = healthWindow.createDiv({ cls: "dnd-health-numbers" });
+            numbersRow.createEl("span", {
+                text: String(DnD_current_health),
+                cls: "dnd-health-current"
+            });
+            numbersRow.createEl("span", {
+                text: ` / ${maxHealth}`,
+                cls: "dnd-health-max"
+            });
+
+            if (tempHp > 0) {
+                numbersRow.createEl("span", {
+                    text: ` (+${tempHp} Temp)`,
+                    cls: "dnd-health-temp"
+                });
+            }
+
+            // Progress Bar
+            const barTrack = healthWindow.createDiv({ cls: "dnd-health-bar-track" });
+            const fillPercent = Math.max(0, Math.min(100, (DnD_current_health / maxHealth) * 100));
+            const barFill = barTrack.createDiv({ cls: "dnd-health-bar-fill" });
+            barFill.style.width = `${fillPercent}%`;
+
+            // Controls Row: Input + Heal / Damage / Temp HP Buttons
+            const controlsRow = healthWindow.createDiv({ cls: "dnd-health-controls" });
+            const amountInput = controlsRow.createEl("input", {
+                type: "number",
+                value: "1",
+                cls: "dnd-health-input",
+                attr: { min: "1" }
+            });
+
+            const healBtn = controlsRow.createEl("button", {
+                text: "Heal",
+                cls: "dnd-health-btn dnd-health-btn-heal"
+            });
+            const dmgBtn = controlsRow.createEl("button", {
+                text: "Damage",
+                cls: "dnd-health-btn dnd-health-btn-damage"
+            });
+            const tempBtn = controlsRow.createEl("button", {
+                text: "Temp HP",
+                cls: "dnd-health-btn dnd-health-btn-temp"
+            });
+
+            healBtn.onclick = async () => {
+                const amt = Math.max(0, Number(amountInput.value) || 0);
+                if (amt <= 0) return;
+                const newHp = Math.min(maxHealth, DnD_current_health + amt);
+                if (newHp > 0) {
+                    deathSaveLeft = [false, false, false];
+                    deathSaveRight = [false, false, false];
+                }
+                await this.updateCharacterFrontmatter(ctx.sourcePath, {
+                    [targetCurrentHpKey]: newHp
+                });
+            };
+
+            dmgBtn.onclick = async () => {
+                let remainingDmg = Math.max(0, Number(amountInput.value) || 0);
+                if (remainingDmg <= 0) return;
+
+                // Deduct from Temp HP first
+                if (tempHp > 0) {
+                    const absorbed = Math.min(tempHp, remainingDmg);
+                    tempHp -= absorbed;
+                    remainingDmg -= absorbed;
+                }
+
+                const newHp = Math.max(0, DnD_current_health - remainingDmg);
+                if (newHp !== DnD_current_health) {
+                    await this.updateCharacterFrontmatter(ctx.sourcePath, {
+                        [targetCurrentHpKey]: newHp
+                    });
+                } else {
+                    renderContent();
+                }
+            };
+
+            tempBtn.onclick = () => {
+                const amt = Math.max(0, Number(amountInput.value) || 0);
+                tempHp = amt;
+                renderContent();
+            };
+
+            // 3. Hit Dice Section
+            healthWindow.createDiv({ cls: "dnd-health-divider" });
+
+            const hitDiceRow = healthWindow.createDiv({ cls: "dnd-health-hitdice-row" });
+            hitDiceRow.createEl("span", {
+                text: `HIT DICE (${DnD_hit_dice.toUpperCase()})`,
+                cls: "dnd-health-hitdice-label"
+            });
+
+            const hdPipsContainer = hitDiceRow.createDiv({ cls: "dnd-spell-slots-pips" });
+            for (let i = 0; i < DnD_level; i++) {
+                const isUsed = i < usedHitDice;
+                const pip = hdPipsContainer.createDiv({
+                    cls: `dnd-slot-pip ${isUsed ? "is-used" : ""}`,
+                    attr: { title: isUsed ? "Click to restore Hit Die" : "Click to spend Hit Die" }
+                });
+                pip.onclick = (e) => {
+                    e.stopPropagation();
+                    usedHitDice = isUsed ? i : i + 1;
+                    renderContent();
+                };
+            }
+
+            // 4. Death Saves Section (Shows automatically at 0 HP or when manually toggled)
+            const showDeathSaves = DnD_current_health <= 0 || manualDeathSavesOpen;
+            if (showDeathSaves) {
+                healthWindow.createDiv({ cls: "dnd-health-divider" });
+
+                const deathSavesRow = healthWindow.createDiv({ cls: "dnd-health-deathsaves-row" });
+
+                const leftPips = deathSavesRow.createDiv({ cls: "dnd-spell-slots-pips" });
+                for (let i = 0; i < 3; i++) {
+                    const pip = leftPips.createDiv({
+                        cls: `dnd-slot-pip ${deathSaveLeft[i] ? "is-used" : ""}`,
+                        attr: { title: "Death Save Failure" }
+                    });
+                    pip.onclick = (e) => {
+                        e.stopPropagation();
+                        deathSaveLeft[i] = !deathSaveLeft[i];
+                        renderContent();
+                    };
+                }
+
+                deathSavesRow.createEl("span", {
+                    text: "💀",
+                    cls: "dnd-health-skull"
+                });
+
+                const rightPips = deathSavesRow.createDiv({ cls: "dnd-spell-slots-pips" });
+                for (let i = 0; i < 3; i++) {
+                    const pip = rightPips.createDiv({
+                        cls: `dnd-slot-pip ${deathSaveRight[i] ? "is-used" : ""}`,
+                        attr: { title: "Death Save Success" }
+                    });
+                    pip.onclick = (e) => {
+                        e.stopPropagation();
+                        deathSaveRight[i] = !deathSaveRight[i];
+                        renderContent();
+                    };
+                }
+            }
+
+            // 5. Bottom Action Buttons: Short Rest, Long Rest, Death Saves
+            const bottomBar = wrapper.createDiv({ cls: "dnd-health-rest-bar" });
+
+            const shortRestBtn = bottomBar.createEl("button", {
+                text: "Short Rest",
+                cls: "dnd-health-rest-btn",
+                attr: { value: "short-rest" }
+            });
+            shortRestBtn.onclick = () => {
+                window.dispatchEvent(new Event("short-rest"));
+                new Notice("Short Rest taken!");
+            };
+
+            const longRestBtn = bottomBar.createEl("button", {
+                text: "Long Rest",
+                cls: "dnd-health-rest-btn",
+                attr: { value: "long-rest" }
+            });
+            longRestBtn.onclick = async () => {
+                tempHp = 0;
+                usedHitDice = 0;
+                manualDeathSavesOpen = false;
+                deathSaveLeft = [false, false, false];
+                deathSaveRight = [false, false, false];
+
+                await this.updateCharacterFrontmatter(ctx.sourcePath, {
+                    [targetCurrentHpKey]: maxHealth
+                });
+                renderContent();
+                window.dispatchEvent(new Event("long-rest"));
+                new Notice("Long Rest completed! HP, Hit Dice, and Spell Slots restored.");
+            };
+
+            const deathSavesBtn = bottomBar.createEl("button", {
+                text: "Death Saves",
+                cls: `dnd-health-rest-btn ${showDeathSaves ? "is-active" : ""}`
+            });
+            deathSavesBtn.onclick = () => {
+                manualDeathSavesOpen = !manualDeathSavesOpen;
+                renderContent();
+            };
+
+            el.empty();
+            el.appendChild(wrapper);
+        };
+
+        renderContent();
+
+        renderChild.registerEvent(
+            this.app.metadataCache.on("changed", (file) => {
+                if (file.path === ctx.sourcePath) renderContent();
+            })
+        );
+    }
 }
 
 // --- CHARACTER CREATION WIZARD UI ---
 class CharacterWizardModal extends Modal {
     plugin: DnDCharacterSheetHelperPlugin;
     currentStep: number = 1;
-    totalSteps: number = 4;
+    totalSteps: number = 5; // UPGRADED to 5 steps!
 
     // Data pools for our dropdowns
     availableClasses: string[] = [];
     availableRaces: string[] = [];
     availableBackgrounds: string[] = [];
 
-    // Temporary storage for user choices
+    // Expanded storage for all our new choices
     wizardData: Record<string, any> = {
-        name: "",
-        level: 1,
-        race: "",
-        dndClass: "",
-        spellcastingAbility: "",
-        // ... we will expand this as we build the steps
+        name: "", level: 1, race: "", raceLineage: "", dndClass: "", subclass: "",
+        DnD_spellcasting_ability: "", background: "", classEquipment: "A", backgroundEquipment: "A",
+        classChosenItems: "", backgroundChosenItems: "",
+        weapon: "", weaponDamage: "", armor: "", armorAc: "",
+        languages: "", extraFeats: "", speed: 30, maxHealth: 0,
+        chosenSkills: [],
+        chosenBgSkills: [],
+        chosenAbilityBonuses: [],
+        classChoices: [], // <-- NEW: Stores the dynamic Class Choices [Router, Key, Level]
+        expertiseChoices: [],
     };
 
     constructor(app: App, plugin: DnDCharacterSheetHelperPlugin) {
@@ -1216,7 +3059,6 @@ class CharacterWizardModal extends Modal {
     }
 
     async onOpen() {
-        // Show a brief loading message while we fetch the JSONs
         this.contentEl.createEl("h3", { text: "Loading rulebook data...", cls: "dnd-section-header" });
         await this.fetchDropdownData();
         this.renderStep();
@@ -1226,13 +3068,9 @@ class CharacterWizardModal extends Modal {
         this.contentEl.empty();
     }
 
-    // Safely fetch keys from the Custom Homebrew folder and merge them with native bases
     async fetchDropdownData() {
-        const getKeys = async (fileName: string, baseKeys: string[]) => {
-            // 1. Start with our native base keys
-            let keys: Set<string> = new Set(baseKeys);
-
-            // 2. Dynamically add any keys from the Custom Homebrew Folder
+        const getKeys = async (fileName: string, nativeMap: Record<string, any>) => {
+            let keys: Set<string> = new Set(Object.keys(nativeMap || {}));
             if (this.plugin.settings.customRulebookPath) {
                 const customPath = `${this.plugin.settings.customRulebookPath}/${fileName}`;
                 try {
@@ -1241,22 +3079,19 @@ class CharacterWizardModal extends Modal {
                         Object.keys(JSON.parse(content)).forEach(k => keys.add(k));
                     }
                 } catch (e) {
-                    console.error(`Wizard Error: Could not read custom homebrew file at ${customPath}`, e);
+                    console.error(`Wizard Error: Could not read custom file at ${customPath}`, e);
                 }
             }
-
-            // 3. Convert the Set back to a sorted array for a clean dropdown
+            if (keys.size === 0) {
+                console.warn(`Wizard: No data found for ${fileName}.`);
+                new Notice(`Warning: Could not load ${fileName}. Dropdown will be empty.`);
+            }
             return Array.from(keys).sort();
         };
 
-        // Base native lists perfectly mapped to your router JSONs
-        const baseClasses = ["Barbarian", "Bard", "Blood Hunter", "Cleric", "Druid", "Fighter", "Monk", "Paladin", "Ranger", "Rogue", "Sorcerer", "Warlock", "Wizard"];
-        const baseRaces = ["Aasimar", "Dragonborn", "Dwarf", "Elf", "Gnome", "Goliath", "Half-Orc", "Halfling", "Human", "Orc", "Tiefling"];
-        const baseBackgrounds = ["Acolyte", "Artisan", "Charlatan", "Criminal", "Entertainer", "Farmer", "Guard", "Guide", "Hermit", "Merchant", "Noble", "Sage", "Sailor", "Scribe", "Soldier", "Wayfarer"];
-
-        this.availableClasses = await getKeys("classes.json", baseClasses);
-        this.availableRaces = await getKeys("races.json", baseRaces);
-        this.availableBackgrounds = await getKeys("backgrounds.json", baseBackgrounds);
+        this.availableClasses = await getKeys("classes.json", classesMap);
+        this.availableRaces = await getKeys("races.json", racesMap);
+        this.availableBackgrounds = await getKeys("backgrounds.json", backgroundsMap);
     }
 
     // Main rendering engine for the Wizard
@@ -1264,31 +3099,30 @@ class CharacterWizardModal extends Modal {
         const { contentEl } = this;
         contentEl.empty();
 
-        // 1. Header
         contentEl.createEl("h2", {
             text: `Character Creation Wizard (Step ${this.currentStep} of ${this.totalSteps})`,
             cls: "dnd-section-header"
         });
 
-        // 2. Content Container for the current step
         const stepContainer = contentEl.createDiv({ cls: "dnd-features-window" });
 
+        // We MUST await all steps now so dynamic lineages and subclasses can fetch data before rendering
         if (this.currentStep === 1) {
-            this.renderStepOne(stepContainer);
+            await this.renderStepOne(stepContainer);
         } else if (this.currentStep === 2) {
-            this.renderStepTwo(stepContainer);
+            await this.renderStepTwo(stepContainer);
         } else if (this.currentStep === 3) {
-            this.renderStepThree(stepContainer);
+            await this.renderStepThree(stepContainer); // NEW Class Options Step
         } else if (this.currentStep === 4) {
-            this.renderStepFour(stepContainer);
+            await this.renderStepFour(stepContainer); // Equipment Step
+        } else if (this.currentStep === 5) {
+            this.renderStepFive(stepContainer); // Finalization Step
         }
 
-        // 3. Navigation Buttons Container
         const navContainer = contentEl.createDiv({
             attr: { style: "display: flex; justify-content: space-between; margin-top: 20px;" }
         });
 
-        // Back Button
         const backBtn = navContainer.createEl("button", { text: "Back" });
         backBtn.disabled = this.currentStep === 1;
         backBtn.onclick = () => {
@@ -1298,10 +3132,9 @@ class CharacterWizardModal extends Modal {
             }
         };
 
-        // Next / Finish Button
         const nextBtn = navContainer.createEl("button", {
             text: this.currentStep === this.totalSteps ? "Finish & Generate" : "Next",
-            cls: "mod-cta" // Obsidian's native class for a primary highlighted button
+            cls: "mod-cta"
         });
 
         nextBtn.onclick = async () => {
@@ -1314,27 +3147,26 @@ class CharacterWizardModal extends Modal {
         };
     }
 
-    renderStepOne(container: HTMLElement) {
+    async renderStepOne(container: HTMLElement) {
         container.createEl("h3", { text: "Core Details", cls: "dnd-class-header" });
 
-        // Character Name Input
-        const nameDiv = container.createDiv({ attr: { style: "margin-bottom: 12px;" } });
+        // Character Name & Level Inputs
+        const grid = container.createDiv({ attr: { style: "display: grid; grid-template-columns: 3fr 1fr; gap: 10px; margin-bottom: 12px;" } });
+
+        const nameDiv = grid.createDiv();
         nameDiv.createEl("label", { text: "Character Name: ", attr: { style: "display: block; margin-bottom: 4px;" } });
         const nameInput = nameDiv.createEl("input", { type: "text", value: this.wizardData.name });
         nameInput.style.width = "100%";
         nameInput.placeholder = "e.g., Din";
         nameInput.onchange = (e) => this.wizardData.name = (e.target as HTMLInputElement).value;
 
-        // Level Input
-        const levelDiv = container.createDiv({ attr: { style: "margin-bottom: 12px;" } });
+        const levelDiv = grid.createDiv();
         levelDiv.createEl("label", { text: "Level: ", attr: { style: "display: block; margin-bottom: 4px;" } });
         const levelInput = levelDiv.createEl("input", { type: "number", value: String(this.wizardData.level) });
-        levelInput.min = "1";
-        levelInput.max = "20";
-        levelInput.style.width = "100%";
+        levelInput.min = "1"; levelInput.max = "20"; levelInput.style.width = "100%";
         levelInput.onchange = (e) => this.wizardData.level = Number((e.target as HTMLInputElement).value);
 
-        // Race Dropdown
+        // --- RACE SECTION ---
         const raceDiv = container.createDiv({ attr: { style: "margin-bottom: 12px;" } });
         raceDiv.createEl("label", { text: "Race: ", attr: { style: "display: block; margin-bottom: 4px;" } });
         const raceSelect = raceDiv.createEl("select");
@@ -1342,71 +3174,82 @@ class CharacterWizardModal extends Modal {
         raceSelect.createEl("option", { text: "-- Select a Race --", value: "" });
         this.availableRaces.forEach(r => raceSelect.createEl("option", { text: r, value: r }));
         raceSelect.value = this.wizardData.race;
-        raceSelect.onchange = (e) => this.wizardData.race = (e.target as HTMLSelectElement).value;
 
-        // Class Dropdown
+        // Re-render the step if Race changes to fetch Lineages dynamically!
+        raceSelect.onchange = async (e) => {
+            this.wizardData.race = (e.target as HTMLSelectElement).value;
+            this.wizardData.raceLineage = "";
+            await this.renderStep();
+        };
+
+        // Conditional Race Lineage
+        if (this.wizardData.race) {
+            const raceData = await getRaceData(this.app, this.plugin.settings, this.wizardData.race);
+            if (raceData && raceData.traits) {
+                // Extract unique lineages from the traits
+                const lineages = new Set(raceData.traits.filter((t: any) => t.lineage).map((t: any) => t.lineage));
+                if (lineages.size > 0) {
+                    const linDiv = container.createDiv({ attr: { style: "margin-bottom: 12px; margin-left: 15px; border-left: 2px solid var(--dnd-ui-color-border-active); padding-left: 10px;" } });
+                    linDiv.createEl("label", { text: "Race Lineage: ", attr: { style: "display: block; margin-bottom: 4px; color: var(--dnd-ui-color-text-sublabel);" } });
+                    const linSelect = linDiv.createEl("select");
+                    linSelect.style.width = "100%";
+                    linSelect.createEl("option", { text: "-- Select a Lineage --", value: "" });
+                    Array.from(lineages).forEach((l: any) => linSelect.createEl("option", { text: l, value: l }));
+                    linSelect.value = this.wizardData.raceLineage || "";
+                    linSelect.onchange = (e) => this.wizardData.raceLineage = (e.target as HTMLSelectElement).value;
+                }
+            }
+        }
+
+        // --- CLASS SECTION ---
         const classDiv = container.createDiv({ attr: { style: "margin-bottom: 12px;" } });
         classDiv.createEl("label", { text: "Class: ", attr: { style: "display: block; margin-bottom: 4px;" } });
         const classSelect = classDiv.createEl("select");
         classSelect.style.width = "100%";
         classSelect.createEl("option", { text: "-- Select a Class --", value: "" });
         this.availableClasses.forEach(c => classSelect.createEl("option", { text: c, value: c }));
+
+        // FIX: Bound to dndClass instead of class
         classSelect.value = this.wizardData.dndClass;
-        classSelect.onchange = (e) => this.wizardData.dndClass = (e.target as HTMLSelectElement).value;
-    }
 
-    async renderStepTwo(container: HTMLElement) {
-        container.createEl("h3", { text: "Stats & Abilities", cls: "dnd-class-header" });
+        classSelect.onchange = async (e) => {
+            this.wizardData.dndClass = (e.target as HTMLSelectElement).value;
+            this.wizardData.subclass = "";
+            await this.renderStep();
+        };
 
-        // 1. Render Base Stats (STR, DEX, CON, INT, WIS, CHA) in a Grid
-        const statsGrid = container.createDiv({ attr: { style: "display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px;" } });
-
-        const stats = ["Strength", "Dexterity", "Constitution", "Intelligence", "Wisdom", "Charisma"];
-
-        stats.forEach(stat => {
-            const statKey = stat.toLowerCase(); // e.g., 'strength'
-            // Initialize default value in wizardData to 10 if not present
-            if (this.wizardData[statKey] === undefined) this.wizardData[statKey] = 10;
-
-            const statDiv = statsGrid.createDiv();
-            statDiv.createEl("label", { text: `${stat}:`, attr: { style: "display: block; font-size: 0.9em; margin-bottom: 4px;" } });
-
-            const statInput = statDiv.createEl("input", { type: "number", value: String(this.wizardData[statKey]) });
-            statInput.style.width = "100%";
-            statInput.onchange = (e) => this.wizardData[statKey] = Number((e.target as HTMLInputElement).value);
-        });
-
-        // 2. Conditional Spellcasting Ability Dropdown
+        // Conditional Subclass
         if (this.wizardData.dndClass) {
-            // We use your existing getClassData helper!
             const classData = await getClassData(this.app, this.plugin.settings, this.wizardData.dndClass);
+            if (classData && classData.subclassFile) {
+                try {
+                    let subPath = `${this.plugin.manifest.dir}/rulebook/classes/${classData.subclassFile}.json`;
+                    if (this.plugin.settings.customRulebookPath) {
+                        const customSubPath = `${this.plugin.settings.customRulebookPath}/classes/${classData.subclassFile}.json`;
+                        if (await this.app.vault.adapter.exists(customSubPath)) subPath = customSubPath;
+                    }
+                    if (await this.app.vault.adapter.exists(subPath)) {
+                        const subContent = await this.app.vault.adapter.read(subPath);
+                        const subclassNames = Object.keys(JSON.parse(subContent));
 
-            if (classData && classData.spellcastingAbilities && Array.isArray(classData.spellcastingAbilities)) {
-                const spellDiv = container.createDiv({ attr: { style: "margin-top: 15px; padding-top: 15px; border-top: 1px solid var(--dnd-border-primary);" } });
-                spellDiv.createEl("label", { text: "Primary Spellcasting Ability: ", attr: { style: "display: block; margin-bottom: 4px; color: var(--dnd-accent-teal);" } });
-
-                const spellSelect = spellDiv.createEl("select");
-                spellSelect.style.width = "100%";
-                spellSelect.createEl("option", { text: "-- Select Ability --", value: "" });
-
-                // Populate options from the class JSON array
-                classData.spellcastingAbilities.forEach((ability: string) => {
-                    spellSelect.createEl("option", { text: ability, value: ability });
-                });
-
-                spellSelect.value = this.wizardData.spellcastingAbility || "";
-                spellSelect.onchange = (e) => this.wizardData.spellcastingAbility = (e.target as HTMLSelectElement).value;
+                        if (subclassNames.length > 0) {
+                            const subDiv = container.createDiv({ attr: { style: "margin-bottom: 12px; margin-left: 15px; border-left: 2px solid var(--dnd-ui-color-border-active); padding-left: 10px;" } });
+                            subDiv.createEl("label", { text: "Subclass: ", attr: { style: "display: block; margin-bottom: 4px; color: var(--dnd-ui-color-text-sublabel);" } });
+                            const subSelect = subDiv.createEl("select");
+                            subSelect.style.width = "100%";
+                            subSelect.createEl("option", { text: "-- Select a Subclass --", value: "" });
+                            subclassNames.forEach(s => subSelect.createEl("option", { text: s, value: s }));
+                            subSelect.value = this.wizardData.subclass || "";
+                            subSelect.onchange = (e) => this.wizardData.subclass = (e.target as HTMLSelectElement).value;
+                        }
+                    }
+                } catch (e) {
+                    console.error("Could not fetch subclasses for", classData.subclassFile);
+                }
             }
-        } else {
-            // If they skipped selecting a class in Step 1, gently remind them.
-            container.createEl("p", { text: "Select a class in Step 1 to see conditional class options.", attr: { style: "font-style: italic; color: var(--dnd-text-muted);" } });
         }
-    }
 
-    renderStepThree(container: HTMLElement) {
-        container.createEl("h3", { text: "Background & Equipment", cls: "dnd-class-header" });
-
-        // Background Dropdown
+        // --- BACKGROUND SECTION (Moved from Step 3) ---
         const bgDiv = container.createDiv({ attr: { style: "margin-bottom: 12px;" } });
         bgDiv.createEl("label", { text: "Background: ", attr: { style: "display: block; margin-bottom: 4px;" } });
         const bgSelect = bgDiv.createEl("select");
@@ -1414,68 +3257,556 @@ class CharacterWizardModal extends Modal {
         bgSelect.createEl("option", { text: "-- Select a Background --", value: "" });
         this.availableBackgrounds.forEach(b => bgSelect.createEl("option", { text: b, value: b }));
         bgSelect.value = this.wizardData.background || "";
-        bgSelect.onchange = (e) => this.wizardData.background = (e.target as HTMLSelectElement).value;
 
-        // Class Equipment Choice (A or B)
+        // Triggers a re-render so Step 3 can later know what background is active
+        bgSelect.onchange = async (e) => {
+            this.wizardData.background = (e.target as HTMLSelectElement).value;
+            await this.renderStep();
+        };
+    }
+
+    async renderStepTwo(container: HTMLElement) {
+        container.createEl("h3", { text: "Stats & Abilities", cls: "dnd-class-header" });
+
+        // Fetch both Class and Background JSON exactly ONCE at the top of Step 2!
+        let classData: any = null;
+        if (this.wizardData.dndClass) {
+            classData = await getClassData(this.app, this.plugin.settings, this.wizardData.dndClass);
+        }
+        let bgData: any = null;
+        if (this.wizardData.background) {
+            bgData = await getBackgroundData(this.app, this.plugin.settings, this.wizardData.background);
+        }
+
+        // 1. Base Stats Grid
+        const statsGrid = container.createDiv({ attr: { style: "display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px;" } });
+        const stats = ["Strength", "Dexterity", "Constitution", "Intelligence", "Wisdom", "Charisma"];
+
+        stats.forEach(stat => {
+            const statKey = stat.toLowerCase();
+            if (this.wizardData[statKey] === undefined) this.wizardData[statKey] = 10;
+
+            const statDiv = statsGrid.createDiv();
+            statDiv.createEl("label", { text: `${stat}:`, attr: { style: "display: block; font-size: 0.9em; margin-bottom: 4px;" } });
+
+            const statInput = statDiv.createEl("input", { type: "number", value: String(this.wizardData[statKey]) });
+            statInput.style.width = "100%";
+            statInput.onchange = (e) => {
+                this.wizardData[statKey] = Number((e.target as HTMLInputElement).value);
+                if (statKey === "constitution") this.renderStep();
+            };
+        });
+
+        // 2. Health & Speed Controls (Moved UP above the skills)
+        const vitalsGrid = container.createDiv({ attr: { style: "display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px;" } });
+
+        const speedDiv = vitalsGrid.createDiv();
+        speedDiv.createEl("label", { text: "Speed (ft):", attr: { style: "display: block; font-size: 0.9em; margin-bottom: 4px;" } });
+        const speedInput = speedDiv.createEl("input", { type: "number", value: String(this.wizardData.speed) });
+        speedInput.style.width = "100%";
+        speedInput.onchange = (e) => this.wizardData.speed = Number((e.target as HTMLInputElement).value);
+
+        const hpDiv = vitalsGrid.createDiv();
+        hpDiv.createEl("label", { text: "Max Health:", attr: { style: "display: block; font-size: 0.9em; margin-bottom: 4px;" } });
+        const hpWrapper = hpDiv.createDiv({ attr: { style: "display: flex; gap: 5px;" } });
+
+        const hpInput = hpWrapper.createEl("input", { type: "number", value: String(this.wizardData.maxHealth) });
+        hpInput.style.width = "100%";
+        hpInput.onchange = (e) => this.wizardData.maxHealth = Number((e.target as HTMLInputElement).value);
+
+        const autoHpBtn = hpWrapper.createEl("button", { text: "Auto (Lvl 1)", attr: { title: "Max Hit Die + CON Modifier" } });
+        autoHpBtn.onclick = async () => {
+            let hitDieMax = 8;
+            if (classData && classData.hitDice) {
+                const parsedHitDie = parseInt(String(classData.hitDice).replace(/\D/g, ''));
+                if (!isNaN(parsedHitDie)) hitDieMax = parsedHitDie;
+            }
+
+            // Safely tally base CON + Background CON bonuses!
+            let totalCon = this.wizardData.constitution || 10;
+            if (this.wizardData.chosenAbilityBonuses) {
+                totalCon += this.wizardData.chosenAbilityBonuses.filter((b: string) => b.toLowerCase() === "constitution").length;
+            }
+
+            const conMod = Math.floor((totalCon - 10) / 2);
+            this.wizardData.maxHealth = hitDieMax + conMod;
+            await this.renderStep();
+        };
+
+        // 3. Spellcasting Dropdown
+        if (this.wizardData.dndClass) {
+            if (classData && classData.spellcastingAbilities && Array.isArray(classData.spellcastingAbilities)) {
+                const spellDiv = container.createDiv();
+                spellDiv.createEl("label", { text: "Primary Spellcasting Ability: ", attr: { style: "display: block; margin-bottom: 4px; color: var(--dnd-ui-color-text-sublabel);" } });
+                const spellSelect = spellDiv.createEl("select");
+                spellSelect.style.width = "100%";
+                spellSelect.createEl("option", { text: "-- Select Ability --", value: "" });
+
+                classData.spellcastingAbilities.forEach((ability: string) => spellSelect.createEl("option", { text: ability, value: ability }));
+
+                if (classData.spellcastingAbilities.length === 1) {
+                    this.wizardData.DnD_spellcasting_ability = classData.spellcastingAbilities[0];
+                }
+
+                spellSelect.value = this.wizardData.DnD_spellcasting_ability || "";
+                spellSelect.onchange = (e) => this.wizardData.DnD_spellcasting_ability = (e.target as HTMLSelectElement).value;
+            }
+        }
+
+        // 4. Class Skills Pool (Dynamic Dropdowns)
+        if (this.wizardData.dndClass) {
+            const sp = classData?.skillsPool;
+
+            if (sp && Array.isArray(sp) && sp.length === 2) {
+                const availableSkills = sp[0] as string[];
+                const numChoices = sp[1] as number;
+
+                if (availableSkills.length > 0 && numChoices > 0) {
+                    // KEEPS the top border (the "long line") as requested!
+                    const skillsDiv = container.createDiv({ attr: { style: "margin-top: 15px; padding-top: 15px; border-top: 1px solid var(--dnd-ui-color-border-primary);" } });
+                    skillsDiv.createEl("label", { text: `Class Skill Proficiencies (Choose ${numChoices}):`, attr: { style: "display: block; margin-bottom: 8px; color: var(--dnd-ui-color-text-sublabel);" } });
+
+                    if (!this.wizardData.chosenSkills || this.wizardData.chosenSkills.length !== numChoices) {
+                        this.wizardData.chosenSkills = new Array(numChoices).fill("");
+                    }
+
+                    const skillGrid = skillsDiv.createDiv({ attr: { style: "display: grid; grid-template-columns: 1fr 1fr; gap: 10px;" } });
+
+                    for (let i = 0; i < numChoices; i++) {
+                        const skillSelect = skillGrid.createEl("select");
+                        skillSelect.style.width = "100%";
+                        skillSelect.createEl("option", { text: `-- Select Skill ${i + 1} --`, value: "" });
+
+                        availableSkills.forEach((skill: string) => {
+                            const displaySkill = skill.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
+                            skillSelect.createEl("option", { text: displaySkill, value: skill });
+                        });
+
+                        skillSelect.value = this.wizardData.chosenSkills[i] || "";
+                        skillSelect.onchange = (e) => {
+                            this.wizardData.chosenSkills[i] = (e.target as HTMLSelectElement).value;
+                        };
+                    }
+                }
+            }
+        }
+
+        // 5. Background Ability Score Bonuses (Moved DOWN)
+        if (bgData && bgData.abilityBonusPool && Array.isArray(bgData.abilityBonusPool)) {
+            // FIX: Removed border-bottom and padding-bottom so no stray short lines appear! 
+            const bonusDiv = container.createDiv({ attr: { style: "margin-top: 15px;" } });
+            bonusDiv.createEl("label", { text: "Background Ability Bonuses (+3 total):", attr: { style: "display: block; font-size: 0.9em; margin-bottom: 8px; color: var(--dnd-ui-color-text-sublabel);" } });
+
+            if (!this.wizardData.chosenAbilityBonuses || this.wizardData.chosenAbilityBonuses.length !== 3) {
+                this.wizardData.chosenAbilityBonuses = ["", "", ""];
+            }
+
+            const bonusGrid = bonusDiv.createDiv({ attr: { style: "display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;" } });
+
+            for (let i = 0; i < 3; i++) {
+                const bonusSelect = bonusGrid.createEl("select");
+                bonusSelect.style.width = "100%";
+                bonusSelect.createEl("option", { text: `-- +1 Bonus --`, value: "" });
+
+                bgData.abilityBonusPool.forEach((ability: string) => {
+                    const displayAbil = ability.charAt(0).toUpperCase() + ability.slice(1);
+                    bonusSelect.createEl("option", { text: displayAbil, value: ability });
+                });
+
+                bonusSelect.value = this.wizardData.chosenAbilityBonuses[i] || "";
+                bonusSelect.onchange = (e) => {
+                    this.wizardData.chosenAbilityBonuses[i] = (e.target as HTMLSelectElement).value;
+                    // Re-render so HP updates if CON gets a bonus!
+                    if ((e.target as HTMLSelectElement).value.toLowerCase() === "constitution" || this.wizardData.chosenAbilityBonuses.includes("constitution")) {
+                        this.renderStep();
+                    }
+                };
+            }
+            bonusDiv.createEl("small", { text: "Tip: Assign +1 to three different stats, or +2 to one and +1 to another.", attr: { style: "display: block; margin-top: 6px; color: var(--dnd-ui-color-text-muted);" } });
+        }
+
+        // 6. Background Skills Pool (Dynamic Dropdowns)
+        if (bgData && bgData.skillsPool && Array.isArray(bgData.skillsPool) && bgData.skillsPool.length === 2) {
+            const availableBgSkills = bgData.skillsPool[0] as string[];
+            const numBgChoices = bgData.skillsPool[1] as number;
+
+            if (availableBgSkills.length > 0 && numBgChoices > 0) {
+                // FIX: Uses margin-top without borders, grouping it nicely below the Background Bonuses!
+                const bgSkillsDiv = container.createDiv({ attr: { style: "margin-top: 15px;" } });
+                bgSkillsDiv.createEl("label", { text: `Background Skill Proficiencies (Choose ${numBgChoices}):`, attr: { style: "display: block; margin-bottom: 8px; color: var(--dnd-ui-color-text-sublabel);" } });
+
+                if (!this.wizardData.chosenBgSkills || this.wizardData.chosenBgSkills.length !== numBgChoices) {
+                    this.wizardData.chosenBgSkills = new Array(numBgChoices).fill("");
+                }
+
+                const bgSkillGrid = bgSkillsDiv.createDiv({ attr: { style: "display: grid; grid-template-columns: 1fr 1fr; gap: 10px;" } });
+
+                for (let i = 0; i < numBgChoices; i++) {
+                    const skillSelect = bgSkillGrid.createEl("select");
+                    skillSelect.style.width = "100%";
+                    skillSelect.createEl("option", { text: `-- Select Skill ${i + 1} --`, value: "" });
+
+                    availableBgSkills.forEach((skill: string) => {
+                        const displaySkill = skill.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
+                        skillSelect.createEl("option", { text: displaySkill, value: skill });
+                    });
+
+                    skillSelect.value = this.wizardData.chosenBgSkills[i] || "";
+                    skillSelect.onchange = (e) => {
+                        this.wizardData.chosenBgSkills[i] = (e.target as HTMLSelectElement).value;
+                    };
+                }
+            }
+        }
+
+        // 7. Automatic Background Skills (Read-Only Display)
+        if (bgData && bgData.skills && Array.isArray(bgData.skills) && bgData.skills.length > 0) {
+            const autoBgSkillsDiv = container.createDiv({ attr: { style: "margin-top: 15px;" } });
+            autoBgSkillsDiv.createEl("label", { text: `Background Granted Skills:`, attr: { style: "display: block; margin-bottom: 8px; color: var(--dnd-ui-color-text-sublabel);" } });
+
+            // Format array into a clean Title Case string
+            const autoSkillsText = bgData.skills.map((skill: string) => {
+                return skill.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
+            }).join(', ');
+
+            // Display them in a visually distinct, read-only box
+            autoBgSkillsDiv.createEl("div", {
+                text: autoSkillsText,
+                attr: { style: "padding: 8px 12px; background: var(--dnd-ui-color-bg-darker); border: 1px solid var(--dnd-ui-color-border-primary); border-radius: 4px; color: var(--dnd-ui-color-text-muted);" }
+            });
+        }
+    }
+
+    async renderStepThree(container: HTMLElement) {
+        container.createEl("h3", { text: "Class Options", cls: "dnd-class-header" });
+        container.createEl("p", { text: "Select your specialized class features.", attr: { style: "color: var(--dnd-ui-color-text-muted); margin-bottom: 15px;" } });
+
+        let hasChoices = false;
+
+        // NEW: Fetch Background Skills so we know what they are proficient in for Expertise!
+        let availableProficiencies: string[] = [];
+        availableProficiencies.push(...(this.wizardData.chosenSkills || []));
+        availableProficiencies.push(...(this.wizardData.chosenBgSkills || []));
+
+        if (this.wizardData.background) {
+            const bgData = await getBackgroundData(this.app, this.plugin.settings, this.wizardData.background);
+            if (bgData?.skills) availableProficiencies.push(...bgData.skills);
+        }
+        // Clean and lowercase the pool for clean dropdowns
+        availableProficiencies = [...new Set(availableProficiencies.filter(s => s !== "").map(s => s.toLowerCase()))];
+
+        if (this.wizardData.dndClass) {
+            const classData = await getClassData(this.app, this.plugin.settings, this.wizardData.dndClass);
+
+            // NEW: Fetch Subclass data if it exists!
+            let subclassData: any = null;
+            if (this.wizardData.subclass && classData?.subclassFile) {
+                subclassData = await getSubclassData(this.app, this.plugin.settings, classData.subclassFile, this.wizardData.subclass);
+            }
+
+            if (classData && classData.features) {
+                // INSTEAD of looping 1 to level, we strictly read the JSON payload for the TARGET level!
+                // This perfectly matches your JSON design (e.g. Warlock Level 5 explicitly listing 5 invocations).
+                let levelFeatures: any[] = [];
+                const targetLevel = this.wizardData.level.toString();
+
+                if (classData.features[targetLevel]) {
+                    levelFeatures = levelFeatures.concat(classData.features[targetLevel]);
+                }
+                if (subclassData && subclassData[targetLevel]) {
+                    levelFeatures = levelFeatures.concat(subclassData[targetLevel]);
+                }
+
+                if (levelFeatures.length > 0) {
+                    for (const feature of levelFeatures) {
+                        // If this feature has a dynamic Class Choices array in the JSON...
+                        if (feature.classChoices && Array.isArray(feature.classChoices)) {
+                            hasChoices = true;
+
+                            // Use a traditional for-loop to track the exact index of the choice
+                            for (let choiceIndex = 0; choiceIndex < feature.classChoices.length; choiceIndex++) {
+                                const routerName = feature.classChoices[choiceIndex];
+
+                                // Fetch the corresponding router file!
+                                let choicePath = `${this.plugin.manifest.dir}/rulebook/classes/classChoices/${routerName}.json`;
+                                if (this.plugin.settings.customRulebookPath) {
+                                    const customPath = `${this.plugin.settings.customRulebookPath}/classes/classChoices/${routerName}.json`;
+                                    if (await this.app.vault.adapter.exists(customPath)) choicePath = customPath;
+                                }
+
+                                let routerData: any = null;
+                                if (await this.app.vault.adapter.exists(choicePath)) {
+                                    const content = await this.app.vault.adapter.read(choicePath);
+                                    routerData = JSON.parse(content);
+                                }
+
+                                if (routerData) {
+                                    // Build a clean UI Card for the choice
+                                    const choiceDiv = container.createDiv({ attr: { style: "margin-bottom: 12px; padding: 10px; background: var(--dnd-ui-color-bg-tertiary); border-radius: 6px; border: 1px solid var(--dnd-ui-color-border-primary);" } });
+
+                                    const displayName = routerName.split(/[-_]/).map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+                                    choiceDiv.createEl("label", { text: `Level ${targetLevel}: ${feature.name} (${displayName} ${choiceIndex + 1})`, attr: { style: "display: block; margin-bottom: 8px; font-weight: bold; color: var(--dnd-ui-color-text-secondary);" } });
+
+                                    const selectEl = choiceDiv.createEl("select");
+                                    selectEl.style.width = "100%";
+                                    selectEl.createEl("option", { text: `-- Select Option --`, value: "" });
+
+                                    Object.entries(routerData).forEach(([key, val]) => {
+                                        selectEl.createEl("option", { text: val as string, value: key });
+                                    });
+
+                                    // Restore previous selection using Level + Router + Choice Index!
+                                    const existingChoice = this.wizardData.classChoices.find((c: any) => c[0] === routerName && c[2] === targetLevel && c[3] === choiceIndex);
+                                    if (existingChoice) selectEl.value = existingChoice[1];
+
+                                    // Save securely in internal memory as [Router File, Chosen Key, Level, Index]
+                                    selectEl.onchange = (e) => {
+                                        const selectedVal = (e.target as HTMLSelectElement).value;
+
+                                        // Remove old choice for this specific slot
+                                        this.wizardData.classChoices = this.wizardData.classChoices.filter((c: any) => !(c[0] === routerName && c[2] === targetLevel && c[3] === choiceIndex));
+
+                                        if (selectedVal) {
+                                            this.wizardData.classChoices.push([routerName, selectedVal, targetLevel, choiceIndex]);
+                                        }
+                                    };
+                                }
+                            }
+                        }
+
+                        // --- NEW: EXPERTISE ENGINE (grantedExpertise) ---
+                        if (feature.grantedExpertise && Array.isArray(feature.grantedExpertise) && feature.grantedExpertise.length === 2) {
+                            hasChoices = true;
+                            const expPool = feature.grantedExpertise[0] as string[];
+                            const grantedExpertiseCount = feature.grantedExpertise[1] as number;
+
+                            if (grantedExpertiseCount > 0) {
+                                const expDiv = container.createDiv({ attr: { style: "margin-bottom: 20px; padding: 10px; background: var(--dnd-ui-color-bg-tertiary); border-radius: 6px; border: 1px solid var(--dnd-ui-color-border-primary);" } });
+                                expDiv.createEl("label", { text: `Level ${targetLevel}: ${feature.name} (${grantedExpertiseCount} Choices)`, attr: { style: "display: block; margin-bottom: 8px; font-weight: bold; color: var(--dnd-ui-color-text-secondary);" } });
+                                expDiv.createEl("small", { text: "Select skills you are already proficient in to gain Expertise.", attr: { style: "display: block; margin-bottom: 12px; color: var(--dnd-ui-color-text-muted);" } });
+
+                                // Strictly filter available proficiencies based on the explicitly provided JSON pool
+                                let filteredProficiencies = availableProficiencies;
+                                if (expPool.length > 0) {
+                                    filteredProficiencies = availableProficiencies.filter(skill => expPool.map(s => String(s).toLowerCase()).includes(String(skill).toLowerCase()));
+                                }
+
+                                // Ensure our data array is ready for the total choices provided by the JSON
+                                if (!this.wizardData.expertiseChoices || this.wizardData.expertiseChoices.length !== grantedExpertiseCount) {
+                                    this.wizardData.expertiseChoices = Array(grantedExpertiseCount).fill(["", targetLevel]);
+                                }
+
+                                // UX Improvement: Warn the user if they skipped selecting skills in Step 2!
+                                if (filteredProficiencies.length === 0) {
+                                    expDiv.createEl("p", { text: "You have no eligible skill proficiencies to gain Expertise in. Please go back to Step 2 and select your class/background skills first!", attr: { style: "color: var(--dnd-ui-color-accent-red); font-style: italic; font-size: 0.9em;" } });
+                                } else {
+                                    for (let e = 0; e < grantedExpertiseCount; e++) {
+                                        const selectDiv = expDiv.createDiv({ attr: { style: "margin-bottom: 8px; display: flex; align-items: center;" } });
+                                        selectDiv.createEl("small", { text: `Choice ${e + 1}:`, attr: { style: "flex: 0 0 65px; color: var(--dnd-ui-color-text-sublabel);" } });
+
+                                        const selectEl = selectDiv.createEl("select", { attr: { style: "flex: 1;" } });
+                                        selectEl.createEl("option", { text: `-- Select Expertise --`, value: "" });
+
+                                        filteredProficiencies.forEach(skill => {
+                                            const displaySkill = skill.replace(/\b\w/g, c => c.toUpperCase());
+                                            selectEl.createEl("option", { text: displaySkill, value: skill });
+                                        });
+
+                                        if (this.wizardData.expertiseChoices[e]) selectEl.value = this.wizardData.expertiseChoices[e][0];
+
+                                        selectEl.onchange = (evt) => {
+                                            const val = (evt.target as HTMLSelectElement).value;
+                                            this.wizardData.expertiseChoices[e] = [val, targetLevel];
+                                        };
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        if (!hasChoices) {
+            container.createEl("p", { text: "No additional class choices available for this level.", attr: { style: "font-style: italic; color: var(--dnd-ui-color-text-sublabel);" } });
+        }
+    }
+
+    async renderStepFour(container: HTMLElement) {
+        // Changed the header text slightly since Background is now in Step 1
+        container.createEl("h3", { text: "Equipment & Feats", cls: "dnd-class-header" });
+
+        // Languages & Feats Grid
+        const extraGrid = container.createDiv({ attr: { style: "display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px;" } });
+
+        const langDiv = extraGrid.createDiv();
+        langDiv.createEl("label", { text: "Languages: ", attr: { style: "display: block; font-size: 0.9em; margin-bottom: 4px;" } });
+        const langInput = langDiv.createEl("input", { type: "text", value: this.wizardData.languages });
+        langInput.style.width = "100%"; langInput.placeholder = "Common, Elvish...";
+        langInput.onchange = (e) => this.wizardData.languages = (e.target as HTMLInputElement).value;
+
+        const featDiv = extraGrid.createDiv();
+        featDiv.createEl("label", { text: "Extra Feats: ", attr: { style: "display: block; font-size: 0.9em; margin-bottom: 4px;" } });
+        const featInput = featDiv.createEl("input", { type: "text", value: this.wizardData.extraFeats });
+        featInput.style.width = "100%"; featInput.placeholder = "Tough, Alert...";
+        featInput.onchange = (e) => this.wizardData.extraFeats = (e.target as HTMLInputElement).value;
+
+        // HELPER: Checks for flexible choices and generates a dynamic placeholder
+        const getFlexibleData = (equipmentData: any) => {
+            let hasFlex = false;
+            let placeholder = "e.g., Lute, Mason's Tools...";
+
+            if (equipmentData && equipmentData.items) {
+                // Find any key that contains the flexible pipe character
+                const flexKeys = Object.keys(equipmentData.items).filter(key => key.includes('|'));
+                if (flexKeys.length > 0) {
+                    hasFlex = true;
+                    // Format the options: 'artisans-tool|musical-instrument' -> 'Artisans Tool, Musical Instrument'
+                    const options = flexKeys[0].split('|')
+                        .filter(item => item !== "") // Handle trailing pipes like 'artisans-tool|'
+                        .map(item => {
+                            return item.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+                        });
+                    placeholder = `e.g., ${options.join(', ')}`;
+                }
+            }
+            return { hasFlex, placeholder };
+        };
+
+        // --- Class Equipment Section ---
+        let showClassItems = false;
+        let classPlaceholder = "e.g., Lute, Mason's Tools...";
+        let classEqOptions = ["A", "B"]; // Safe fallback
+
+        if (this.wizardData.dndClass) {
+            const classData = await getClassData(this.app, this.plugin.settings, this.wizardData.dndClass);
+            if (classData?.startingEquipment) {
+                // Dynamically fetch A, B, C, etc. directly from the JSON
+                classEqOptions = Object.keys(classData.startingEquipment).sort();
+
+                const eqChoice = this.wizardData.classEquipment || classEqOptions[0];
+                if (classData.startingEquipment[eqChoice]) {
+                    const flexData = getFlexibleData(classData.startingEquipment[eqChoice]);
+                    showClassItems = flexData.hasFlex;
+                    classPlaceholder = flexData.placeholder;
+                }
+            }
+        }
+
         const classEqDiv = container.createDiv({ attr: { style: "margin-bottom: 12px;" } });
         classEqDiv.createEl("label", { text: "Class Starting Equipment Choice: ", attr: { style: "display: block; margin-bottom: 4px;" } });
         const classEqSelect = classEqDiv.createEl("select");
         classEqSelect.style.width = "100%";
-        classEqSelect.createEl("option", { text: "Choice A", value: "A" });
-        classEqSelect.createEl("option", { text: "Choice B", value: "B" });
-        classEqSelect.value = this.wizardData.classEquipment || "A";
-        classEqSelect.onchange = (e) => this.wizardData.classEquipment = (e.target as HTMLSelectElement).value;
-        if (!this.wizardData.classEquipment) this.wizardData.classEquipment = "A";
 
-        // Background Equipment Choice (A or B)
+        // Dynamically build the dropdown options
+        classEqOptions.forEach(opt => {
+            classEqSelect.createEl("option", { text: `Choice ${opt}`, value: opt });
+        });
+
+        // Ensure the current value is valid; if not, default to the first available choice
+        if (!classEqOptions.includes(this.wizardData.classEquipment)) {
+            this.wizardData.classEquipment = classEqOptions[0];
+        }
+        classEqSelect.value = this.wizardData.classEquipment;
+
+        // Re-render when changing A/B/C so the flexible input box can appear/disappear dynamically
+        classEqSelect.onchange = async (e) => {
+            this.wizardData.classEquipment = (e.target as HTMLSelectElement).value;
+            await this.renderStep();
+        };
+
+        if (showClassItems) {
+            const classItemsDiv = container.createDiv({ attr: { style: "margin-bottom: 12px; margin-left: 15px; border-left: 2px solid var(--dnd-ui-color-border-active); padding-left: 10px;" } });
+            classItemsDiv.createEl("label", { text: "Class Chosen Items (Required): ", attr: { style: "display: block; margin-bottom: 4px; color: var(--dnd-ui-color-text-sublabel);" } });
+            const classItemsInput = classItemsDiv.createEl("input", { type: "text", value: this.wizardData.classChosenItems || "" });
+            classItemsInput.style.width = "100%";
+            classItemsInput.placeholder = classPlaceholder;
+            classItemsInput.onchange = (e) => this.wizardData.classChosenItems = (e.target as HTMLInputElement).value;
+        }
+
+        // --- Background Equipment Section ---
+        let showBgItems = false;
+        let bgPlaceholder = "e.g., Dice, Forgery Kit...";
+        let bgEqOptions = ["A", "B"]; // Safe fallback
+
+        if (this.wizardData.background) {
+            const bgData = await getBackgroundData(this.app, this.plugin.settings, this.wizardData.background);
+            if (bgData?.startingEquipment) {
+                // Dynamically fetch A, B, C, etc. directly from the JSON
+                bgEqOptions = Object.keys(bgData.startingEquipment).sort();
+
+                const eqChoice = this.wizardData.backgroundEquipment || bgEqOptions[0];
+                if (bgData.startingEquipment[eqChoice]) {
+                    const flexData = getFlexibleData(bgData.startingEquipment[eqChoice]);
+                    showBgItems = flexData.hasFlex;
+                    bgPlaceholder = flexData.placeholder;
+                }
+            }
+        }
+
         const bgEqDiv = container.createDiv({ attr: { style: "margin-bottom: 12px;" } });
         bgEqDiv.createEl("label", { text: "Background Starting Equipment Choice: ", attr: { style: "display: block; margin-bottom: 4px;" } });
         const bgEqSelect = bgEqDiv.createEl("select");
         bgEqSelect.style.width = "100%";
-        bgEqSelect.createEl("option", { text: "Choice A", value: "A" });
-        bgEqSelect.createEl("option", { text: "Choice B", value: "B" });
-        bgEqSelect.value = this.wizardData.backgroundEquipment || "A";
-        bgEqSelect.onchange = (e) => this.wizardData.backgroundEquipment = (e.target as HTMLSelectElement).value;
-        if (!this.wizardData.backgroundEquipment) this.wizardData.backgroundEquipment = "A";
 
-        // Weapon Section
-        container.createEl("h4", { text: "Equipped Items", attr: { style: "margin-top: 20px; margin-bottom: 10px; color: var(--dnd-text-muted);" } });
+        // Dynamically build the dropdown options
+        bgEqOptions.forEach(opt => {
+            bgEqSelect.createEl("option", { text: `Choice ${opt}`, value: opt });
+        });
 
+        // Ensure the current value is valid; if not, default to the first available choice
+        if (!bgEqOptions.includes(this.wizardData.backgroundEquipment)) {
+            this.wizardData.backgroundEquipment = bgEqOptions[0];
+        }
+        bgEqSelect.value = this.wizardData.backgroundEquipment;
+
+        bgEqSelect.onchange = async (e) => {
+            this.wizardData.backgroundEquipment = (e.target as HTMLSelectElement).value;
+            await this.renderStep();
+        };
+
+        if (showBgItems) {
+            const bgItemsDiv = container.createDiv({ attr: { style: "margin-bottom: 12px; margin-left: 15px; border-left: 2px solid var(--dnd-ui-color-border-active); padding-left: 10px;" } });
+            bgItemsDiv.createEl("label", { text: "Background Chosen Items (Required): ", attr: { style: "display: block; margin-bottom: 4px; color: var(--dnd-ui-color-text-sublabel);" } });
+            const bgItemsInput = bgItemsDiv.createEl("input", { type: "text", value: this.wizardData.backgroundChosenItems || "" });
+            bgItemsInput.style.width = "100%";
+            bgItemsInput.placeholder = bgPlaceholder;
+            bgItemsInput.onchange = (e) => this.wizardData.backgroundChosenItems = (e.target as HTMLInputElement).value;
+        }
+
+        // --- Weapon Section ---
+        container.createEl("h4", { text: "Equipped Items", attr: { style: "margin-top: 20px; margin-bottom: 10px; color: var(--dnd-ui-color-text-muted);" } });
         const weaponGrid = container.createDiv({ attr: { style: "display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px;" } });
 
         const weaponNameDiv = weaponGrid.createDiv();
         weaponNameDiv.createEl("label", { text: "Weapon Name: ", attr: { style: "display: block; font-size: 0.9em; margin-bottom: 4px;" } });
         const weaponInput = weaponNameDiv.createEl("input", { type: "text", value: this.wizardData.weapon || "" });
-        weaponInput.style.width = "100%";
-        weaponInput.placeholder = "Longsword";
+        weaponInput.style.width = "100%"; weaponInput.placeholder = "Longsword";
         weaponInput.onchange = (e) => this.wizardData.weapon = (e.target as HTMLInputElement).value;
 
         const weaponDmgDiv = weaponGrid.createDiv();
         weaponDmgDiv.createEl("label", { text: "Weapon Damage: ", attr: { style: "display: block; font-size: 0.9em; margin-bottom: 4px;" } });
         const weaponDmgInput = weaponDmgDiv.createEl("input", { type: "text", value: this.wizardData.weaponDamage || "" });
-        weaponDmgInput.style.width = "100%";
-        weaponDmgInput.placeholder = "1d8 Slashing";
+        weaponDmgInput.style.width = "100%"; weaponDmgInput.placeholder = "1d8 Slashing";
         weaponDmgInput.onchange = (e) => this.wizardData.weaponDamage = (e.target as HTMLInputElement).value;
 
-        // Armor Section
+        // --- Armor Section ---
         const armorGrid = container.createDiv({ attr: { style: "display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px;" } });
 
         const armorNameDiv = armorGrid.createDiv();
         armorNameDiv.createEl("label", { text: "Armor Name: ", attr: { style: "display: block; font-size: 0.9em; margin-bottom: 4px;" } });
         const armorInput = armorNameDiv.createEl("input", { type: "text", value: this.wizardData.armor || "" });
-        armorInput.style.width = "100%";
-        armorInput.placeholder = "Chain Mail";
+        armorInput.style.width = "100%"; armorInput.placeholder = "Chain Mail";
         armorInput.onchange = (e) => this.wizardData.armor = (e.target as HTMLInputElement).value;
 
         const armorAcDiv = armorGrid.createDiv();
         armorAcDiv.createEl("label", { text: "Armor AC: ", attr: { style: "display: block; font-size: 0.9em; margin-bottom: 4px;" } });
         const armorAcInput = armorAcDiv.createEl("input", { type: "number", value: this.wizardData.armorAc || "" });
-        armorAcInput.style.width = "100%";
-        armorAcInput.placeholder = "16";
+        armorAcInput.style.width = "100%"; armorAcInput.placeholder = "16";
         armorAcInput.onchange = (e) => this.wizardData.armorAc = Number((e.target as HTMLInputElement).value);
     }
 
-    renderStepFour(container: HTMLElement) {
+    renderStepFive(container: HTMLElement) {
         container.createEl("h3", { text: "Finalization", cls: "dnd-class-header" });
         container.createEl("p", { text: "Review your choices. Clicking finish will generate the sheet!" });
     }
@@ -1493,22 +3824,101 @@ class CharacterWizardModal extends Modal {
         const randomId = Math.random().toString(36).substring(2, 6);
         const stateKey = `${safeName}_${randomId}`;
 
-        // 2. Fetch Dynamic Data from Class JSON
-        let hitDice = "d8";
-        let proficiencies = ["<chosen ability>", "<chosen ability>"];
-        
+        // 2. Fetch Dynamic Data from Class & Background JSON
+        let DnD_hit_dice = "d8";
+        let savingThrows: string[] = [];
+        let proficiencyBonusArray: any[] | null = null;
+        let bgFeat = "";
+        let bgDataStore: any = null;
+        let unarmoredDefense = "";
+        let attackStat = "strength";
+        let spellcastingData: any = null;
+        let pactMagicData: any = null;
+
         if (this.wizardData.dndClass) {
-            // Using your existing helper to grab the JSON data!
             const classData = await getClassData(this.app, this.plugin.settings, this.wizardData.dndClass);
             if (classData) {
-                if (classData.hit_dice) hitDice = classData.hit_dice;
-                
-                // If you ever add saving_throws to your JSONs, it automatically reads them here!
-                if (classData.saving_throws && Array.isArray(classData.saving_throws)) {
-                    proficiencies = classData.saving_throws.map((st: string) => st.charAt(0).toUpperCase() + st.slice(1));
+                const hd = classData.HitDice || classData.hitDice || classData.hit_dice;
+                if (hd) DnD_hit_dice = hd;
+
+                if (classData.savingThroughProf && Array.isArray(classData.savingThroughProf)) {
+                    savingThrows = classData.savingThroughProf;
                 }
+
+                if (classData.proficiencyBonus && Array.isArray(classData.proficiencyBonus)) {
+                    proficiencyBonusArray = classData.proficiencyBonus;
+                }
+
+                // Extract Data-Driven Mechanics
+                if (classData.unarmoredDefense) unarmoredDefense = String(classData.unarmoredDefense).toLowerCase().trim();
+                if (classData.defaultAttackStat) attackStat = String(classData.defaultAttackStat).toLowerCase().trim();
+
+                // Extract Spellcasting Engine Data
+                if (classData.spellcasting) spellcastingData = classData.spellcasting;
+                if (classData.pactMagic) pactMagicData = classData.pactMagic;
             }
         }
+
+        if (this.wizardData.background) {
+            bgDataStore = await getBackgroundData(this.app, this.plugin.settings, this.wizardData.background);
+            if (bgDataStore && bgDataStore.feat) {
+                bgFeat = bgDataStore.feat.split('-').map((word: string) => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+            }
+        }
+
+        // --- Calculate Final Stats (Base + Background Bonuses) ---
+        const getStatDetails = (statName: string) => {
+            const base = this.wizardData[statName] || 10;
+            const bonus = this.wizardData.chosenAbilityBonuses
+                ? this.wizardData.chosenAbilityBonuses.filter((b: string) => b.toLowerCase() === statName.toLowerCase()).length
+                : 0;
+            return { base, bonus, final: base + bonus };
+        };
+
+        const strStats = getStatDetails("strength");
+        const dexStats = getStatDetails("dexterity");
+        const conStats = getStatDetails("constitution");
+        const intStats = getStatDetails("intelligence");
+        const wisStats = getStatDetails("wisdom");
+        const chaStats = getStatDetails("charisma");
+
+        // --- Dynamic AC Modifier Calculation ---
+        const dexMod = Math.floor((dexStats.final - 10) / 2);
+        let armorAcBonus = dexMod;
+        let isUnarmored = true;
+        const manualArmorAc = Number(this.wizardData.armorAc) || 0;
+
+        if (this.wizardData.armor && this.wizardData.armor.toLowerCase() !== "none") {
+            const safeArmorName = this.wizardData.armor.toLowerCase().replace(/['"]/g, '').trim().replace(/\s+/g, '-');
+            const armorData = await getItemData(this.app, this.plugin.settings, safeArmorName);
+
+            if (armorData && armorData.ac && armorData.category) {
+                isUnarmored = false;
+                this.wizardData.armorAc = parseInt(armorData.ac);
+                const category = String(armorData.category).toLowerCase();
+                if (category.includes("light")) {
+                    armorAcBonus = dexMod;
+                } else if (category.includes("medium")) {
+                    armorAcBonus = Math.min(dexMod, 2);
+                } else if (category.includes("heavy")) {
+                    armorAcBonus = 0;
+                }
+            } else if (manualArmorAc > 10) {
+                isUnarmored = false;
+                this.wizardData.armorAc = manualArmorAc;
+            }
+        }
+
+        if (isUnarmored) {
+            this.wizardData.armorAc = manualArmorAc > 10 ? manualArmorAc : 10;
+            if (unarmoredDefense) {
+                const secondaryStat = getStatDetails(unarmoredDefense);
+                armorAcBonus = dexMod + Math.floor((secondaryStat.final - 10) / 2);
+            }
+        }
+
+        this.wizardData.armorAcBonus = armorAcBonus;
+        this.wizardData.armorAcMod = 0; // Initialize manual modifier strictly to 0
 
         // 3. Prepare the Template string
         let finalContent = MarkdownNotes['dnd_character_template'] || "";
@@ -1517,61 +3927,187 @@ class CharacterWizardModal extends Modal {
             return;
         }
 
-        // 4. Inject Frontmatter Data (Safely maps directly to your Template's keys)
+        // 4. Inject Frontmatter Data
+        const lvlIdx = Math.max(0, (Number(this.wizardData.level) || 1) - 1);
+        const DnD_proficiency_bonus = (proficiencyBonusArray && proficiencyBonusArray[lvlIdx] !== undefined)
+            ? Number(proficiencyBonusArray[lvlIdx]) || Math.ceil(1 + (this.wizardData.level / 4))
+            : Math.ceil(1 + (this.wizardData.level / 4));
+
         const injectYAML = (key: string, value: any) => {
             if (value !== undefined && value !== "") {
                 const regex = new RegExp(`^${key}:.*$`, "m");
-                finalContent = finalContent.replace(regex, `${key}: ${value}`);
+                if (regex.test(finalContent)) {
+                    finalContent = finalContent.replace(regex, `${key}: ${value}`);
+                } else {
+                    // Safely insert before the CLOSING '---' of the frontmatter block!
+                    finalContent = finalContent.replace(/^(---\r?\n[\s\S]*?\r?\n)---/m, `$1${key}: ${value}\n---`);
+                }
             }
         };
 
-        // Core variables
-        injectYAML("level", this.wizardData.level);
-        injectYAML("DnD_race", this.wizardData.race);
-        injectYAML("DnD_class", this.wizardData.dndClass);
+        const injectListYAML = (key: string, value: any) => {
+            if (value !== undefined && value !== "") {
+                let listStr = "";
+                if (Array.isArray(value)) {
+                    listStr = "\n" + value.map(v => `  - ${v}`).join("\n");
+                } else if (typeof value === "string") {
+                    const arr = value.split(',').map(s => s.trim()).filter(s => s !== "");
+                    listStr = "\n" + arr.map(v => `  - ${v}`).join("\n");
+                }
+                const regex = new RegExp(`^${key}:.*$`, "m");
+                if (regex.test(finalContent)) {
+                    finalContent = finalContent.replace(regex, `${key}:${listStr}`);
+                } else {
+                    // Safely insert before the CLOSING '---' of the frontmatter block!
+                    finalContent = finalContent.replace(/^(---\r?\n[\s\S]*?\r?\n)---/m, `$1${key}:${listStr}\n---`);
+                }
+            }
+        };
+
+        // --- Core Single Variables ---
+        injectYAML("DnD_id", stateKey);
+        finalContent = finalContent.replace(/^level:/m, "DnD_level:");
+        finalContent = finalContent.replace(/frontmatter\.level\b/g, "frontmatter.DnD_level");
+        finalContent = finalContent.replace(/^proficiency_bonus:/m, "DnD_proficiencyBonus:");
+        finalContent = finalContent.replace(/frontmatter\.proficiency_bonus\b/g, "frontmatter.DnD_proficiencyBonus");
+        finalContent = finalContent.replace(/^(spellcasting_ability|DnD_spellcasting-ability):/m, "DnD_spellcastingAbility:");
+        injectYAML("DnD_level", this.wizardData.level);
+        injectYAML("DnD_proficiencyBonus", DnD_proficiency_bonus);
+        injectYAML("DnD_raceLineage", this.wizardData.raceLineage);
         injectYAML("DnD_background", this.wizardData.background);
-        injectYAML("spellcastingAbility", this.wizardData.spellcastingAbility);
+        injectYAML("DnD_backgroundFeat", bgFeat);
+        injectYAML("DnD_spellcastingAbility", this.wizardData.DnD_spellcasting_ability);
         injectYAML("DnD_classEquipment", this.wizardData.classEquipment);
         injectYAML("DnD_backgroundEquipment", this.wizardData.backgroundEquipment);
+        const finalClassChoices = this.wizardData.classChoices.map((c: any[]) => [String(c[1]), String(c[2])]);
+        // Wrapping in single quotes forces Obsidian's UI to accept it as a clean text string!
+        injectYAML("DnD_classChoices", `'${JSON.stringify(finalClassChoices)}'`);
 
-        // Equipment variables
+        // Initialize Empty Spells Arrays
+        injectYAML("DnD_spells", `'[]'`);
+        injectYAML("DnD_preparedSpells", `'[]'`);
+
+        // Dynamically Build Consolidated 9-Element Spell Slots Array: '[["<Spell-Slots>","<Used-Spell-Slots>"], ...]'
+        const targetLvl = this.wizardData.level.toString();
+        const compiledSpellSlots: [string, string][] = Array.from({ length: 9 }, () => ["0", "0"]);
+
+        if (spellcastingData && spellcastingData[targetLvl] && Array.isArray(spellcastingData[targetLvl].slots)) {
+            const slots = spellcastingData[targetLvl].slots;
+            for (let i = 0; i < 9; i++) {
+                const maxStr = String(Number(slots[i]) || 0);
+                compiledSpellSlots[i] = [maxStr, "0"];
+            }
+        }
+        // Clean up any legacy DnD_spellSlots_1..9 lines if they exist in the template, then inject DnD_spellSlots
+        finalContent = finalContent.replace(/^DnD_spellSlots_[2-9]:.*\n?/gm, "");
+        finalContent = finalContent.replace(/^DnD_spellSlots_1:/m, "DnD_spellSlots:");
+        injectYAML("DnD_spellSlots", `'${JSON.stringify(compiledSpellSlots)}'`);
+
+        // --- NEW: EXPERTISE & PROFICIENCY ARRAYS ---
+        // Compile the Proficiency Array: [["stealth", "class"], ["history", "background"]]
+        let compiledProficiencies: any[] = [];
+        (this.wizardData.chosenSkills || []).forEach((s: string) => { if (s) compiledProficiencies.push([String(s), "class"]); });
+        (this.wizardData.chosenBgSkills || []).forEach((s: string) => { if (s) compiledProficiencies.push([String(s), "background"]); });
+        if (bgDataStore && bgDataStore.skills) {
+            bgDataStore.skills.forEach((s: string) => { if (s) compiledProficiencies.push([String(s).toLowerCase(), "background"]); });
+        }
+        // Wrapping in single quotes prevents Obsidian UI warnings
+        injectYAML("DnD_skillProficiencies", `'${JSON.stringify(compiledProficiencies)}'`);
+
+        // Compile Expertise: [["stealth", "1"]] (using strings in arrays)
+        const finalExpertise = (this.wizardData.expertiseChoices || [])
+            .filter((c: any[]) => c[0] !== "")
+            .map((c: any[]) => [String(c[0]), String(c[1])]);
+        // Wrapping in single quotes prevents Obsidian UI warnings
+        injectYAML("DnD_skillExpertise", `'${JSON.stringify(finalExpertise)}'`);
+
+        // Map Class Saving Throw Proficiencies ("savingThroughProf") into DnD_classProficiencies
+        const formattedClassProfs = savingThrows.map((st: string) => String(st).toLowerCase());
+        injectYAML("DnD_classProficiencies", `'${JSON.stringify(formattedClassProfs)}'`);
+
+        // --- Core List Variables ---
+        injectListYAML("DnD_race", this.wizardData.race);
+        injectListYAML("DnD_class", this.wizardData.dndClass);
+        injectListYAML("DnD_Subclass", this.wizardData.subclass);
+        injectListYAML("DnD_languages", this.wizardData.languages);
+        injectListYAML("DnD_extraFeats", this.wizardData.extraFeats);
+        injectListYAML("DnD_classChosenItems", this.wizardData.classChosenItems);
+        injectListYAML("DnD_backgroundChosenItems", this.wizardData.backgroundChosenItems);
+
+        // --- Equipment & Combat Formula variables ---
         injectYAML("DnD_weapon", this.wizardData.weapon);
         injectYAML("DnD_weaponDamage", this.wizardData.weaponDamage);
         injectYAML("DnD_armor", this.wizardData.armor);
         injectYAML("DnD_armorAc", this.wizardData.armorAc);
+        injectYAML("DnD_armorAcBonus", this.wizardData.armorAcBonus);
+        injectYAML("DnD_armorAcMod", this.wizardData.armorAcMod);
+        injectYAML("DnD_attackRollMod", 0);
+        injectYAML("DnD_unarmoredDefense", unarmoredDefense);
+        injectYAML("DnD_attackStat", attackStat);
 
-        // Stat variables
-        injectYAML("DnD_strength", this.wizardData.strength);
-        injectYAML("DnD_dexterity", this.wizardData.dexterity);
-        injectYAML("DnD_constitution", this.wizardData.constitution);
-        injectYAML("DnD_intelligence", this.wizardData.intelligence);
-        injectYAML("DnD_wisdom", this.wizardData.wisdom);
-        injectYAML("DnD_charisma", this.wizardData.charisma);
+        // --- Stat variables ---
+        const DnD_current_health = this.wizardData.maxHealth;
+        injectYAML("DnD_maxHealth", this.wizardData.maxHealth);
+        injectYAML("DnD_currentHealth", DnD_current_health);
+        injectYAML("DnD_hitDice", DnD_hit_dice);
+        injectYAML("DnD_speed", this.wizardData.speed);
+        injectYAML("DnD_strength", strStats.final);
+        injectYAML("DnD_dexterity", dexStats.final);
+        injectYAML("DnD_constitution", conStats.final);
+        injectYAML("DnD_intelligence", intStats.final);
+        injectYAML("DnD_wisdom", wisStats.final);
+        injectYAML("DnD_charisma", chaStats.final);
 
-        // 5. Replace Code Block Placeholders
-        finalContent = finalContent.replace(/<class_hit_dice>/g, hitDice);
-        finalContent = finalContent.replace(/din_health/g, `${stateKey}_health`);
-        finalContent = finalContent.replace(/din_consumable/g, `${stateKey}_consumable`);
-        
-        // Replace the first two instances of <chosen ability> with the saving throws (or fallback)
-        finalContent = finalContent.replace(/<chosen ability>/, proficiencies[0] || "<chosen ability>");
-        finalContent = finalContent.replace(/<chosen ability>/, proficiencies[1] || "<chosen ability>");
+        // --- 5B. PRECISE SKILLS BLOCK REWRITING ---
+        const cSkills = compiledProficiencies.filter(p => p[1] === "class").map(p => `  - ${p[0]}`);
+        const bSkills = compiledProficiencies.filter(p => p[1] === "background").map(p => `  - ${p[0]}`);
 
-        // Armor block fallback
-        if (this.wizardData.armorAc) {
-            finalContent = finalContent.replace(/<same_as_armour_value>/g, String(this.wizardData.armorAc));
-        }
+        let profInject = "";
+        if (cSkills.length > 0) profInject += `  #Class\n${cSkills.join('\n')}\n`;
+        if (bSkills.length > 0) profInject += `  #Background\n${bSkills.join('\n')}\n`;
+        if (profInject === "") profInject = "  - <chosen skills>\n";
 
-        // 6. Paste to Editor
+        // Matches both ```dnd-skills and legacy ```skills if the template uses inline lists
+        const profRegex = /(```(?:dnd-)?skills[\s\S]*?proficiencies:\s*\n)([\s\S]*?)(?=\n[ \t]*expertise:)/;
+        finalContent = finalContent.replace(profRegex, `$1${profInject}`);
+
+        let expInject = finalExpertise.length > 0
+            ? finalExpertise.map((e: any[]) => `  - ${e[0]}`).join('\n') + '\n'
+            : "  - <chosen skills>\n";
+
+        const expRegex = /(expertise:\s*\n)([\s\S]*?)(?=\n[ \t]*half_proficiencies:)/;
+        finalContent = finalContent.replace(expRegex, `$1${expInject}`);
+
+        // --- 5D. Update Stat History Table ---
+        const formatTableStat = (abbr: string, stats: { base: number, bonus: number }) => {
+            const baseStr = String(stats.base).padStart(2, ' ');
+            const bonusStr = stats.bonus > 0 ? `+${stats.bonus}` : " - ";
+            const regex = new RegExp(`\\|\\s*${abbr}\\s*\\|\\s*-\\s*\\|\\s*--->\\s*\\|`);
+            finalContent = finalContent.replace(regex, `| ${abbr} |  ${baseStr}  |  ${bonusStr.padEnd(4, ' ')} |`);
+        };
+
+        formatTableStat("STR", strStats);
+        formatTableStat("DEX", dexStats);
+        formatTableStat("CON", conStats);
+        formatTableStat("INT", intStats);
+        formatTableStat("WIS", wisStats);
+        formatTableStat("CHA", chaStats);
+
+        // 6. Paste to Editor and Finalize UI State
         try {
             const currentState = view.getState();
             if (currentState.mode !== 'source') {
                 currentState.mode = 'source';
                 await view.setState(currentState, { history: false });
             }
-            setTimeout(() => {
+
+            setTimeout(async () => {
                 view.editor.replaceSelection(finalContent);
                 new Notice("Character Sheet Generated Successfully!");
+
+                const newState = view.getState();
+                newState.mode = 'preview';
+                await view.setState(newState, { history: false });
             }, 100);
         } catch (error) {
             console.error("Failed to insert template:", error);
@@ -1698,7 +4234,7 @@ class DnDSettingsTab extends PluginSettingTab {
             });
 
             item.addEventListener('dragleave', (e) => {
-                (e.target as HTMLElement).style.border = '1px solid var(--dnd-border-primary)';
+                (e.target as HTMLElement).style.border = '1px solid var(--dnd-ui-color-border-primary)';
             });
 
             item.addEventListener('drop', async (e) => {
@@ -1726,50 +4262,1785 @@ class DnDSettingsTab extends PluginSettingTab {
 
         // --- Theme Engine UI ---
         containerEl.createEl('h3', { text: 'Appearance & Theming', cls: 'setting-item-name dnd-settings-header' });
+        containerEl.createEl('p', { text: 'Select a preset theme or customize individual colors. Changes apply instantly.', cls: 'setting-item-description' });
 
-        new Setting(containerEl)
-            .setName('Theme Selection')
-            .setDesc('Choose between the default layout colors or create your own custom palette.')
-            .addDropdown(drop => drop
-                .addOption('default', 'Default Dark Theme')
-                .addOption('custom', 'Custom Colors')
-                .setValue(this.plugin.settings.themeChoice)
-                .onChange(async (value) => {
-                    this.plugin.settings.themeChoice = value as "default" | "custom";
+        // Build the Theme Dropdown
+        const themeDropdown = new Setting(containerEl)
+            .setName('Theme Preset')
+            .setDesc('Choose a predefined color theme.');
+
+        themeDropdown.addDropdown(drop => {
+            Object.entries(THEMES).forEach(([key, theme]) => {
+                drop.addOption(key, theme.name);
+            });
+            drop.setValue(this.plugin.settings.selectedTheme);
+            drop.onChange(async (value) => {
+                const theme = THEMES[value];
+                if (theme) {
+                    this.plugin.settings.selectedTheme = value;
+                    Object.assign(this.plugin.settings, theme.colors);
                     this.plugin.applyTheme();
                     await this.plugin.saveSettings();
                     this.display();
-                }));
+                }
+            });
+        });
 
-        // Only show color pickers if "Custom" is selected
-        if (this.plugin.settings.themeChoice === "custom") {
-            containerEl.createEl('p', { text: 'Customize your palette. Changes apply instantly.', cls: 'setting-item-description' });
+        // Generate Color Pickers
+        const COLOR_GROUPS = [
+            { header: "Background Colors", keys: ["colorBgPrimary", "colorBgSecondary", "colorBgTertiary", "colorBgHover", "colorBgDarker", "colorBgGroup", "colorBgProficient"] },
+            { header: "Text Colors", keys: ["colorTextPrimary", "colorTextSecondary", "colorTextSublabel", "colorTextBright", "colorTextMuted", "colorTextGroup"] },
+            { header: "Border Colors", keys: ["colorBorderPrimary", "colorBorderActive", "colorBorderFocus"] },
+            { header: "Accents", keys: ["colorAccentTeal", "colorAccentRed", "colorAccentPurple"] }
+        ];
 
-            // Grouping for a clean UI
-            const colorGroups = {
-                "Background Colors": ["--dnd-bg-primary", "--dnd-bg-secondary", "--dnd-bg-tertiary", "--dnd-bg-hover", "--dnd-bg-darker", "--dnd-bg-group"],
-                "Text Colors": ["--dnd-text-primary", "--dnd-text-secondary", "--dnd-text-sublabel", "--dnd-text-bright", "--dnd-text-muted", "--dnd-text-group"],
-                "Border Colors": ["--dnd-border-primary", "--dnd-border-active", "--dnd-border-focus"],
-                "Accents": ["--dnd-accent-teal", "--dnd-accent-red", "--dnd-accent-purple"]
+        COLOR_GROUPS.forEach(group => {
+            containerEl.createEl('h4', { text: group.header, cls: 'dnd-settings-subgroup' });
+
+            group.keys.forEach((key: keyof DnDPluginSettings) => {
+                const readableName = key.replace('color', '').replace(/([A-Z])/g, ' $1').trim();
+
+                new Setting(containerEl)
+                    .setName(readableName)
+                    .addColorPicker(color => color
+                        .setValue(this.plugin.settings[key] as string)
+                        .onChange(async (value) => {
+                            (this.plugin.settings as any)[key] = value;
+                            this.plugin.settings.selectedTheme = "custom";
+                            this.plugin.applyTheme();
+                            await this.plugin.saveSettings();
+                        }));
+            });
+        });
+    }
+}
+
+// --- EQUIP ITEMS MODAL ---
+class EquipItemsModal extends Modal {
+    plugin: DnDCharacterSheetHelperPlugin;
+    sourcePath: string;
+
+    weaponName: string = "";
+    armorName: string = "";
+
+    originalWeapon: string = "";
+    originalArmor: string = "";
+
+    constructor(app: App, plugin: DnDCharacterSheetHelperPlugin, sourcePath: string) {
+        super(app);
+        this.plugin = plugin;
+        this.sourcePath = sourcePath;
+    }
+
+    onOpen() {
+        const { contentEl } = this;
+        contentEl.createEl("h3", { text: "Equip Items", cls: "dnd-section-header" });
+
+        // Fetch current loadout from frontmatter to pre-fill the inputs
+        const fileCache = this.app.metadataCache.getCache(this.sourcePath);
+        const frontmatter = fileCache?.frontmatter || {};
+
+        this.originalWeapon = frontmatter["DnD_weapon"] || "";
+        this.originalArmor = frontmatter["DnD_armor"] || "";
+
+        this.weaponName = this.originalWeapon;
+        this.armorName = this.originalArmor;
+
+        // --- Weapon Input ---
+        const weaponDiv = contentEl.createDiv({ attr: { style: "margin-bottom: 15px;" } });
+        weaponDiv.createEl("label", { text: "Weapon Name: ", attr: { style: "display: block; margin-bottom: 4px; color: var(--dnd-ui-color-text-sublabel);" } });
+        const weaponInput = weaponDiv.createEl("input", { type: "text", value: this.weaponName });
+        weaponInput.style.width = "100%";
+        weaponInput.placeholder = "e.g., Longsword";
+        weaponInput.onchange = (e) => this.weaponName = (e.target as HTMLInputElement).value;
+
+        // --- Armor Input ---
+        const armorDiv = contentEl.createDiv({ attr: { style: "margin-bottom: 20px;" } });
+        armorDiv.createEl("label", { text: "Armor Name: ", attr: { style: "display: block; margin-bottom: 4px; color: var(--dnd-ui-color-text-sublabel);" } });
+        const armorInput = armorDiv.createEl("input", { type: "text", value: this.armorName });
+        armorInput.style.width = "100%";
+        armorInput.placeholder = "e.g., Chain Mail";
+        armorInput.onchange = (e) => this.armorName = (e.target as HTMLInputElement).value;
+
+        // Listen for Enter key on either input to trigger save
+        const handleEnter = (e: KeyboardEvent) => { if (e.key === "Enter") this.equipItems(); };
+        weaponInput.onkeyup = handleEnter;
+        armorInput.onkeyup = handleEnter;
+
+        // --- Footer Buttons ---
+        const btnDiv = contentEl.createDiv({ attr: { style: "display: flex; justify-content: flex-end; gap: 10px; border-top: 1px solid var(--dnd-ui-color-border-primary); padding-top: 15px;" } });
+        const cancelBtn = btnDiv.createEl("button", { text: "Cancel" });
+        cancelBtn.onclick = () => this.close();
+
+        const confirmBtn = btnDiv.createEl("button", { text: "Equip Loadout", cls: "mod-cta" });
+        confirmBtn.onclick = async () => {
+            await this.equipItems();
+        };
+    }
+
+    onClose() {
+        this.contentEl.empty();
+    }
+
+    async equipItems() {
+        let updates: Record<string, any> = {};
+        let finalArmorDisplayName = this.armorName;
+        let armorWasUpdated = false;
+
+        // 1. Process Weapon Update (Only if changed)
+        if (this.weaponName !== this.originalWeapon) {
+            const safeWeaponName = this.weaponName.toLowerCase().replace(/['"]/g, '').trim().replace(/\s+/g, '-');
+            const weaponData = await getItemData(this.app, this.plugin.settings, safeWeaponName);
+
+            updates["DnD_weapon"] = weaponData?.name || this.weaponName;
+            updates["DnD_weaponDamage"] = weaponData?.damage || "";
+            if (!weaponData && this.weaponName) new Notice(`Warning: "${this.weaponName}" not found. Equipped as custom.`);
+        }
+
+        // 2. Process Armor Update (Only if changed)
+        if (this.armorName !== this.originalArmor) {
+            armorWasUpdated = true;
+            const safeArmorName = this.armorName.toLowerCase().replace(/['"]/g, '').trim().replace(/\s+/g, '-');
+            const armorData = await getItemData(this.app, this.plugin.settings, safeArmorName);
+
+            const fileCache = this.app.metadataCache.getCache(this.sourcePath);
+            const frontmatter = fileCache?.frontmatter || {};
+            const currentDex = Number(frontmatter["DnD_dexterity"]) || 10;
+            const dexMod = Math.floor((currentDex - 10) / 2);
+
+            let unarmoredStat = frontmatter["DnD_unarmoredDefense"] ? String(frontmatter["DnD_unarmoredDefense"]).toLowerCase().trim() : "";
+            if (!unarmoredStat && frontmatter["DnD_class"]) {
+                const primaryClass = Array.isArray(frontmatter["DnD_class"]) ? frontmatter["DnD_class"][0] : frontmatter["DnD_class"];
+                const classData = await getClassData(this.app, this.plugin.settings, primaryClass);
+                if (classData?.unarmoredDefense) {
+                    unarmoredStat = String(classData.unarmoredDefense).toLowerCase().trim();
+                    updates["DnD_unarmoredDefense"] = unarmoredStat;
+                }
+            }
+
+            let armorAcBonus = dexMod;
+            let baseAc = 10;
+
+            if (armorData && armorData.ac && armorData.category) {
+                baseAc = parseInt(armorData.ac);
+                const category = String(armorData.category).toLowerCase();
+
+                if (category.includes("light")) armorAcBonus = dexMod;
+                else if (category.includes("medium")) armorAcBonus = Math.min(dexMod, 2);
+                else if (category.includes("heavy")) armorAcBonus = 0;
+
+                finalArmorDisplayName = armorData.name;
+                updates["DnD_armor"] = armorData.name;
+                updates["DnD_armorAc"] = baseAc;
+                updates["DnD_armorAcBonus"] = armorAcBonus;
+            } else {
+                if (this.armorName && this.armorName.toLowerCase() !== "none") {
+                    new Notice(`Warning: "${this.armorName}" not found. AC set to Unarmored.`);
+                }
+
+                if (unarmoredStat) {
+                    const secondaryScore = Number(frontmatter[`DnD_${unarmoredStat}`]) || 10;
+                    armorAcBonus = dexMod + Math.floor((secondaryScore - 10) / 2);
+                }
+
+                finalArmorDisplayName = this.armorName || "None";
+                updates["DnD_armor"] = this.armorName || "None";
+                updates["DnD_armorAc"] = 10;
+                updates["DnD_armorAcBonus"] = armorAcBonus;
+            }
+        }
+
+        // Only process file writes if actual changes occurred
+        if (Object.keys(updates).length > 0) {
+            await this.plugin.updateCharacterFrontmatter(this.sourcePath, updates);
+            new Notice(`Loadout equipped successfully!`);
+        }
+
+        this.close();
+    }
+}
+
+// --- CONSOLIDATED MANAGE CHARACTER MODAL ---
+class ManageCharacterModal extends Modal {
+    plugin: DnDCharacterSheetHelperPlugin;
+    sourcePath: string;
+
+    // Tab Navigation State
+    activeTab: "stats" | "attack" | "ac" | "skills" | "items" = "stats";
+
+    // --- Unified Data State ---
+    // 1. Stats State
+    currentStats: Record<string, number> = { strength: 10, dexterity: 10, constitution: 10, intelligence: 10, wisdom: 10, charisma: 10 };
+    // 2. AC State
+    currentAcMod: number = 0;
+    // 3. Attack State
+    currentAttackStat: string = "strength";
+    addAttackProficiency: boolean = true;
+    extraAttackMod: number = 0;
+    // 4. Skills State
+    currentExtraSkills: string[] = [];
+    baseProficiencies: [string, string][] = [];
+    allSkills = [
+        "Acrobatics", "Animal Handling", "Arcana", "Athletics", "Deception",
+        "History", "Insight", "Intimidation", "Investigation", "Medicine",
+        "Nature", "Perception", "Performance", "Persuasion", "Religion",
+        "Sleight of Hand", "Stealth", "Survival"
+    ];
+    // 5. Item Bonuses State (Strictly Strings)
+    currentSkillBonuses: [string, string, string][] = [];
+
+    contentContainer!: HTMLElement;
+
+    constructor(app: App, plugin: DnDCharacterSheetHelperPlugin, sourcePath: string) {
+        super(app);
+        this.plugin = plugin;
+        this.sourcePath = sourcePath;
+    }
+
+    async onOpen() {
+        const { contentEl } = this;
+
+        // Modal Dimension Lock to prevent jittering when switching tabs
+        this.modalEl.style.width = "650px";
+        this.modalEl.style.maxWidth = "90vw";
+
+        contentEl.createEl("h3", { text: "Manage Character", cls: "dnd-section-header", attr: { style: "margin-bottom: 10px;" } });
+
+        // --- FETCH ALL DATA ONCE ---
+        const fileCache = this.app.metadataCache.getCache(this.sourcePath);
+        const frontmatter = fileCache?.frontmatter || {};
+
+        // Fetch Stats
+        const statsList = ["strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"];
+        statsList.forEach(stat => this.currentStats[stat] = Number(frontmatter[`DnD_${stat}`]) || 10);
+
+        // Fetch AC
+        this.currentAcMod = Number(frontmatter["DnD_armorAcMod"]) || 0;
+
+        // Fetch Attack
+        this.extraAttackMod = Number(frontmatter["DnD_attackRollMod"]) || 0;
+        if (frontmatter["DnD_attackStat"]) {
+            this.currentAttackStat = String(frontmatter["DnD_attackStat"]).toLowerCase().trim();
+        }
+
+        // Fetch Skills from Frontmatter Database (Force Strings)
+        let profsRaw = frontmatter["DnD_skillProficiencies"] || [];
+        if (typeof profsRaw === 'string') {
+            try { profsRaw = JSON.parse(profsRaw); } catch { profsRaw = []; }
+        }
+        profsRaw.forEach((p: any) => {
+            if (Array.isArray(p) && p.length > 0) {
+                if (String(p[1]) === "extra") this.currentExtraSkills.push(String(p[0]).toLowerCase());
+                else this.baseProficiencies.push([String(p[0]).toLowerCase(), String(p[1])]);
+            } else if (typeof p === 'string') {
+                this.baseProficiencies.push([String(p).toLowerCase(), "class"]); // Safe fallback for 1D arrays
+            }
+        });
+
+        // Fetch Skill Bonuses from Frontmatter Database (Force Strings)
+        let bonusesRaw = frontmatter["DnD_skillBonuses"] || [];
+        if (typeof bonusesRaw === 'string') {
+            try { bonusesRaw = JSON.parse(bonusesRaw); } catch { bonusesRaw = []; }
+        }
+        this.currentSkillBonuses = bonusesRaw.map((b: any) => [String(b[0]), String(b[1]), String(b[2])]);
+
+        // Fetch Attack Proficiency toggle from frontmatter (defaults to true)
+        this.addAttackProficiency = frontmatter["DnD_attackProficiency"] !== undefined
+            ? Boolean(frontmatter["DnD_attackProficiency"])
+            : true;
+
+        // --- BUILD TAB HEADER ---
+        const tabHeader = contentEl.createDiv({ attr: { style: "display: flex; gap: 5px; border-bottom: 1px solid var(--dnd-ui-color-border-primary); margin-bottom: 15px; padding-bottom: 5px;" } });
+
+        const createTabBtn = (id: typeof this.activeTab, label: string, icon: string) => {
+            const btn = tabHeader.createEl("button", { text: `${icon} ${label}`, attr: { style: "flex: 1; background: transparent; box-shadow: none; border-radius: 4px; color: var(--dnd-ui-color-text-muted);" } });
+            btn.onclick = () => {
+                this.activeTab = id;
+                this.renderTabs(tabHeader);
+                this.renderContent();
+            };
+            return btn;
+        };
+
+        // Rendered in the exact order requested
+        createTabBtn("stats", "Ability Scores", "🖋️");
+        createTabBtn("attack", "Attack Ability", "🎯");
+        createTabBtn("ac", "Armor Class Mod", "🛡️");
+        createTabBtn("skills", "Skills", "🔨");
+        createTabBtn("items", "Items", "🎒");
+
+
+        // --- FIXED CONTENT CONTAINER ---
+        this.contentContainer = contentEl.createDiv({
+            attr: { style: "min-height: 280px; max-height: 400px; overflow-y: auto; padding: 5px;" }
+        });
+
+        // --- FOOTER BUTTONS ---
+        const btnDiv = contentEl.createDiv({ attr: { style: "display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; border-top: 1px solid var(--dnd-ui-color-border-primary); padding-top: 15px;" } });
+        const cancelBtn = btnDiv.createEl("button", { text: "Cancel" });
+        cancelBtn.onclick = () => this.close();
+
+        const saveBtn = btnDiv.createEl("button", { text: "Save All Changes", cls: "mod-cta" });
+        saveBtn.onclick = async (e) => {
+            e.preventDefault();
+            await this.saveAllChanges();
+        };
+
+        // Initial Render
+        this.renderTabs(tabHeader);
+        this.renderContent();
+    }
+
+    renderTabs(tabHeader: HTMLElement) {
+        const buttons = tabHeader.querySelectorAll("button");
+        const tabs = ["stats", "attack", "ac", "skills", "items"];
+
+        buttons.forEach((btn, index) => {
+            if (tabs[index] === this.activeTab) {
+                btn.style.background = "var(--dnd-ui-color-bg-tertiary)";
+                btn.style.color = "var(--dnd-ui-color-text-bright)";
+                btn.style.fontWeight = "bold";
+                btn.style.border = "1px solid var(--dnd-ui-color-border-active)";
+            } else {
+                btn.style.background = "transparent";
+                btn.style.color = "var(--dnd-ui-color-text-muted)";
+                btn.style.fontWeight = "normal";
+                btn.style.border = "1px solid transparent";
+            }
+        });
+    }
+
+    renderContent() {
+        this.contentContainer.empty();
+
+        if (this.activeTab === "stats") {
+            this.contentContainer.createEl("h4", { text: "Base Ability Scores", attr: { style: "margin-top: 0; color: var(--dnd-ui-color-text-bright);" } });
+            const statsGrid = this.contentContainer.createDiv({ attr: { style: "display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px;" } });
+
+            const statsList = ["strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"];
+            statsList.forEach(stat => {
+                const statDiv = statsGrid.createDiv();
+                const displayStat = stat.charAt(0).toUpperCase() + stat.slice(1);
+                statDiv.createEl("label", { text: displayStat, attr: { style: "display: block; margin-bottom: 4px; color: var(--dnd-ui-color-text-sublabel);" } });
+
+                const statInput = statDiv.createEl("input", { type: "number", value: String(this.currentStats[stat]) });
+                statInput.style.width = "100%";
+                statInput.onchange = (e) => this.currentStats[stat] = Number((e.target as HTMLInputElement).value);
+            });
+        }
+
+        else if (this.activeTab === "attack") {
+            this.contentContainer.createEl("h4", { text: "Attack Roll Formula", attr: { style: "margin-top: 0; color: var(--dnd-ui-color-text-bright);" } });
+
+            const statDiv = this.contentContainer.createDiv({ attr: { style: "margin-bottom: 12px;" } });
+            statDiv.createEl("label", { text: "Base Attack Ability:", attr: { style: "display: block; margin-bottom: 4px; color: var(--dnd-ui-color-text-sublabel);" } });
+            const selectEl = statDiv.createEl("select", { attr: { style: "width: 100%;" } });
+            const stats = ["strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"];
+            stats.forEach(stat => selectEl.createEl("option", { text: stat.charAt(0).toUpperCase() + stat.slice(1), value: stat }));
+            selectEl.value = this.currentAttackStat;
+            selectEl.onchange = (e) => this.currentAttackStat = (e.target as HTMLSelectElement).value;
+
+            const profDiv = this.contentContainer.createDiv({ attr: { style: "display: flex; align-items: center; gap: 10px; margin-bottom: 12px;" } });
+            const profToggle = profDiv.createEl("input", { type: "checkbox" });
+            profToggle.checked = this.addAttackProficiency;
+            profToggle.onchange = (e) => this.addAttackProficiency = (e.target as HTMLInputElement).checked;
+            profDiv.createEl("label", { text: "Add Proficiency Bonus", attr: { style: "color: var(--dnd-ui-color-text-primary);" } });
+
+            const modDiv = this.contentContainer.createDiv({ attr: { style: "margin-bottom: 12px;" } });
+            modDiv.createEl("label", { text: "Extra Modifier (Magic Weapons, Buffs):", attr: { style: "display: block; margin-bottom: 4px; color: var(--dnd-ui-color-text-sublabel);" } });
+            const modInput = modDiv.createEl("input", { type: "number", value: String(this.extraAttackMod), attr: { style: "width: 100%;" } });
+            modInput.onchange = (e) => this.extraAttackMod = Number((e.target as HTMLInputElement).value);
+        }
+
+        else if (this.activeTab === "ac") {
+            this.contentContainer.createEl("h4", { text: "Armor Class Adjustments", attr: { style: "margin-top: 0; color: var(--dnd-ui-color-text-bright);" } });
+
+            const inputDiv = this.contentContainer.createDiv({ attr: { style: "margin-bottom: 15px;" } });
+            inputDiv.createEl("label", { text: "Miscellaneous AC Modifier (Shields, Buffs):", attr: { style: "display: block; margin-bottom: 4px; color: var(--dnd-ui-color-text-sublabel);" } });
+            const inputEl = inputDiv.createEl("input", { type: "number", value: String(this.currentAcMod), attr: { style: "width: 100%;" } });
+            inputEl.onchange = (e) => this.currentAcMod = Number((e.target as HTMLInputElement).value);
+
+            this.contentContainer.createEl("p", { text: "Note: Your Base AC and Dexterity limits are automatically calculated based on your equipped armor and ability scores.", attr: { style: "color: var(--dnd-ui-color-text-muted); font-size: 0.9em; font-style: italic;" } });
+        }
+
+        else if (this.activeTab === "skills") {
+            this.contentContainer.createEl("h4", { text: "Additional Skill Proficiencies", attr: { style: "margin-top: 0; color: var(--dnd-ui-color-text-bright);" } });
+
+            const listDiv = this.contentContainer.createDiv({ attr: { style: "margin-bottom: 15px; max-height: 140px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;" } });
+            if (this.currentExtraSkills.length === 0) {
+                listDiv.createEl("p", { text: "No extra skills added.", attr: { style: "color: var(--dnd-ui-color-text-muted); font-style: italic; margin: 0; text-align: center; padding: 10px;" } });
+            } else {
+                this.currentExtraSkills.forEach((skill, index) => {
+                    const row = listDiv.createDiv({ attr: { style: "display: flex; justify-content: space-between; align-items: center; background: var(--dnd-ui-color-bg-tertiary); padding: 6px 10px; border-radius: 6px; border: 1px solid var(--dnd-ui-color-border-primary);" } });
+                    row.createEl("span", { text: skill.replace(/\b\w/g, c => c.toUpperCase()), attr: { style: "color: var(--dnd-ui-color-text-bright); font-weight: 500;" } });
+
+                    const delBtn = row.createEl("button", { text: "✕", attr: { style: "width: 26px; height: 26px; padding: 0; display: flex; align-items: center; justify-content: center; background: transparent; box-shadow: none; color: var(--dnd-ui-color-text-muted);" } });
+                    delBtn.onmouseenter = () => { delBtn.style.background = "var(--dnd-ui-color-accent-red)"; delBtn.style.color = "white"; };
+                    delBtn.onmouseleave = () => { delBtn.style.background = "transparent"; delBtn.style.color = "var(--dnd-ui-color-text-muted)"; };
+                    delBtn.onclick = () => {
+                        this.currentExtraSkills.splice(index, 1);
+                        this.renderContent();
+                    };
+                });
+            }
+
+            const addDiv = this.contentContainer.createDiv({ attr: { style: "display: flex; gap: 10px;" } });
+            const selectEl = addDiv.createEl("select", { attr: { style: "flex: 1;" } });
+            selectEl.createEl("option", { text: "-- Select Skill to Add --", value: "" });
+
+            this.allSkills.forEach(s => {
+                const isExtra = this.currentExtraSkills.includes(s.toLowerCase());
+                const isBase = this.baseProficiencies.some(p => p[0] === s.toLowerCase());
+                if (!isExtra && !isBase) selectEl.createEl("option", { text: s, value: s.toLowerCase() });
+            });
+
+            const addBtn = addDiv.createEl("button", { text: "Add Skill" });
+            addBtn.onclick = () => {
+                if (selectEl.value) {
+                    this.currentExtraSkills.push(selectEl.value);
+                    this.renderContent();
+                }
+            };
+        }
+        else if (this.activeTab === "items") {
+            this.contentContainer.createEl("h4", { text: "Skill Bonuses (Magic Items & Gear)", attr: { style: "margin-top: 0; color: var(--dnd-ui-color-text-bright);" } });
+
+            // A. Display existing bonuses
+            const listDiv = this.contentContainer.createDiv({ attr: { style: "margin-bottom: 15px; max-height: 140px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;" } });
+            if (this.currentSkillBonuses.length === 0) {
+                listDiv.createEl("p", { text: "No item bonuses added.", attr: { style: "color: var(--dnd-ui-color-text-muted); font-style: italic; margin: 0; text-align: center; padding: 10px;" } });
+            } else {
+                this.currentSkillBonuses.forEach((bonus, index) => {
+                    const row = listDiv.createDiv({ attr: { style: "display: flex; justify-content: space-between; align-items: center; background: var(--dnd-ui-color-bg-tertiary); padding: 6px 10px; border-radius: 6px; border: 1px solid var(--dnd-ui-color-border-primary);" } });
+
+                    const name = bonus[0];
+                    const skill = bonus[1].replace(/\b\w/g, c => c.toUpperCase());
+                    const val = Number(bonus[2]) > 0 ? `+${bonus[2]}` : `${bonus[2]}`;
+
+                    row.createEl("span", { text: `${name}: ${val} to ${skill}`, attr: { style: "color: var(--dnd-ui-color-text-bright); font-weight: 500;" } });
+
+                    const delBtn = row.createEl("button", { text: "✕", attr: { style: "width: 26px; height: 26px; padding: 0; display: flex; align-items: center; justify-content: center; background: transparent; box-shadow: none; color: var(--dnd-ui-color-text-muted);" } });
+                    delBtn.onmouseenter = () => { delBtn.style.background = "var(--dnd-ui-color-accent-red)"; delBtn.style.color = "white"; };
+                    delBtn.onmouseleave = () => { delBtn.style.background = "transparent"; delBtn.style.color = "var(--dnd-ui-color-text-muted)"; };
+                    delBtn.onclick = () => {
+                        this.currentSkillBonuses.splice(index, 1);
+                        this.renderContent();
+                    };
+                });
+            }
+
+            // B. Add new bonus form
+            const addDiv = this.contentContainer.createDiv({ attr: { style: "display: flex; gap: 10px; align-items: center;" } });
+
+            const nameInput = addDiv.createEl("input", { type: "text", attr: { style: "flex: 2;", placeholder: "Item Name (e.g. Cloak)" } });
+
+            const selectEl = addDiv.createEl("select", { attr: { style: "flex: 2;" } });
+            selectEl.createEl("option", { text: "-- Skill --", value: "" });
+            this.allSkills.forEach(s => selectEl.createEl("option", { text: s, value: s.toLowerCase() }));
+
+            const valInput = addDiv.createEl("input", { type: "number", attr: { style: "flex: 1;", placeholder: "+ Val" } });
+
+            const addBtn = addDiv.createEl("button", { text: "Add" });
+            addBtn.onclick = () => {
+                if (nameInput.value && selectEl.value && valInput.value) {
+                    this.currentSkillBonuses.push([nameInput.value, selectEl.value, String(valInput.value)]);
+                    this.renderContent();
+                }
+            };
+        }
+    }
+
+    onClose() {
+        this.contentEl.empty();
+    }
+
+    async saveAllChanges() {
+        const fileCache = this.app.metadataCache.getCache(this.sourcePath);
+        const frontmatter = fileCache?.frontmatter || {};
+
+        const updates: Record<string, any> = {};
+
+        // 1. Process Stats Update
+        Object.entries(this.currentStats).forEach(([stat, value]) => updates[`DnD_${stat}`] = value);
+
+        // 2. Process Dynamic Armor AC Bonus (based on new Dex & Unarmored Defense!)
+        const currentArmor = frontmatter["DnD_armor"] || "";
+        const newDexMod = Math.floor((this.currentStats.dexterity - 10) / 2);
+        let armorAcBonus = newDexMod;
+        let isUnarmored = true;
+
+        if (currentArmor && currentArmor.toLowerCase() !== "none") {
+            const safeArmorName = currentArmor.toLowerCase().replace(/['"]/g, '').trim().replace(/\s+/g, '-');
+            const armorData = await getItemData(this.app, this.plugin.settings, safeArmorName);
+
+            if (armorData && armorData.category) {
+                isUnarmored = false;
+                const category = String(armorData.category).toLowerCase();
+                if (category.includes("light")) armorAcBonus = newDexMod;
+                else if (category.includes("medium")) armorAcBonus = Math.min(newDexMod, 2);
+                else if (category.includes("heavy")) armorAcBonus = 0;
+            } else if (Number(frontmatter["DnD_armorAc"]) > 10) {
+                isUnarmored = false;
+            }
+        }
+
+        if (isUnarmored) {
+            let unarmoredStat = frontmatter["DnD_unarmoredDefense"] ? String(frontmatter["DnD_unarmoredDefense"]).toLowerCase().trim() : "";
+            if (!unarmoredStat && frontmatter["DnD_class"]) {
+                const primaryClass = Array.isArray(frontmatter["DnD_class"]) ? frontmatter["DnD_class"][0] : frontmatter["DnD_class"];
+                const classData = await getClassData(this.app, this.plugin.settings, primaryClass);
+                if (classData?.unarmoredDefense) {
+                    unarmoredStat = String(classData.unarmoredDefense).toLowerCase().trim();
+                    updates["DnD_unarmoredDefense"] = unarmoredStat;
+                }
+            }
+            if (unarmoredStat && this.currentStats[unarmoredStat] !== undefined) {
+                armorAcBonus = newDexMod + Math.floor((this.currentStats[unarmoredStat] - 10) / 2);
+            }
+        }
+
+        updates["DnD_armorAcBonus"] = armorAcBonus;
+        updates["DnD_armorAcMod"] = this.currentAcMod;
+        updates["DnD_attackRollMod"] = this.extraAttackMod;
+        updates["DnD_attackStat"] = this.currentAttackStat;
+        updates["DnD_attackProficiency"] = this.addAttackProficiency;
+
+        // 3. Process Skills Database
+        const combinedProficiencies = [...this.baseProficiencies];
+        this.currentExtraSkills.forEach(s => combinedProficiencies.push([s, "extra"]));
+        updates["DnD_skillProficiencies"] = JSON.stringify(combinedProficiencies);
+
+        // 4. Process Item Bonuses Database
+        updates["DnD_skillBonuses"] = JSON.stringify(this.currentSkillBonuses);
+
+        // --- EXECUTE FRONTMATTER SAVE ---
+        await this.plugin.updateCharacterFrontmatter(this.sourcePath, updates);
+
+        // --- EXECUTE MASS MARKDOWN REPLACEMENT ---
+        const file = this.app.vault.getAbstractFileByPath(this.sourcePath);
+        if (file instanceof TFile) {
+            await this.app.vault.process(file, (content) => {
+                let updatedContent = content;
+
+                // B. Update Skills Block (if inline lists are used instead of frontmatter pointers)
+                const cSkills = combinedProficiencies.filter(p => p[1] === "class").map(p => `  - ${p[0]}`);
+                const bSkills = combinedProficiencies.filter(p => p[1] === "background").map(p => `  - ${p[0]}`);
+                const eSkills = combinedProficiencies.filter(p => p[1] === "extra").map(p => `  - ${p[0]}`);
+
+                let bonusInject = "";
+                if (this.currentSkillBonuses.length > 0) {
+                    bonusInject = this.currentSkillBonuses.map(b =>
+                        `  - name: ${b[0]}\n    target: ${b[1]}\n    value: ${b[2]}`
+                    ).join('\n') + '\n';
+                } else {
+                    bonusInject = "  - name: <Item Name>\n    target: <chosen skill>\n    value: <+value>\n";
+                }
+
+                const bonusRegex = /(bonuses:\s*\n)([\s\S]*?)(?=\n```)/;
+                updatedContent = updatedContent.replace(bonusRegex, `$1${bonusInject}`);
+
+                let profInject = "";
+                if (cSkills.length > 0) profInject += `  #Class\n${cSkills.join('\n')}\n`;
+                if (bSkills.length > 0) profInject += `  #Background\n${bSkills.join('\n')}\n`;
+                if (eSkills.length > 0) profInject += `  #Extra\n${eSkills.join('\n')}\n`;
+                if (profInject === "") profInject = "  - <chosen skills>\n";
+
+                const profRegex = /(```(?:dnd-)?skills[\s\S]*?proficiencies:\s*\n)([\s\S]*?)(?=\n[ \t]*expertise:)/;
+                updatedContent = updatedContent.replace(profRegex, `$1${profInject}`);
+
+                // C. Update Stat History Table
+                const colMap: Record<number, number> = { 4: 4, 6: 5, 8: 5, 10: 6, 12: 6, 14: 7, 16: 7, 19: 8 };
+                const targetCol = colMap[Number(frontmatter["DnD_level"])];
+                if (targetCol !== undefined) {
+                    const abbreviations: Record<string, string> = { strength: "STR", dexterity: "DEX", constitution: "CON", intelligence: "INT", wisdom: "WIS", charisma: "CHA" };
+                    Object.keys(this.currentStats).forEach(stat => {
+                        const abbr = abbreviations[stat];
+                        const newVal = String(this.currentStats[stat]).padStart(2, ' ');
+                        const rowRegex = new RegExp(`(\\|\\s*${abbr}\\s*\\|[^\\n]+)`);
+                        updatedContent = updatedContent.replace(rowRegex, (match) => {
+                            const cells = match.split('|');
+                            if (cells.length > targetCol) cells[targetCol] = `  ${newVal}   `;
+                            return cells.join('|');
+                        });
+                    });
+                }
+
+                return updatedContent;
+            });
+        }
+
+        new Notice("Character updated successfully!");
+        this.close();
+    }
+}
+
+// --- LEVEL UP MODAL ---
+class LevelUpModal extends Modal {
+    plugin: DnDCharacterSheetHelperPlugin;
+    sourcePath: string;
+    currentLevel: number = 1;
+    newLevel: number = 2;
+    currentMaxHealth: number = 0;
+    newMaxHealth: number = 0;
+    conMod: number = 0;
+    dndClass: string = "";
+    hitDie: number = 8; // Safe fallback
+    currentSubclass: string = "";
+
+
+    // ASI & Feat Tracking
+    isAsiLevel: boolean = false;
+    asiChoice: "asi" | "feat" = "asi";
+    asiStat1: string = "";
+    asiStat2: string = "";
+    chosenFeat: string = "";
+    availableFeats: Record<string, string> = {};
+    currentStats: Record<string, number> = { strength: 10, dexterity: 10, constitution: 10, intelligence: 10, wisdom: 10, charisma: 10 };
+
+    classChoicesState: { router: string, key: string, level: number, domIndex: number }[] = [];
+    // Tracks purely additive Expertise gained at this specific level
+    newExpertiseChoices: string[] = [];
+    newGrantedExpertiseCount: number = 0;
+    expertisePool: string[] = []; // Tracks the allowed JSON pool
+
+    constructor(app: App, plugin: DnDCharacterSheetHelperPlugin, sourcePath: string) {
+        super(app);
+        this.plugin = plugin;
+        this.sourcePath = sourcePath;
+    }
+
+    async onOpen() {
+        const { contentEl } = this;
+        contentEl.createEl("h3", { text: "Level Up Character", cls: "dnd-section-header" });
+
+        // 1. Fetch current live data from the active sheet
+        const fileCache = this.app.metadataCache.getCache(this.sourcePath);
+        const frontmatter = fileCache?.frontmatter || {};
+
+        this.currentLevel = Number(frontmatter["DnD_level"]) || 1;
+        this.newLevel = this.currentLevel + 1;
+
+        this.currentMaxHealth = Number(frontmatter["DnD_maxHealth"]) || 0;
+        this.newMaxHealth = this.currentMaxHealth;
+
+        const conScore = Number(frontmatter["DnD_constitution"]) || 10;
+        this.conMod = Math.floor((conScore - 10) / 2);
+
+        // Fetch primary class and existing subclass safely
+        const classVal = frontmatter["DnD_class"];
+        this.dndClass = (Array.isArray(classVal) ? classVal[0] : classVal) || "";
+
+        const subclassVal = frontmatter["DnD_Subclass"];
+        this.currentSubclass = (Array.isArray(subclassVal) ? subclassVal[0] : subclassVal) || "";
+
+        // 2. Fetch the Hit Die dynamically from the rulebook JSON
+        if (this.dndClass) {
+            const classData = await getClassData(this.app, this.plugin.settings, this.dndClass);
+            if (classData) {
+                const hdStr = classData.HitDice || classData.hitDice || classData.hit_dice;
+                if (hdStr) {
+                    const parsed = parseInt(String(hdStr).replace(/\D/g, ''));
+                    if (!isNaN(parsed)) this.hitDie = parsed;
+                }
+            }
+        }
+
+        // --- Build UI ---
+        contentEl.createEl("p", {
+            text: `Advancing from Level ${this.currentLevel} to Level ${this.newLevel}.`,
+            attr: { style: "color: var(--dnd-ui-color-text-bright); font-weight: bold;" }
+        });
+
+        // A. Hit Points Section
+        const hpDiv = contentEl.createDiv({ attr: { style: "margin-bottom: 20px; padding: 10px; background: var(--dnd-ui-color-bg-tertiary); border-radius: 6px;" } });
+        hpDiv.createEl("label", {
+            text: `New Max HP (Hit Die: d${this.hitDie}, CON: ${this.conMod > 0 ? '+' : ''}${this.conMod}):`,
+            attr: { style: "display: block; margin-bottom: 8px; color: var(--dnd-ui-color-text-sublabel);" }
+        });
+
+        const hpInputContainer = hpDiv.createDiv({ attr: { style: "display: flex; gap: 10px; align-items: center;" } });
+        const hpInput = hpInputContainer.createEl("input", { type: "number", value: String(this.newMaxHealth) });
+        hpInput.style.flex = "1";
+
+        const averageHpGain = Math.ceil(this.hitDie / 2) + 1 + this.conMod;
+        const avgBtn = hpInputContainer.createEl("button", { text: `Take Average (+${averageHpGain})` });
+        avgBtn.onclick = () => {
+            this.newMaxHealth = this.currentMaxHealth + averageHpGain;
+            hpInput.value = String(this.newMaxHealth);
+        };
+
+        hpInput.addEventListener('input', (e) => {
+            this.newMaxHealth = Number((e.target as HTMLInputElement).value);
+        });
+
+        // B. Subclass Section (Conditional: Only at Level 3)
+        if (this.newLevel === 3) {
+            const subDiv = contentEl.createDiv({ attr: { style: "margin-bottom: 20px; padding: 10px; background: var(--dnd-ui-color-bg-tertiary); border-radius: 6px;" } });
+            subDiv.createEl("label", { text: "Subclass:", attr: { style: "display: block; margin-bottom: 8px; color: var(--dnd-ui-color-text-sublabel);" } });
+
+            const subSelect = subDiv.createEl("select");
+            subSelect.style.width = "100%";
+            subSelect.createEl("option", { text: "-- Select a Subclass --", value: "" });
+
+            if (this.dndClass) {
+                const classData = await getClassData(this.app, this.plugin.settings, this.dndClass);
+                if (classData && classData.subclassFile) {
+                    try {
+                        let subPath = `${this.plugin.manifest.dir}/rulebook/classes/${classData.subclassFile}.json`;
+                        if (this.plugin.settings.customRulebookPath) {
+                            const customSubPath = `${this.plugin.settings.customRulebookPath}/classes/${classData.subclassFile}.json`;
+                            if (await this.app.vault.adapter.exists(customSubPath)) subPath = customSubPath;
+                        }
+                        if (await this.app.vault.adapter.exists(subPath)) {
+                            const subContent = await this.app.vault.adapter.read(subPath);
+                            const subclassNames = Object.keys(JSON.parse(subContent));
+
+                            subclassNames.forEach(s => subSelect.createEl("option", { text: s, value: s }));
+                        }
+                    } catch (e) {
+                        console.error("Could not fetch subclasses", e);
+                    }
+                }
+            }
+            // Ensure strict string fallback so the placeholder displays correctly
+            subSelect.value = this.currentSubclass || "";
+            subSelect.onchange = (e) => this.currentSubclass = (e.target as HTMLSelectElement).value;
+        }
+
+        // C. Fetch Live Stats & Handle Engine Milestones
+        const statsList = ["strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"];
+        statsList.forEach(s => {
+            this.currentStats[s] = Number(frontmatter[`DnD_${s}`]) || 10;
+        });
+
+        this.isAsiLevel = false;
+
+        // --- NEW: THE CLASS CHOICES SNAPSHOT ENGINE ---
+        let slotsByRouter: Record<string, number> = {};
+
+        if (this.dndClass) {
+            const classData = await getClassData(this.app, this.plugin.settings, this.dndClass);
+
+            let subclassData: any = null;
+            if (this.currentSubclass && classData?.subclassFile) {
+                subclassData = await getSubclassData(this.app, this.plugin.settings, classData.subclassFile, this.currentSubclass);
+            }
+
+            // INSTEAD of looping 1 to newLevel, we strictly read the JSON payload for the target level!
+            let levelFeatures: any[] = [];
+            const targetLevel = this.newLevel.toString();
+
+            if (classData?.features?.[targetLevel]) levelFeatures = levelFeatures.concat(classData.features[targetLevel]);
+            if (subclassData?.[targetLevel]) levelFeatures = levelFeatures.concat(subclassData[targetLevel]);
+
+            for (const feature of levelFeatures) {
+                if (feature.grantedFeats && Array.isArray(feature.grantedFeats)) {
+                    if (feature.grantedFeats.includes("ability-score-improvement")) this.isAsiLevel = true;
+                }
+
+                if (feature.classChoices && Array.isArray(feature.classChoices)) {
+                    for (const router of feature.classChoices) {
+                        if (!slotsByRouter[router]) slotsByRouter[router] = 0;
+                        slotsByRouter[router] += 1;
+                    }
+                }
+
+                // Parse additive grantedExpertise array [allowedSkills[], grantedExpertiseCount]
+                if (feature.grantedExpertise && Array.isArray(feature.grantedExpertise) && feature.grantedExpertise.length === 2) {
+                    this.expertisePool = [...new Set([...this.expertisePool, ...feature.grantedExpertise[0]])];
+                    this.newGrantedExpertiseCount += feature.grantedExpertise[1] as number;
+                }
+            }
+        }
+
+        // SMART PARSING: Gracefully handle the 2-part tuples (e.g., ["pact-of-the-blade", 1])
+        let existingChoicesRaw = frontmatter["DnD_classChoices"] || [];
+        if (typeof existingChoicesRaw === 'string') {
+            try { existingChoicesRaw = JSON.parse(existingChoicesRaw); } catch { existingChoicesRaw = []; }
+        }
+        const existingChoices = existingChoicesRaw.map((c: any) => {
+            if (c.length === 3) return { router: c[0], key: c[1], level: c[2] };
+            if (c.length === 2) return { router: null, key: c[0], level: c[1] }; // We don't know the router yet
+            return null;
+        }).filter((c: any) => c !== null);
+
+        this.classChoicesState = [];
+
+        for (const [routerName, slotCount] of Object.entries(slotsByRouter)) {
+            // Load Router JSON Options
+            let choicePath = `${this.plugin.manifest.dir}/rulebook/classes/classChoices/${routerName}.json`;
+            if (this.plugin.settings.customRulebookPath) {
+                const customPath = `${this.plugin.settings.customRulebookPath}/classes/classChoices/${routerName}.json`;
+                if (await this.app.vault.adapter.exists(customPath)) choicePath = customPath;
+            }
+
+            let routerData: any = null;
+            if (await this.app.vault.adapter.exists(choicePath)) {
+                routerData = JSON.parse(await this.app.vault.adapter.read(choicePath));
+            }
+
+            if (routerData) {
+                const routerDiv = contentEl.createDiv({ attr: { style: "margin-bottom: 20px; padding: 10px; background: var(--dnd-ui-color-bg-tertiary); border-radius: 6px; border: 1px solid var(--dnd-ui-color-border-primary);" } });
+                const displayName = routerName.split(/[-_]/).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+
+                routerDiv.createEl("label", { text: `Manage ${displayName} (${slotCount} Slots)`, attr: { style: "display: block; margin-bottom: 8px; font-weight: bold; color: var(--dnd-ui-color-text-secondary);" } });
+                routerDiv.createEl("small", { text: "Review your choices. If you wish to swap an old choice, select a new one.", attr: { style: "display: block; margin-bottom: 12px; color: var(--dnd-ui-color-text-muted);" } });
+
+                // REVERSE LOOKUP FIX: Match the choice to this router if the key exists inside routerData!
+                const pastChoicesForRouter = existingChoices.filter((c: any) =>
+                    c.router === routerName || (c.router === null && routerData[c.key])
+                );
+
+                for (let slotIndex = 0; slotIndex < slotCount; slotIndex++) {
+
+                    const selectDiv = routerDiv.createDiv({ attr: { style: "margin-bottom: 8px; display: flex; align-items: center;" } });
+
+                    let assignedKey = "";
+                    let originalLevel = this.newLevel; // Default to the current level being gained
+
+                    // Sequentially assign past choices to the first available dropdowns
+                    if (pastChoicesForRouter[slotIndex]) {
+                        assignedKey = pastChoicesForRouter[slotIndex].key;
+                        originalLevel = pastChoicesForRouter[slotIndex].level; // Preserve history!
+                    }
+
+                    selectDiv.createEl("small", { text: `Lvl ${originalLevel} Slot:`, attr: { style: "flex: 0 0 90px; color: var(--dnd-ui-color-text-sublabel);" } });
+
+                    const selectEl = selectDiv.createEl("select", { attr: { style: "flex: 1; min-width: 0; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;" } });
+                    selectEl.createEl("option", { text: `-- Select Option --`, value: "" });
+
+                    Object.entries(routerData).forEach(([key, val]) => {
+                        selectEl.createEl("option", { text: val as string, value: key });
+                    });
+
+                    selectEl.value = assignedKey;
+
+                    // Push the original level into the state so it is saved correctly in the frontmatter
+                    this.classChoicesState.push({ router: routerName, key: assignedKey, level: originalLevel, domIndex: slotIndex });
+
+                    selectEl.onchange = (e) => {
+                        const newVal = (e.target as HTMLSelectElement).value;
+                        const stateObj = this.classChoicesState.find(c => c.router === routerName && c.domIndex === slotIndex);
+                        if (stateObj) stateObj.key = newVal;
+                    };
+                }
+            }
+        }
+
+        // --- NEW: ADDITIVE EXPERTISE UI ---
+        if (this.newGrantedExpertiseCount > 0) {
+            const expDiv = contentEl.createDiv({ attr: { style: "margin-bottom: 20px; padding: 10px; background: var(--dnd-ui-color-bg-tertiary); border-radius: 6px; border: 1px solid var(--dnd-ui-color-border-primary);" } });
+            expDiv.createEl("label", { text: `New Expertise Granted (${this.newGrantedExpertiseCount} Choices)`, attr: { style: "display: block; margin-bottom: 8px; font-weight: bold; color: var(--dnd-ui-color-text-secondary);" } });
+            expDiv.createEl("small", { text: "Select from your known proficiencies to gain Expertise.", attr: { style: "display: block; margin-bottom: 12px; color: var(--dnd-ui-color-text-muted);" } });
+
+            // 1. Parse existing proficiencies from Frontmatter safely
+            let existingProfsRaw = frontmatter["DnD_skillProficiencies"] || [];
+            if (typeof existingProfsRaw === 'string') try { existingProfsRaw = JSON.parse(existingProfsRaw); } catch { existingProfsRaw = []; }
+
+            let knownSkills: string[] = [];
+            existingProfsRaw.forEach((p: any) => {
+                if (Array.isArray(p) && p.length > 0) knownSkills.push(p[0]);
+                else if (typeof p === 'string') knownSkills.push(p);
+            });
+
+            // 2. Filter known skills by the explicitly provided JSON pool
+            if (this.expertisePool.length > 0) {
+                knownSkills = knownSkills.filter((s: string) => this.expertisePool.map(e => String(e).toLowerCase()).includes(String(s).toLowerCase()));
+            }
+
+            // 3. Prevent selecting skills that ALREADY have Expertise
+            let existingExpRaw = frontmatter["DnD_skillExpertise"] || [];
+            if (typeof existingExpRaw === 'string') try { existingExpRaw = JSON.parse(existingExpRaw); } catch { existingExpRaw = []; }
+            const currentExpertise = existingExpRaw.map((e: any) => String(e[0]).toLowerCase());
+
+            knownSkills = knownSkills.filter(s => !currentExpertise.includes(String(s).toLowerCase()));
+
+            this.newExpertiseChoices = Array(this.newGrantedExpertiseCount).fill("");
+
+            if (knownSkills.length === 0) {
+                expDiv.createEl("p", { text: "You have no eligible skill proficiencies available to gain Expertise in.", attr: { style: "color: var(--dnd-ui-color-accent-red); font-style: italic; font-size: 0.9em;" } });
+            } else {
+                for (let i = 0; i < this.newGrantedExpertiseCount; i++) {
+                    const selectDiv = expDiv.createDiv({ attr: { style: "margin-bottom: 8px; display: flex; align-items: center;" } });
+
+                    selectDiv.createEl("small", { text: `Choice ${i + 1}:`, attr: { style: "flex: 0 0 65px; color: var(--dnd-ui-color-text-sublabel);" } });
+                    const selectEl = selectDiv.createEl("select", { attr: { style: "flex: 1;" } });
+                    selectEl.createEl("option", { text: `-- Select Expertise --`, value: "" });
+
+                    knownSkills.forEach((skill: string) => {
+                        const displaySkill = skill.replace(/\b\w/g, c => c.toUpperCase());
+                        selectEl.createEl("option", { text: displaySkill, value: skill });
+                    });
+
+                    selectEl.onchange = (e) => {
+                        this.newExpertiseChoices[i] = (e.target as HTMLSelectElement).value;
+                    };
+                }
+            }
+        }
+
+        // --- Render ASI UI ---
+        if (this.isAsiLevel) {
+            try {
+                let featsPath = `${this.plugin.manifest.dir}/rulebook/general-feats.json`;
+                if (this.plugin.settings.customRulebookPath) {
+                    const customFeatsPath = `${this.plugin.settings.customRulebookPath}/general-feats.json`;
+                    if (await this.app.vault.adapter.exists(customFeatsPath)) featsPath = customFeatsPath;
+                }
+                if (await this.app.vault.adapter.exists(featsPath)) {
+                    this.availableFeats = JSON.parse(await this.app.vault.adapter.read(featsPath));
+                }
+            } catch (e) {
+                console.error("Could not fetch feats", e);
+            }
+
+            const asiDiv = contentEl.createDiv({ attr: { style: "margin-bottom: 20px; padding: 10px; background: var(--dnd-ui-color-bg-tertiary); border-radius: 6px; border: 1px solid var(--dnd-ui-color-border-active);" } });
+
+            asiDiv.createEl("label", { text: `Level ${this.newLevel} Milestone: Ability Score Improvement or Feat`, attr: { style: "display: block; margin-bottom: 8px; color: var(--dnd-ui-color-text-secondary); font-weight: bold;" } });
+
+            const choiceSelect = asiDiv.createEl("select", { attr: { style: "width: 100%; margin-bottom: 10px;" } });
+            choiceSelect.createEl("option", { text: "Ability Score Improvement (+2 / +1 & +1)", value: "asi" });
+            choiceSelect.createEl("option", { text: "Take a General Feat", value: "feat" });
+
+            this.asiChoice = "asi";
+
+            const asiContainer = asiDiv.createDiv({ attr: { style: `display: grid; grid-template-columns: 1fr 1fr; gap: 10px;` } });
+            const statSelect1 = asiContainer.createEl("select", { attr: { style: "width: 100%;" } });
+            const statSelect2 = asiContainer.createEl("select", { attr: { style: "width: 100%;" } });
+            statSelect1.createEl("option", { text: "-- +1 Stat --", value: "" });
+            statSelect2.createEl("option", { text: "-- +1 Stat --", value: "" });
+
+            statsList.forEach(s => {
+                const label = s.charAt(0).toUpperCase() + s.slice(1) + ` (${this.currentStats[s]})`;
+                statSelect1.createEl("option", { text: label, value: s });
+                statSelect2.createEl("option", { text: label, value: s });
+            });
+            statSelect1.onchange = (e) => this.asiStat1 = (e.target as HTMLSelectElement).value;
+            statSelect2.onchange = (e) => this.asiStat2 = (e.target as HTMLSelectElement).value;
+
+            const featContainer = asiDiv.createDiv({ attr: { style: `display: none;` } });
+            const featSelect = featContainer.createEl("select", { attr: { style: "width: 100%;" } });
+            featSelect.createEl("option", { text: "-- Select a Feat --", value: "" });
+            Object.entries(this.availableFeats).forEach(([key, name]) => {
+                featSelect.createEl("option", { text: name as string, value: key });
+            });
+            featSelect.onchange = (e) => this.chosenFeat = (e.target as HTMLSelectElement).value;
+
+            choiceSelect.onchange = (e) => {
+                this.asiChoice = (e.target as HTMLSelectElement).value as "asi" | "feat";
+                asiContainer.style.display = this.asiChoice === "asi" ? "grid" : "none";
+                featContainer.style.display = this.asiChoice === "feat" ? "block" : "none";
             };
 
-            // Dynamically generate color pickers
-            for (const [groupName, variables] of Object.entries(colorGroups)) {
-                containerEl.createEl('h4', { text: groupName, cls: 'dnd-settings-subgroup' });
+            asiDiv.createEl("small", { text: "Tip: If you boost Constitution, manually adjust your Max HP above to retroactively include +1 HP per level!", attr: { style: "display: block; margin-top: 8px; color: var(--dnd-ui-color-text-muted);" } });
+        }
 
-                variables.forEach((variable) => {
-                    const cleanName = variable.replace('--dnd-', '').replace(/-/g, ' ');
+        if (this.classChoicesState.length > 0 || this.newGrantedExpertiseCount > 0) {
+            contentEl.createEl("p", {
+                text: "Note: Please consult the rulebook regarding swapping choices. Generally, you may only replace one existing choice when you gain a level in a class.",
+                attr: { style: "color: var(--dnd-ui-color-text-muted); font-size: 0.85em; font-style: italic; margin-bottom: 15px;" }
+            });
+        }
 
-                    new Setting(containerEl)
-                        .setName(cleanName.charAt(0).toUpperCase() + cleanName.slice(1)) // Capitalize first letter
-                        .addColorPicker(color => color
-                            .setValue(this.plugin.settings.customColors[variable])
-                            .onChange(async (value) => {
-                                this.plugin.settings.customColors[variable] = value;
-                                this.plugin.applyTheme(); // Update DOM instantly
-                                await this.plugin.saveSettings();
-                            }));
+        // D. Finalization Buttons
+        const btnDiv = contentEl.createDiv({ attr: { style: "display: flex; justify-content: flex-end; gap: 10px;" } });
+        const cancelBtn = btnDiv.createEl("button", { text: "Cancel" });
+        cancelBtn.onclick = () => this.close();
+
+        const confirmBtn = btnDiv.createEl("button", { text: "Complete Level Up", cls: "mod-cta" });
+        confirmBtn.onclick = async (e) => {
+            e.preventDefault();
+            await this.executeLevelUp();
+        };
+    }
+
+    onClose() {
+        this.contentEl.empty();
+    }
+
+    async executeLevelUp() {
+        const fileCache = this.app.metadataCache.getCache(this.sourcePath);
+        const frontmatter = fileCache?.frontmatter || {};
+
+        let DnD_proficiency_bonus = Math.ceil(1 + (this.newLevel / 4));
+        const hpGain = Math.max(0, this.newMaxHealth - this.currentMaxHealth);
+        const existingCurrentHp = frontmatter["DnD_currentHealth"] !== undefined
+            ? Number(frontmatter["DnD_currentHealth"])
+            : this.currentMaxHealth;
+        const DnD_current_health = Math.min(this.newMaxHealth, existingCurrentHp + hpGain);
+
+        const updates: Record<string, any> = {
+            "DnD_level": this.newLevel,
+            "DnD_maxHealth": this.newMaxHealth,
+            "DnD_currentHealth": DnD_current_health,
+            "DnD_Subclass": this.currentSubclass ? [this.currentSubclass] : []
+        };
+
+        // Fetch Class JSON for Proficiency Bonus Progression & Spell Slot Progression
+        if (this.dndClass) {
+            const classData = await getClassData(this.app, this.plugin.settings, this.dndClass);
+            if (classData) {
+                const lvlIdx = Math.max(0, this.newLevel - 1);
+                if (Array.isArray(classData.proficiencyBonus) && classData.proficiencyBonus[lvlIdx] !== undefined) {
+                    DnD_proficiency_bonus = Number(classData.proficiencyBonus[lvlIdx]) || DnD_proficiency_bonus;
+                }
+
+                if (classData.spellcasting) {
+                    const newSpellData = classData.spellcasting[this.newLevel.toString()];
+                    if (newSpellData && Array.isArray(newSpellData.slots)) {
+                        const slotKey = frontmatter["DnD_spellsSlots"] !== undefined && frontmatter["DnD_spellSlots"] === undefined
+                            ? "DnD_spellsSlots"
+                            : "DnD_spellSlots";
+
+                        let existingSlots: any = frontmatter[slotKey];
+                        if (typeof existingSlots === "string" && existingSlots.trim().startsWith("[")) {
+                            try { existingSlots = JSON.parse(existingSlots.trim()); } catch { existingSlots = []; }
+                        }
+                        if (!Array.isArray(existingSlots)) existingSlots = [];
+
+                        const updatedSlots: [string, string][] = Array.from({ length: 9 }, (_, index) => {
+                            const maxStr = String(Number(newSpellData.slots[index]) || 0);
+                            let currentUsed = "0";
+                            const existingPair = existingSlots[index];
+                            if (Array.isArray(existingPair) && existingPair.length >= 2) {
+                                currentUsed = String(existingPair[1] || "0");
+                            }
+                            return [maxStr, currentUsed];
+                        });
+
+                        // Save as a JSON string to force Obsidian to keep it as a one-liner!
+                        updates[slotKey] = JSON.stringify(updatedSlots);
+                    }
+                }
+            }
+        }
+
+        updates["DnD_proficiencyBonus"] = DnD_proficiency_bonus;
+
+        // Snapshot Output: Map down to [Key, Level] strictly as strings (2-part tuple)
+        const finalClassChoices = this.classChoicesState
+            .filter(c => c.key !== "")
+            .map(c => [String(c.key), String(c.level)]);
+
+        if (this.classChoicesState.length > 0) {
+            // Stringify the output so the Obsidian API saves it as a single-line text string!
+            updates["DnD_classChoices"] = JSON.stringify(finalClassChoices);
+        }
+
+        // Purely Additive Expertise Output (using strings in arrays)
+        let existingExpRaw = frontmatter["DnD_skillExpertise"] || [];
+        if (typeof existingExpRaw === 'string') try { existingExpRaw = JSON.parse(existingExpRaw); } catch { existingExpRaw = []; }
+
+        const finalExpertise = existingExpRaw.map((e: any) => Array.isArray(e) ? [String(e[0]), String(e[1])] : e);
+
+        this.newExpertiseChoices.forEach(choice => {
+            if (choice) {
+                finalExpertise.push([String(choice), String(this.newLevel)]);
+            }
+        });
+
+        if (finalExpertise.length > 0) updates["DnD_skillExpertise"] = JSON.stringify(finalExpertise);
+
+        // --- Handle ASI / Feats & Recalculate AC Bonus if Stats Changed ---
+        if (this.isAsiLevel) {
+            if (this.asiChoice === "asi") {
+                if (this.asiStat1) this.currentStats[this.asiStat1] += 1;
+                if (this.asiStat2) this.currentStats[this.asiStat2] += 1;
+
+                Object.keys(this.currentStats).forEach(s => updates[`DnD_${s}`] = this.currentStats[s]);
+
+                // Recalculate AC Bonus in case Dexterity or Unarmored Defense stat increased
+                const currentArmor = frontmatter["DnD_armor"] || "";
+                const newDexMod = Math.floor((this.currentStats.dexterity - 10) / 2);
+                let armorAcBonus = newDexMod;
+                let isUnarmored = true;
+
+                if (currentArmor && currentArmor.toLowerCase() !== "none") {
+                    const safeArmorName = currentArmor.toLowerCase().replace(/['"]/g, '').trim().replace(/\s+/g, '-');
+                    const armorData = await getItemData(this.app, this.plugin.settings, safeArmorName);
+
+                    if (armorData && armorData.category) {
+                        isUnarmored = false;
+                        const category = String(armorData.category).toLowerCase();
+                        if (category.includes("light")) armorAcBonus = newDexMod;
+                        else if (category.includes("medium")) armorAcBonus = Math.min(newDexMod, 2);
+                        else if (category.includes("heavy")) armorAcBonus = 0;
+                    } else if (Number(frontmatter["DnD_armorAc"]) > 10) {
+                        isUnarmored = false;
+                    }
+                }
+
+                if (isUnarmored) {
+                    const unarmoredStat = frontmatter["DnD_unarmoredDefense"] ? String(frontmatter["DnD_unarmoredDefense"]).toLowerCase().trim() : "";
+                    if (unarmoredStat && this.currentStats[unarmoredStat] !== undefined) {
+                        armorAcBonus = newDexMod + Math.floor((this.currentStats[unarmoredStat] - 10) / 2);
+                    }
+                }
+                updates["DnD_armorAcBonus"] = armorAcBonus;
+            }
+            else if (this.asiChoice === "feat" && this.chosenFeat) {
+                let existingFeats = frontmatter["DnD_extraFeats"];
+                if (!Array.isArray(existingFeats)) {
+                    existingFeats = existingFeats ? [existingFeats] : [];
+                }
+                updates["DnD_extraFeats"] = [...existingFeats, this.chosenFeat];
+            }
+        }
+
+        // 1. Thread-safe Frontmatter Update
+        await this.plugin.updateCharacterFrontmatter(this.sourcePath, updates);
+
+        // 2. Thread-safe Markdown String Update (Expertise & ASI Table)
+        const file = this.app.vault.getAbstractFileByPath(this.sourcePath);
+        if (file instanceof TFile) {
+            await this.app.vault.process(file, (content) => {
+                let updatedContent = content;
+
+                // A. Rewrite Expertise in skills block
+                if (finalExpertise.length > 0) {
+                    const expInject = finalExpertise.map((e: any) => `  - ${e[0]}`).join('\n') + '\n';
+                    const expRegex = /(expertise:\s*\n)([\s\S]*?)(?=\n[ \t]*half_proficiencies:)/;
+                    updatedContent = updatedContent.replace(expRegex, `$1${expInject}`);
+                }
+
+                // B. Update Stat History Table if ASI was taken
+                if (this.isAsiLevel && this.asiChoice === "asi") {
+                    const colMap: Record<number, number> = { 4: 4, 6: 5, 8: 5, 10: 6, 12: 6, 14: 7, 16: 7, 19: 8 };
+                    const targetCol = colMap[this.newLevel];
+
+                    if (targetCol !== undefined) {
+                        const abbreviations: Record<string, string> = { strength: "STR", dexterity: "DEX", constitution: "CON", intelligence: "INT", wisdom: "WIS", charisma: "CHA" };
+
+                        Object.keys(this.currentStats).forEach(stat => {
+                            const abbr = abbreviations[stat];
+                            const newVal = String(this.currentStats[stat]).padStart(2, ' ');
+                            const rowRegex = new RegExp(`(\\|\\s*${abbr}\\s*\\|[^\\n]+)`);
+                            updatedContent = updatedContent.replace(rowRegex, (match) => {
+                                const cells = match.split('|');
+                                if (cells.length > targetCol) cells[targetCol] = `  ${newVal}   `;
+                                return cells.join('|');
+                            });
+                        });
+                    }
+                }
+                return updatedContent;
+            });
+        }
+
+        new Notice(`Successfully leveled up to Level ${this.newLevel}!`);
+        this.close();
+    }
+}
+
+// --- SPELLBOOK MODAL ---
+class SpellbookModal extends Modal {
+    plugin: DnDCharacterSheetHelperPlugin;
+    sourcePath: string;
+
+    dndClass: string = "";
+    characterLevel: number = 1;
+    spellsPoolFile: string = "";
+
+    // Progression limits from class JSON ("spellcasting" or "pactMagic")
+    maxCantrips: number = 0;
+    maxPreparedSpells: number = 0;
+
+    // Router data: { "0": { "mage-hand": "Mage Hand" }, "1": { "magic-missile": "Magic Missile" } }
+    routerData: Record<string, Record<string, string>> = {};
+
+    // Internal state mapped by string level ("0", "1", ..., "9") -> array of spell keys
+    knownSpellsByLevel: Record<string, string[]> = {};
+    preparedSpellsByLevel: Record<string, string[]> = {};
+
+    // UI Elements for live re-rendering
+    activeLevelTab: string = "0";
+    trackerContainer!: HTMLElement;
+    tabsContainer!: HTMLElement;
+    listContainer!: HTMLElement;
+    previewContainer!: HTMLElement;
+    renderChild!: MarkdownRenderChild;
+
+    constructor(app: App, plugin: DnDCharacterSheetHelperPlugin, sourcePath: string) {
+        super(app);
+        this.plugin = plugin;
+        this.sourcePath = sourcePath;
+    }
+
+    // Helper: Reads a JSON file from /rulebook/spells/ respecting customRulebookPath & priority
+    async loadSpellJson(fileNameWithoutExt: string): Promise<any | null> {
+        const nativePath = `${this.plugin.manifest.dir}/rulebook/spells/${fileNameWithoutExt}.json`;
+        const customPath = this.plugin.settings.customRulebookPath
+            ? `${this.plugin.settings.customRulebookPath}/spells/${fileNameWithoutExt}.json`
+            : "";
+
+        const tryRead = async (path: string) => {
+            if (path && await this.app.vault.adapter.exists(path)) {
+                try {
+                    const content = await this.app.vault.adapter.read(path);
+                    return JSON.parse(content);
+                } catch (e) {
+                    console.error(`Spellbook Error: Failed to parse ${path}`, e);
+                }
+            }
+            return null;
+        };
+
+        if (this.plugin.settings.customRulebookPriority && customPath) {
+            const customData = await tryRead(customPath);
+            if (customData) return customData;
+        }
+
+        const nativeData = await tryRead(nativePath);
+        if (nativeData) return nativeData;
+
+        if (!this.plugin.settings.customRulebookPriority && customPath) {
+            return await tryRead(customPath);
+        }
+
+        return null;
+    }
+
+    // Helper: Parses frontmatter tuple array [ [ ["spell1", "spell2"], "1" ] ] into Record<string, string[]>
+    parseSpellTuples(raw: any): Record<string, string[]> {
+        const result: Record<string, string[]> = {};
+        let parsed = raw;
+
+        if (typeof raw === "string") {
+            try { parsed = JSON.parse(raw); } catch { parsed = []; }
+        }
+
+        if (Array.isArray(parsed)) {
+            for (const entry of parsed) {
+                if (Array.isArray(entry) && entry.length === 2) {
+                    const [spellsList, lvlKey] = entry;
+                    const safeLvl = String(lvlKey);
+                    if (Array.isArray(spellsList)) {
+                        result[safeLvl] = spellsList.map(s => String(s));
+                    }
+                }
+            }
+        }
+        return result;
+    }
+
+    // Helper: Formats Record<string, string[]> back into [ [ ["spell1", "spell2"], "1" ] ]
+    formatSpellTuples(map: Record<string, string[]>): [string[], string][] {
+        const output: [string[], string][] = [];
+        const sortedLevels = Object.keys(map).sort((a, b) => Number(a) - Number(b));
+
+        for (const lvl of sortedLevels) {
+            const spells = map[lvl];
+            if (Array.isArray(spells) && spells.length > 0) {
+                output.push([spells, String(lvl)]);
+            }
+        }
+        return output;
+    }
+
+    async onOpen() {
+        const { contentEl } = this;
+        this.modalEl.style.width = "720px";
+        this.modalEl.style.maxWidth = "92vw";
+
+        this.renderChild = new MarkdownRenderChild(contentEl);
+        this.renderChild.load();
+
+        contentEl.createEl("h3", { text: "📖 Spellbook Manager", cls: "dnd-section-header", attr: { style: "margin-bottom: 10px;" } });
+
+        // 1. Read Frontmatter
+        const fileCache = this.app.metadataCache.getCache(this.sourcePath);
+        const frontmatter = fileCache?.frontmatter || {};
+
+        this.characterLevel = Number(frontmatter["DnD_level"]) || 1;
+        const classVal = frontmatter["DnD_class"];
+        this.dndClass = (Array.isArray(classVal) ? classVal[0] : classVal) || "";
+
+        // Parse Known Spells (DnD_spells) and Prepared Spells (DnD_preparedSpells)
+        this.knownSpellsByLevel = this.parseSpellTuples(frontmatter["DnD_spells"]);
+        this.preparedSpellsByLevel = this.parseSpellTuples(frontmatter["DnD_preparedSpells"]);
+
+        // 2. Fetch Class Data to find "spellsPool" and "spellcasting" / "pactMagic" limits
+        if (this.dndClass) {
+            const classData = await getClassData(this.app, this.plugin.settings, this.dndClass);
+            if (classData) {
+                if (classData.spellsPool) {
+                    this.spellsPoolFile = String(classData.spellsPool).trim();
+                }
+
+                const lvlStr = this.characterLevel.toString();
+                const castingTable = classData.spellcasting?.[lvlStr] || classData.pactMagic?.[lvlStr];
+                if (castingTable) {
+                    this.maxCantrips = Number(castingTable.cantrips) || 0;
+                    this.maxPreparedSpells = Number(castingTable.preparedSpells) || 0;
+                }
+            }
+        }
+
+        if (!this.spellsPoolFile) {
+            contentEl.createEl("p", {
+                text: `No "spellsPool" property found in ${this.dndClass || "class"} JSON. Add "spellsPool": "<router-filename>" to your class JSON to enable the Spellbook.`,
+                cls: "dnd-error-text"
+            });
+            return;
+        }
+
+        // 3. Load Router File from /rulebook/spells/<spellsPool>.json
+        const loadedRouter = await this.loadSpellJson(this.spellsPoolFile);
+        if (!loadedRouter || typeof loadedRouter !== "object") {
+            contentEl.createEl("p", {
+                text: `Could not load spell router file: /rulebook/spells/${this.spellsPoolFile}.json`,
+                cls: "dnd-error-text"
+            });
+            return;
+        }
+        this.routerData = loadedRouter;
+
+        // Ensure default active tab exists in routerData
+        const availableLevels = Object.keys(this.routerData).sort((a, b) => Number(a) - Number(b));
+        if (availableLevels.length > 0 && !availableLevels.includes(this.activeLevelTab)) {
+            this.activeLevelTab = availableLevels[0];
+        }
+
+        // 4. Build Layout Containers
+        this.trackerContainer = contentEl.createDiv({
+            attr: { style: "display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: var(--dnd-ui-color-bg-tertiary); border: 1px solid var(--dnd-ui-color-border-primary); border-radius: 6px; margin-bottom: 12px;" }
+        });
+
+        this.tabsContainer = contentEl.createDiv({
+            attr: { style: "display: flex; gap: 4px; flex-wrap: wrap; border-bottom: 1px solid var(--dnd-ui-color-border-primary); padding-bottom: 6px; margin-bottom: 12px;" }
+        });
+
+        const bodyGrid = contentEl.createDiv({
+            attr: { style: "display: grid; grid-template-columns: 1.15fr 1fr; gap: 14px; min-height: 320px; max-height: 420px;" }
+        });
+
+        this.listContainer = bodyGrid.createDiv({
+            attr: { style: "overflow-y: auto; padding-right: 4px; display: flex; flex-direction: column; gap: 10px;" }
+        });
+
+        this.previewContainer = bodyGrid.createDiv({
+            attr: { style: "overflow-y: auto; padding: 12px; background: var(--dnd-ui-color-bg-darker); border: 1px solid var(--dnd-ui-color-border-primary); border-radius: 6px;" }
+        });
+        this.renderEmptyPreview();
+
+        // 5. Footer Buttons
+        const footerDiv = contentEl.createDiv({
+            attr: { style: "display: flex; justify-content: flex-end; gap: 10px; margin-top: 16px; border-top: 1px solid var(--dnd-ui-color-border-primary); padding-top: 12px;" }
+        });
+
+        const cancelBtn = footerDiv.createEl("button", { text: "Cancel" });
+        cancelBtn.onclick = () => this.close();
+
+        const saveBtn = footerDiv.createEl("button", { text: "Save Spellbook", cls: "mod-cta" });
+        saveBtn.onclick = async () => {
+            await this.saveSpellbook();
+        };
+
+        // Initial Render
+        this.renderTracker();
+        this.renderLevelTabs();
+        this.renderSpellList();
+    }
+
+    // Counts total prepared cantrips (level "0") and leveled spells ("1"-"9")
+    getPreparedCounts(): { cantrips: number; leveled: number } {
+        const cantrips = (this.preparedSpellsByLevel["0"] || []).length;
+        let leveled = 0;
+        for (const [lvl, list] of Object.entries(this.preparedSpellsByLevel)) {
+            if (lvl !== "0" && Array.isArray(list)) {
+                leveled += list.length;
+            }
+        }
+        return { cantrips, leveled };
+    }
+
+    renderTracker() {
+        this.trackerContainer.empty();
+        const { cantrips, leveled } = this.getPreparedCounts();
+
+        const leftInfo = this.trackerContainer.createDiv();
+        leftInfo.createEl("strong", {
+            text: `${this.dndClass} (Level ${this.characterLevel})`,
+            attr: { style: "color: var(--dnd-ui-color-text-bright);" }
+        });
+
+        const rightCounters = this.trackerContainer.createDiv({
+            attr: { style: "display: flex; gap: 16px; font-size: 0.9em;" }
+        });
+
+        const cantripText = this.maxCantrips > 0 ? `${cantrips} / ${this.maxCantrips}` : `${cantrips}`;
+        const prepText = this.maxPreparedSpells > 0 ? `${leveled} / ${this.maxPreparedSpells}` : `${leveled}`;
+
+        const cSpan = rightCounters.createEl("span", { attr: { style: "color: var(--dnd-ui-color-text-sublabel);" } });
+        cSpan.createEl("strong", { text: "Cantrips Prepared: ", attr: { style: "color: var(--dnd-ui-color-text-secondary);" } });
+        cSpan.createSpan({ text: cantripText });
+
+        const pSpan = rightCounters.createEl("span", { attr: { style: "color: var(--dnd-ui-color-text-sublabel);" } });
+        pSpan.createEl("strong", { text: "Spells Prepared: ", attr: { style: "color: var(--dnd-ui-color-text-secondary);" } });
+        pSpan.createSpan({ text: prepText });
+    }
+
+    renderLevelTabs() {
+        this.tabsContainer.empty();
+        const availableLevels = Object.keys(this.routerData).sort((a, b) => Number(a) - Number(b));
+
+        for (const lvl of availableLevels) {
+            const label = lvl === "0" ? "Cantrips" : `Lvl ${lvl}`;
+            const isActive = this.activeLevelTab === lvl;
+
+            const btn = this.tabsContainer.createEl("button", {
+                text: label,
+                attr: {
+                    style: `padding: 4px 10px; border-radius: 4px; font-size: 0.85em; cursor: pointer; box-shadow: none; ${isActive
+                            ? "background: var(--dnd-ui-color-bg-tertiary); color: var(--dnd-ui-color-text-bright); font-weight: bold; border: 1px solid var(--dnd-ui-color-border-active);"
+                            : "background: transparent; color: var(--dnd-ui-color-text-muted); border: 1px solid transparent;"
+                        }`
+                }
+            });
+
+            btn.onclick = () => {
+                this.activeLevelTab = lvl;
+                this.renderLevelTabs();
+                this.renderSpellList();
+            };
+        }
+    }
+
+    renderSpellList() {
+        this.listContainer.empty();
+
+        const lvl = this.activeLevelTab;
+        const levelPool = this.routerData[lvl] || {};
+
+        if (!this.knownSpellsByLevel[lvl]) this.knownSpellsByLevel[lvl] = [];
+        if (!this.preparedSpellsByLevel[lvl]) this.preparedSpellsByLevel[lvl] = [];
+
+        const knownList = this.knownSpellsByLevel[lvl];
+        const preparedList = this.preparedSpellsByLevel[lvl];
+
+        // 1. Add Spell Bar (from Router Pool)
+        const addBar = this.listContainer.createDiv({
+            attr: { style: "display: flex; gap: 8px; align-items: center;" }
+        });
+
+        const selectEl = addBar.createEl("select", { attr: { style: "flex: 1;" } });
+        selectEl.createEl("option", { text: `-- Add ${lvl === "0" ? "Cantrip" : `Level ${lvl} Spell`} --`, value: "" });
+
+        Object.entries(levelPool)
+            .sort((a, b) => a[1].localeCompare(b[1]))
+            .forEach(([spellKey, spellName]) => {
+                if (!knownList.includes(spellKey)) {
+                    selectEl.createEl("option", { text: spellName, value: spellKey });
+                }
+            });
+
+        const addBtn = addBar.createEl("button", { text: "Add" });
+        addBtn.onclick = async () => {
+            const chosenKey = selectEl.value;
+            if (!chosenKey) return;
+
+            knownList.push(chosenKey);
+            this.renderSpellList();
+            await this.renderSpellPreview(chosenKey, levelPool[chosenKey]);
+        };
+
+        // 2. Known Spells List for this Level
+        if (knownList.length === 0) {
+            this.listContainer.createEl("p", {
+                text: `No ${lvl === "0" ? "cantrips" : `level ${lvl} spells`} in your Spellbook yet.`,
+                attr: { style: "color: var(--dnd-ui-color-text-muted); font-style: italic; text-align: center; margin-top: 20px;" }
+            });
+            return;
+        }
+
+        for (const spellKey of knownList) {
+            const displayName = levelPool[spellKey] || spellKey.replace(/-/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+            const isPrepared = preparedList.includes(spellKey);
+
+            const row = this.listContainer.createDiv({
+                attr: {
+                    style: `display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; border-radius: 6px; background: var(--dnd-ui-color-bg-tertiary); border: 1px solid ${isPrepared ? "var(--dnd-ui-color-border-active)" : "var(--dnd-ui-color-border-primary)"
+                        };`
+                }
+            });
+
+            // Left: Prepared Checkbox + Clickable Spell Name
+            const leftGroup = row.createDiv({ attr: { style: "display: flex; align-items: center; gap: 8px; flex: 1; cursor: pointer;" } });
+
+            const prepCheckbox = leftGroup.createEl("input", {
+                type: "checkbox",
+                attr: { title: "Toggle Prepared Status" }
+            });
+            prepCheckbox.checked = isPrepared;
+
+            prepCheckbox.onclick = (e) => {
+                e.stopPropagation();
+                const { cantrips, leveled } = this.getPreparedCounts();
+
+                if (prepCheckbox.checked) {
+                    // Enforce limits when preparing a new spell
+                    if (lvl === "0" && this.maxCantrips > 0 && cantrips >= this.maxCantrips) {
+                        prepCheckbox.checked = false;
+                        new Notice(`Cantrip limit reached (${this.maxCantrips} max). Unprepare a cantrip first!`);
+                        return;
+                    }
+                    if (lvl !== "0" && this.maxPreparedSpells > 0 && leveled >= this.maxPreparedSpells) {
+                        prepCheckbox.checked = false;
+                        new Notice(`Prepared spells limit reached (${this.maxPreparedSpells} max). Unprepare a spell first!`);
+                        return;
+                    }
+                    if (!preparedList.includes(spellKey)) preparedList.push(spellKey);
+                } else {
+                    this.preparedSpellsByLevel[lvl] = preparedList.filter(k => k !== spellKey);
+                }
+
+                this.renderTracker();
+                this.renderSpellList();
+            };
+
+            const nameSpan = leftGroup.createEl("span", {
+                text: displayName,
+                attr: { style: "color: var(--dnd-ui-color-text-bright); font-weight: 500;" }
+            });
+            leftGroup.onclick = async () => {
+                await this.renderSpellPreview(spellKey, displayName);
+            };
+
+            // Right: Remove Button
+            const delBtn = row.createEl("button", {
+                text: "✕",
+                attr: {
+                    title: "Remove from Spellbook",
+                    style: "width: 24px; height: 24px; padding: 0; background: transparent; box-shadow: none; color: var(--dnd-ui-color-text-muted);"
+                }
+            });
+            delBtn.onmouseenter = () => { delBtn.style.background = "var(--dnd-ui-color-accent-red)"; delBtn.style.color = "white"; };
+            delBtn.onmouseleave = () => { delBtn.style.background = "transparent"; delBtn.style.color = "var(--dnd-ui-color-text-muted)"; };
+            delBtn.onclick = () => {
+                this.knownSpellsByLevel[lvl] = knownList.filter(k => k !== spellKey);
+                this.preparedSpellsByLevel[lvl] = this.preparedSpellsByLevel[lvl].filter(k => k !== spellKey);
+                this.renderTracker();
+                this.renderSpellList();
+            };
+        }
+    }
+
+    renderEmptyPreview() {
+        this.previewContainer.empty();
+        this.previewContainer.createEl("p", {
+            text: "Click on any spell in your Spellbook to inspect its details.",
+            attr: { style: "color: var(--dnd-ui-color-text-muted); font-style: italic; text-align: center; margin-top: 40px;" }
+        });
+    }
+
+    async renderSpellPreview(spellKey: string, fallbackName: string) {
+        this.previewContainer.empty();
+        const spellData = await this.loadSpellJson(spellKey);
+
+        if (!spellData) {
+            this.previewContainer.createEl("h4", { text: fallbackName, attr: { style: "margin: 0 0 6px 0; color: var(--dnd-ui-color-text-bright);" } });
+            this.previewContainer.createEl("p", {
+                text: `Details file (/rulebook/spells/${spellKey}.json) not found.`,
+                attr: { style: "color: var(--dnd-ui-color-text-muted); font-style: italic;" }
+            });
+            return;
+        }
+
+        // Title & Badges
+        const headerDiv = this.previewContainer.createDiv({ attr: { style: "display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;" } });
+        headerDiv.createEl("h4", { text: spellData.name || fallbackName, attr: { style: "margin: 0; color: var(--dnd-ui-color-text-bright);" } });
+
+        const badgesDiv = headerDiv.createDiv({ attr: { style: "display: flex; gap: 4px;" } });
+        if (spellData.concentration) {
+            badgesDiv.createEl("span", { text: "C", cls: "dnd-level-badge", attr: { title: "Concentration", style: "margin: 0; padding: 2px 6px;" } });
+        }
+        if (spellData.ritual) {
+            badgesDiv.createEl("span", { text: "R", cls: "dnd-level-badge dnd-badge-combined", attr: { title: "Ritual", style: "margin: 0; padding: 2px 6px;" } });
+        }
+
+        const lvlText = Number(spellData.level) === 0 ? `${spellData.school || ""} Cantrip` : `Level ${spellData.level} ${spellData.school || ""}`;
+        this.previewContainer.createEl("div", {
+            text: lvlText.trim(),
+            attr: { style: "font-size: 0.8em; color: var(--dnd-ui-color-text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px;" }
+        });
+
+        // Core Metadata Grid
+        const metaDiv = this.previewContainer.createDiv({
+            attr: { style: "font-size: 0.85em; color: var(--dnd-ui-color-text-sublabel); margin-bottom: 10px; border-bottom: 1px solid var(--dnd-ui-color-border-primary); padding-bottom: 8px; line-height: 1.5;" }
+        });
+
+        if (spellData.castingTime) metaDiv.createEl("div", { text: `Casting Time: ${spellData.castingTime}` });
+        if (spellData.range) metaDiv.createEl("div", { text: `Range: ${spellData.range}` });
+        if (spellData.components) {
+            const compStr = Array.isArray(spellData.components) ? spellData.components.join(", ") : String(spellData.components);
+            const matStr = spellData.materials ? ` (${spellData.materials})` : "";
+            metaDiv.createEl("div", { text: `Components: ${compStr}${matStr}` });
+        }
+        if (spellData.duration) metaDiv.createEl("div", { text: `Duration: ${spellData.duration}` });
+
+        // Description
+        if (spellData.description) {
+            const descDiv = this.previewContainer.createDiv({ attr: { style: "font-size: 0.9em; line-height: 1.4;" } });
+            await this.plugin.renderDndMarkdown(spellData.description, descDiv, this.sourcePath, this.renderChild);
+        }
+    }
+
+    async saveSpellbook() {
+        const formattedKnown = this.formatSpellTuples(this.knownSpellsByLevel);
+        const formattedPrepared = this.formatSpellTuples(this.preparedSpellsByLevel);
+
+        await this.plugin.updateCharacterFrontmatter(this.sourcePath, {
+            "DnD_spells": JSON.stringify(formattedKnown),
+            "DnD_preparedSpells": JSON.stringify(formattedPrepared)
+        });
+
+        new Notice("Spellbook saved!");
+        this.close();
+    }
+
+    onClose() {
+        if (this.renderChild) {
+            this.renderChild.unload();
+        }
+        this.contentEl.empty();
+    }
+}
+
+// --- CUSTOM NOTIFICATION UI ---
+export class DnDCustomNotice extends Notice {
+    constructor(
+        title: string,
+        message: string,
+        iconString: string = "🎲",
+        primaryAction?: { text: string; callback: () => void },
+        secondaryAction?: { text: string; callback: () => void },
+        duration: number = 0 // 0 = stays open until clicked or dismissed with X
+    ) {
+        super("", duration);
+
+        // Grab the true outer .notice element so Obsidian doesn't render a second box behind ours
+        const rootEl = (this.noticeEl.closest(".notice") as HTMLElement) || this.noticeEl;
+        rootEl.empty();
+        rootEl.addClass("dnd-custom-notice");
+
+        // Enforce solid, unclipped horizontal card styling matching our plugin windows
+        rootEl.style.setProperty("background-color", "var(--dnd-ui-color-bg-primary)", "important");
+        rootEl.style.setProperty("border", "1px solid var(--dnd-ui-color-border-primary)", "important");
+        rootEl.style.setProperty("border-radius", "12px", "important");
+        rootEl.style.setProperty("padding", "16px 18px", "important");
+        rootEl.style.setProperty("box-shadow", "0 8px 24px rgba(0, 0, 0, 0.45)", "important");
+        rootEl.style.setProperty("opacity", "1", "important");
+        rootEl.style.setProperty("backdrop-filter", "none", "important");
+        rootEl.style.setProperty("width", "360px", "important");
+        rootEl.style.setProperty("max-width", "90vw", "important");
+        rootEl.style.setProperty("overflow", "visible", "important");
+        rootEl.style.setProperty("box-sizing", "border-box", "important");
+        rootEl.style.setProperty("cursor", "default", "important");
+
+        // Stop Obsidian from closing the notice when clicking on the card body itself
+        rootEl.onclick = (e) => e.stopPropagation();
+
+        // Main 2-Column Layout: [Left Icon] + [Right Content Column]
+        const layout = rootEl.createDiv({
+            cls: "dnd-notice-layout",
+            attr: {
+                style: "display: flex; flex-direction: row; align-items: flex-start; gap: 14px; width: 100%;"
+            }
+        });
+
+        // 1. Left App-Style Icon Box
+        const iconBox = layout.createDiv({
+            cls: "dnd-notice-icon",
+            attr: {
+                style: "width: 48px; height: 48px; border-radius: 10px; flex-shrink: 0; background-color: var(--dnd-ui-color-bg-secondary); border: 1px solid var(--dnd-ui-color-border-primary); display: flex; align-items: center; justify-content: center; font-size: 24px; box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.25);"
+            }
+        });
+        iconBox.innerText = iconString;
+
+        // 2. Right Column: Header (Title + Close X), Message, and Action Buttons
+        const contentCol = layout.createDiv({
+            cls: "dnd-notice-content",
+            attr: {
+                style: "display: flex; flex-direction: column; flex: 1; min-width: 0;"
+            }
+        });
+
+        // Top Row: Title on the left, '✕' Close button on the right
+        const headerRow = contentCol.createDiv({
+            cls: "dnd-notice-header",
+            attr: {
+                style: "display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; margin-bottom: 4px;"
+            }
+        });
+
+        headerRow.createEl("div", {
+            text: title,
+            cls: "dnd-notice-title",
+            attr: {
+                style: "font-size: 1.1em; font-weight: 700; color: var(--dnd-ui-color-text-bright); line-height: 1.25;"
+            }
+        });
+
+        const closeBtn = headerRow.createEl("button", {
+            text: "✕",
+            cls: "dnd-notice-close",
+            attr: {
+                title: "Dismiss",
+                style: "background: transparent; border: none; box-shadow: none; color: var(--dnd-ui-color-text-muted); font-size: 14px; padding: 0 2px; height: auto; cursor: pointer; line-height: 1;"
+            }
+        });
+        closeBtn.onmouseenter = () => { closeBtn.style.color = "var(--dnd-ui-color-text-bright)"; };
+        closeBtn.onmouseleave = () => { closeBtn.style.color = "var(--dnd-ui-color-text-muted)"; };
+        closeBtn.onclick = (e) => {
+            e.stopPropagation();
+            this.hide();
+        };
+
+        // Subtitle / Message Text
+        contentCol.createEl("div", {
+            text: message,
+            cls: "dnd-notice-message",
+            attr: {
+                style: "font-size: 0.92em; line-height: 1.4; color: var(--dnd-ui-color-text-muted); margin-bottom: 14px; word-wrap: break-word;"
+            }
+        });
+
+        // Bottom Row: Action Buttons aligned beneath the message (matching Reference Image 2)
+        if (primaryAction || secondaryAction) {
+            const btnRow = contentCol.createDiv({
+                cls: "dnd-notice-buttons",
+                attr: {
+                    style: "display: flex; flex-direction: row; gap: 10px; align-items: center; flex-wrap: wrap;"
+                }
+            });
+
+            if (primaryAction) {
+                const pBtn = btnRow.createEl("button", {
+                    text: primaryAction.text,
+                    cls: "mod-cta",
+                    attr: {
+                        style: "padding: 7px 16px; border-radius: 8px; font-weight: 600; font-size: 0.9em; cursor: pointer; border: 1px solid var(--dnd-ui-color-border-active); background-color: var(--dnd-ui-color-border-active); color: var(--dnd-ui-color-text-bright); box-shadow: none; height: auto;"
+                    }
                 });
+                pBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    primaryAction.callback();
+                    this.hide();
+                };
+            }
+
+            if (secondaryAction) {
+                const sBtn = btnRow.createEl("button", {
+                    text: secondaryAction.text,
+                    attr: {
+                        style: "padding: 7px 16px; border-radius: 8px; font-weight: 500; font-size: 0.9em; cursor: pointer; border: 1px solid var(--dnd-ui-color-border-primary); background-color: var(--dnd-ui-color-bg-secondary); color: var(--dnd-ui-color-text-primary); box-shadow: none; height: auto;"
+                    }
+                });
+                sBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    secondaryAction.callback();
+                    this.hide();
+                };
             }
         }
     }

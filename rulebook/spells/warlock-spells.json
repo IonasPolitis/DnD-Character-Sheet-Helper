@@ -1,0 +1,111 @@
+{
+  "0": {
+    "blade-ward": "Blade Ward",
+    "chill-touch": "Chill Touch",
+    "eldritch-blast": "Eldritch Blast",
+    "friends": "Friends",
+    "mage-hand": "Mage Hand",
+    "mind-sliver": "Mind Sliver",
+    "minor-illusion": "Minor Illusion",
+    "poison-spray": "Poison Spray",
+    "prestidigitation": "Prestidigitation",
+    "thunderclap": "Thunderclap",
+    "toll-the-dead": "Toll the Dead",
+    "true-strike": "True Strike"
+  },
+  "1": {
+    "armor-of-agathys": "Armor of Agathys",
+    "arms-of-hadar": "Arms of Hadar",
+    "bane": "Bane",
+    "charm-person": "Charm Person",
+    "comprehend-languages": "Comprehend Languages",
+    "detect-magic": "Detect Magic",
+    "expeditious-retreat": "Expeditious Retreat",
+    "hellish-rebuke": "Hellish Rebuke",
+    "hex": "Hex",
+    "illusory-script": "Illusory Script",
+    "protection-from-evil-and-good": "Protection from Evil and Good",
+    "speak-with-animals": "Speak with Animals",
+    "tashas-hideous-laughter": "Tasha's Hideous Laughter",
+    "unseen-servant": "Unseen Servant",
+    "witch-bolt": "Witch Bolt"
+  },
+  "2": {
+    "cloud-of-daggers": "Cloud of Daggers",
+    "crown-of-madness": "Crown of Madness",
+    "darkness": "Darkness",
+    "enthrall": "Enthrall",
+    "hold-person": "Hold Person",
+    "invisibility": "Invisibility",
+    "mind-spike": "Mind Spike",
+    "mirror-image": "Mirror Image",
+    "misty-step": "Misty Step",
+    "ray-of-enfeeblement": "Ray of Enfeeblement",
+    "see-invisibility": "See Invisibility",
+    "spider-climb": "Spider Climb",
+    "suggestion": "Suggestion"
+  },
+  "3": {
+    "counterspell": "Counterspell",
+    "dispel-magic": "Dispel Magic",
+    "fear": "Fear",
+    "gaseous-form": "Gaseous Form",
+    "hunger-of-hadar": "Hunger of Hadar",
+    "hypnotic-pattern": "Hypnotic Pattern",
+    "magic-circle": "Magic Circle",
+    "major-image": "Major Image",
+    "remove-curse": "Remove Curse",
+    "summon-fey": "Summon Fey",
+    "summon-undead": "Summon Undead",
+    "tongues": "Tongues",
+    "vampiric-touch": "Vampiric Touch"
+  },
+  "4": {
+    "banishment": "Banishment",
+    "blight": "Blight",
+    "charm-monster": "Charm Monster",
+    "dimension-door": "Dimension Door",
+    "hallucinatory-terrain": "Hallucinatory Terrain",
+    "phantasmal-killer": "Phantasmal Killer",
+    "summon-aberration": "Summon Aberration"
+  },
+  "5": {
+    "contact-other-plane": "Contact Other Plane",
+    "dream": "Dream",
+    "hold-monster": "Hold Monster",
+    "jallarzis-storm-of-radiance": "Jallarzi's Storm of Radiance",
+    "mislead": "Mislead",
+    "planar-binding": "Planar Binding",
+    "scrying": "Scrying",
+    "synaptic-static": "Synaptic Static",
+    "teleportation-circle": "Teleportation Circle"
+  },
+  "6": {
+    "arcane-gate": "Arcane Gate",
+    "circle-of-death": "Circle of Death",
+    "eyebite": "Eyebite",
+    "summon-fiend": "Summon Fiend",
+    "tashas-bubbling-cauldron": "Tasha's Bubbling Cauldron",
+    "true-seeing": "True Seeing"
+  },
+  "7": {
+    "etherealness": "Etherealness",
+    "forcecage": "Forcecage",
+    "plane-shift": "Plane Shift"
+  },
+  "8": {
+    "demiplane": "Demiplane",
+    "dominate-monster": "Dominate Monster",
+    "glibness": "Glibness",
+    "power-word-stun": "Power Word Stun"
+  },
+  "9": {
+    "astral-projection": "Astral Projection",
+    "foresight": "Foresight",
+    "gate": "Gate",
+    "imprisonment": "Imprisonment",
+    "power-word-kill": "Power Word Kill",
+    "true-polymorph": "True Polymorph",
+    "weird": "Weird"
+  }
+}

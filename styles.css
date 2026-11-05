@@ -1,32 +1,33 @@
 /* ==========================================
-   1. THEME VARIABLES
+   1. THEME VARIABLES (Standalone Fallback)
    ========================================== */
 :root {
     /* Backgrounds */
-    --dnd-bg-primary: #262A36; /* Synced with DnD_UI_Toolkit */
-    --dnd-bg-secondary: #323748;
-    --dnd-bg-tertiary: #3A4055;
-    --dnd-bg-hover: #363B4A;
-    --dnd-bg-darker: #303440;
-    --dnd-bg-group: #2D334A;
+    --dnd-ui-color-bg-primary: #262a36;
+    --dnd-ui-color-bg-secondary: #323748;
+    --dnd-ui-color-bg-tertiary: #3a4055;
+    --dnd-ui-color-bg-hover: #363b4a;
+    --dnd-ui-color-bg-darker: #303440;
+    --dnd-ui-color-bg-group: #2d334a;
+    --dnd-ui-color-bg-proficient: #2d3343;
 
     /* Text */
-    --dnd-text-primary: #E0E0E0;
-    --dnd-text-secondary: #A0A0D0;
-    --dnd-text-sublabel: #A0C7D0;
-    --dnd-text-bright: #ffffff;
-    --dnd-text-muted: #B8B8D0;
-    --dnd-text-group: #B8C4FF;
+    --dnd-ui-color-text-primary: #e0e0e0;
+    --dnd-ui-color-text-secondary: #a0a0d0;
+    --dnd-ui-color-text-sublabel: #a0c7d0;
+    --dnd-ui-color-text-bright: #ffffff;
+    --dnd-ui-color-text-muted: #b8b8d0;
+    --dnd-ui-color-text-group: #b8c4ff;
 
     /* Borders */
-    --dnd-border-primary: #383E54;
-    --dnd-border-active: #6D7CBA;
-    --dnd-border-focus: #000000;
+    --dnd-ui-color-border-primary: #383e54;
+    --dnd-ui-color-border-active: #6d7cba;
+    --dnd-ui-color-border-focus: rgba(109, 124, 186, 0.5);
 
     /* Accents */
-    --dnd-accent-teal: #64D8CB;
-    --dnd-accent-red: #E57373;
-    --dnd-accent-purple: #B29DDB;
+    --dnd-ui-color-accent-teal: #64d8cb;
+    --dnd-ui-color-accent-red: #e57373;
+    --dnd-ui-color-accent-purple: #b39ddb;
 }
 
 /* ==========================================
@@ -35,13 +36,19 @@
 .dnd-features-window {
     width: 100%;
     height: auto;
-    border: 1px solid var(--dnd-border-primary);
-    background-color: var(--dnd-bg-primary);
-    color: var(--dnd-text-primary);
+    border: 1px solid var(--dnd-ui-color-border-primary); /* Updated to new variable */
+    background-color: var(--dnd-ui-color-bg-primary); /* Base fallback color */
+    
+    /* Optional: Add your own custom background image here */
+    background-image: url('data:image/png;base64,...'); /* Or a local vault URL */
+    background-size: cover;
+    background-blend-mode: overlay;
+    
+    color: var(--dnd-ui-color-text-primary);
     border-radius: 6px;
     padding: 16px;
     margin: 10px 0;
-    font-family: var(--font-text); /* Inherits Obsidian's default font */
+    font-family: var(--font-text); 
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
@@ -66,21 +73,25 @@
    ========================================== */
 .dnd-feature-title {
     display: flex;
-    align-items: center; /* Vertically centers the badge with the text */
+    align-items: center; 
     margin-bottom: 4px;
-    color: var(--dnd-text-bright);
+    color: var(--dnd-ui-color-text-bright);
     font-weight: bold;
 }
 
 .dnd-level-badge {
-    background-color: var(--dnd-bg-tertiary);
-    color: var(--dnd-accent-purple); 
+    background-color: var(--dnd-ui-color-bg-secondary);
+    color: var(--dnd-ui-color-text-group); /* Dynamically scales with the theme's group color */
     padding: 2px 10px;
-    border-radius: 12px; /* Gives it the rounded pill shape */
+    border-radius: 12px;
     font-size: 0.85em;
     font-weight: normal;
     margin-right: 10px;
     display: inline-block;
+}
+
+.dnd-badge-combined {
+    background-color: var(--dnd-ui-color-bg-group);
 }
 
 /* ==========================================
@@ -91,37 +102,43 @@
     flex-direction: column;
     gap: 8px;
     margin-top: 12px;
+    margin-bottom: 24px;
 }
 
-.dnd-draggable-item {
-    background-color: var(--dnd-bg-tertiary);
-    border: 1px solid var(--dnd-border-primary);
-    color: var(--dnd-text-primary);
-    padding: 10px 16px;
+.dnd-draggable-item,
+.setting-item.dnd-draggable-item {
+    background-color: var(--dnd-ui-color-bg-secondary) !important;
+    border: 1px solid var(--dnd-ui-color-border-primary) !important;
+    color: var(--dnd-ui-color-text-primary);
+    padding: 12px 16px !important;
     border-radius: 6px;
     cursor: grab;
     font-weight: 500;
-    transition: background-color 0.2s ease;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
 }
 
-.dnd-draggable-item:active {
+.dnd-draggable-item:hover,
+.setting-item.dnd-draggable-item:hover {
+    background-color: var(--dnd-ui-color-bg-hover) !important;
+    border-color: var(--dnd-ui-color-border-active) !important;
+}
+
+.dnd-draggable-item:active,
+.setting-item.dnd-draggable-item:active {
     cursor: grabbing;
-}
-
-.dnd-draggable-item:hover {
-    background-color: var(--dnd-bg-hover);
+    background-color: var(--dnd-ui-color-bg-tertiary) !important;
+    border-color: var(--dnd-ui-color-border-active) !important;
 }
 
 /* ==========================================
    5. UTILITIES & FEATURE FORMATTING
    ========================================== */
-/* Add a visual separator (divider) between feature blocks */
 .dnd-features-window > div > div {
-    border-bottom: 1px solid var(--dnd-border-primary);
-    padding-bottom: 14px; /* Space between text and the line */
+    border-bottom: 1px solid var(--dnd-ui-color-border-primary);
+    padding-bottom: 14px; 
 }
 
-/* Remove the margin and border from the very last feature block */
 .dnd-features-window > div > div:last-child {
     border-bottom: none;
     padding-bottom: 0;
@@ -132,15 +149,15 @@
    6. TYPOGRAPHY & COMPONENT CLASSES
    ========================================== */
 .dnd-section-header {
-    color: var(--dnd-text-primary);
+    color: var(--dnd-ui-color-text-primary);
     margin-bottom: 8px;
     margin-top: 24px;
     font-weight: 600;
 }
 
 .dnd-class-header {
-    color: var(--dnd-accent-teal);
-    border-bottom: 1px solid var(--dnd-border-primary);
+    color: var(--dnd-ui-color-text-primary);
+    border-bottom: 1px solid var(--dnd-ui-color-border-primary);
     padding-bottom: 4px;
     margin-bottom: 12px;
     margin-top: 0;
@@ -150,46 +167,37 @@
     margin-bottom: 14px;
 }
 
-.dnd-badge-combined {
-    background-color: var(--dnd-bg-group);
-}
+/* NOTE: Duplicate badge classes have been permanently deleted from here */
 
 .dnd-feature-name {
-    /* Swapped from bright to primary based on your previous request! */
-    color: var(--dnd-text-primary); 
+    color: var(--dnd-ui-color-text-primary); 
 }
 
 .dnd-feature-desc {
-    /* Swapped from primary to bright! */
-    color: var(--dnd-text-bright); 
+    color: var(--dnd-ui-color-text-bright); 
     line-height: 1.5;
     margin-top: 4px;
 }
 
-/* Strip Obsidian's default bulky margins from rendered markdown paragraphs */
 .dnd-feature-desc p {
     margin-top: 0.5em;
     margin-bottom: 0.5em;
 }
 
-/* Remove the top margin from the very first paragraph so it sits flush with the title */
 .dnd-feature-desc p:first-child {
     margin-top: 0;
 }
 
-/* Remove the bottom margin from the very last paragraph to prevent extra padding at the bottom of the box */
 .dnd-feature-desc p:last-child {
     margin-bottom: 0;
 }
 
-/* Ensure all rendered Markdown tables stretch to full card width */
 .dnd-feature-desc table {
     width: 100%;
     border-collapse: collapse;
     margin: 8px 0;
 }
 
-/* Optional: Ensure balanced cell padding and alignment across themes */
 .dnd-feature-desc th,
 .dnd-feature-desc td {
     text-align: left;
@@ -197,10 +205,9 @@
 }
 
 .dnd-error-text {
-    color: var(--dnd-accent-red);
+    color: var(--dnd-ui-color-accent-red);
 }
 
-/* Settings UI Spacing */
 .dnd-settings-header {
     margin-top: 2rem;
 }
@@ -208,7 +215,7 @@
 .dnd-settings-subgroup {
     margin-top: 1rem;
     margin-bottom: 0.5rem;
-    color: var(--text-accent);
+    color: var(--text-accent); 
 }
 
 /* ==========================================
@@ -216,4 +223,745 @@
    ========================================== */
 .character-sheet {
   --file-line-width: 1200px;
+}
+
+/* ==========================================
+   8. OBSIDIAN CODEBLOCK OVERRIDES
+   ========================================== */
+/* Removes default Obsidian gray background and padding from your custom blocks */
+.markdown-rendered pre[class*="language-dnd"] {
+    background-color: transparent !important;
+    border: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    box-shadow: none !important;
+}
+
+/* Ensure the inner code element doesn't add rogue styling */
+.markdown-rendered pre[class*="language-dnd"] > code {
+    background-color: transparent !important;
+    padding: 0 !important;
+    color: inherit !important;
+}
+
+/* ==========================================
+   9. CONTROL PANEL BUTTONS
+   ========================================== */
+.dnd-controls button,
+.dnd-features-window button,
+.block-language-dnd-features button,
+.block-language-dnd-controls button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 8px 12px;
+    border: 1px solid var(--dnd-ui-color-border-primary);
+    border-radius: 8px;
+    background-color: var(--dnd-ui-color-bg-secondary);
+    color: var(--dnd-ui-color-text-primary);
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+    box-shadow: none;
+    height: auto;
+}
+
+.dnd-controls button:hover,
+.dnd-features-window button:hover,
+.block-language-dnd-features button:hover,
+.block-language-dnd-controls button:hover {
+    background-color: var(--dnd-ui-color-bg-hover);
+    border-color: var(--dnd-ui-color-border-active);
+    transform: translateY(-1px);
+}
+
+.dnd-controls button:active,
+.dnd-features-window button:active,
+.block-language-dnd-features button:active,
+.block-language-dnd-controls button:active {
+    transform: translateY(0);
+    background-color: var(--dnd-ui-color-bg-darker);
+}
+
+.dnd-controls button:focus,
+.dnd-features-window button:focus,
+.block-language-dnd-features button:focus,
+.block-language-dnd-controls button:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--dnd-ui-color-border-focus);
+}
+
+/* Primary "Call to Action" button override (e.g., Level Up) */
+.dnd-controls button.mod-cta,
+.dnd-features-window button.mod-cta,
+.block-language-dnd-features button.mod-cta,
+.block-language-dnd-controls button.mod-cta {
+    background-color: var(--dnd-ui-color-border-active);
+    border-color: var(--dnd-ui-color-border-active);
+    color: var(--dnd-ui-color-text-bright);
+}
+
+.dnd-controls button.mod-cta:hover,
+.dnd-features-window button.mod-cta:hover,
+.block-language-dnd-features button.mod-cta:hover,
+.block-language-dnd-controls button.mod-cta:hover {
+    background-color: var(--dnd-ui-color-bg-tertiary);
+    border-color: var(--dnd-ui-color-text-bright);
+    color: var(--dnd-ui-color-text-bright);
+}
+
+/* ==========================================
+   10. SPELLBOOK BLOCK & 2-COLUMN CARDS
+   ========================================== */
+.dnd-spells-window {
+    width: 100%;
+    border: 1px solid var(--dnd-ui-color-border-primary);
+    background-color: var(--dnd-ui-color-bg-primary);
+    color: var(--dnd-ui-color-text-primary);
+    border-radius: 6px;
+    padding: 16px;
+    margin: 10px 0;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.dnd-spells-level-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    border-bottom: 1px solid var(--dnd-ui-color-border-primary);
+    padding-bottom: 6px;
+    margin: 18px 0 12px 0;
+}
+
+/* Native Interactive Spell Slot Tracker */
+.dnd-spell-slots-tracker {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.dnd-spell-slots-label {
+    font-size: 0.75em;
+    font-weight: 700;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    color: var(--dnd-ui-color-text-secondary);
+}
+
+.dnd-spell-slots-pips {
+    display: flex;
+    align-items: center;
+    gap: 6px; /* Slightly more gap to match spacing in screenshot */
+}
+
+/* Base Pip State (Unused / Available) - Matches TTRPG-UI-Toolkit Checkbox */
+.dnd-slot-pip {
+    width: 18px; 
+    height: 18px;
+    border-radius: 4px; 
+    border: 1.5px solid var(--dnd-ui-color-border-active); 
+    background-color: var(--dnd-ui-color-bg-secondary);
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.dnd-slot-pip:hover {
+    transform: scale(1.05);
+    background-color: var(--dnd-ui-color-bg-hover) !important;
+    border-color: var(--dnd-ui-color-text-bright) !important;
+}
+
+/* Expended Pip State (Used) - Filled with Theme's Active Color */
+.dnd-slot-pip.is-used {
+    background-color: var(--dnd-ui-color-border-active) !important; 
+    border-color: var(--dnd-ui-color-border-active) !important; 
+}
+
+.dnd-slot-pip.is-used:hover {
+    background-color: var(--dnd-ui-color-bg-hover) !important;
+    border-color: var(--dnd-ui-color-border-active) !important;
+}
+
+.dnd-spells-level-header:first-child {
+    margin-top: 0;
+}
+
+.dnd-spells-level-header h4 {
+    color: var(--dnd-ui-color-text-secondary);
+    margin: 0;
+    font-size: 1em;
+    letter-spacing: 0.5px;
+}
+
+/* 2-Column Grid filling top-left to bottom-right */
+.dnd-spells-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+}
+
+@media (max-width: 700px) {
+    .dnd-spells-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.dnd-spell-card {
+    display: flex;
+    flex-direction: column;
+    background-color: transparent !important; /* Blends perfectly with the main window */
+    border: 1px solid var(--dnd-ui-color-border-primary);
+    border-radius: 6px;
+    overflow: hidden;
+    transition: border-color 0.2s ease, transform 0.15s ease;
+}
+
+.dnd-spell-card:hover {
+    border-color: var(--dnd-ui-color-border-active);
+}
+
+.dnd-spell-card-prepared {
+    border-color: var(--dnd-ui-color-text-sublabel);
+}
+
+/* Integrated Top Name Bar */
+.dnd-spell-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: var(--dnd-ui-color-bg-secondary) !important;
+    border-bottom: 1px solid var(--dnd-ui-color-border-primary);
+    padding: 6px 12px;
+    gap: 8px;
+}
+
+.dnd-spell-card-title {
+    color: var(--dnd-ui-color-text-secondary);
+    font-weight: 700;
+    font-size: 0.9em;
+    letter-spacing: 1px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.dnd-spell-card-badges {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+.dnd-spell-school-label {
+    font-size: 0.75em;
+    color: var(--dnd-ui-color-text-sublabel);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Split Body: Left Combat Stats + Right 2x2 Grid */
+.dnd-spell-card-body {
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+    flex: 1; /* Forces the internal body to stretch and fill the card's full height */
+}
+.dnd-spell-combat-box {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    background-color: var(--dnd-ui-color-bg-secondary) !important;
+    border-right: 1px solid var(--dnd-ui-color-border-primary);
+    padding: 10px 12px;
+    min-width: 78px;
+    gap: 10px;
+    text-align: center;
+}
+
+.dnd-spell-combat-val {
+    color: var(--dnd-ui-color-text-bright);
+    font-weight: 700;
+    font-size: 1.05em;
+    line-height: 1.1;
+}
+
+.dnd-spell-combat-lbl {
+    color: var(--dnd-ui-color-text-secondary);
+    font-size: 0.65em;
+    font-weight: 600;
+    letter-spacing: 0.8px;
+    margin-top: 2px;
+}
+
+.dnd-spell-meta-grid {
+    flex: 1;
+    display: grid;
+    /* Left column hugs short text (pulling the right column in) but caps at 75% for long text to wrap safely */
+    grid-template-columns: fit-content(75%) 1fr; 
+    gap: 12px 24px; 
+    padding: 10px 14px;
+    align-items: start; 
+}
+
+.dnd-spell-meta-cell {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.dnd-spell-meta-label {
+    color: var(--dnd-ui-color-text-secondary);
+    font-size: 0.7em;
+    font-weight: 700;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    margin-bottom: 2px;
+}
+
+.dnd-spell-meta-val {
+    color: var(--dnd-ui-color-text-bright);
+    font-size: 0.88em;
+    font-weight: 500;
+    white-space: normal; /* Allows long components with materials to wrap naturally */
+    line-height: 1.3;
+}
+
+/* Click-to-Expand Description Drawer */
+.dnd-spell-desc-drawer {
+    border-top: 1px solid var(--dnd-ui-color-border-primary);
+    background-color: var(--dnd-ui-color-bg-darker);
+    padding: 10px 12px;
+    font-size: 0.88em;
+    line-height: 1.45;
+    color: var(--dnd-ui-color-text-primary);
+}
+
+/* ==========================================
+   11. NATIVE DND-SKILLS TABLE
+   ========================================== */
+.dnd-skills-window {
+    width: 100%;
+    border: 1px solid var(--dnd-ui-color-border-primary);
+    background-color: var(--dnd-ui-color-bg-primary);
+    color: var(--dnd-ui-color-text-primary);
+    border-radius: 6px;
+    padding: 10px 14px; /* Reduced outer padding */
+    margin: 10px 0;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    box-sizing: border-box;
+}
+
+/* 2-Column Grid that flows top-to-bottom (9 rows per column) */
+.dnd-skills-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: repeat(9, auto);
+    grid-auto-flow: column;
+    column-gap: 32px;
+    row-gap: 2px;
+}
+
+@media (max-width: 650px) {
+    .dnd-skills-grid {
+        grid-template-columns: 1fr !important;
+        grid-template-rows: auto !important;
+        grid-auto-flow: row !important;
+    }
+}
+
+.dnd-skill-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 4px 8px; /* Tighter vertical padding */
+    border-radius: 4px;
+    position: relative; /* Anchors the indicator dot */
+}
+
+.dnd-skill-left {
+    display: flex;
+    align-items: center; /* Centers the dot with the text */
+    gap: 10px;
+    min-width: 0;
+}
+
+/* ==========================================
+   DYNAMIC SKILL INDICATOR DOTS
+   ========================================== */
+.dnd-skill-dot {
+    position: absolute;
+    left: 1px; /* Floats cleanly inside the row's left padding */
+    top: 50%;
+    transform: translateY(-50%);
+    width: 6px;  /* Smaller, sleeker dot */
+    height: 6px;
+    border-radius: 50%;
+    border: 1.5px solid transparent;
+    background-color: transparent;
+    box-sizing: border-box;
+    transition: all 0.2s ease;
+}
+
+/* 1. Proficient State: Solid primary theme color */
+.dnd-skill-row.is-proficient .dnd-skill-dot {
+    background-color: var(--dnd-ui-color-border-active);
+    border-color: var(--dnd-ui-color-border-active);
+}
+
+/* 2. Half-Proficient State: Same primary color, but hollow */
+.dnd-skill-row.is-half .dnd-skill-dot {
+    background-color: transparent;
+    border-color: var(--dnd-ui-color-border-active);
+}
+
+/* 3. Expertise State: Different dynamic theme hue (solid) */
+.dnd-skill-row.is-expertise .dnd-skill-dot {
+    background-color: var(--dnd-ui-color-text-group);
+    border-color: var(--dnd-ui-color-text-group);
+}
+
+.dnd-skill-abbr {
+    font-size: 0.78em;
+    font-style: italic;
+    font-weight: 500;
+    color: var(--dnd-ui-color-text-muted);
+    width: 32px;
+    display: inline-block;
+    flex-shrink: 0;
+    letter-spacing: 0.5px;
+}
+
+.dnd-skill-name {
+    font-size: 1.02em;
+    color: var(--dnd-ui-color-text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.dnd-skill-mod {
+    font-size: 1.02em;
+    font-weight: 400;
+    color: var(--dnd-ui-color-text-primary);
+    margin-left: 12px;
+    flex-shrink: 0;
+}
+
+/* ==========================================
+   12. CUSTOM NOTIFICATIONS
+   ========================================== */
+.notice.dnd-custom-notice {
+    background-color: var(--dnd-ui-color-bg-primary) !important;
+    border: 1px solid var(--dnd-ui-color-border-primary) !important;
+    border-radius: 12px !important;
+    padding: 16px 18px !important;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45) !important;
+    opacity: 1 !important;
+    backdrop-filter: none !important;
+    width: 360px !important;
+    max-width: 90vw !important;
+    margin-left: auto !important;
+}
+
+.dnd-notice-buttons button:hover {
+    background-color: var(--dnd-ui-color-bg-hover) !important;
+    border-color: var(--dnd-ui-color-border-active) !important;
+    transform: translateY(-1px);
+}
+
+.dnd-notice-buttons button.mod-cta:hover {
+    background-color: var(--dnd-ui-color-border-active) !important;
+    border-color: var(--dnd-ui-color-text-bright) !important;
+    color: var(--dnd-ui-color-text-bright) !important;
+}
+
+/* ==========================================
+   13. NATIVE DND-ABILITIES CARDS
+   ========================================== */
+.dnd-abilities-grid {
+    display: grid;
+    width: 100%;
+    gap: 10px;
+    margin: 10px 0;
+    box-sizing: border-box;
+}
+
+.dnd-ability-card {
+    display: flex;
+    flex-direction: column;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid var(--dnd-ui-color-border-primary);
+    background-color: var(--dnd-ui-color-bg-primary);
+    box-sizing: border-box;
+    transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.dnd-ability-card.is-proficient {
+    border-color: var(--dnd-ui-color-border-active);
+    background-color: var(--dnd-ui-color-bg-proficient);
+}
+
+.dnd-ability-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 12px;
+    background-color: var(--dnd-ui-color-bg-secondary);
+}
+
+.dnd-ability-abbr {
+    font-size: 0.85em;
+    font-weight: 500;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--dnd-ui-color-text-muted); /* Updated to muted */
+}
+
+.dnd-ability-score {
+    font-size: 0.9em;
+    font-weight: 500;
+    color: var(--dnd-ui-color-text-muted); /* Updated to muted */
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}
+
+.dnd-ability-body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 14px 10px 10px 10px;
+    gap: 10px;
+    flex: 1;
+}
+
+.dnd-ability-mod {
+    font-size: 1.65em;
+    font-weight: 400; /* Removed bold */
+    line-height: 1.1;
+    color: var(--dnd-ui-color-text-bright);
+    text-decoration: underline;
+    text-underline-offset: 6px;
+    text-decoration-thickness: 2px;
+}
+
+.dnd-ability-save {
+    font-size: 0.82em;
+    font-style: italic;
+    color: var(--dnd-ui-color-text-muted);
+}
+
+.dnd-ability-card.is-proficient .dnd-ability-save {
+    color: var(--dnd-ui-color-text-sublabel);
+}
+
+/* ==========================================
+   15. NATIVE DND-INVENTORY GRID
+   ========================================== */
+.dnd-inventory-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr; /* Default 2-column layout */
+    column-gap: 20px;
+    row-gap: 8px; /* Slightly increased row gap for better mobile readability */
+}
+
+/* Collapse to a single column on mobile screens to prevent overflow */
+@media (max-width: 650px) {
+    .dnd-inventory-grid {
+        grid-template-columns: 1fr !important;
+    }
+}
+
+/* ==========================================
+   16. NATIVE DND-HEALTH CARD & REST BAR
+   ========================================== */
+.dnd-health-window {
+    width: 100%;
+    border: 1px solid var(--dnd-ui-color-border-primary);
+    background-color: var(--dnd-ui-color-bg-primary);
+    color: var(--dnd-ui-color-text-primary);
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin: 10px 0 8px 0;
+    box-sizing: border-box;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.dnd-health-label {
+    font-size: 0.82em;
+    font-weight: 500;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--dnd-ui-color-text-secondary);
+    margin-bottom: 8px;
+}
+
+.dnd-health-numbers {
+    display: flex;
+    align-items: baseline;
+    gap: 4px;
+    margin-bottom: 12px;
+}
+
+.dnd-health-current {
+    font-size: 1.85em;
+    font-weight: 700;
+    color: var(--dnd-ui-color-text-bright);
+    line-height: 1;
+}
+
+.dnd-health-max {
+    font-size: 1.15em;
+    font-weight: 600;
+    color: var(--dnd-ui-color-text-muted);
+}
+
+.dnd-health-temp {
+    font-size: 0.95em;
+    font-weight: 600;
+    color: var(--dnd-ui-color-accent-purple);
+    margin-left: 6px;
+}
+
+.dnd-health-bar-track {
+    width: 100%;
+    height: 8px;
+    background-color: var(--dnd-ui-color-bg-secondary);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 14px;
+}
+
+.dnd-health-bar-fill {
+    height: 100%;
+    background-color: var(--dnd-ui-color-border-active);
+    border-radius: 4px;
+    transition: width 0.25s ease;
+}
+
+.dnd-health-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+}
+
+@media (max-width: 650px) {
+    .dnd-health-controls {
+        flex-wrap: wrap;
+    }
+}
+
+.dnd-health-input {
+    width: 68px !important;
+    height: 34px !important;
+    text-align: center;
+    background-color: var(--dnd-ui-color-bg-darker) !important;
+    border: 1px solid var(--dnd-ui-color-border-primary) !important;
+    color: var(--dnd-ui-color-text-bright) !important;
+    border-radius: 6px !important;
+    font-size: 0.95em;
+    flex-shrink: 0;
+}
+
+.dnd-health-btn {
+    flex: 1;
+    height: 34px !important;
+    background-color: transparent !important;
+    color: var(--dnd-ui-color-text-bright) !important;
+    border-radius: 6px !important;
+    font-size: 0.92em;
+    font-weight: 500;
+    cursor: pointer;
+    box-shadow: none !important;
+    transition: background-color 0.15s ease, transform 0.1s ease;
+}
+
+.dnd-health-btn:hover {
+    background-color: var(--dnd-ui-color-bg-hover) !important;
+}
+
+.dnd-health-btn-heal {
+    border: 1px solid var(--dnd-ui-color-accent-teal) !important;
+}
+
+.dnd-health-btn-damage {
+    border: 1px solid var(--dnd-ui-color-accent-red) !important;
+}
+
+.dnd-health-btn-temp {
+    border: 1px solid var(--dnd-ui-color-accent-purple) !important;
+}
+
+.dnd-health-divider {
+    border-top: 1px solid var(--dnd-ui-color-border-primary);
+    margin: 16px 0;
+}
+
+.dnd-health-hitdice-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
+}
+
+.dnd-health-hitdice-label {
+    font-size: 0.82em;
+    font-weight: 500;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    color: var(--dnd-ui-color-text-secondary);
+}
+
+.dnd-health-deathsaves-row {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 16px;
+    padding: 4px 0 2px 0;
+}
+
+.dnd-health-skull {
+    font-size: 1.35em;
+    line-height: 1;
+    user-select: none;
+}
+
+.dnd-health-rest-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+}
+
+.dnd-health-rest-btn {
+    padding: 6px 14px !important;
+    height: auto !important;
+    border-radius: 6px !important;
+    background-color: var(--dnd-ui-color-bg-secondary) !important;
+    border: 1px solid var(--dnd-ui-color-border-primary) !important;
+    color: var(--dnd-ui-color-text-primary) !important;
+    font-size: 0.9em;
+    font-weight: 500;
+    cursor: pointer;
+    box-shadow: none !important;
+    transition: all 0.15s ease;
+}
+
+.dnd-health-rest-btn:hover {
+    background-color: var(--dnd-ui-color-bg-hover) !important;
+    border-color: var(--dnd-ui-color-border-active) !important;
+}
+
+.dnd-health-rest-btn.is-active {
+    border-color: var(--dnd-ui-color-border-active) !important;
+    color: var(--dnd-ui-color-text-bright) !important;
 }

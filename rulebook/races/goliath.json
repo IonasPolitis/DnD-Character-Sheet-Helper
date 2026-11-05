@@ -12,7 +12,7 @@
             },
             {
                   "name": "Giant Ancestry",
-                  "description": "*Hill's Tumble**: When you hit a Large or smaller creature with an attack roll and deal damage to it, you can give that target the Prone condition.",
+                  "description": "**Hill's Tumble**: When you hit a Large or smaller creature with an attack roll and deal damage to it, you can give that target the Prone condition.",
                   "lineage": "Hill Giant"
             },
             {

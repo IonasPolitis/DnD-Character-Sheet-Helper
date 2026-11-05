@@ -1,0 +1,5 @@
+{
+	"name": "Mage Slayer",
+	"description": "You gain the following benefits.\n\t**Ability Score Increase**: Increase your Strength or Dexterity score by 1, to a maximum of 20.\n\t**Concentration Breaker**: When you damage a creature that is concentrating, it has Disadvantage on the saving throw it makes to maintain Concentration.\n\t**Guarded Mind**: If you fail an Intelligence, a Wis-dom, or a Charisma saving throw, you can cause yourself to succeed instead. Once you use this ben-efit, you can't use it again until you finish a Short or Long Rest.",
+	"category": "General Feat"
+}

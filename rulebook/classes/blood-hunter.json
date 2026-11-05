@@ -1,0 +1,196 @@
+{
+    "class": "Blood Hunter",
+    "subclassFile": "blood-hunter-subclasses",
+    "hitDice": "D10",
+    "savingThroughProf": [ "dexterity", "intelligence" ],
+    "proficiencyBonus": [ "2", "2", "2", "2", "3", "3", "3", "3", "4", "4", "4", "4", "5", "5", "5", "5", "6", "6", "6", "6", "7", "7", "7", "7", "8", "8", "8", "8", "9", "9" ],
+    "skillsPool": [ [ "athletics", "acrobatics", "arcana", "history", "insight", "investigation", "religion", "survival" ], 3 ],
+    "spellcastingAbilities": [ "Intelligence" ],
+    "startingEquipment": {
+        "A": {
+            "items": {
+                "scale-amil": 2,
+                "shortsword": 1,
+                "light-crossbow": 1,
+                "bolt": 20,
+                "alchemists-supplies": 1,
+                "explorers-pack": 1
+            },
+            "gold": 8
+        },
+        "B": {
+            "items": {},
+            "gold": 155
+        }
+    },
+    "features": {
+        "1": [
+            {
+                "name": "Hemocraft",
+                "description": "- **Hemocraft die**: You have a hemocraft die, which is a d6. The die increases in size at Blood Hunter level 5, 11 and 17. Your Blood Hunter features and blood curses use the hemocraft die in various ways.\n- **Number Blood Curse of Uses**: You can use this feature to invoke your blood curses twice, choosing which effect to use from those you know. You regain all expended uses when you finish a Short or Long Rest. You gain an additional use when you reach Blood Hunter level 6 (3 uses), 13 (4 uses), and 17 (5 uses).\n- **Amplify**: Blood curses can consume life essence to produce stronger effects. When you use your Hemocraft to invoke a blood curse, you can amplify it and lose a number of hit points equal to one roll of your hemocraft die, and apply the amplify effect onto the target of your blood curse. The first time you amplify a blood curse after finishing a Short or Long Rest, you gain the amount of hit points lost as temporary hit points.",
+                "classChoices": [ "blood-curses", "blood-curses" ]
+            }
+        ],
+        "2": [
+            {
+                "name": "Weapon Mastery",
+                "description": "You learn a rite that allows you to draw elemental power from your own blood, enhancing your weapons' attacks. Choose one Crimson Rite from the list below. You choose another crimson rite at Blood Hunter level 7 and 14. Whenever you gain a Crimson Rite, you can replace one of your Crimson Rite options with another. As a bonus action, you can activate a crimson rite you know onto any number of weapons you are holding. When you do so, you lose hit points equal to one roll of your hemocraft die.\n\tWhile the rite is activated and you wield the weapon, the weapon's attacks deal extra damage equal to your hemocraft die. The damage type is determined by the rite you choose to activate. Each weapon can only have one rite active, and the rite lasts until the end of a Short or Long Rest, if you choose to activate a different rite on a weapon with the rite active, or if you dismiss the rite."
+            },
+            {
+                  "name": "Crimson Rite",
+                  "description": "As a bonus action, you can activate a crimson rite you know onto any number of weapons you are holding. When you do so, you lose hit points equal to one roll of your hemocraft die.",
+                  "classChoices": [ "crimson-rites" ],
+                  "hide": true
+            },
+            {
+                  "name": "Fighting Style",
+                  "description": ""
+            }
+        ],
+        "4": [
+            {
+                "name": "Ability Score Improvement",
+                "description": "Choose between increasing your ability scores or selecting a feat.",
+                "grantedFeats": [
+                    "ability-score-improvement",
+                    "general-feats"
+                ],
+                "hide": true
+            }
+        ],
+        "5": [
+            {
+                "name": "Extra Attack",
+                "description": "You can attack twice instead of once whenever you take the Attack action on your turn."
+            }
+        ],
+        "6": [
+            {
+                "name": "Blood Curses",
+                "description": "",
+                "classChoices": [ "blood-curses", "blood-curses", "blood-curses" ],
+                "hide": true
+            },
+            {
+                  "name": "Brand of Castigation",
+                  "description": "You can use this feature twice, You regain one of its expended uses when you finish a Short Rest, and you regain all expended uses when you finish a Long Rest.",
+                  "classChoices": [ "brand-of-castigation" ]
+            }
+        ],
+        "7": [
+            {
+                  "name": "Crimson Rite",
+                  "description": "As a bonus action, you can activate a crimson rite you know onto any number of weapons you are holding. When you do so, you lose hit points equal to one roll of your hemocraft die.",
+                  "classChoices": [ "crimson-rites", "crimson-rites" ],
+                  "hide": true
+            }
+        ],
+        "8": [
+            {
+                "name": "Ability Score Improvement",
+                "description": "Choose between increasing your ability scores or selecting a feat.",
+                "grantedFeats": [
+                    "ability-score-improvement",
+                    "general-feats"
+                ],
+                "hide": true
+            }
+        ],
+        "9": [
+            {
+                  "name": "Grim Psychometry",
+                  "description": "You have the Identify spell prepared. You can cast this spell as a Bonus Action twice, and you regain all expended uses of this ability when you finish a Long Rest. You can also cast this spell as a Bonus Action by expending a use of your Hemocraft. When you cast this on a creature, you also learn any Immunities, Resistances, and Vulnerabilities it has, as well as its creature type.\n\tYou can choose to amplify this spell as if it was a blood curse. When you do so, you can target a location you are in instead of an object or creature, and identify if the place is consecrated or desecrated, such as from the Hallow spell. Additionally, you may experience a brief vision of the past concerning the creature, location, or object. This vision is either some sinister or tragic event the target was involved in, if the target has such a history."
+            }
+        ],
+        "10": [
+            {
+                "name": "Blood Curses",
+                "description": "",
+                "classChoices": [ "blood-curses", "blood-curses", "blood-curses", "blood-curses" ],
+                "hide": true
+            },
+            {
+                  "name": "Dark Augmentation",
+                  "description": "Your speed increases by 10 feet, and you have a bonus to Strength, Dexterity, and Constitution saving throws equal to your Intelligence modifier (minimum +1)."
+            }
+        ],
+        "12": [
+            {
+                "name": "Ability Score Improvement",
+                "description": "Choose between increasing your ability scores or selecting a feat.",
+                "grantedFeats": [
+                    "ability-score-improvement",
+                    "general-feats"
+                ],
+                "hide": true
+            }
+        ],
+        "13": [
+            {
+                  "name": " Improved Brand of Castigation",
+                  "description": "The psychic damage from your Brand of Castigation increases to twice your Intelligence modifier (minimum of 2) and the branded creature now suffers the damage from the brand if it deals damage to you or a creature you can see within 30 feet of you.",
+                  "classChoices": [ "improved-brand-of-castigation" ]
+            }
+        ],
+        "14": [
+            {
+                  "name": " Hardened Soul",
+                  "description": "Your will resists manipulation. You are immune to being charmed or frightened."
+            },
+            {
+                "name": "Blood Curses",
+                "description": "",
+                "classChoices": [ "blood-curses", "blood-curses", "blood-curses", "blood-curses", "blood-curses" ],
+                "hide": true
+            },
+            {
+                  "name": "Crimson Rite",
+                  "description": "As a bonus action, you can activate a crimson rite you know onto any number of weapons you are holding. When you do so, you lose hit points equal to one roll of your hemocraft die.",
+                  "classChoices": [ "crimson-rites", "crimson-rites", "crimson-rites" ],
+                  "hide": true
+            }
+        ],
+        "16": [
+            {
+                "name": "Ability Score Improvement",
+                "description": "Choose between increasing your ability scores or selecting a feat.",
+                "grantedFeats": [
+                    "ability-score-improvement",
+                    "general-feats"
+                ],
+                "hide": true
+            }
+        ],
+        "17": [
+            {
+                  "name": "Cursed Brand",
+                  "description": "Your searing brand and blood curses work as one. Once per brand, when you invoke a blood curse on a creature branded by your Brand of Castigation, you can amplify the blood curse without losing hit points. You still gain the temporary hit points you would’ve gained from losing hit points when you amplify a blood curse this way.\n\tAdditionally, when you amplify a blood curse, its range is doubled."
+            }
+        ],
+        "18": [
+            {
+                "name": "Blood Curses",
+                "description": "",
+                "classChoices": [ "blood-curses", "blood-curses", "blood-curses", "blood-curses", "blood-curses", "blood-curses" ],
+                "hide": true
+            }
+        ],
+        "19": [
+            {
+                "name": "Epic Boon Feat",
+                "description": "You gain an Epic Boon feat (see chapter 5) or another feat of your choice for which you qualify. Boon of Fate is recommended.",
+                "grantedFeats": [
+                    "epic-boon-feats",
+                    "general-feats"
+                ],
+                "hide": true
+            }
+        ],
+        "20": [
+            {
+                "name": "Sanguine Mastery",
+                "description": "Your mastery of blood magic reaches its height, mitigating your sacrifice and empowering your expertise. Whenever a blood hunter feature requires you to roll a hemocraft die, you can roll the die twice and use either roll.\n\tAdditionally, you regain all expended uses of your Brand of Castigation when you finish a Short Rest."
+            }
+        ]
+    }
+}

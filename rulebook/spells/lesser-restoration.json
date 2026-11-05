@@ -1,0 +1,17 @@
+{
+      "name": "Lesser Restoration",
+      "level": 2,
+      "school": "Abjuration",
+      "castingTime": "Bonus Action",
+      "range": "Touch",
+      "components": [
+            "V",
+            "S"
+      ],
+      "materials": "",
+      "duration": "Instantaneous",
+      "concentration": false,
+      "ritual": false,
+      "classes": "Bard, Cleric, Druid, Paladin, Ranger",
+      "description": "You touch a creature and end one condition on it: Blinded, Deafened, Paralyzed, or Poisoned."
+}
