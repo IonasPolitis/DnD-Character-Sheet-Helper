@@ -215,7 +215,14 @@ The structure of each JSON file is as follows:
 - classes/races/items/rules.json:
 ```json
 {
-	"<Class/Race/Item/Rule_Name>": "<Class/Race/Item/Rule_File_Name>"
+	"<Class/Race/Item/Rule_Name>": "<Class/Race/Item/Rule_Filename>"
+}
+```
+
+- spells/feats.json list files:
+```json
+{
+	"<Class/Race/Item/Rule_Filename>": "<Class/Race/Item/Rule_Display_Name>"
 }
 ```
 
