@@ -1,9 +1,9 @@
 {
 	"id": "dnd-character-sheet-helper",
 	"name": "DnD Character Sheet Helper",
-	"version": "2.0",
+	"version": "2.0.1",
 	"minAppVersion": "1.13.7",
-	"description": "Renders D&D 5.5e widgets for a complete Character Sheet right inside your Obsidian Note, saving everything on frontammter, and has an easy creation wizard to create your sheet immediately.",
+	"description": "Renders D&D 5.5e widgets for a complete Character Sheet right inside your note, saving everything on frontammter, and has an easy creation wizard to create your sheet immediately.",
 	"author": "Ionas Politis",
 	"isDesktopOnly": false
 }
