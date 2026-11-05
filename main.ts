@@ -1116,7 +1116,8 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                         await this.renderDndMarkdown(displayDesc, noteDiv, ctx.sourcePath, renderChild);
 
                         // Strip Obsidian's block paragraph margins so the card stays beautifully compact
-                        noteDiv.querySelectorAll('*').forEach((childEl: HTMLElement) => {
+                        noteDiv.querySelectorAll('*').forEach((childNode: Element) => {
+                            const childEl = childNode as HTMLElement;
                             childEl.style.display = "inline";
                             childEl.style.margin = "0";
                             childEl.style.padding = "0";
@@ -2034,10 +2035,7 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
             });
 
             const skillsGrid = skillsWindow.createDiv({
-                cls: "dnd-skills-grid",
-                attr: {
-                    style: "display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: repeat(9, auto); grid-auto-flow: column; column-gap: 32px; row-gap: 0px;"
-                }
+                cls: "dnd-skills-grid"
             });
 
             for (const skillDef of SKILLS_DEFINITION) {
@@ -2391,8 +2389,8 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                     text: String(card.score),
                     cls: "dnd-ability-score",
                     attr: {
-                        // Muted text color for score
-                        style: "font-size: 0.9em; font-weight: 500; color: var(--dnd-ui-color-text-muted); text-decoration: underline; text-underline-offset: 3px;"
+                        // Muted text color for score with clean bottom border instead of text-underline-offset
+                        style: "font-size: 0.9em; font-weight: 500; color: var(--dnd-ui-color-text-muted); border-bottom: 1px solid var(--dnd-ui-color-text-muted); padding-bottom: 1px; line-height: 1;"
                     }
                 });
 
@@ -2408,8 +2406,8 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                     text: card.modStr,
                     cls: "dnd-ability-mod",
                     attr: {
-                        // Removed bold text (font-weight changed from 700 to 400)
-                        style: "font-size: 1.65em; font-weight: 400; line-height: 1.1; color: var(--dnd-ui-color-text-bright); text-decoration: underline; text-underline-offset: 6px; text-decoration-thickness: 2px;"
+                        // Removed bold text and used border-bottom instead of text-underline-offset
+                        style: "font-size: 1.65em; font-weight: 400; line-height: 1.1; color: var(--dnd-ui-color-text-bright); border-bottom: 2px solid var(--dnd-ui-color-text-bright); padding-bottom: 4px;"
                     }
                 });
 
@@ -4287,7 +4285,7 @@ class DnDSettingsTab extends PluginSettingTab {
         });
 
         // Generate Color Pickers
-        const COLOR_GROUPS = [
+        const COLOR_GROUPS: { header: string; keys: (keyof DnDPluginSettings)[] }[] = [
             { header: "Background Colors", keys: ["colorBgPrimary", "colorBgSecondary", "colorBgTertiary", "colorBgHover", "colorBgDarker", "colorBgGroup", "colorBgProficient"] },
             { header: "Text Colors", keys: ["colorTextPrimary", "colorTextSecondary", "colorTextSublabel", "colorTextBright", "colorTextMuted", "colorTextGroup"] },
             { header: "Border Colors", keys: ["colorBorderPrimary", "colorBorderActive", "colorBorderFocus"] },
@@ -4297,7 +4295,7 @@ class DnDSettingsTab extends PluginSettingTab {
         COLOR_GROUPS.forEach(group => {
             containerEl.createEl('h4', { text: group.header, cls: 'dnd-settings-subgroup' });
 
-            group.keys.forEach((key: keyof DnDPluginSettings) => {
+            group.keys.forEach((key) => {
                 const readableName = key.replace('color', '').replace(/([A-Z])/g, ' $1').trim();
 
                 new Setting(containerEl)
@@ -5924,18 +5922,18 @@ export class DnDCustomNotice extends Notice {
         rootEl.addClass("dnd-custom-notice");
 
         // Enforce solid, unclipped horizontal card styling matching our plugin windows
-        rootEl.style.setProperty("background-color", "var(--dnd-ui-color-bg-primary)", "important");
-        rootEl.style.setProperty("border", "1px solid var(--dnd-ui-color-border-primary)", "important");
-        rootEl.style.setProperty("border-radius", "12px", "important");
-        rootEl.style.setProperty("padding", "16px 18px", "important");
-        rootEl.style.setProperty("box-shadow", "0 8px 24px rgba(0, 0, 0, 0.45)", "important");
-        rootEl.style.setProperty("opacity", "1", "important");
-        rootEl.style.setProperty("backdrop-filter", "none", "important");
-        rootEl.style.setProperty("width", "360px", "important");
-        rootEl.style.setProperty("max-width", "90vw", "important");
-        rootEl.style.setProperty("overflow", "visible", "important");
-        rootEl.style.setProperty("box-sizing", "border-box", "important");
-        rootEl.style.setProperty("cursor", "default", "important");
+        rootEl.style.backgroundColor = "var(--dnd-ui-color-bg-primary)";
+        rootEl.style.border = "1px solid var(--dnd-ui-color-border-primary)";
+        rootEl.style.borderRadius = "12px";
+        rootEl.style.padding = "16px 18px";
+        rootEl.style.boxShadow = "0 8px 24px rgba(0, 0, 0, 0.45)";
+        rootEl.style.opacity = "1";
+        rootEl.style.backdropFilter = "none";
+        rootEl.style.width = "360px";
+        rootEl.style.maxWidth = "90vw";
+        rootEl.style.overflow = "visible";
+        rootEl.style.boxSizing = "border-box";
+        rootEl.style.cursor = "default";
 
         // Stop Obsidian from closing the notice when clicking on the card body itself
         rootEl.onclick = (e) => e.stopPropagation();
