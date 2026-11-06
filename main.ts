@@ -4615,8 +4615,8 @@ class ManageCharacterModal extends Modal {
         createTabBtn("ac", "Armor Class Mod", "🛡️");
         createTabBtn("skills", "Skills", "🔨");
         createTabBtn("items", "Items", "🎒");
-        createTabBtn("features", "Features", "🙈");
-
+        createTabBtn("features", "Hide Features", "📜");
+        
 
         // --- FIXED CONTENT CONTAINER ---
         this.contentContainer = contentEl.createDiv({
