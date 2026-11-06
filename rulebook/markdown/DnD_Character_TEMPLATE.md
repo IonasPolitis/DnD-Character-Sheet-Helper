@@ -1,7 +1,8 @@
 ---
 DnD_id:
-level:
-proficiency_bonus:
+DnD_level:
+DnD_proficiencyBonus:
+DnD_attackProficiency:
 DnD_race:
 DnD_raceLineage:
 DnD_class:
@@ -23,6 +24,7 @@ DnD_skillExpertise:
 DnD_skillHalfProficiencies:
 DnD_skillBonuses:
 DnD_maxHealth:
+DnD_currentHealth:
 DnD_speed:
 DnD_speedSublabel: 
 DnD_attackStat:
@@ -50,20 +52,11 @@ cssclasses:
 obsidianUIMode: preview
 ---
 ## Board
-```healthpoints
-state_key: din_health
-health: '{{ frontmatter.DnD_maxHealth }}'
-hitdice:
-  dice: <class_hit_dice>
-  value: '{{ frontmatter.level }}'
-death_saves: true
-```
-```event-btns
-items:
-  - name: Short Rest
-    value: short-rest
-  - name: Long Rest
-    value: long-rest
+```dnd-health
+health: frontmatter.DnD_maxHealth
+currentHealth: frontmatter.DnD_currentHealth
+hitDice: frontmatter.DnD_hitDice
+level: frontmatter.DnD_level
 ```
 <font size=5>Info:</font>
 ```dnd-info
@@ -92,7 +85,11 @@ proficiencies: frontmatter.DnD_classProficiencies
 ```dnd-info
 mode: combat
 armor: frontmatter.DnD_armor
+armorAc: frontmatter.DnD_armorAc
+armorAcBonus: frontmatter.DnD_armorAcBonus
+armorAcMod: frontmatter.DnD_armorAcMod
 attackStat: frontmatter.DnD_attackStat
+attackRollMod: frontmatter.DnD_attackRollMod
 speed: frontmatter.DnD_speed
 speedSublabel: frontmatter.DnD_speedSublabel
 ```

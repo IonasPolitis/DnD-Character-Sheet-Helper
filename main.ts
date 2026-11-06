@@ -75,6 +75,10 @@ interface CharacterSheetVariables {
     DnD_weapon_damage: number;
     DnD_armor: string;
     DnD_armorAc: number;
+    DnD_armor_ac_bonus: number;
+    DnD_armor_ac_mod: number;
+    DnD_attack_stat: string;
+    DnD_attack_roll_mod: number;
     dnd_gold_added: number;
     dnd_gold_spent: number;
     cssclasses: string;
@@ -457,10 +461,14 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
 
             // Normalize the 'hide' variable into a clean array of lowercased strings to prevent typo-misses
             let hiddenFeatures: string[] = [];
-            if (Array.isArray(hideRaw)) {
-                hiddenFeatures = hideRaw.map(name => String(name).toLowerCase().trim());
-            } else if (typeof hideRaw === 'string') {
-                hiddenFeatures = hideRaw.split(',').map(name => String(name).toLowerCase().trim());
+            let parsedHide = hideRaw;
+            if (typeof parsedHide === 'string' && parsedHide.trim().startsWith('[')) {
+                try { parsedHide = JSON.parse(parsedHide.trim()); } catch { parsedHide = []; }
+            }
+            if (Array.isArray(parsedHide)) {
+                hiddenFeatures = parsedHide.map(name => String(name).toLowerCase().trim()).filter(Boolean);
+            } else if (typeof parsedHide === 'string' && parsedHide.trim() !== '') {
+                hiddenFeatures = parsedHide.split(',').map(name => String(name).toLowerCase().trim()).filter(Boolean);
             }
 
             // 5. Validate Multiclassing Levels & Ensure Numbers
@@ -2524,13 +2532,26 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                 const dexScore = Number(resolveValue(blockData.dexterity) ?? frontmatter["DnD_dexterity"]) || 10;
                 const dexMod = Math.floor((dexScore - 10) / 2);
 
+                // Helper to safely parse numeric modifiers (including strings like "+2" or "-1")
+                const parseNumericMod = (rawVal: any, fallback: number = 0): number => {
+                    const resolved = resolveValue(rawVal);
+                    if (resolved === undefined || resolved === null || resolved === "") return fallback;
+                    const cleaned = String(resolved).trim().replace(/^\+/, "");
+                    const num = Number(cleaned);
+                    return isNaN(num) ? fallback : num;
+                };
+
                 // 1. Armor Class
-                const hasBaseAc = frontmatter["DnD_armorAc"] !== undefined && frontmatter["DnD_armorAc"] !== null && frontmatter["DnD_armorAc"] !== "";
-                const baseAc = hasBaseAc ? Number(frontmatter["DnD_armorAc"]) : 10;
-                const acBonus = (frontmatter["DnD_armorAcBonus"] !== undefined && frontmatter["DnD_armorAcBonus"] !== null && frontmatter["DnD_armorAcBonus"] !== "")
-                    ? Number(frontmatter["DnD_armorAcBonus"])
+                const rawBaseAc = resolveValue(blockData.armorAc) ?? frontmatter["DnD_armorAc"];
+                const hasBaseAc = rawBaseAc !== undefined && rawBaseAc !== null && rawBaseAc !== "";
+                const baseAc = hasBaseAc ? parseNumericMod(rawBaseAc, 10) : 10;
+
+                const rawAcBonus = resolveValue(blockData.armorAcBonus) ?? frontmatter["DnD_armorAcBonus"];
+                const acBonus = (rawAcBonus !== undefined && rawAcBonus !== null && rawAcBonus !== "")
+                    ? parseNumericMod(rawAcBonus, 0)
                     : (hasBaseAc ? 0 : dexMod);
-                const acMod = Number(frontmatter["DnD_armorAcMod"]) || 0;
+
+                const acMod = parseNumericMod(blockData.armorAcMod ?? frontmatter["DnD_armorAcMod"], 0);
 
                 const explicitAc = resolveValue(blockData.armorClass ?? blockData.ac);
                 const finalAc = (explicitAc !== undefined && explicitAc !== null && explicitAc !== "" && !isNaN(Number(explicitAc)))
@@ -2558,7 +2579,7 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                     sublabel: initSublabel
                 });
 
-                // 3. Attack Roll
+                // 3. Attack Roll (Base Ability Mod + Proficiency Bonus + DnD_attack_roll_mod)
                 const attackStatRaw = formatTextValue(blockData.attackStat ?? frontmatter["DnD_attackStat"], "strength").toLowerCase();
                 const attackStatScore = Number(resolveValue(blockData[attackStatRaw]) ?? frontmatter[`DnD_${attackStatRaw}`]) || 10;
                 const attackStatMod = Math.floor((attackStatScore - 10) / 2);
@@ -2567,15 +2588,21 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                 const DnD_proficiency_bonus = Number(
                     resolveValue(blockData.DnD_proficiency_bonus ?? blockData.proficiencyBonus ?? blockData.proficiency_bonus) ?? frontmatter["DnD_proficiencyBonus"]
                 ) || Math.ceil(1 + (level / 4));
-                const includeProf = blockData.attackProficiency !== undefined
-                    ? Boolean(resolveValue(blockData.attackProficiency))
-                    : (frontmatter["DnD_attackProficiency"] !== undefined ? Boolean(frontmatter["DnD_attackProficiency"]) : true);
-                const attackRollMod = Number(resolveValue(blockData.attackRollMod) ?? frontmatter["DnD_attackRollMod"]) || 0;
+
+                const rawIncludeProf = resolveValue(blockData.attackProficiency) ?? frontmatter["DnD_attackProficiency"];
+                const includeProf = rawIncludeProf !== undefined && rawIncludeProf !== null && rawIncludeProf !== ""
+                    ? String(rawIncludeProf).toLowerCase() !== "false" && Boolean(rawIncludeProf)
+                    : true;
+
+                const DnD_attack_roll_mod = parseNumericMod(
+                    blockData.attackRollMod ?? blockData.DnD_attack_roll_mod ?? blockData.DnD_attackRollMod ?? frontmatter["DnD_attackRollMod"],
+                    0
+                );
 
                 const explicitAttack = resolveValue(blockData.attackRoll);
                 const totalAttack = (explicitAttack !== undefined && explicitAttack !== null && explicitAttack !== "" && !isNaN(Number(explicitAttack)))
                     ? Number(explicitAttack)
-                    : (attackStatMod + (includeProf ? DnD_proficiency_bonus : 0) + attackRollMod);
+                    : (attackStatMod + (includeProf ? DnD_proficiency_bonus : 0) + DnD_attack_roll_mod);
 
                 const capStatName = attackStatRaw.charAt(0).toUpperCase() + attackStatRaw.slice(1);
                 const attackSublabel = formatTextValue(blockData.attackSublabel, `${capStatName} Modifier`);
@@ -4031,6 +4058,7 @@ class CharacterWizardModal extends Modal {
         injectListYAML("DnD_extraFeats", this.wizardData.extraFeats);
         injectListYAML("DnD_classChosenItems", this.wizardData.classChosenItems);
         injectListYAML("DnD_backgroundChosenItems", this.wizardData.backgroundChosenItems);
+        injectYAML("DnD_hideFeature", `'[]'`);
 
         // --- Equipment & Combat Formula variables ---
         injectYAML("DnD_weapon", this.wizardData.weapon);
@@ -4464,7 +4492,7 @@ class ManageCharacterModal extends Modal {
     sourcePath: string;
 
     // Tab Navigation State
-    activeTab: "stats" | "attack" | "ac" | "skills" | "items" = "stats";
+    activeTab: "stats" | "attack" | "ac" | "skills" | "items" | "features" = "stats";
 
     // --- Unified Data State ---
     // 1. Stats State
@@ -4486,6 +4514,9 @@ class ManageCharacterModal extends Modal {
     ];
     // 5. Item Bonuses State (Strictly Strings)
     currentSkillBonuses: [string, string, string][] = [];
+    // 6. Hidden Features State
+    currentHiddenFeatures: string[] = [];
+    availableFeaturesToHide: string[] = [];
 
     contentContainer!: HTMLElement;
 
@@ -4547,8 +4578,26 @@ class ManageCharacterModal extends Modal {
             ? Boolean(frontmatter["DnD_attackProficiency"])
             : true;
 
+        // Fetch Hidden Features from Frontmatter Database (DnD_hideFeature)
+        let hideRaw = frontmatter["DnD_hideFeature"] || [];
+        if (typeof hideRaw === "string") {
+            const trimmed = hideRaw.trim();
+            if (trimmed.startsWith("[")) {
+                try { hideRaw = JSON.parse(trimmed); } catch { hideRaw = []; }
+            } else if (trimmed !== "") {
+                hideRaw = trimmed.split(",").map((s: string) => s.trim());
+            } else {
+                hideRaw = [];
+            }
+        }
+        if (Array.isArray(hideRaw)) {
+            this.currentHiddenFeatures = hideRaw.map((f: any) => String(f).trim()).filter(Boolean);
+        }
+
+        await this.fetchAvailableFeatures(frontmatter);
+
         // --- BUILD TAB HEADER ---
-        const tabHeader = contentEl.createDiv({ attr: { style: "display: flex; gap: 5px; border-bottom: 1px solid var(--dnd-ui-color-border-primary); margin-bottom: 15px; padding-bottom: 5px;" } });
+        const tabHeader = contentEl.createDiv({ attr: { style: "display: flex; gap: 5px; flex-wrap: wrap; border-bottom: 1px solid var(--dnd-ui-color-border-primary); margin-bottom: 15px; padding-bottom: 5px;" } });
 
         const createTabBtn = (id: typeof this.activeTab, label: string, icon: string) => {
             const btn = tabHeader.createEl("button", { text: `${icon} ${label}`, attr: { style: "flex: 1; background: transparent; box-shadow: none; border-radius: 4px; color: var(--dnd-ui-color-text-muted);" } });
@@ -4566,6 +4615,7 @@ class ManageCharacterModal extends Modal {
         createTabBtn("ac", "Armor Class Mod", "🛡️");
         createTabBtn("skills", "Skills", "🔨");
         createTabBtn("items", "Items", "🎒");
+        createTabBtn("features", "Features", "🙈");
 
 
         // --- FIXED CONTENT CONTAINER ---
@@ -4589,9 +4639,155 @@ class ManageCharacterModal extends Modal {
         this.renderContent();
     }
 
+    async fetchAvailableFeatures(frontmatter: Record<string, any>) {
+        const discovered = new Set<string>();
+        const level = Number(frontmatter["DnD_level"]) || 1;
+        const dndClass = frontmatter["DnD_class"];
+        const subclass = frontmatter["DnD_Subclass"];
+        const classLevels = frontmatter["DnD_classLevels"];
+        const race = frontmatter["DnD_race"];
+        const raceLineage = frontmatter["DnD_raceLineage"];
+        const background = frontmatter["DnD_background"];
+        const extraFeats = frontmatter["DnD_extraFeats"];
+
+        let classChoicesRaw = frontmatter["DnD_classChoices"];
+        if (typeof classChoicesRaw === "string" && classChoicesRaw.trim().startsWith("[")) {
+            try { classChoicesRaw = JSON.parse(classChoicesRaw.trim()); } catch { classChoicesRaw = []; }
+        }
+        const classChoicesArray = Array.isArray(classChoicesRaw) ? classChoicesRaw : [];
+
+        const classArray = Array.isArray(dndClass) ? dndClass : (dndClass ? [dndClass] : []);
+        const rawSubclassArray = Array.isArray(subclass) ? subclass : (subclass ? [subclass] : []);
+        const subclassArray = classArray.map((_, i) => rawSubclassArray[i] || null);
+
+        let finalExtraFeats = Array.isArray(extraFeats) ? [...extraFeats] : (extraFeats ? [extraFeats] : []);
+
+        // 1. Class, Subclass & Class Choices Features
+        for (let index = 0; index < classArray.length; index++) {
+            const className = classArray[index];
+            const currentClassLevel = (classArray.length > 1 && Array.isArray(classLevels) && classLevels.length > index)
+                ? Number(classLevels[index])
+                : level;
+
+            const classData = await getClassData(this.app, this.plugin.settings, className);
+            if (!classData || !classData.features) continue;
+
+            let subclassData: any = null;
+            let hasActiveSubclass = false;
+            if (classData.subclassFile && subclassArray[index]) {
+                subclassData = await getSubclassData(this.app, this.plugin.settings, classData.subclassFile, subclassArray[index]);
+                if (subclassData) {
+                    const subclassStartLevel = Math.min(...Object.keys(subclassData).map(Number));
+                    if (currentClassLevel >= subclassStartLevel) hasActiveSubclass = true;
+                }
+            }
+
+            for (let i = 1; i <= currentClassLevel; i++) {
+                const levelFeatures = classData.features[i.toString()];
+                if (Array.isArray(levelFeatures)) {
+                    for (const feature of levelFeatures) {
+                        if (feature.grantedFeats && Array.isArray(feature.grantedFeats)) {
+                            finalExtraFeats.push(...feature.grantedFeats);
+                        }
+                        if (feature.hide !== true && feature.name) {
+                            discovered.add(String(feature.name).trim());
+                        }
+                    }
+                }
+
+                // Class Choices at this level
+                for (const choiceTuple of classChoicesArray) {
+                    let choiceKey = "";
+                    let choiceLevel = 0;
+                    if (Array.isArray(choiceTuple)) {
+                        if (choiceTuple.length === 3) [, choiceKey, choiceLevel] = choiceTuple;
+                        else if (choiceTuple.length === 2) [choiceKey, choiceLevel] = choiceTuple;
+                    }
+                    if (Number(choiceLevel) === i && choiceKey) {
+                        try {
+                            let choicePath = `${this.plugin.manifest.dir}/rulebook/classes/classChoices/${choiceKey}.json`;
+                            if (this.plugin.settings.customRulebookPath) {
+                                const customPath = `${this.plugin.settings.customRulebookPath}/classes/classChoices/${choiceKey}.json`;
+                                if (await this.app.vault.adapter.exists(customPath)) choicePath = customPath;
+                            }
+                            if (await this.app.vault.adapter.exists(choicePath)) {
+                                const content = await this.app.vault.adapter.read(choicePath);
+                                const featureData = JSON.parse(content);
+                                if (featureData && featureData.name && featureData.hide !== true) {
+                                    discovered.add(String(featureData.name).trim());
+                                }
+                            }
+                        } catch { /* ignore invalid choice file */ }
+                    }
+                }
+
+                // Subclass Features at this level
+                if (hasActiveSubclass && subclassData) {
+                    const subLevelFeatures = subclassData[i.toString()];
+                    if (Array.isArray(subLevelFeatures)) {
+                        for (const feature of subLevelFeatures) {
+                            if (feature.grantedFeats && Array.isArray(feature.grantedFeats)) {
+                                finalExtraFeats.push(...feature.grantedFeats);
+                            }
+                            if (feature.hide !== true && feature.name) {
+                                discovered.add(String(feature.name).trim());
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // 2. Race Traits
+        if (race) {
+            const raceData = await getRaceData(this.app, this.plugin.settings, race);
+            if (raceData && Array.isArray(raceData.traits)) {
+                for (const trait of raceData.traits) {
+                    if (trait.hide === true || !trait.name) continue;
+                    if (trait.lineage) {
+                        if (!raceLineage || trait.lineage.toLowerCase() !== String(raceLineage).toLowerCase()) continue;
+                    }
+                    discovered.add(String(trait.name).trim());
+                }
+            }
+        }
+
+        // 3. Background Feat
+        if (background) {
+            const bgData = await getBackgroundData(this.app, this.plugin.settings, background);
+            const featData = bgData && bgData.feat ? await getExtraFeat(this.app, this.plugin.settings, bgData.feat) : null;
+            if (featData && featData.hide !== true && featData.name) {
+                discovered.add(String(featData.name).trim());
+            }
+        }
+
+        // 4. Extra & Granted Feats
+        const uniqueFeats = [...new Set(finalExtraFeats)];
+        for (const featId of uniqueFeats) {
+            if (!featId || featId === "ability-score-improvement") continue;
+            const safeFeatId = String(featId);
+
+            let isRouter = false;
+            const routerPath = `${this.plugin.manifest.dir}/rulebook/${safeFeatId}.json`;
+            if (this.plugin.settings.customRulebookPath) {
+                const customPath = `${this.plugin.settings.customRulebookPath}/${safeFeatId}.json`;
+                if (await this.app.vault.adapter.exists(customPath)) isRouter = true;
+            }
+            if (!isRouter && await this.app.vault.adapter.exists(routerPath)) isRouter = true;
+            if (isRouter) continue;
+
+            const featData = await getExtraFeat(this.app, this.plugin.settings, safeFeatId);
+            if (featData && featData.hide !== true && featData.name) {
+                discovered.add(String(featData.name).trim());
+            }
+        }
+
+        this.availableFeaturesToHide = Array.from(discovered);
+    }
+
     renderTabs(tabHeader: HTMLElement) {
         const buttons = tabHeader.querySelectorAll("button");
-        const tabs = ["stats", "attack", "ac", "skills", "items"];
+        const tabs = ["stats", "attack", "ac", "skills", "items", "features"];
 
         buttons.forEach((btn, index) => {
             if (tabs[index] === this.activeTab) {
@@ -4623,7 +4819,7 @@ class ManageCharacterModal extends Modal {
 
                 const statInput = statDiv.createEl("input", { type: "number", value: String(this.currentStats[stat]) });
                 statInput.style.width = "100%";
-                statInput.onchange = (e) => this.currentStats[stat] = Number((e.target as HTMLInputElement).value);
+                statInput.oninput = (e) => this.currentStats[stat] = Number((e.target as HTMLInputElement).value);
             });
         }
 
@@ -4647,7 +4843,7 @@ class ManageCharacterModal extends Modal {
             const modDiv = this.contentContainer.createDiv({ attr: { style: "margin-bottom: 12px;" } });
             modDiv.createEl("label", { text: "Extra Modifier (Magic Weapons, Buffs):", attr: { style: "display: block; margin-bottom: 4px; color: var(--dnd-ui-color-text-sublabel);" } });
             const modInput = modDiv.createEl("input", { type: "number", value: String(this.extraAttackMod), attr: { style: "width: 100%;" } });
-            modInput.onchange = (e) => this.extraAttackMod = Number((e.target as HTMLInputElement).value);
+            modInput.oninput = (e) => this.extraAttackMod = Number((e.target as HTMLInputElement).value);
         }
 
         else if (this.activeTab === "ac") {
@@ -4656,7 +4852,7 @@ class ManageCharacterModal extends Modal {
             const inputDiv = this.contentContainer.createDiv({ attr: { style: "margin-bottom: 15px;" } });
             inputDiv.createEl("label", { text: "Miscellaneous AC Modifier (Shields, Buffs):", attr: { style: "display: block; margin-bottom: 4px; color: var(--dnd-ui-color-text-sublabel);" } });
             const inputEl = inputDiv.createEl("input", { type: "number", value: String(this.currentAcMod), attr: { style: "width: 100%;" } });
-            inputEl.onchange = (e) => this.currentAcMod = Number((e.target as HTMLInputElement).value);
+            inputEl.oninput = (e) => this.currentAcMod = Number((e.target as HTMLInputElement).value);
 
             this.contentContainer.createEl("p", { text: "Note: Your Base AC and Dexterity limits are automatically calculated based on your equipped armor and ability scores.", attr: { style: "color: var(--dnd-ui-color-text-muted); font-size: 0.9em; font-style: italic;" } });
         }
@@ -4746,6 +4942,46 @@ class ManageCharacterModal extends Modal {
                 }
             };
         }
+        else if (this.activeTab === "features") {
+            this.contentContainer.createEl("h4", { text: "Hidden Character Features", attr: { style: "margin-top: 0; color: var(--dnd-ui-color-text-bright);" } });
+
+            const listDiv = this.contentContainer.createDiv({ attr: { style: "margin-bottom: 15px; max-height: 140px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;" } });
+            if (this.currentHiddenFeatures.length === 0) {
+                listDiv.createEl("p", { text: "No features are currently hidden.", attr: { style: "color: var(--dnd-ui-color-text-muted); font-style: italic; margin: 0; text-align: center; padding: 10px;" } });
+            } else {
+                this.currentHiddenFeatures.forEach((featName, index) => {
+                    const row = listDiv.createDiv({ attr: { style: "display: flex; justify-content: space-between; align-items: center; background: var(--dnd-ui-color-bg-tertiary); padding: 6px 10px; border-radius: 6px; border: 1px solid var(--dnd-ui-color-border-primary);" } });
+                    row.createEl("span", { text: featName, attr: { style: "color: var(--dnd-ui-color-text-bright); font-weight: 500;" } });
+
+                    const delBtn = row.createEl("button", { text: "✕", attr: { title: "Unhide Feature", style: "width: 26px; height: 26px; padding: 0; display: flex; align-items: center; justify-content: center; background: transparent; box-shadow: none; color: var(--dnd-ui-color-text-muted);" } });
+                    delBtn.onmouseenter = () => { delBtn.style.background = "var(--dnd-ui-color-accent-red)"; delBtn.style.color = "white"; };
+                    delBtn.onmouseleave = () => { delBtn.style.background = "transparent"; delBtn.style.color = "var(--dnd-ui-color-text-muted)"; };
+                    delBtn.onclick = () => {
+                        this.currentHiddenFeatures.splice(index, 1);
+                        this.renderContent();
+                    };
+                });
+            }
+
+            const addDiv = this.contentContainer.createDiv({ attr: { style: "display: flex; gap: 10px;" } });
+            const selectEl = addDiv.createEl("select", { attr: { style: "flex: 1;" } });
+            selectEl.createEl("option", { text: "-- Select Feature to Hide --", value: "" });
+
+            const hiddenLowerSet = new Set(this.currentHiddenFeatures.map(f => f.toLowerCase().trim()));
+            this.availableFeaturesToHide.forEach(featName => {
+                if (!hiddenLowerSet.has(featName.toLowerCase().trim())) {
+                    selectEl.createEl("option", { text: featName, value: featName });
+                }
+            });
+
+            const hideBtn = addDiv.createEl("button", { text: "Hide Feature" });
+            hideBtn.onclick = () => {
+                if (selectEl.value) {
+                    this.currentHiddenFeatures.push(selectEl.value);
+                    this.renderContent();
+                }
+            };
+        }
     }
 
     onClose() {
@@ -4810,6 +5046,9 @@ class ManageCharacterModal extends Modal {
 
         // 4. Process Item Bonuses Database
         updates["DnD_skillBonuses"] = JSON.stringify(this.currentSkillBonuses);
+
+        // 5. Process Hidden Features Database
+        updates["DnD_hideFeature"] = JSON.stringify(this.currentHiddenFeatures);
 
         // --- EXECUTE FRONTMATTER SAVE ---
         await this.plugin.updateCharacterFrontmatter(this.sourcePath, updates);

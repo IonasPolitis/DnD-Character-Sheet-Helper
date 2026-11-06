@@ -37,9 +37,13 @@ or this:
 ````markdown
 ```dnd-info
 mode: combat
-armor: f$string$
+armor: $string$
+armorAc: $num$
+armorAcBonus: $num$
+armorAcMod: $num$
 attackStat: $string$
-speed: $string$
+attackRollMod: $num$
+speed: $num$
 speedSublabel: $string$
 ```
 ````
