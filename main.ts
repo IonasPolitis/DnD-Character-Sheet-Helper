@@ -2,7 +2,7 @@ import { App, Plugin, PluginSettingTab, Setting, MarkdownPostProcessorContext, p
 import { getClassData, getSubclassData, getBackgroundData, getRaceData, getExtraFeat, getItemData, getRuleData } from './data';
 import { MarkdownNotes, classesMap, racesMap, backgroundsMap } from './registry';
 import { THEMES } from './themes';
-
+ 
 // 1. Define the shape of our settings
 interface DnDPluginSettings {
     combineClassSubclass: boolean;
