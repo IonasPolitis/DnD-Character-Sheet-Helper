@@ -20,7 +20,6 @@ const races = scanFolder('races');
 const items = scanFolder('items');
 const rules = scanFolder('rules');
 const spells = scanFolder('spells');
-const rootRouters = scanFolder('');
 
 // --- MARKDOWN NOTE SCANNER ---
 function scanMarkdownNotes() {
@@ -84,12 +83,26 @@ if (fs.existsSync(path.join(rulebookDir, 'rules.json'))) {
 } else {
     out += `const rulesMap = {};\n`;
 }
+if (fs.existsSync(path.join(rulebookDir, 'general-feats.json'))) {
+    out += `import generalFeatsMap from './rulebook/general-feats.json';\n`;
+} else {
+    out += `const generalFeatsMap = {};\n`;
+}
+if (fs.existsSync(path.join(rulebookDir, 'epic-boon-feats.json'))) {
+    out += `import epicBoonFeatsMap from './rulebook/epic-boon-feats.json';\n`;
+} else {
+    out += `const epicBoonFeatsMap = {};\n`;
+}
 
 // 2. Generate Imports for Sub-folders
 classes.forEach(c => {
     // Upgraded Regex: Strips ALL non-alphanumeric characters so JavaScript never breaks
     const safeName = c.replace(/[^a-zA-Z0-9]/g, '');
     out += `import class_${safeName} from './rulebook/classes/${c}.json';\n`;
+});
+classChoices.forEach(cc => {
+    const safeName = cc.replace(/[^a-zA-Z0-9]/g, '');
+    out += `import classChoice_${safeName} from './rulebook/classes/classChoices/${cc}.json';\n`;
 });
 feats.forEach(f => {
     const safeName = f.replace(/[^a-zA-Z0-9]/g, '');
@@ -111,16 +124,15 @@ spells.forEach(s => {
     const safeName = s.replace(/[^a-zA-Z0-9]/g, '');
     out += `import spell_${safeName} from './rulebook/spells/${s}.json';\n`;
 });
-classChoices.forEach(cc => {
-    const safeName = cc.replace(/[^a-zA-Z0-9]/g, '');
-    out += `import classChoice_${safeName} from './rulebook/classes/classChoices/${cc}.json';\n`;
-});
-rootRouters.forEach(rr => {
-    const safeName = rr.replace(/[^a-zA-Z0-9]/g, '');
-    out += `import rootRouter_${safeName} from './rulebook/${rr}.json';\n`;
-});
 
-out += `\nexport { classesMap, backgroundsMap, racesMap, itemsMap, rulesMap };\n\n`;
+// Spell Pool Routers (e.g. warlock-spells.json, wizard-spells.json)
+out += `\nexport const spellsMap: Record<string, any> = {\n`;
+spells.forEach(s => {
+    if (s.includes('spells')) out += `    "${s}": spell_${s.replace(/[^a-zA-Z0-9]/g, '')},\n`;
+});
+out += `};\n`;
+
+out += `\nexport { classesMap, backgroundsMap, racesMap, itemsMap, rulesMap, generalFeatsMap, epicBoonFeatsMap };\n\n`;
 
 // 3. Generate the Registry Maps
 out += `export const classRegistry: Record<string, any> = {\n`;
@@ -135,23 +147,29 @@ classes.forEach(c => {
 });
 out += `};\n\n`;
 
+out += `export const classChoiceRegistry: Record<string, any> = {\n`;
+classChoices.forEach(cc => {
+    out += `    "${cc}": classChoice_${cc.replace(/[^a-zA-Z0-9]/g, '')},\n`;
+});
+out += `};\n\n`;
+
 out += `export const featRegistry: Record<string, any> = {\n`;
 feats.forEach(f => {
     out += `    "${f}": feat_${f.replace(/[^a-zA-Z0-9]/g, '')},\n`;
 });
-out += `};\n`;
+out += `};\n\n`;
 
 out += `export const raceRegistry: Record<string, any> = {\n`;
 races.forEach(r => {
     out += `    "${r}": race_${r.replace(/[^a-zA-Z0-9]/g, '')},\n`;
 });
-out += `};\n`;
+out += `};\n\n`;
 
 out += `export const itemRegistry: Record<string, any> = {\n`;
 items.forEach(i => {
     out += `    "${i}": item_${i.replace(/[^a-zA-Z0-9]/g, '')},\n`;
 });
-out += `};\n`;
+out += `};\n\n`;
 
 out += `export const ruleRegistry: Record<string, any> = {\n`;
 rules.forEach(i => {
@@ -161,19 +179,7 @@ out += `};\n\n`;
 
 out += `export const spellRegistry: Record<string, any> = {\n`;
 spells.forEach(s => {
-    out += `    "${s}": spell_${s.replace(/[^a-zA-Z0-9]/g, '')},\n`;
-});
-out += `};\n\n`;
-
-out += `export const classChoiceRegistry: Record<string, any> = {\n`;
-classChoices.forEach(cc => {
-    out += `    "${cc}": classChoice_${cc.replace(/[^a-zA-Z0-9]/g, '')},\n`;
-});
-out += `};\n\n`;
-
-out += `export const rootRouterRegistry: Record<string, any> = {\n`;
-rootRouters.forEach(rr => {
-    out += `    "${rr}": rootRouter_${rr.replace(/[^a-zA-Z0-9]/g, '')},\n`;
+    if (!s.includes('spells')) out += `    "${s}": spell_${s.replace(/[^a-zA-Z0-9]/g, '')},\n`;
 });
 out += `};\n`;
 
@@ -197,15 +203,23 @@ if (fs.existsSync(pastEditionsDir)) {
 
     editions.forEach(edition => {
         out += `pastEditionsRegistry["${edition}"] = {\n`;
-        out += `    classesMap: {}, backgroundsMap: {}, racesMap: {}, itemsMap: {}, rulesMap: {},\n`;
+        out += `    classesMap: {}, backgroundsMap: {}, racesMap: {}, itemsMap: {}, rulesMap: {}, generalFeatsMap: {}, epicBoonFeatsMap: {}, spellsMap: {},\n`;
         out += `    classRegistry: {}, subclassRegistry: {}, classChoiceRegistry: {}, featRegistry: {}, raceRegistry: {}, itemRegistry: {}, ruleRegistry: {}, spellRegistry: {}\n`;
         out += `};\n`;
 
         // Bundle the maps
-        const maps = ['classes', 'backgrounds', 'races', 'items', 'rules'];
-        maps.forEach(map => {
-            if (fs.existsSync(path.join(pastEditionsDir, edition, `${map}.json`))) {
-                out += `pastEditionsRegistry["${edition}"].${map}Map = require('./rulebook/#past-editions/${edition}/${map}.json');\n`;
+        const maps = [
+            { file: 'classes', prop: 'classesMap' },
+            { file: 'backgrounds', prop: 'backgroundsMap' },
+            { file: 'races', prop: 'racesMap' },
+            { file: 'items', prop: 'itemsMap' },
+            { file: 'rules', prop: 'rulesMap' },
+            { file: 'general-feats', prop: 'generalFeatsMap' },
+            { file: 'epic-boon-feats', prop: 'epicBoonFeatsMap' }
+        ];
+        maps.forEach(({ file, prop }) => {
+            if (fs.existsSync(path.join(pastEditionsDir, edition, `${file}.json`))) {
+                out += `pastEditionsRegistry["${edition}"].${prop} = require('./rulebook/#past-editions/${edition}/${file}.json');\n`;
             }
         });
 
@@ -216,8 +230,12 @@ if (fs.existsSync(pastEditionsDir)) {
             if (fs.existsSync(folderPath)) {
                 const files = fs.readdirSync(folderPath).filter(file => file.endsWith('.json')).map(file => file.replace('.json', ''));
                 files.forEach(file => {
-                    // Separate subclasses into their own registry if the filename contains 'subclass'
-                    const regName = folder === 'classes' ? (file.includes('subclass') ? 'subclassRegistry' : 'classRegistry') : `${folder.replace(/s$/, '')}Registry`;
+                    let regName = `${folder.replace(/s$/, '')}Registry`;
+                    if (folder === 'classes') {
+                        regName = file.includes('subclass') ? 'subclassRegistry' : 'classRegistry';
+                    } else if (folder === 'spells') {
+                        regName = file.includes('spells') ? 'spellsMap' : 'spellRegistry';
+                    }
                     out += `pastEditionsRegistry["${edition}"].${regName}["${file}"] = require('./rulebook/#past-editions/${edition}/${folder}/${file}.json');\n`;
                 });
             }

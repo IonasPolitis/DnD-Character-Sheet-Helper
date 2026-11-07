@@ -1,5 +1,5 @@
 import { App, Plugin, PluginSettingTab, Setting, MarkdownPostProcessorContext, parseYaml, MarkdownRenderChild, MarkdownRenderer, TFile, Modal, Notice, MarkdownView } from 'obsidian';
-import { getClassData, getSubclassData, getBackgroundData, getRaceData, getExtraFeat, getItemData, getRuleData, getSpellData, getClassChoiceData, getRootRouterData } from './data';
+import { getClassData, getSubclassData, getBackgroundData, getRaceData, getExtraFeat, getItemData, getRuleData, getSpellData, getSpellsPoolData, getClassChoiceData, getFeatMapData } from './data';
 import { MarkdownNotes, classesMap, racesMap, backgroundsMap } from './registry';
 import { THEMES } from './themes';
  
@@ -570,8 +570,8 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                 // 1. Hard-filter our core engine mechanic trigger
                 if (featId === "ability-score-improvement") continue;
 
-                // 2. Dynamically check if this ID is actually a router file in the root rulebook folder
-                const routerData = await getRootRouterData(this.app, fetchOptions, String(featId));
+                // 2. Check if this ID is a feat router map (e.g., general-feats or epic-boon-feats)
+                const routerData = await getFeatMapData(this.app, fetchOptions, String(featId));
                 const isRouter = !!routerData;
 
                 // If it is NOT a router file, it's a real feat we should display!
@@ -3192,29 +3192,19 @@ class CharacterWizardModal extends Modal {
         if (this.wizardData.dndClass) {
             const classData = await getClassData(this.app, this.plugin.settings, this.wizardData.dndClass);
             if (classData && classData.subclassFile) {
-                try {
-                    let subPath = `${this.plugin.manifest.dir}/rulebook/classes/${classData.subclassFile}.json`;
-                    if (this.plugin.settings.customRulebookPath) {
-                        const customSubPath = `${this.plugin.settings.customRulebookPath}/classes/${classData.subclassFile}.json`;
-                        if (await this.app.vault.adapter.exists(customSubPath)) subPath = customSubPath;
+                const allSubclasses = await getSubclassData(this.app, this.plugin.settings, classData.subclassFile);
+                if (allSubclasses && typeof allSubclasses === "object") {
+                    const subclassNames = Object.keys(allSubclasses);
+                    if (subclassNames.length > 0) {
+                        const subDiv = container.createDiv({ attr: { style: "margin-bottom: 12px; margin-left: 15px; border-left: 2px solid var(--dnd-ui-color-border-active); padding-left: 10px;" } });
+                        subDiv.createEl("label", { text: "Subclass: ", attr: { style: "display: block; margin-bottom: 4px; color: var(--dnd-ui-color-text-sublabel);" } });
+                        const subSelect = subDiv.createEl("select");
+                        subSelect.style.width = "100%";
+                        subSelect.createEl("option", { text: "-- Select a Subclass --", value: "" });
+                        subclassNames.forEach(s => subSelect.createEl("option", { text: s, value: s }));
+                        subSelect.value = this.wizardData.subclass || "";
+                        subSelect.onchange = (e) => this.wizardData.subclass = (e.target as HTMLSelectElement).value;
                     }
-                    if (await this.app.vault.adapter.exists(subPath)) {
-                        const subContent = await this.app.vault.adapter.read(subPath);
-                        const subclassNames = Object.keys(JSON.parse(subContent));
-
-                        if (subclassNames.length > 0) {
-                            const subDiv = container.createDiv({ attr: { style: "margin-bottom: 12px; margin-left: 15px; border-left: 2px solid var(--dnd-ui-color-border-active); padding-left: 10px;" } });
-                            subDiv.createEl("label", { text: "Subclass: ", attr: { style: "display: block; margin-bottom: 4px; color: var(--dnd-ui-color-text-sublabel);" } });
-                            const subSelect = subDiv.createEl("select");
-                            subSelect.style.width = "100%";
-                            subSelect.createEl("option", { text: "-- Select a Subclass --", value: "" });
-                            subclassNames.forEach(s => subSelect.createEl("option", { text: s, value: s }));
-                            subSelect.value = this.wizardData.subclass || "";
-                            subSelect.onchange = (e) => this.wizardData.subclass = (e.target as HTMLSelectElement).value;
-                        }
-                    }
-                } catch (e) {
-                    console.error("Could not fetch subclasses for", classData.subclassFile);
                 }
             }
         }
@@ -4690,7 +4680,7 @@ class ManageCharacterModal extends Modal {
             if (!featId || featId === "ability-score-improvement") continue;
             const safeFeatId = String(featId);
 
-            const isRouter = !!(await getRootRouterData(this.app, this.plugin.settings, safeFeatId));
+            const isRouter = !!(await getFeatMapData(this.app, this.plugin.settings, safeFeatId));
             if (isRouter) continue;
 
             const featData = await getExtraFeat(this.app, this.plugin.settings, safeFeatId);
@@ -5139,20 +5129,9 @@ class LevelUpModal extends Modal {
             if (this.dndClass) {
                 const classData = await getClassData(this.app, this.plugin.settings, this.dndClass);
                 if (classData && classData.subclassFile) {
-                    try {
-                        let subPath = `${this.plugin.manifest.dir}/rulebook/classes/${classData.subclassFile}.json`;
-                        if (this.plugin.settings.customRulebookPath) {
-                            const customSubPath = `${this.plugin.settings.customRulebookPath}/classes/${classData.subclassFile}.json`;
-                            if (await this.app.vault.adapter.exists(customSubPath)) subPath = customSubPath;
-                        }
-                        if (await this.app.vault.adapter.exists(subPath)) {
-                            const subContent = await this.app.vault.adapter.read(subPath);
-                            const subclassNames = Object.keys(JSON.parse(subContent));
-
-                            subclassNames.forEach(s => subSelect.createEl("option", { text: s, value: s }));
-                        }
-                    } catch (e) {
-                        console.error("Could not fetch subclasses", e);
+                    const allSubclasses = await getSubclassData(this.app, this.plugin.settings, classData.subclassFile);
+                    if (allSubclasses && typeof allSubclasses === "object") {
+                        Object.keys(allSubclasses).forEach(s => subSelect.createEl("option", { text: s, value: s }));
                     }
                 }
             }
@@ -5326,7 +5305,7 @@ class LevelUpModal extends Modal {
 
         // --- Render ASI UI ---
         if (this.isAsiLevel) {
-            const loadedGeneralFeats = await getRootRouterData(this.app, this.plugin.settings, "general-feats");
+            const loadedGeneralFeats = await getFeatMapData(this.app, this.plugin.settings, "general-feats");
             if (loadedGeneralFeats && typeof loadedGeneralFeats === "object") {
                 this.availableFeats = loadedGeneralFeats;
             }
@@ -5692,8 +5671,8 @@ class SpellbookModal extends Modal {
             return;
         }
 
-        // 3. Load Router File from /rulebook/spells/<spellsPool>.json
-        const loadedRouter = await this.loadSpellJson(this.spellsPoolFile);
+        // 3. Load Spell Pool Router Map from spellsMap (or customRulebookPath)
+        const loadedRouter = await getSpellsPoolData(this.app, this.plugin.settings, this.spellsPoolFile);
         if (!loadedRouter || typeof loadedRouter !== "object") {
             contentEl.createEl("p", {
                 text: `Could not load spell router file: /rulebook/spells/${this.spellsPoolFile}.json`,

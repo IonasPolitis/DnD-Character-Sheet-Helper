@@ -7,12 +7,14 @@ import {
     itemRegistry,
     ruleRegistry,
     spellRegistry,
-    rootRouterRegistry,
     classesMap, 
     backgroundsMap,
     racesMap,
     itemsMap,
     rulesMap,
+    generalFeatsMap,
+    epicBoonFeatsMap,
+    spellsMap,
     pastEditionsRegistry
 } from './registry';
 
@@ -94,21 +96,24 @@ export async function getClassData(app: App, settings: FetchSettings, className:
 }
 
 // --- Logic for Fetching Subclass Data ---
-export async function getSubclassData(app: App, settings: FetchSettings, subclassFile: string, subclassName: string) {
+export async function getSubclassData(app: App, settings: FetchSettings, subclassFile: string, subclassName?: string) {
     const fetchNative = () => {
         if (settings.edition && pastEditionsRegistry[settings.edition]) {
             const edData = pastEditionsRegistry[settings.edition];
             const fileData = getIgnoreCase(edData.subclassRegistry, subclassFile);
-            return fileData ? getIgnoreCase(fileData, subclassName) : null;
+            if (!fileData) return null;
+            return subclassName ? getIgnoreCase(fileData, subclassName) : fileData;
         }
         const fileData = getIgnoreCase(subclassRegistry, subclassFile);
-        return fileData ? getIgnoreCase(fileData, subclassName) : null;
+        if (!fileData) return null;
+        return subclassName ? getIgnoreCase(fileData, subclassName) : fileData;
     };
     
     const fetchCustom = async () => {
         if (!settings.customRulebookPath) return null;
         const fileData = await readCustomJson(app, normalizePath(`${settings.customRulebookPath}/classes/${subclassFile}.json`));
-        return fileData ? getIgnoreCase(fileData, subclassName) : null;
+        if (!fileData) return null;
+        return subclassName ? getIgnoreCase(fileData, subclassName) : fileData;
     };
 
     if (settings.customRulebookPath) {
@@ -250,19 +255,84 @@ export async function getRuleData(app: App, settings: FetchSettings, rule: strin
     return fetchNative();
 }
 
-// --- Logic for Fetching Spell Data (Spells & Spell Routers) ---
-export async function getSpellData(app: App, settings: FetchSettings, spellFileName: string) {
-    const fetchNative = () => {
-        if (settings.edition && pastEditionsRegistry[settings.edition]?.spellRegistry) {
-            const edSpell = getIgnoreCase(pastEditionsRegistry[settings.edition].spellRegistry, spellFileName);
-            if (edSpell) return edSpell;
+// --- Helper: Resolve a Spell ID from a Display Name or Key using spellsMap ---
+function resolveSpellIdFromMap(mapRegistry: Record<string, any>, targetRegistry: Record<string, any>, searchName: string): string | null {
+    const cleanSearch = searchName.trim();
+    const slugSearch = cleanSearch.toLowerCase().replace(/['"]/g, '').replace(/\s+/g, '-');
+
+    // 1. Direct filename match in spellRegistry (e.g., "eldritch-blast")
+    if (getIgnoreCase(targetRegistry, cleanSearch)) return cleanSearch;
+    if (getIgnoreCase(targetRegistry, slugSearch)) return slugSearch;
+
+    // 2. Search inside spellsMap routers (where each level "0".."9" maps { "spell-id": "Spell Name" } or { "Spell Name": "spell-id" })
+    if (mapRegistry && typeof mapRegistry === 'object') {
+        for (const poolData of Object.values(mapRegistry)) {
+            if (!poolData || typeof poolData !== 'object') continue;
+            for (const levelGroup of Object.values(poolData)) {
+                if (!levelGroup || typeof levelGroup !== 'object') continue;
+                for (const [key, val] of Object.entries(levelGroup as Record<string, string>)) {
+                    if (key.toLowerCase() === cleanSearch.toLowerCase() || key.toLowerCase() === slugSearch) {
+                        return key;
+                    }
+                    if (typeof val === 'string' && val.toLowerCase() === cleanSearch.toLowerCase()) {
+                        return key;
+                    }
+                }
+            }
         }
-        return getIgnoreCase(spellRegistry, spellFileName);
+    }
+    return null;
+}
+
+// --- Logic for Fetching Spell Pool Router Maps (e.g., warlock-spells.json) ---
+export async function getSpellsPoolData(app: App, settings: FetchSettings, spellsPoolFile: string) {
+    const fetchNative = () => {
+        if (settings.edition && pastEditionsRegistry[settings.edition]) {
+            const edData = pastEditionsRegistry[settings.edition];
+            const edPool = getIgnoreCase(edData.spellsMap, spellsPoolFile);
+            if (edPool) return edPool;
+        }
+        return getIgnoreCase(spellsMap, spellsPoolFile);
     };
 
     const fetchCustom = async () => {
         if (!settings.customRulebookPath) return null;
-        return await readCustomJson(app, normalizePath(`${settings.customRulebookPath}/spells/${spellFileName}.json`));
+        return await readCustomJson(app, normalizePath(`${settings.customRulebookPath}/spells/${spellsPoolFile}.json`));
+    };
+
+    if (settings.customRulebookPath) {
+        return settings.customRulebookPriority
+            ? (await fetchCustom()) || fetchNative()
+            : fetchNative() || (await fetchCustom());
+    }
+    return fetchNative();
+}
+
+// --- Logic for Fetching Individual Spell Data ---
+export async function getSpellData(app: App, settings: FetchSettings, spellName: string) {
+    const safeName = Array.isArray(spellName) ? spellName[0] : spellName;
+    if (typeof safeName !== 'string' || !safeName.trim()) return null;
+
+    const fetchNative = () => {
+        if (settings.edition && pastEditionsRegistry[settings.edition]) {
+            const edData = pastEditionsRegistry[settings.edition];
+            const edSpellId = resolveSpellIdFromMap(edData.spellsMap, edData.spellRegistry, safeName);
+            if (edSpellId) {
+                const edSpell = getIgnoreCase(edData.spellRegistry, edSpellId);
+                if (edSpell) return edSpell;
+            }
+        }
+        const spellId = resolveSpellIdFromMap(spellsMap, spellRegistry, safeName);
+        return spellId ? getIgnoreCase(spellRegistry, spellId) : null;
+    };
+
+    const fetchCustom = async () => {
+        if (!settings.customRulebookPath) return null;
+        const slugId = safeName.trim().toLowerCase().replace(/['"]/g, '').replace(/\s+/g, '-');
+        return (
+            (await readCustomJson(app, normalizePath(`${settings.customRulebookPath}/spells/${safeName}.json`))) ||
+            (await readCustomJson(app, normalizePath(`${settings.customRulebookPath}/spells/${slugId}.json`)))
+        );
     };
 
     if (settings.customRulebookPath) {
@@ -296,13 +366,30 @@ export async function getClassChoiceData(app: App, settings: FetchSettings, choi
     return fetchNative();
 }
 
-// --- Logic for Fetching Root Rulebook Router Files (e.g., general-feats.json) ---
-export async function getRootRouterData(app: App, settings: FetchSettings, routerFileName: string) {
-    const fetchNative = () => getIgnoreCase(rootRouterRegistry, routerFileName);
+// --- Logic for Fetching Feat Category Router Maps (general-feats.json & epic-boon-feats.json) ---
+export async function getFeatMapData(app: App, settings: FetchSettings, featMapName: string) {
+    const cleanKey = featMapName.trim().toLowerCase().replace(/\.json$/i, '');
+    const featRouters: Record<string, any> = {
+        "general-feats": generalFeatsMap,
+        "epic-boon-feats": epicBoonFeatsMap
+    };
+
+    const fetchNative = () => {
+        if (settings.edition && pastEditionsRegistry[settings.edition]) {
+            const edData = pastEditionsRegistry[settings.edition];
+            if (cleanKey === "general-feats" && edData.generalFeatsMap && Object.keys(edData.generalFeatsMap).length > 0) {
+                return edData.generalFeatsMap;
+            }
+            if (cleanKey === "epic-boon-feats" && edData.epicBoonFeatsMap && Object.keys(edData.epicBoonFeatsMap).length > 0) {
+                return edData.epicBoonFeatsMap;
+            }
+        }
+        return featRouters[cleanKey] || null;
+    };
 
     const fetchCustom = async () => {
         if (!settings.customRulebookPath) return null;
-        return await readCustomJson(app, normalizePath(`${settings.customRulebookPath}/${routerFileName}.json`));
+        return await readCustomJson(app, normalizePath(`${settings.customRulebookPath}/${cleanKey}.json`));
     };
 
     if (settings.customRulebookPath) {
