@@ -52,7 +52,9 @@ async function readCustomJson(app: App, fullPath: string) {
     if (await adapter.exists(cleanPath)) {
         try {
             const fileContent = await adapter.read(cleanPath);
-            return JSON.parse(fileContent);
+            const parsed = JSON.parse(fileContent);
+            console.log(`D&D Plugin: Successfully loaded custom file: "${cleanPath}"`, parsed);
+            return parsed;
         } catch (e) {
             console.error(`D&D Plugin: Failed to parse JSON syntax in custom file at "${cleanPath}"`, e);
             return null;

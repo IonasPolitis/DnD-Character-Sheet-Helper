@@ -1,4 +1,4 @@
-import { App, Plugin, PluginSettingTab, Setting, MarkdownPostProcessorContext, parseYaml, MarkdownRenderChild, MarkdownRenderer, TFile, Modal, Notice, MarkdownView, normalizePath } from 'obsidian';
+import { App, Plugin, PluginSettingTab, Setting, MarkdownPostProcessorContext, parseYaml, MarkdownRenderChild, MarkdownRenderer, TFile, Modal, Notice, MarkdownView, normalizePath, Platform } from 'obsidian';
 import { getClassData, getSubclassData, getBackgroundData, getRaceData, getExtraFeat, getItemData, getRuleData, getSpellData, getSpellsPoolData, getClassChoiceData, getFeatMapData } from './data';
 import { MarkdownNotes, classesMap, racesMap, backgroundsMap, itemsMap } from './registry';
 import { THEMES } from './themes';
@@ -254,18 +254,16 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
         }
 
         // 2. Apply to all popped-out windows (if on Desktop)
-        import('obsidian').then(({ Platform }) => {
-            if (Platform.isDesktop) {
-                this.app.workspace.iterateAllLeaves((leaf) => {
-                    const windowDoc = leaf.view.containerEl.ownerDocument;
-                    if (windowDoc) {
-                        for (const [name, value] of this.colorCssVars()) {
-                            windowDoc.documentElement.style.setProperty(name, value);
-                        }
+        if (Platform.isDesktop) {
+            this.app.workspace.iterateAllLeaves((leaf) => {
+                const windowDoc = leaf.view.containerEl.ownerDocument;
+                if (windowDoc) {
+                    for (const [name, value] of this.colorCssVars()) {
+                        windowDoc.documentElement.style.setProperty(name, value);
                     }
-                });
-            }
-        });
+                }
+            });
+        }
     }
 
     // --- Helper: Safely Update Gold Frontmatter ---
