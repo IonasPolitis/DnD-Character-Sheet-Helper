@@ -5894,8 +5894,7 @@ class SpellbookModal extends Modal {
 
     async onOpen() {
         const { contentEl } = this;
-        this.modalEl.style.width = "720px";
-        this.modalEl.style.maxWidth = "92vw";
+        this.modalEl.addClass("dnd-spellbook-modal");
 
         this.renderChild = new MarkdownRenderChild(contentEl);
         this.renderChild.load();
@@ -5966,15 +5965,15 @@ class SpellbookModal extends Modal {
         });
 
         const bodyGrid = contentEl.createDiv({
-            attr: { style: "display: grid; grid-template-columns: 1.15fr 1fr; gap: 14px; min-height: 320px; max-height: 420px;" }
+            cls: "dnd-spellbook-body"
         });
 
         this.listContainer = bodyGrid.createDiv({
-            attr: { style: "overflow-y: auto; padding-right: 4px; display: flex; flex-direction: column; gap: 10px;" }
+            cls: "dnd-spellbook-list"
         });
 
         this.previewContainer = bodyGrid.createDiv({
-            attr: { style: "overflow-y: auto; padding: 12px; background: var(--dnd-ui-color-bg-darker); border: 1px solid var(--dnd-ui-color-border-primary); border-radius: 6px;" }
+            cls: "dnd-spellbook-preview"
         });
         this.renderEmptyPreview();
 
