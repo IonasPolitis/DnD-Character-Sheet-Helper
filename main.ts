@@ -1,4 +1,4 @@
-import { App, Plugin, PluginSettingTab, Setting, MarkdownPostProcessorContext, parseYaml, MarkdownRenderChild, MarkdownRenderer, TFile, Modal, Notice, MarkdownView } from 'obsidian';
+import { App, Plugin, PluginSettingTab, Setting, MarkdownPostProcessorContext, parseYaml, MarkdownRenderChild, MarkdownRenderer, TFile, Modal, Notice, MarkdownView, normalizePath } from 'obsidian';
 import { getClassData, getSubclassData, getBackgroundData, getRaceData, getExtraFeat, getItemData, getRuleData, getSpellData, getSpellsPoolData, getClassChoiceData, getFeatMapData } from './data';
 import { MarkdownNotes, classesMap, racesMap, backgroundsMap, itemsMap } from './registry';
 import { THEMES } from './themes';
@@ -716,7 +716,7 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                                 sectionDiv.createEl("h4", { text: `${subclassName} Features`, cls: "dnd-class-header" });
                             }
 
-                            const subclassData = await getSubclassData(this.app, this.settings, classData.subclassFile, subclassName);
+                            const subclassData = await getSubclassData(this.app, fetchOptions, classData.subclassFile, subclassName);
                             if (!subclassData) continue;
 
                             for (let i = 1; i <= currentClassLevel; i++) {
@@ -3040,9 +3040,10 @@ class CharacterWizardModal extends Modal {
 
     async fetchDropdownData() {
         const getKeys = async (fileName: string, nativeMap: Record<string, any>) => {
-            let keys: Set<string> = new Set(Object.keys(nativeMap || {}));
-            if (this.plugin.settings.customRulebookPath) {
-                const customPath = `${this.plugin.settings.customRulebookPath}/${fileName}`;
+            const keys: Set<string> = new Set(Object.keys(nativeMap || {}));
+            const basePath = this.plugin.settings.customRulebookPath?.trim();
+            if (basePath) {
+                const customPath = normalizePath(`${basePath}/${fileName}`);
                 try {
                     if (await this.app.vault.adapter.exists(customPath)) {
                         const content = await this.app.vault.adapter.read(customPath);
@@ -4084,16 +4085,37 @@ class NoteModal extends Modal {
         const formattedTitle = this.noteKey.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
         titleEl.setText(formattedTitle);
 
-        // --- BUNDLED REGISTRY LOOKUP ---
-        const fileContent = MarkdownNotes[this.noteKey];
+        const fetchNativeNote = (): string | null => MarkdownNotes[this.noteKey] || null;
+
+        const fetchCustomNote = async (basePath: string): Promise<string | null> => {
+            const mdPath = normalizePath(`${basePath}/markdown/${this.noteKey}.md`);
+            if (await this.app.vault.adapter.exists(mdPath)) {
+                try {
+                    return await this.app.vault.adapter.read(mdPath);
+                } catch (e) {
+                    console.error(`NoteModal Error: Failed to read custom markdown at ${mdPath}`, e);
+                }
+            }
+            return null;
+        };
+
+        // 1st & 2nd STAGE: Resolve Markdown Note with Custom Rulebook Priority
+        const customBasePath = this.plugin.settings.customRulebookPath?.trim() || "";
+        let fileContent: string | null = null;
+
+        if (!customBasePath) {
+            fileContent = fetchNativeNote();
+        } else if (this.plugin.settings.customRulebookPriority) {
+            fileContent = (await fetchCustomNote(customBasePath)) ?? fetchNativeNote();
+        } else {
+            fileContent = fetchNativeNote() ?? (await fetchCustomNote(customBasePath));
+        }
 
         if (fileContent) {
-            // Render the fetched markdown into the pop-up
             MarkdownRenderer.render(this.app, fileContent, contentEl, "", null as any);
         } else {
-            // Updated fallback message so you know it is checking the registry correctly
             contentEl.createEl("p", {
-                text: `Error: Could not find "${this.noteKey}" in the bundled Markdown registry. Make sure you ran the generation script!`,
+                text: `Error: Could not find "${this.noteKey}" in the bundled Markdown registry or Custom Rulebook.`,
                 cls: "dnd-error-text"
             });
         }
@@ -4113,6 +4135,15 @@ class DnDSettingsTab extends PluginSettingTab {
         this.plugin = plugin;
     }
 
+    // Triggers all open Markdown notes to re-render when rulebook settings change
+    private refreshOpenSheets() {
+        this.app.workspace.iterateAllLeaves((leaf) => {
+            if (leaf.view instanceof MarkdownView && leaf.view.file) {
+                this.app.metadataCache.trigger('changed', leaf.view.file);
+            }
+        });
+    }
+
     display(): void {
         const { containerEl } = this;
         containerEl.empty();
@@ -4127,6 +4158,7 @@ class DnDSettingsTab extends PluginSettingTab {
                 .onChange(async (value) => {
                     this.plugin.settings.combineClassSubclass = value;
                     await this.plugin.saveSettings();
+                    this.refreshOpenSheets();
                     this.display();
                 }));
 
@@ -4143,6 +4175,7 @@ class DnDSettingsTab extends PluginSettingTab {
                 .onChange(async (value) => {
                     this.plugin.settings.customRulebookPath = value;
                     await this.plugin.saveSettings();
+                    this.refreshOpenSheets();
                 }));
 
         new Setting(containerEl)
@@ -4153,6 +4186,7 @@ class DnDSettingsTab extends PluginSettingTab {
                 .onChange(async (value) => {
                     this.plugin.settings.customRulebookPriority = value;
                     await this.plugin.saveSettings();
+                    this.refreshOpenSheets();
                 }));
 
         // Draggable List for Section Order
@@ -4200,6 +4234,7 @@ class DnDSettingsTab extends PluginSettingTab {
 
                     // Save and refresh UI
                     await this.plugin.saveSettings();
+                    this.refreshOpenSheets();
                     this.display();
                 }
             });
@@ -4357,9 +4392,10 @@ class EquipItemsModal extends Modal {
 
     async fetchEquipmentPools() {
         const itemLookupKeys = new Set<string>(Object.keys(itemsMap || {}));
+        const basePath = this.plugin.settings.customRulebookPath?.trim();
 
-        if (this.plugin.settings.customRulebookPath) {
-            const customItemsPath = `${this.plugin.settings.customRulebookPath}/items.json`;
+        if (basePath) {
+            const customItemsPath = normalizePath(`${basePath}/items.json`);
             try {
                 if (await this.app.vault.adapter.exists(customItemsPath)) {
                     const content = await this.app.vault.adapter.read(customItemsPath);

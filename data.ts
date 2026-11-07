@@ -59,13 +59,31 @@ async function readCustomJson(app: App, fullPath: string) {
 }
 
 // --- Helper: Custom Router Lookup ---
-// Reads the custom router file (e.g., classes.json) to find the mapped filename
+// Reads the custom router file (e.g., classes.json, items.json) to find the mapped filename
 async function getCustomMappedName(app: App, basePath: string, routerFile: string, searchKey: string) {
     const routerPath = normalizePath(`${basePath}/${routerFile}`);
     const routerData = await readCustomJson(app, routerPath);
-    
-    if (!routerData) return null;
-    return getIgnoreCase(routerData, searchKey);
+    if (!routerData || typeof routerData !== 'object') return null;
+
+    const normalizedKey = Array.isArray(searchKey) ? searchKey[0] : searchKey;
+    if (typeof normalizedKey !== 'string') return null;
+
+    // 1. Check if searchKey is already a mapped filename value in the router (just like getItemData does for itemsMap)
+    const matchedValue = Object.values(routerData).find(
+        v => typeof v === 'string' && v.toLowerCase() === normalizedKey.toLowerCase()
+    );
+    if (typeof matchedValue === 'string') return matchedValue;
+
+    // 2. Otherwise look up the key by display name (case-insensitive)
+    return getIgnoreCase(routerData, normalizedKey);
+}
+
+// --- Helper: Merge Native & Custom Router Dictionaries by Priority ---
+function mergeDictionaries(nativeObj: any, customObj: any, customPriority: boolean) {
+    if (!customObj && !nativeObj) return null;
+    if (!customObj) return nativeObj;
+    if (!nativeObj) return customObj;
+    return customPriority ? { ...nativeObj, ...customObj } : { ...customObj, ...nativeObj };
 }
 
 // --- Logic for Fetching Core Class Data ---
@@ -117,6 +135,10 @@ export async function getSubclassData(app: App, settings: FetchSettings, subclas
     };
 
     if (settings.customRulebookPath) {
+        // When fetching the full subclass dictionary for dropdowns (no subclassName), merge both so custom subclasses appear
+        if (!subclassName) {
+            return mergeDictionaries(fetchNative(), await fetchCustom(), settings.customRulebookPriority);
+        }
         return settings.customRulebookPriority 
             ? (await fetchCustom()) || fetchNative() 
             : fetchNative() || (await fetchCustom());
@@ -301,9 +323,17 @@ export async function getSpellsPoolData(app: App, settings: FetchSettings, spell
     };
 
     if (settings.customRulebookPath) {
-        return settings.customRulebookPriority
-            ? (await fetchCustom()) || fetchNative()
-            : fetchNative() || (await fetchCustom());
+        const nativePool = fetchNative();
+        const customPool = await fetchCustom();
+        if (!customPool || !nativePool) return customPool || nativePool;
+
+        // Merge each spell level ("0".."9") according to Custom Rulebook Priority
+        const mergedPool: Record<string, any> = {};
+        const allLevels = new Set([...Object.keys(nativePool), ...Object.keys(customPool)]);
+        for (const lvl of allLevels) {
+            mergedPool[lvl] = mergeDictionaries(nativePool[lvl], customPool[lvl], settings.customRulebookPriority);
+        }
+        return mergedPool;
     }
     return fetchNative();
 }
@@ -329,10 +359,7 @@ export async function getSpellData(app: App, settings: FetchSettings, spellName:
     const fetchCustom = async () => {
         if (!settings.customRulebookPath) return null;
         const slugId = safeName.trim().toLowerCase().replace(/['"]/g, '').replace(/\s+/g, '-');
-        return (
-            (await readCustomJson(app, normalizePath(`${settings.customRulebookPath}/spells/${safeName}.json`))) ||
-            (await readCustomJson(app, normalizePath(`${settings.customRulebookPath}/spells/${slugId}.json`)))
-        );
+        return await readCustomJson(app, normalizePath(`${settings.customRulebookPath}/spells/${slugId}.json`));
     };
 
     if (settings.customRulebookPath) {
@@ -359,9 +386,18 @@ export async function getClassChoiceData(app: App, settings: FetchSettings, choi
     };
 
     if (settings.customRulebookPath) {
+        const nativeData = fetchNative();
+        const customData = await fetchCustom();
+
+        // If this file is a Router Map (no "name" or "description" property), merge keys by priority
+        const isRouter = (obj: any) => obj && typeof obj === 'object' && !Array.isArray(obj) && obj.name === undefined && obj.description === undefined;
+        if (isRouter(nativeData) || isRouter(customData)) {
+            return mergeDictionaries(nativeData, customData, settings.customRulebookPriority);
+        }
+
         return settings.customRulebookPriority
-            ? (await fetchCustom()) || fetchNative()
-            : fetchNative() || (await fetchCustom());
+            ? customData || nativeData
+            : nativeData || customData;
     }
     return fetchNative();
 }
@@ -393,9 +429,7 @@ export async function getFeatMapData(app: App, settings: FetchSettings, featMapN
     };
 
     if (settings.customRulebookPath) {
-        return settings.customRulebookPriority
-            ? (await fetchCustom()) || fetchNative()
-            : fetchNative() || (await fetchCustom());
+        return mergeDictionaries(fetchNative(), await fetchCustom(), settings.customRulebookPriority);
     }
     return fetchNative();
 }
