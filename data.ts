@@ -45,15 +45,20 @@ interface FetchSettings { customRulebookPath: string; customRulebookPriority: bo
 
 // --- Helper: Read Custom JSON File ---
 async function readCustomJson(app: App, fullPath: string) {
+    // Strip any accidental quotes or leading/trailing slashes and normalize the vault path
+    const cleanPath = normalizePath(fullPath.replace(/^['"]+|['"]+$/g, '').trim());
     const adapter = app.vault.adapter;
-    if (await adapter.exists(fullPath)) {
+
+    if (await adapter.exists(cleanPath)) {
         try {
-            const fileContent = await adapter.read(fullPath);
+            const fileContent = await adapter.read(cleanPath);
             return JSON.parse(fileContent);
         } catch (e) {
-            console.error(`D&D Plugin: Failed to parse custom file at ${fullPath}`, e);
+            console.error(`D&D Plugin: Failed to parse JSON syntax in custom file at "${cleanPath}"`, e);
             return null;
         }
+    } else {
+        console.warn(`D&D Plugin: Custom Rulebook file not found at vault path: "${cleanPath}"`);
     }
     return null;
 }
