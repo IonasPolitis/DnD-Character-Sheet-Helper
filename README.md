@@ -66,7 +66,7 @@ extras: $array$ //optional
 ```
 ````
 The `extras` variables allows you to add your own homebrew abilities right besides the standard DnD ones and follows this structure:
-[ ["<Ability-Name>", "<Ability-Abbreviation>", "<Ability-Score>", "<Saving-Throw-Modifier>"], [<second Ability>], [<third Ability>] ]
+[ [ "<"Ability-Name">", "<"Ability-Abbreviation">", "<"Ability-Score">", "<"Saving-Throw-Modifier">"], [<"second Ability">], [<"third Ability">] ]
 
 ### DnD Skills:
 
