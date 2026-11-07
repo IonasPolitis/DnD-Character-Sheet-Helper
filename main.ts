@@ -1,5 +1,5 @@
-import { App, Plugin, PluginSettingTab, Setting, MarkdownPostProcessorContext, parseYaml, MarkdownRenderChild, MarkdownRenderer, TFile, Modal, Notice, MarkdownView, ListItemCache } from 'obsidian';
-import { getClassData, getSubclassData, getBackgroundData, getRaceData, getExtraFeat, getItemData, getRuleData } from './data';
+import { App, Plugin, PluginSettingTab, Setting, MarkdownPostProcessorContext, parseYaml, MarkdownRenderChild, MarkdownRenderer, TFile, Modal, Notice, MarkdownView } from 'obsidian';
+import { getClassData, getSubclassData, getBackgroundData, getRaceData, getExtraFeat, getItemData, getRuleData, getSpellData, getClassChoiceData, getRootRouterData } from './data';
 import { MarkdownNotes, classesMap, racesMap, backgroundsMap } from './registry';
 import { THEMES } from './themes';
  
@@ -571,19 +571,8 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                 if (featId === "ability-score-improvement") continue;
 
                 // 2. Dynamically check if this ID is actually a router file in the root rulebook folder
-                let isRouter = false;
-                let routerPath = `${this.manifest.dir}/rulebook/${featId}.json`;
-
-                if (this.settings.customRulebookPath) {
-                    const customPath = `${this.settings.customRulebookPath}/${featId}.json`;
-                    if (await this.app.vault.adapter.exists(customPath)) {
-                        isRouter = true;
-                    }
-                }
-
-                if (!isRouter && await this.app.vault.adapter.exists(routerPath)) {
-                    isRouter = true;
-                }
+                const routerData = await getRootRouterData(this.app, fetchOptions, String(featId));
+                const isRouter = !!routerData;
 
                 // If it is NOT a router file, it's a real feat we should display!
                 if (!isRouter) {
@@ -671,34 +660,19 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
 
                                 // If this choice belongs to the current level we are rendering...
                                 if (Number(choiceLevel) === i && choiceKey) {
-                                    try {
-                                        // Directly load the choice file (e.g., 'protector.json') instead of the router file!
-                                        let choicePath = `${this.manifest.dir}/rulebook/classes/classChoices/${choiceKey}.json`;
-                                        if (this.settings.customRulebookPath) {
-                                            const customPath = `${this.settings.customRulebookPath}/classes/classChoices/${choiceKey}.json`;
-                                            if (await this.app.vault.adapter.exists(customPath)) choicePath = customPath;
-                                        }
+                                    const featureData = await getClassChoiceData(this.app, fetchOptions, choiceKey);
+                                    if (featureData && featureData.name) {
+                                        if (featureData.hide === true || (featureData.name && hiddenFeatures.includes(featureData.name.toLowerCase()))) continue;
 
-                                        if (await this.app.vault.adapter.exists(choicePath)) {
-                                            const content = await this.app.vault.adapter.read(choicePath);
-                                            const featureData = JSON.parse(content);
+                                        const featureBlock = sectionDiv.createDiv({ cls: "dnd-feature-block" });
+                                        const titleContainer = featureBlock.createDiv({ cls: "dnd-feature-title" });
 
-                                            if (featureData && featureData.name) {
-                                                if (featureData.hide === true || (featureData.name && hiddenFeatures.includes(featureData.name.toLowerCase()))) continue;
+                                        const badgeText = featureData.badge || "Choice";
+                                        titleContainer.createEl("span", { text: badgeText, cls: "dnd-level-badge dnd-badge-combined" });
+                                        titleContainer.createEl("span", { text: featureData.name, cls: "dnd-feature-name" });
 
-                                                const featureBlock = sectionDiv.createDiv({ cls: "dnd-feature-block" });
-                                                const titleContainer = featureBlock.createDiv({ cls: "dnd-feature-title" });
-
-                                                const badgeText = featureData.badge || "Choice";
-                                                titleContainer.createEl("span", { text: badgeText, cls: "dnd-level-badge dnd-badge-combined" });
-                                                titleContainer.createEl("span", { text: featureData.name, cls: "dnd-feature-name" });
-
-                                                const descDiv = featureBlock.createDiv({ cls: "dnd-feature-desc" });
-                                                await this.renderDndMarkdown(featureData.description, descDiv, ctx.sourcePath, renderChild);
-                                            }
-                                        }
-                                    } catch (e) {
-                                        console.error(`Failed to load class choice data for ${choiceKey}`, e);
+                                        const descDiv = featureBlock.createDiv({ cls: "dnd-feature-desc" });
+                                        await this.renderDndMarkdown(featureData.description, descDiv, ctx.sourcePath, renderChild);
                                     }
                                 }
                             }
@@ -1451,38 +1425,9 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
         }
     }
 
-    // Helper: Reads a JSON file from /rulebook/spells/ respecting customRulebookPath & priority
+    // Helper: Reads a spell or spell router from the bundled registry (or customRulebookPath)
     async loadSpellFile(fileNameWithoutExt: string): Promise<any | null> {
-        const nativePath = `${this.manifest.dir}/rulebook/spells/${fileNameWithoutExt}.json`;
-        const customPath = this.settings.customRulebookPath
-            ? `${this.settings.customRulebookPath}/spells/${fileNameWithoutExt}.json`
-            : "";
-
-        const tryRead = async (path: string) => {
-            if (path && await this.app.vault.adapter.exists(path)) {
-                try {
-                    const content = await this.app.vault.adapter.read(path);
-                    return JSON.parse(content);
-                } catch (e) {
-                    console.error(`Spell Error: Failed to parse ${path}`, e);
-                }
-            }
-            return null;
-        };
-
-        if (this.settings.customRulebookPriority && customPath) {
-            const customData = await tryRead(customPath);
-            if (customData) return customData;
-        }
-
-        const nativeData = await tryRead(nativePath);
-        if (nativeData) return nativeData;
-
-        if (!this.settings.customRulebookPriority && customPath) {
-            return await tryRead(customPath);
-        }
-
-        return null;
+        return await getSpellData(this.app, this.settings, fileNameWithoutExt);
     }
 
     async processDnDSpellsBlock(source: string, el: HTMLElement, ctx: MarkdownPostProcessorContext) {
@@ -3551,19 +3496,7 @@ class CharacterWizardModal extends Modal {
                             // Use a traditional for-loop to track the exact index of the choice
                             for (let choiceIndex = 0; choiceIndex < feature.classChoices.length; choiceIndex++) {
                                 const routerName = feature.classChoices[choiceIndex];
-
-                                // Fetch the corresponding router file!
-                                let choicePath = `${this.plugin.manifest.dir}/rulebook/classes/classChoices/${routerName}.json`;
-                                if (this.plugin.settings.customRulebookPath) {
-                                    const customPath = `${this.plugin.settings.customRulebookPath}/classes/classChoices/${routerName}.json`;
-                                    if (await this.app.vault.adapter.exists(customPath)) choicePath = customPath;
-                                }
-
-                                let routerData: any = null;
-                                if (await this.app.vault.adapter.exists(choicePath)) {
-                                    const content = await this.app.vault.adapter.read(choicePath);
-                                    routerData = JSON.parse(content);
-                                }
+                                const routerData = await getClassChoiceData(this.app, this.plugin.settings, routerName);
 
                                 if (routerData) {
                                     // Build a clean UI Card for the choice
@@ -4704,20 +4637,10 @@ class ManageCharacterModal extends Modal {
                         else if (choiceTuple.length === 2) [choiceKey, choiceLevel] = choiceTuple;
                     }
                     if (Number(choiceLevel) === i && choiceKey) {
-                        try {
-                            let choicePath = `${this.plugin.manifest.dir}/rulebook/classes/classChoices/${choiceKey}.json`;
-                            if (this.plugin.settings.customRulebookPath) {
-                                const customPath = `${this.plugin.settings.customRulebookPath}/classes/classChoices/${choiceKey}.json`;
-                                if (await this.app.vault.adapter.exists(customPath)) choicePath = customPath;
-                            }
-                            if (await this.app.vault.adapter.exists(choicePath)) {
-                                const content = await this.app.vault.adapter.read(choicePath);
-                                const featureData = JSON.parse(content);
-                                if (featureData && featureData.name && featureData.hide !== true) {
-                                    discovered.add(String(featureData.name).trim());
-                                }
-                            }
-                        } catch { /* ignore invalid choice file */ }
+                        const featureData = await getClassChoiceData(this.app, this.plugin.settings, choiceKey);
+                        if (featureData && featureData.name && featureData.hide !== true) {
+                            discovered.add(String(featureData.name).trim());
+                        }
                     }
                 }
 
@@ -4767,13 +4690,7 @@ class ManageCharacterModal extends Modal {
             if (!featId || featId === "ability-score-improvement") continue;
             const safeFeatId = String(featId);
 
-            let isRouter = false;
-            const routerPath = `${this.plugin.manifest.dir}/rulebook/${safeFeatId}.json`;
-            if (this.plugin.settings.customRulebookPath) {
-                const customPath = `${this.plugin.settings.customRulebookPath}/${safeFeatId}.json`;
-                if (await this.app.vault.adapter.exists(customPath)) isRouter = true;
-            }
-            if (!isRouter && await this.app.vault.adapter.exists(routerPath)) isRouter = true;
+            const isRouter = !!(await getRootRouterData(this.app, this.plugin.settings, safeFeatId));
             if (isRouter) continue;
 
             const featData = await getExtraFeat(this.app, this.plugin.settings, safeFeatId);
@@ -5304,17 +5221,8 @@ class LevelUpModal extends Modal {
         this.classChoicesState = [];
 
         for (const [routerName, slotCount] of Object.entries(slotsByRouter)) {
-            // Load Router JSON Options
-            let choicePath = `${this.plugin.manifest.dir}/rulebook/classes/classChoices/${routerName}.json`;
-            if (this.plugin.settings.customRulebookPath) {
-                const customPath = `${this.plugin.settings.customRulebookPath}/classes/classChoices/${routerName}.json`;
-                if (await this.app.vault.adapter.exists(customPath)) choicePath = customPath;
-            }
-
-            let routerData: any = null;
-            if (await this.app.vault.adapter.exists(choicePath)) {
-                routerData = JSON.parse(await this.app.vault.adapter.read(choicePath));
-            }
+            // Load Router JSON Options from bundled registry (or custom rulebook)
+            const routerData = await getClassChoiceData(this.app, this.plugin.settings, routerName);
 
             if (routerData) {
                 const routerDiv = contentEl.createDiv({ attr: { style: "margin-bottom: 20px; padding: 10px; background: var(--dnd-ui-color-bg-tertiary); border-radius: 6px; border: 1px solid var(--dnd-ui-color-border-primary);" } });
@@ -5418,17 +5326,9 @@ class LevelUpModal extends Modal {
 
         // --- Render ASI UI ---
         if (this.isAsiLevel) {
-            try {
-                let featsPath = `${this.plugin.manifest.dir}/rulebook/general-feats.json`;
-                if (this.plugin.settings.customRulebookPath) {
-                    const customFeatsPath = `${this.plugin.settings.customRulebookPath}/general-feats.json`;
-                    if (await this.app.vault.adapter.exists(customFeatsPath)) featsPath = customFeatsPath;
-                }
-                if (await this.app.vault.adapter.exists(featsPath)) {
-                    this.availableFeats = JSON.parse(await this.app.vault.adapter.read(featsPath));
-                }
-            } catch (e) {
-                console.error("Could not fetch feats", e);
+            const loadedGeneralFeats = await getRootRouterData(this.app, this.plugin.settings, "general-feats");
+            if (loadedGeneralFeats && typeof loadedGeneralFeats === "object") {
+                this.availableFeats = loadedGeneralFeats;
             }
 
             const asiDiv = contentEl.createDiv({ attr: { style: "margin-bottom: 20px; padding: 10px; background: var(--dnd-ui-color-bg-tertiary); border-radius: 6px; border: 1px solid var(--dnd-ui-color-border-active);" } });
@@ -5703,38 +5603,9 @@ class SpellbookModal extends Modal {
         this.sourcePath = sourcePath;
     }
 
-    // Helper: Reads a JSON file from /rulebook/spells/ respecting customRulebookPath & priority
+    // Helper: Reads a spell or spell router from the bundled registry (or customRulebookPath)
     async loadSpellJson(fileNameWithoutExt: string): Promise<any | null> {
-        const nativePath = `${this.plugin.manifest.dir}/rulebook/spells/${fileNameWithoutExt}.json`;
-        const customPath = this.plugin.settings.customRulebookPath
-            ? `${this.plugin.settings.customRulebookPath}/spells/${fileNameWithoutExt}.json`
-            : "";
-
-        const tryRead = async (path: string) => {
-            if (path && await this.app.vault.adapter.exists(path)) {
-                try {
-                    const content = await this.app.vault.adapter.read(path);
-                    return JSON.parse(content);
-                } catch (e) {
-                    console.error(`Spellbook Error: Failed to parse ${path}`, e);
-                }
-            }
-            return null;
-        };
-
-        if (this.plugin.settings.customRulebookPriority && customPath) {
-            const customData = await tryRead(customPath);
-            if (customData) return customData;
-        }
-
-        const nativeData = await tryRead(nativePath);
-        if (nativeData) return nativeData;
-
-        if (!this.plugin.settings.customRulebookPriority && customPath) {
-            return await tryRead(customPath);
-        }
-
-        return null;
+        return await getSpellData(this.app, this.plugin.settings, fileNameWithoutExt);
     }
 
     // Helper: Parses frontmatter tuple array [ [ ["spell1", "spell2"], "1" ] ] into Record<string, string[]>

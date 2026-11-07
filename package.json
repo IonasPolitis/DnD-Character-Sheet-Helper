@@ -17,9 +17,9 @@
   },
   "devDependencies": {},
   "scripts": {
-    "dev": "node esbuild.config.mjs",
+    "dev": "node generate-registry.js esbuild.config.mjs",
     "prebuild": "node generate-registry.js",
-    "build": "esbuild main.ts --bundle --platform=node --target=es2022 --external:obsidian --outfile=main.js"
+    "build": "node generate-registry.js && esbuild main.ts --bundle --platform=node --target=es2022 --external:obsidian --outfile=main.js"
   },
   "repository": {
     "type": "git",

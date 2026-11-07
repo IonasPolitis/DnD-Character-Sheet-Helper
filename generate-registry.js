@@ -1,6 +1,5 @@
 const fs = require('fs');
 const path = require('path');
-const { RegularExpressionFlags } = require('typescript/unstable/ast');
 
 const rulebookDir = path.join(__dirname, 'rulebook');
 const outputFile = path.join(__dirname, 'registry.ts');
@@ -15,10 +14,13 @@ function scanFolder(folderName) {
 }
 
 const classes = scanFolder('classes');
+const classChoices = scanFolder(path.join('classes', 'classChoices'));
 const feats = scanFolder('feats');
 const races = scanFolder('races');
 const items = scanFolder('items');
 const rules = scanFolder('rules');
+const spells = scanFolder('spells');
+const rootRouters = scanFolder('');
 
 // --- MARKDOWN NOTE SCANNER ---
 function scanMarkdownNotes() {
@@ -105,6 +107,18 @@ rules.forEach(i => {
     const safeName = i.replace(/[^a-zA-Z0-9]/g, '');
     out += `import rule_${safeName} from './rulebook/rules/${i}.json';\n`;
 });
+spells.forEach(s => {
+    const safeName = s.replace(/[^a-zA-Z0-9]/g, '');
+    out += `import spell_${safeName} from './rulebook/spells/${s}.json';\n`;
+});
+classChoices.forEach(cc => {
+    const safeName = cc.replace(/[^a-zA-Z0-9]/g, '');
+    out += `import classChoice_${safeName} from './rulebook/classes/classChoices/${cc}.json';\n`;
+});
+rootRouters.forEach(rr => {
+    const safeName = rr.replace(/[^a-zA-Z0-9]/g, '');
+    out += `import rootRouter_${safeName} from './rulebook/${rr}.json';\n`;
+});
 
 out += `\nexport { classesMap, backgroundsMap, racesMap, itemsMap, rulesMap };\n\n`;
 
@@ -143,6 +157,24 @@ out += `export const ruleRegistry: Record<string, any> = {\n`;
 rules.forEach(i => {
     out += `    "${i}": rule_${i.replace(/[^a-zA-Z0-9]/g, '')},\n`;
 });
+out += `};\n\n`;
+
+out += `export const spellRegistry: Record<string, any> = {\n`;
+spells.forEach(s => {
+    out += `    "${s}": spell_${s.replace(/[^a-zA-Z0-9]/g, '')},\n`;
+});
+out += `};\n\n`;
+
+out += `export const classChoiceRegistry: Record<string, any> = {\n`;
+classChoices.forEach(cc => {
+    out += `    "${cc}": classChoice_${cc.replace(/[^a-zA-Z0-9]/g, '')},\n`;
+});
+out += `};\n\n`;
+
+out += `export const rootRouterRegistry: Record<string, any> = {\n`;
+rootRouters.forEach(rr => {
+    out += `    "${rr}": rootRouter_${rr.replace(/[^a-zA-Z0-9]/g, '')},\n`;
+});
 out += `};\n`;
 
 // 4. Generate the Markdown Notes Registry
@@ -166,7 +198,7 @@ if (fs.existsSync(pastEditionsDir)) {
     editions.forEach(edition => {
         out += `pastEditionsRegistry["${edition}"] = {\n`;
         out += `    classesMap: {}, backgroundsMap: {}, racesMap: {}, itemsMap: {}, rulesMap: {},\n`;
-        out += `    classRegistry: {}, subclassRegistry: {}, featRegistry: {}, raceRegistry: {}, itemRegistry: {}, ruleRegistry: {}\n`;
+        out += `    classRegistry: {}, subclassRegistry: {}, classChoiceRegistry: {}, featRegistry: {}, raceRegistry: {}, itemRegistry: {}, ruleRegistry: {}, spellRegistry: {}\n`;
         out += `};\n`;
 
         // Bundle the maps
@@ -178,7 +210,7 @@ if (fs.existsSync(pastEditionsDir)) {
         });
 
         // Bundle the registries
-        const folders = ['classes', 'feats', 'races', 'items', 'rules'];
+        const folders = ['classes', 'feats', 'races', 'items', 'rules', 'spells'];
         folders.forEach(folder => {
             const folderPath = path.join(pastEditionsDir, edition, folder);
             if (fs.existsSync(folderPath)) {
@@ -190,6 +222,15 @@ if (fs.existsSync(pastEditionsDir)) {
                 });
             }
         });
+
+        // Bundle past edition classChoices if present
+        const ccPath = path.join(pastEditionsDir, edition, 'classes', 'classChoices');
+        if (fs.existsSync(ccPath)) {
+            const ccFiles = fs.readdirSync(ccPath).filter(file => file.endsWith('.json')).map(file => file.replace('.json', ''));
+            ccFiles.forEach(file => {
+                out += `pastEditionsRegistry["${edition}"].classChoiceRegistry["${file}"] = require('./rulebook/#past-editions/${edition}/classes/classChoices/${file}.json');\n`;
+            });
+        }
     });
 }
 

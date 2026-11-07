@@ -1,10 +1,13 @@
 import { 
     classRegistry, 
     subclassRegistry, 
+    classChoiceRegistry,
     featRegistry, 
     raceRegistry,
     itemRegistry,
     ruleRegistry,
+    spellRegistry,
+    rootRouterRegistry,
     classesMap, 
     backgroundsMap,
     racesMap,
@@ -242,6 +245,69 @@ export async function getRuleData(app: App, settings: FetchSettings, rule: strin
     if (settings.customRulebookPath) {
         return settings.customRulebookPriority 
             ? (await fetchCustom()) || fetchNative() 
+            : fetchNative() || (await fetchCustom());
+    }
+    return fetchNative();
+}
+
+// --- Logic for Fetching Spell Data (Spells & Spell Routers) ---
+export async function getSpellData(app: App, settings: FetchSettings, spellFileName: string) {
+    const fetchNative = () => {
+        if (settings.edition && pastEditionsRegistry[settings.edition]?.spellRegistry) {
+            const edSpell = getIgnoreCase(pastEditionsRegistry[settings.edition].spellRegistry, spellFileName);
+            if (edSpell) return edSpell;
+        }
+        return getIgnoreCase(spellRegistry, spellFileName);
+    };
+
+    const fetchCustom = async () => {
+        if (!settings.customRulebookPath) return null;
+        return await readCustomJson(app, normalizePath(`${settings.customRulebookPath}/spells/${spellFileName}.json`));
+    };
+
+    if (settings.customRulebookPath) {
+        return settings.customRulebookPriority
+            ? (await fetchCustom()) || fetchNative()
+            : fetchNative() || (await fetchCustom());
+    }
+    return fetchNative();
+}
+
+// --- Logic for Fetching Class Choice Data (Routers & Individual Choices) ---
+export async function getClassChoiceData(app: App, settings: FetchSettings, choiceFileName: string) {
+    const fetchNative = () => {
+        if (settings.edition && pastEditionsRegistry[settings.edition]?.classChoiceRegistry) {
+            const edChoice = getIgnoreCase(pastEditionsRegistry[settings.edition].classChoiceRegistry, choiceFileName);
+            if (edChoice) return edChoice;
+        }
+        return getIgnoreCase(classChoiceRegistry, choiceFileName);
+    };
+
+    const fetchCustom = async () => {
+        if (!settings.customRulebookPath) return null;
+        return await readCustomJson(app, normalizePath(`${settings.customRulebookPath}/classes/classChoices/${choiceFileName}.json`));
+    };
+
+    if (settings.customRulebookPath) {
+        return settings.customRulebookPriority
+            ? (await fetchCustom()) || fetchNative()
+            : fetchNative() || (await fetchCustom());
+    }
+    return fetchNative();
+}
+
+// --- Logic for Fetching Root Rulebook Router Files (e.g., general-feats.json) ---
+export async function getRootRouterData(app: App, settings: FetchSettings, routerFileName: string) {
+    const fetchNative = () => getIgnoreCase(rootRouterRegistry, routerFileName);
+
+    const fetchCustom = async () => {
+        if (!settings.customRulebookPath) return null;
+        return await readCustomJson(app, normalizePath(`${settings.customRulebookPath}/${routerFileName}.json`));
+    };
+
+    if (settings.customRulebookPath) {
+        return settings.customRulebookPriority
+            ? (await fetchCustom()) || fetchNative()
             : fetchNative() || (await fetchCustom());
     }
     return fetchNative();
