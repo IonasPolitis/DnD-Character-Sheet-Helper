@@ -66,7 +66,7 @@ extras: $array$ //optional
 ```
 ````
 The `extras` variables allows you to add your own homebrew abilities right besides the standard DnD ones and follows this structure:
-[ ["<Ability-Name>>", "<Ability-Abbreviation>>", "<Ability-Score>", "<Saving-Throw-Modifier>>"], [<second Ability>], [<third Ability>] ]
+[ ["<Ability-Name>", "<Ability-Abbreviation>", "<Ability-Score>", "<Saving-Throw-Modifier>"], [<second Ability>], [<third Ability>] ]
 
 ### DnD Skills:
 
@@ -193,18 +193,24 @@ This plugin also supports custom rules by adding the path of your custom Ruleboo
 rulebook/
 ├── classes/
 │   └── <add your custom classes & subclasses>
+├────── classChoices/
+│       └── <add your custom class choices>
 ├── feats/
 │   └── <add your custom feats>
 ├── items/
 │   └── <add your custom items>
+├── markdown/
+│   └── <add your custom markdown>
 ├── races/
 │   └── <add your custom races>
 ├── rules/
 │   └── <add your custom rules>
+├── spells/
+│   └── <add your custom spells>
 ├── backgrounds.json
 ├── classes.json
-├── epic_boon_feats.json
-├── genral_feats.json
+├── epic-boon-feats.json
+├── genral-feats.json
 ├── items.json
 ├── races.json
 └── rules.json
@@ -387,6 +393,10 @@ The *lineage* variable in the race.json is a Flag, making it so that this trait 
     ]
 }
 ```
+
+### Markdown:
+
+If you place some special markdown files inside the markdown folder, you can embed them right into the code block's text with this file link: `[<Anchor-Text>](note:<Markdown-Filname>)`
 
 ## Acknowledgements:
 
