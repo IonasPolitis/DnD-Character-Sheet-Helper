@@ -52,8 +52,8 @@ jobs:
           echo "Target tag is $TAG_NAME"
 
           git fetch --tags
-          gh release delete "$BETA_TAG" --cleanup-tag -y || true
-          git tag -d "$BETA_TAG" 2>/dev/null || true
+          gh release delete "$TAG_NAME-beta" --cleanup-tag -y || true
+          git tag -d "$TAG_NAME-beta" 2>/dev/null || true
 
           git tag -f "$TAG_NAME"
           git push -f origin "$TAG_NAME"

@@ -2,7 +2,6 @@
 DnD_id:
 DnD_level:
 DnD_proficiencyBonus:
-DnD_attackProficiency:
 DnD_race:
 DnD_raceLineage:
 DnD_class:
@@ -28,6 +27,7 @@ DnD_currentHealth:
 DnD_speed:
 DnD_speedSublabel: 
 DnD_attackStat:
+DnD_attackProficiency:
 DnD_strength:
 DnD_dexterity:
 DnD_constitution:

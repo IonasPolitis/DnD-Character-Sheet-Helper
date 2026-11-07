@@ -1,6 +1,6 @@
 import { App, Plugin, PluginSettingTab, Setting, MarkdownPostProcessorContext, parseYaml, MarkdownRenderChild, MarkdownRenderer, TFile, Modal, Notice, MarkdownView } from 'obsidian';
 import { getClassData, getSubclassData, getBackgroundData, getRaceData, getExtraFeat, getItemData, getRuleData, getSpellData, getSpellsPoolData, getClassChoiceData, getFeatMapData } from './data';
-import { MarkdownNotes, classesMap, racesMap, backgroundsMap } from './registry';
+import { MarkdownNotes, classesMap, racesMap, backgroundsMap, itemsMap } from './registry';
 import { THEMES } from './themes';
  
 // 1. Define the shape of our settings
@@ -4270,10 +4270,22 @@ class EquipItemsModal extends Modal {
     sourcePath: string;
 
     weaponName: string = "";
+    weaponDamage: string = "";
     armorName: string = "";
+    armorAc: string = "";
 
     originalWeapon: string = "";
+    originalWeaponDamage: string = "";
     originalArmor: string = "";
+    originalArmorAc: string = "";
+
+    isWeaponCustom: boolean = false;
+    isArmorCustom: boolean = false;
+
+    availableWeapons: { id: string; name: string; damage: string }[] = [];
+    availableArmors: { id: string; name: string; ac: string; category: string }[] = [];
+
+    formContainer!: HTMLElement;
 
     constructor(app: App, plugin: DnDCharacterSheetHelperPlugin, sourcePath: string) {
         super(app);
@@ -4281,43 +4293,59 @@ class EquipItemsModal extends Modal {
         this.sourcePath = sourcePath;
     }
 
-    onOpen() {
+    async onOpen() {
         const { contentEl } = this;
         contentEl.createEl("h3", { text: "Equip Items", cls: "dnd-section-header" });
 
-        // Fetch current loadout from frontmatter to pre-fill the inputs
+        // 1. Fetch current loadout from frontmatter
         const fileCache = this.app.metadataCache.getCache(this.sourcePath);
         const frontmatter = fileCache?.frontmatter || {};
 
-        this.originalWeapon = frontmatter["DnD_weapon"] || "";
-        this.originalArmor = frontmatter["DnD_armor"] || "";
+        this.originalWeapon = String(frontmatter["DnD_weapon"] ?? "").trim();
+        this.originalWeaponDamage = String(frontmatter["DnD_weaponDamage"] ?? "").trim();
+        this.originalArmor = String(frontmatter["DnD_armor"] ?? "").trim();
+        this.originalArmorAc = frontmatter["DnD_armorAc"] !== undefined ? String(frontmatter["DnD_armorAc"]).trim() : "";
 
         this.weaponName = this.originalWeapon;
+        this.weaponDamage = this.originalWeaponDamage;
         this.armorName = this.originalArmor;
+        this.armorAc = this.originalArmorAc;
 
-        // --- Weapon Input ---
-        const weaponDiv = contentEl.createDiv({ attr: { style: "margin-bottom: 15px;" } });
-        weaponDiv.createEl("label", { text: "Weapon Name: ", attr: { style: "display: block; margin-bottom: 4px; color: var(--dnd-ui-color-text-sublabel);" } });
-        const weaponInput = weaponDiv.createEl("input", { type: "text", value: this.weaponName });
-        weaponInput.style.width = "100%";
-        weaponInput.placeholder = "e.g., Longsword";
-        weaponInput.onchange = (e) => this.weaponName = (e.target as HTMLInputElement).value;
+        // 2. Load available Weapons and Armors from native registry + custom rulebook
+        await this.fetchEquipmentPools();
 
-        // --- Armor Input ---
-        const armorDiv = contentEl.createDiv({ attr: { style: "margin-bottom: 20px;" } });
-        armorDiv.createEl("label", { text: "Armor Name: ", attr: { style: "display: block; margin-bottom: 4px; color: var(--dnd-ui-color-text-sublabel);" } });
-        const armorInput = armorDiv.createEl("input", { type: "text", value: this.armorName });
-        armorInput.style.width = "100%";
-        armorInput.placeholder = "e.g., Chain Mail";
-        armorInput.onchange = (e) => this.armorName = (e.target as HTMLInputElement).value;
+        // 3. Auto-detect whether the currently equipped weapon/armor is a custom item
+        if (this.weaponName && this.weaponName.toLowerCase() !== "none") {
+            const matchedWeapon = this.availableWeapons.find(
+                w => w.name.toLowerCase() === this.weaponName.toLowerCase() || w.id.toLowerCase() === this.weaponName.toLowerCase()
+            );
+            if (matchedWeapon) {
+                this.weaponName = matchedWeapon.name;
+                this.isWeaponCustom = false;
+            } else {
+                this.isWeaponCustom = true;
+            }
+        }
 
-        // Listen for Enter key on either input to trigger save
-        const handleEnter = (e: KeyboardEvent) => { if (e.key === "Enter") this.equipItems(); };
-        weaponInput.onkeyup = handleEnter;
-        armorInput.onkeyup = handleEnter;
+        if (this.armorName && this.armorName.toLowerCase() !== "none") {
+            const matchedArmor = this.availableArmors.find(
+                a => a.name.toLowerCase() === this.armorName.toLowerCase() || a.id.toLowerCase() === this.armorName.toLowerCase()
+            );
+            if (matchedArmor) {
+                this.armorName = matchedArmor.name;
+                this.isArmorCustom = false;
+            } else {
+                this.isArmorCustom = true;
+            }
+        }
 
-        // --- Footer Buttons ---
-        const btnDiv = contentEl.createDiv({ attr: { style: "display: flex; justify-content: flex-end; gap: 10px; border-top: 1px solid var(--dnd-ui-color-border-primary); padding-top: 15px;" } });
+        // 4. Create dynamic form container & footer buttons
+        this.formContainer = contentEl.createDiv();
+        this.renderForm();
+
+        const btnDiv = contentEl.createDiv({
+            attr: { style: "display: flex; justify-content: flex-end; gap: 10px; border-top: 1px solid var(--dnd-ui-color-border-primary); padding-top: 15px; margin-top: 20px;" }
+        });
         const cancelBtn = btnDiv.createEl("button", { text: "Cancel" });
         cancelBtn.onclick = () => this.close();
 
@@ -4327,31 +4355,257 @@ class EquipItemsModal extends Modal {
         };
     }
 
+    async fetchEquipmentPools() {
+        const itemLookupKeys = new Set<string>(Object.keys(itemsMap || {}));
+
+        if (this.plugin.settings.customRulebookPath) {
+            const customItemsPath = `${this.plugin.settings.customRulebookPath}/items.json`;
+            try {
+                if (await this.app.vault.adapter.exists(customItemsPath)) {
+                    const content = await this.app.vault.adapter.read(customItemsPath);
+                    const parsed = JSON.parse(content);
+                    if (parsed && typeof parsed === "object") {
+                        Object.keys(parsed).forEach(k => itemLookupKeys.add(k));
+                    }
+                }
+            } catch (e) {
+                console.error(`EquipItemsModal: Could not read custom items.json at ${customItemsPath}`, e);
+            }
+        }
+
+        const weaponsMap = new Map<string, { id: string; name: string; damage: string }>();
+        const armorsMap = new Map<string, { id: string; name: string; ac: string; category: string }>();
+
+        for (const key of itemLookupKeys) {
+            const data = await getItemData(this.app, this.plugin.settings, key);
+            if (!data || !data.type) continue;
+
+            const typeLower = String(data.type).toLowerCase();
+            const displayName = String(data.name || key).trim();
+            const mapKey = displayName.toLowerCase();
+
+            if (typeLower.includes("weapon")) {
+                weaponsMap.set(mapKey, {
+                    id: key,
+                    name: displayName,
+                    damage: String(data.damage || "")
+                });
+            } else if (typeLower.includes("armor")) {
+                armorsMap.set(mapKey, {
+                    id: key,
+                    name: displayName,
+                    ac: String(data.ac || "10"),
+                    category: String(data.category || "")
+                });
+            }
+        }
+
+        this.availableWeapons = Array.from(weaponsMap.values()).sort((a, b) => a.name.localeCompare(b.name));
+        this.availableArmors = Array.from(armorsMap.values()).sort((a, b) => a.name.localeCompare(b.name));
+    }
+
+    renderForm() {
+        this.formContainer.empty();
+
+        const handleEnter = (e: KeyboardEvent) => {
+            if (e.key === "Enter") this.equipItems();
+        };
+
+        // Helper to build the themed pill toggle switch on the right of each field
+        const createModeToggle = (parentRow: HTMLElement, isCustom: boolean, onToggle: () => void) => {
+            const toggleWrap = parentRow.createDiv({
+                cls: "dnd-equip-toggle-wrapper",
+                attr: { title: "Switch between Rulebook Database and Custom Item" }
+            });
+
+            toggleWrap.createEl("span", {
+                text: "Custom",
+                cls: `dnd-equip-toggle-label ${isCustom ? "is-active" : ""}`
+            });
+
+            const switchTrack = toggleWrap.createDiv({
+                cls: `dnd-toggle-switch ${isCustom ? "is-active" : ""}`
+            });
+            switchTrack.createDiv({ cls: "dnd-toggle-knob" });
+
+            toggleWrap.onclick = () => onToggle();
+        };
+
+        // ==========================================
+        // 1. WEAPON SECTION
+        // ==========================================
+        const weaponSection = this.formContainer.createDiv({ attr: { style: "margin-bottom: 18px;" } });
+        weaponSection.createEl("label", {
+            text: "Weapon Name:",
+            attr: { style: "display: block; margin-bottom: 6px; color: var(--dnd-ui-color-text-sublabel);" }
+        });
+
+        const weaponRow = weaponSection.createDiv({ cls: "dnd-equip-row" });
+
+        if (!this.isWeaponCustom) {
+            const weaponSelect = weaponRow.createEl("select", { cls: "dnd-equip-field" });
+            weaponSelect.createEl("option", { text: "-- Select a Weapon --", value: "" });
+            weaponSelect.createEl("option", { text: "None (Unarmed)", value: "None" });
+
+            this.availableWeapons.forEach(w => {
+                const dmgSuffix = w.damage ? ` (${w.damage})` : "";
+                weaponSelect.createEl("option", { text: `${w.name}${dmgSuffix}`, value: w.name });
+            });
+
+            weaponSelect.value = this.weaponName;
+            weaponSelect.onchange = (e) => {
+                this.weaponName = (e.target as HTMLSelectElement).value;
+                const matched = this.availableWeapons.find(w => w.name === this.weaponName);
+                if (matched) {
+                    this.weaponDamage = matched.damage;
+                } else if (this.weaponName === "None" || this.weaponName === "") {
+                    this.weaponDamage = "";
+                }
+            };
+        } else {
+            const weaponInput = weaponRow.createEl("input", {
+                type: "text",
+                value: this.weaponName === "None" ? "" : this.weaponName,
+                cls: "dnd-equip-field"
+            });
+            weaponInput.placeholder = "e.g., Sun Blade";
+            weaponInput.oninput = (e) => {
+                this.weaponName = (e.target as HTMLInputElement).value;
+            };
+            weaponInput.onkeyup = handleEnter;
+        }
+
+        createModeToggle(weaponRow, this.isWeaponCustom, () => {
+            this.isWeaponCustom = !this.isWeaponCustom;
+            if (!this.isWeaponCustom) {
+                const matched = this.availableWeapons.find(w => w.name.toLowerCase() === this.weaponName.toLowerCase());
+                this.weaponName = matched ? matched.name : "";
+                this.weaponDamage = matched ? matched.damage : "";
+            }
+            this.renderForm();
+        });
+
+        if (this.isWeaponCustom) {
+            const weaponSub = weaponSection.createDiv({ cls: "dnd-equip-custom-sub" });
+            weaponSub.createEl("label", {
+                text: "Weapon Damage:",
+                attr: { style: "display: block; margin-bottom: 4px; font-size: 0.9em; color: var(--dnd-ui-color-text-sublabel);" }
+            });
+            const dmgInput = weaponSub.createEl("input", {
+                type: "text",
+                value: this.weaponDamage,
+                cls: "dnd-equip-field"
+            });
+            dmgInput.placeholder = "e.g., 1d8 + 2 Radiant";
+            dmgInput.oninput = (e) => {
+                this.weaponDamage = (e.target as HTMLInputElement).value;
+            };
+            dmgInput.onkeyup = handleEnter;
+        }
+
+        // ==========================================
+        // 2. ARMOR SECTION
+        // ==========================================
+        const armorSection = this.formContainer.createDiv({ attr: { style: "margin-bottom: 10px;" } });
+        armorSection.createEl("label", {
+            text: "Armor Name:",
+            attr: { style: "display: block; margin-bottom: 6px; color: var(--dnd-ui-color-text-sublabel);" }
+        });
+
+        const armorRow = armorSection.createDiv({ cls: "dnd-equip-row" });
+
+        if (!this.isArmorCustom) {
+            const armorSelect = armorRow.createEl("select", { cls: "dnd-equip-field" });
+            armorSelect.createEl("option", { text: "-- Select Armor --", value: "" });
+            armorSelect.createEl("option", { text: "None (Unarmored)", value: "None" });
+
+            this.availableArmors.forEach(a => {
+                const catLabel = a.category ? `, ${a.category}` : "";
+                armorSelect.createEl("option", { text: `${a.name} (AC ${a.ac}${catLabel})`, value: a.name });
+            });
+
+            armorSelect.value = this.armorName;
+            armorSelect.onchange = (e) => {
+                this.armorName = (e.target as HTMLSelectElement).value;
+                const matched = this.availableArmors.find(a => a.name === this.armorName);
+                if (matched) {
+                    this.armorAc = matched.ac;
+                } else if (this.armorName === "None" || this.armorName === "") {
+                    this.armorAc = "10";
+                }
+            };
+        } else {
+            const armorInput = armorRow.createEl("input", {
+                type: "text",
+                value: this.armorName === "None" ? "" : this.armorName,
+                cls: "dnd-equip-field"
+            });
+            armorInput.placeholder = "e.g., Elven Chain";
+            armorInput.oninput = (e) => {
+                this.armorName = (e.target as HTMLInputElement).value;
+            };
+            armorInput.onkeyup = handleEnter;
+        }
+
+        createModeToggle(armorRow, this.isArmorCustom, () => {
+            this.isArmorCustom = !this.isArmorCustom;
+            if (!this.isArmorCustom) {
+                const matched = this.availableArmors.find(a => a.name.toLowerCase() === this.armorName.toLowerCase());
+                this.armorName = matched ? matched.name : "";
+                this.armorAc = matched ? matched.ac : "10";
+            }
+            this.renderForm();
+        });
+
+        if (this.isArmorCustom) {
+            const armorSub = armorSection.createDiv({ cls: "dnd-equip-custom-sub" });
+            armorSub.createEl("label", {
+                text: "Armor AC:",
+                attr: { style: "display: block; margin-bottom: 4px; font-size: 0.9em; color: var(--dnd-ui-color-text-sublabel);" }
+            });
+            const acInput = armorSub.createEl("input", {
+                type: "number",
+                value: this.armorAc,
+                cls: "dnd-equip-field"
+            });
+            acInput.placeholder = "e.g., 16";
+            acInput.oninput = (e) => {
+                this.armorAc = (e.target as HTMLInputElement).value;
+            };
+            acInput.onkeyup = handleEnter;
+        }
+    }
+
     onClose() {
         this.contentEl.empty();
     }
 
     async equipItems() {
-        let updates: Record<string, any> = {};
-        let finalArmorDisplayName = this.armorName;
-        let armorWasUpdated = false;
+        const updates: Record<string, any> = {};
 
-        // 1. Process Weapon Update (Only if changed)
-        if (this.weaponName !== this.originalWeapon) {
-            const safeWeaponName = this.weaponName.toLowerCase().replace(/['"]/g, '').trim().replace(/\s+/g, '-');
-            const weaponData = await getItemData(this.app, this.plugin.settings, safeWeaponName);
-
-            updates["DnD_weapon"] = weaponData?.name || this.weaponName;
-            updates["DnD_weaponDamage"] = weaponData?.damage || "";
-            if (!weaponData && this.weaponName) new Notice(`Warning: "${this.weaponName}" not found. Equipped as custom.`);
+        // 1. Process Weapon Update
+        const weaponChanged = this.weaponName !== this.originalWeapon || (this.isWeaponCustom && this.weaponDamage !== this.originalWeaponDamage);
+        if (weaponChanged) {
+            if (!this.isWeaponCustom) {
+                if (!this.weaponName || this.weaponName.toLowerCase() === "none") {
+                    updates["DnD_weapon"] = "None";
+                    updates["DnD_weaponDamage"] = "";
+                } else {
+                    const safeWeaponName = this.weaponName.toLowerCase().replace(/['"]/g, '').trim().replace(/\s+/g, '-');
+                    const weaponData = await getItemData(this.app, this.plugin.settings, safeWeaponName);
+                    updates["DnD_weapon"] = weaponData?.name || this.weaponName;
+                    updates["DnD_weaponDamage"] = weaponData?.damage || "";
+                }
+            } else {
+                const cleanCustomWeapon = this.weaponName.trim();
+                updates["DnD_weapon"] = cleanCustomWeapon || "None";
+                updates["DnD_weaponDamage"] = cleanCustomWeapon ? this.weaponDamage.trim() : "";
+            }
         }
 
-        // 2. Process Armor Update (Only if changed)
-        if (this.armorName !== this.originalArmor) {
-            armorWasUpdated = true;
-            const safeArmorName = this.armorName.toLowerCase().replace(/['"]/g, '').trim().replace(/\s+/g, '-');
-            const armorData = await getItemData(this.app, this.plugin.settings, safeArmorName);
-
+        // 2. Process Armor Update
+        const armorChanged = this.armorName !== this.originalArmor || (this.isArmorCustom && this.armorAc !== this.originalArmorAc);
+        if (armorChanged) {
             const fileCache = this.app.metadataCache.getCache(this.sourcePath);
             const frontmatter = fileCache?.frontmatter || {};
             const currentDex = Number(frontmatter["DnD_dexterity"]) || 10;
@@ -4367,42 +4621,56 @@ class EquipItemsModal extends Modal {
                 }
             }
 
-            let armorAcBonus = dexMod;
-            let baseAc = 10;
-
-            if (armorData && armorData.ac && armorData.category) {
-                baseAc = parseInt(armorData.ac);
-                const category = String(armorData.category).toLowerCase();
-
-                if (category.includes("light")) armorAcBonus = dexMod;
-                else if (category.includes("medium")) armorAcBonus = Math.min(dexMod, 2);
-                else if (category.includes("heavy")) armorAcBonus = 0;
-
-                finalArmorDisplayName = armorData.name;
-                updates["DnD_armor"] = armorData.name;
-                updates["DnD_armorAc"] = baseAc;
-                updates["DnD_armorAcBonus"] = armorAcBonus;
-            } else {
-                if (this.armorName && this.armorName.toLowerCase() !== "none") {
-                    new Notice(`Warning: "${this.armorName}" not found. AC set to Unarmored.`);
-                }
-
+            const getUnarmoredBonus = () => {
                 if (unarmoredStat) {
                     const secondaryScore = Number(frontmatter[`DnD_${unarmoredStat}`]) || 10;
-                    armorAcBonus = dexMod + Math.floor((secondaryScore - 10) / 2);
+                    return dexMod + Math.floor((secondaryScore - 10) / 2);
                 }
+                return dexMod;
+            };
 
-                finalArmorDisplayName = this.armorName || "None";
-                updates["DnD_armor"] = this.armorName || "None";
-                updates["DnD_armorAc"] = 10;
-                updates["DnD_armorAcBonus"] = armorAcBonus;
+            if (!this.isArmorCustom) {
+                const safeArmorName = this.armorName.toLowerCase().replace(/['"]/g, '').trim().replace(/\s+/g, '-');
+                const armorData = (this.armorName && this.armorName.toLowerCase() !== "none")
+                    ? await getItemData(this.app, this.plugin.settings, safeArmorName)
+                    : null;
+
+                if (armorData && armorData.ac && armorData.category) {
+                    const baseAc = parseInt(String(armorData.ac));
+                    const category = String(armorData.category).toLowerCase();
+                    let armorAcBonus = dexMod;
+
+                    if (category.includes("light")) armorAcBonus = dexMod;
+                    else if (category.includes("medium")) armorAcBonus = Math.min(dexMod, 2);
+                    else if (category.includes("heavy")) armorAcBonus = 0;
+
+                    updates["DnD_armor"] = armorData.name;
+                    updates["DnD_armorAc"] = baseAc;
+                    updates["DnD_armorAcBonus"] = armorAcBonus;
+                } else {
+                    updates["DnD_armor"] = "None";
+                    updates["DnD_armorAc"] = 10;
+                    updates["DnD_armorAcBonus"] = getUnarmoredBonus();
+                }
+            } else {
+                const cleanCustomArmor = this.armorName.trim();
+                const parsedCustomAc = parseInt(this.armorAc);
+
+                if (!cleanCustomArmor || cleanCustomArmor.toLowerCase() === "none") {
+                    updates["DnD_armor"] = "None";
+                    updates["DnD_armorAc"] = !isNaN(parsedCustomAc) ? parsedCustomAc : 10;
+                    updates["DnD_armorAcBonus"] = !isNaN(parsedCustomAc) ? 0 : getUnarmoredBonus();
+                } else {
+                    updates["DnD_armor"] = cleanCustomArmor;
+                    updates["DnD_armorAc"] = !isNaN(parsedCustomAc) ? parsedCustomAc : 10;
+                    updates["DnD_armorAcBonus"] = 0;
+                }
             }
         }
 
-        // Only process file writes if actual changes occurred
         if (Object.keys(updates).length > 0) {
             await this.plugin.updateCharacterFrontmatter(this.sourcePath, updates);
-            new Notice(`Loadout equipped successfully!`);
+            new Notice("Loadout equipped successfully!");
         }
 
         this.close();
@@ -5820,6 +6088,16 @@ class SpellbookModal extends Modal {
                     selectEl.createEl("option", { text: spellName, value: spellKey });
                 }
             });
+
+        // Preview the spell immediately when selected in the dropdown before adding it
+        selectEl.onchange = async () => {
+            const chosenKey = selectEl.value;
+            if (chosenKey) {
+                await this.renderSpellPreview(chosenKey, levelPool[chosenKey]);
+            } else {
+                this.renderEmptyPreview();
+            }
+        };
 
         const addBtn = addBar.createEl("button", { text: "Add" });
         addBtn.onclick = async () => {

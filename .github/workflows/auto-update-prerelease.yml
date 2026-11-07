@@ -60,6 +60,9 @@ jobs:
 
           git fetch --tags
 
+          gh release delete "$TAG_NAME" --cleanup-tag -y || true
+          git tag -d "$TAG_NAME" 2>/dev/null || true
+
           git tag -f "$TAG_NAME"
           git push -f origin "$TAG_NAME"
 

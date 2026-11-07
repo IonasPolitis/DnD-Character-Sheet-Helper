@@ -1052,3 +1052,88 @@
     border-color: var(--dnd-ui-color-border-active);
     color: var(--dnd-ui-color-text-bright);
 }
+
+/* ==========================================
+   17. EQUIP ITEMS MODAL & THEME TOGGLE SWITCH
+   ========================================== */
+.dnd-equip-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+}
+
+.dnd-equip-field {
+    flex: 1;
+    width: 100%;
+    min-width: 0;
+}
+
+.dnd-equip-toggle-wrapper {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+    cursor: pointer;
+    user-select: none;
+    padding: 4px 2px;
+}
+
+.dnd-equip-toggle-label {
+    font-size: 0.82em;
+    font-weight: 500;
+    color: var(--dnd-ui-color-text-muted);
+    transition: color 0.15s ease;
+}
+
+.dnd-equip-toggle-label.is-active {
+    color: var(--dnd-ui-color-text-sublabel);
+}
+
+.dnd-toggle-switch {
+    width: 34px;
+    height: 18px;
+    border-radius: 999px;
+    background-color: var(--dnd-ui-color-bg-darker);
+    border: 1px solid var(--dnd-ui-color-border-primary);
+    position: relative;
+    box-sizing: border-box;
+    transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.dnd-equip-toggle-wrapper:hover .dnd-toggle-switch {
+    background-color: var(--dnd-ui-color-bg-hover);
+    border-color: var(--dnd-ui-color-border-active);
+}
+
+.dnd-toggle-switch.is-active {
+    background-color: var(--dnd-ui-color-border-active);
+    border-color: var(--dnd-ui-color-border-active);
+}
+
+.dnd-equip-toggle-wrapper:hover .dnd-toggle-switch.is-active {
+    border-color: var(--dnd-ui-color-text-bright);
+}
+
+.dnd-toggle-knob {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background-color: var(--dnd-ui-color-text-muted);
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    transition: transform 0.2s ease, background-color 0.2s ease;
+}
+
+.dnd-toggle-switch.is-active .dnd-toggle-knob {
+    transform: translateX(16px);
+    background-color: var(--dnd-ui-color-text-bright);
+}
+
+.dnd-equip-custom-sub {
+    margin-top: 10px;
+    margin-left: 12px;
+    padding-left: 10px;
+    border-left: 2px solid var(--dnd-ui-color-border-active);
+}
