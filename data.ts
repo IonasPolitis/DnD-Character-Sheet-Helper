@@ -164,7 +164,9 @@ export async function getBackgroundData(app: App, settings: FetchSettings, backg
     
     const fetchCustom = async () => {
         if (!settings.customRulebookPath) return null;
-        return await getCustomMappedName(app, settings.customRulebookPath, 'backgrounds.json', backgroundName);
+        const routerData = await readCustomJson(app, `${settings.customRulebookPath}/backgrounds.json`);
+        if (!routerData) return null;
+        return getIgnoreCase(routerData, backgroundName);
     };
 
     if (settings.customRulebookPath) {

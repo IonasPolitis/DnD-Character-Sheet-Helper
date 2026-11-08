@@ -444,8 +444,11 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
 
             // 3. Helper function to resolve "frontmatter.property" values
             const resolveValue = (val: any) => {
-                if (typeof val === 'string' && val.startsWith('frontmatter.')) {
-                    return frontmatter[val.replace('frontmatter.', '')];
+                if (typeof val === 'string') {
+                    const trimmed = val.trim().replace(/^\{\{\s*|\s*\}\}$/g, '');
+                    if (trimmed.startsWith('frontmatter.')) {
+                        return frontmatter[trimmed.replace('frontmatter.', '')];
+                    }
                 }
                 return val;
             };
@@ -454,6 +457,12 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
             const level = resolveValue(blockData.level) ?? frontmatter['DnD_level'];
             const dndClass = resolveValue(blockData.class);
             const subclass = resolveValue(blockData.subclass);
+            console.log("D&D Plugin [dnd-features]: Rendering block with", {
+                level,
+                dndClass,
+                background: resolveValue(blockData.background),
+                customRulebookPath: this.settings.customRulebookPath
+            });
             const classLevels = resolveValue(blockData['classLevels']);
             const race = resolveValue(blockData.race);
             const raceLineage = resolveValue(blockData['raceLineage']);
@@ -5564,11 +5573,14 @@ class LevelUpModal extends Modal {
         if (typeof existingChoicesRaw === 'string') {
             try { existingChoicesRaw = JSON.parse(existingChoicesRaw); } catch { existingChoicesRaw = []; }
         }
-        const existingChoices = (Array.isArray(existingChoicesRaw) ? existingChoicesRaw : []).map((c: any) => {
-            if (Array.isArray(c) && c.length === 3) return { router: c[0], key: c[1], level: c[2] };
-            if (Array.isArray(c) && c.length === 2) return { router: null, key: c[0], level: c[1] };
-            return null;
-        }).filter((c: any) => c !== null);
+        const existingChoices: { router: string | null; key: string; level: number }[] = [];
+        for (const c of (Array.isArray(existingChoicesRaw) ? existingChoicesRaw : [])) {
+            if (Array.isArray(c) && c.length === 3) {
+                existingChoices.push({ router: String(c[0]), key: String(c[1]), level: Number(c[2]) });
+            } else if (Array.isArray(c) && c.length === 2) {
+                existingChoices.push({ router: null, key: String(c[0]), level: Number(c[1]) });
+            }
+        }
 
         for (const [routerName, slotCount] of Object.entries(slotsByRouter)) {
             const routerData = await getClassChoiceData(this.app, this.plugin.settings, routerName);
@@ -5580,7 +5592,7 @@ class LevelUpModal extends Modal {
                 routerDiv.createEl("label", { text: `Manage ${displayName} (${slotCount} Slots)`, attr: { style: "display: block; margin-bottom: 8px; font-weight: bold; color: var(--dnd-ui-color-text-secondary);" } });
                 routerDiv.createEl("small", { text: "Review your choices. If you wish to swap an old choice, select a new one.", attr: { style: "display: block; margin-bottom: 12px; color: var(--dnd-ui-color-text-muted);" } });
 
-                const pastChoicesForRouter = existingChoices.filter((c: any) =>
+                const pastChoicesForRouter = existingChoices.filter((c) =>
                     c.router === routerName || (c.router === null && routerData[c.key])
                 );
 
@@ -5590,9 +5602,10 @@ class LevelUpModal extends Modal {
                     let assignedKey = "";
                     let originalLevel = this.newLevel;
 
-                    if (pastChoicesForRouter[slotIndex]) {
-                        assignedKey = pastChoicesForRouter[slotIndex].key;
-                        originalLevel = pastChoicesForRouter[slotIndex].level;
+                    const pastChoice = pastChoicesForRouter[slotIndex];
+                    if (pastChoice) {
+                        assignedKey = pastChoice.key;
+                        originalLevel = pastChoice.level;
                     }
 
                     selectDiv.createEl("small", { text: `Lvl ${originalLevel} Slot:`, attr: { style: "flex: 0 0 90px; color: var(--dnd-ui-color-text-sublabel);" } });
