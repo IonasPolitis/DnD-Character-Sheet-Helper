@@ -32,9 +32,10 @@ function getIgnoreCase(registry: Record<string, any>, searchKey: any) {
     
     // If it is still not a string after normalizing, abort safely
     if (typeof normalizedKey !== 'string') return null;
+    const cleanSearch = normalizedKey.trim().toLowerCase();
     
-    // Find a key in the registry where the lowercase versions match perfectly
-    const realKey = Object.keys(registry).find(k => k.toLowerCase() === normalizedKey.toLowerCase());
+    // Find a key in the registry where the trimmed lowercase versions match perfectly
+    const realKey = Object.keys(registry).find(k => k.trim().toLowerCase() === cleanSearch);
     
     // If we found a match, return the data using the correct case key
     return realKey ? registry[realKey] : null;
