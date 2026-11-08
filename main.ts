@@ -2594,7 +2594,7 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                 const raceSub = formatTextValue(blockData.raceLineage ?? blockData.lineage ?? frontmatter["DnD_raceLineage"], "");
 
                 const classVal = formatTextValue(blockData.class ?? frontmatter["DnD_class"], "-");
-                const classSub = formatTextValue(blockData.subclass ?? frontmatter["DnD_Subclass"], "");
+                const classSub = formatTextValue(blockData.subclass ?? frontmatter["DnD_subclass"], "");
 
                 const bgVal = formatTextValue(blockData.background ?? frontmatter["DnD_background"], "-");
                 const bgSub = formatTextValue(blockData.backgroundFeat ?? frontmatter["DnD_backgroundFeat"], "");
@@ -4001,7 +4001,7 @@ class CharacterWizardModal extends Modal {
         // --- Core List Variables ---
         injectListYAML("DnD_race", this.wizardData.race);
         injectListYAML("DnD_class", this.wizardData.dndClass);
-        injectListYAML("DnD_Subclass", this.wizardData.subclass);
+        injectListYAML("DnD_subclass", this.wizardData.subclass);
         injectListYAML("DnD_languages", this.wizardData.languages);
         injectListYAML("DnD_extraFeats", this.wizardData.extraFeats);
         injectListYAML("DnD_classChosenItems", this.wizardData.classChosenItems);
@@ -4159,11 +4159,15 @@ class DnDSettingsTab extends PluginSettingTab {
         this.plugin = plugin;
     }
 
-    // Triggers all open Markdown notes to re-render when rulebook settings change
+    // Triggers all open Markdown notes to re-render safely when rulebook settings change
     private refreshOpenSheets() {
         this.app.workspace.iterateAllLeaves((leaf) => {
             if (leaf.view instanceof MarkdownView && leaf.view.file) {
-                this.app.metadataCache.trigger('changed', leaf.view.file);
+                const file = leaf.view.file;
+                const cache = this.app.metadataCache.getFileCache(file);
+                if (cache) {
+                    this.app.metadataCache.trigger('changed', file, '', cache);
+                }
             }
         });
     }
@@ -4894,7 +4898,7 @@ class ManageCharacterModal extends Modal {
         const discovered = new Set<string>();
         const level = Number(frontmatter["DnD_level"]) || 1;
         const dndClass = frontmatter["DnD_class"];
-        const subclass = frontmatter["DnD_Subclass"];
+        const subclass = frontmatter["DnD_subclass"];
         const classLevels = frontmatter["DnD_classLevels"];
         const race = frontmatter["DnD_race"];
         const raceLineage = frontmatter["DnD_raceLineage"];
@@ -5358,7 +5362,10 @@ class LevelUpModal extends Modal {
     dndClass: string = "";
     hitDie: number = 8; // Safe fallback
     currentSubclass: string = "";
+    subclassFmKey: string = "DnD_subclass";
 
+    // Dynamic Milestone Container so selecting a Subclass refreshes choices/feats live
+    milestonesContainer!: HTMLElement;
 
     // ASI & Feat Tracking
     isAsiLevel: boolean = false;
@@ -5398,16 +5405,25 @@ class LevelUpModal extends Modal {
         const conScore = Number(frontmatter["DnD_constitution"]) || 10;
         this.conMod = Math.floor((conScore - 10) / 2);
 
-        // Fetch primary class and existing subclass safely
+        // Fetch primary class and existing subclass safely (supporting both DnD_subclass and DnD_Subclass)
         const classVal = frontmatter["DnD_class"];
         this.dndClass = (Array.isArray(classVal) ? classVal[0] : classVal) || "";
 
-        const subclassVal = frontmatter["DnD_Subclass"];
+        this.subclassFmKey = frontmatter["DnD_subclass"] !== undefined
+            ? "DnD_subclass"
+            : (frontmatter["DnD_Subclass"] !== undefined ? "DnD_Subclass" : "DnD_subclass");
+        const subclassVal = frontmatter["DnD_subclass"] ?? frontmatter["DnD_Subclass"];
         this.currentSubclass = (Array.isArray(subclassVal) ? subclassVal[0] : subclassVal) || "";
 
+        const statsList = ["strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"];
+        statsList.forEach(s => {
+            this.currentStats[s] = Number(frontmatter[`DnD_${s}`]) || 10;
+        });
+
         // 2. Fetch the Hit Die dynamically from the rulebook JSON
+        let classData: any = null;
         if (this.dndClass) {
-            const classData = await getClassData(this.app, this.plugin.settings, this.dndClass);
+            classData = await getClassData(this.app, this.plugin.settings, this.dndClass);
             if (classData) {
                 const hdStr = classData.HitDice || classData.hitDice || classData.hit_dice;
                 if (hdStr) {
@@ -5445,28 +5461,28 @@ class LevelUpModal extends Modal {
             this.newMaxHealth = Number((e.target as HTMLInputElement).value);
         });
 
-        // B. Dynamic Subclass Section & Engine Milestones (Driven by "grantedSubclasses" in JSON)
-        let classData: any = null;
-        let newlyGrantedSubclassFile: string | null = null;
+        // B. Dynamic Subclass Section (Driven by "grantedSubclasses" in Class JSON at this.newLevel)
         const targetLevel = this.newLevel.toString();
+        let newlyGrantedSubclassFile: string | null = null;
+        let grantedSubclassFeatureName = "Subclass";
 
-        if (this.dndClass) {
-            classData = await getClassData(this.app, this.plugin.settings, this.dndClass);
-            const newLevelClassFeatures = classData?.features?.[targetLevel];
-            if (Array.isArray(newLevelClassFeatures)) {
-                for (const feature of newLevelClassFeatures) {
-                    // Updated to match the new "grantedSubclasses" key
-                    if (feature.grantedSubclasses && typeof feature.grantedSubclasses === "string") {
-                        newlyGrantedSubclassFile = feature.grantedSubclasses.trim();
-                        break;
-                    }
+        const newLevelClassFeatures = classData?.features?.[targetLevel];
+        if (Array.isArray(newLevelClassFeatures)) {
+            for (const feature of newLevelClassFeatures) {
+                if (feature.grantedSubclasses && typeof feature.grantedSubclasses === "string") {
+                    newlyGrantedSubclassFile = feature.grantedSubclasses.trim();
+                    if (feature.name) grantedSubclassFeatureName = String(feature.name);
+                    break;
                 }
             }
         }
 
         if (newlyGrantedSubclassFile) {
-            const subDiv = contentEl.createDiv({ attr: { style: "margin-bottom: 20px; padding: 10px; background: var(--dnd-ui-color-bg-tertiary); border-radius: 6px;" } });
-            subDiv.createEl("label", { text: `Level ${this.newLevel} Subclass:`, attr: { style: "display: block; margin-bottom: 8px; color: var(--dnd-ui-color-text-sublabel);" } });
+            const subDiv = contentEl.createDiv({ attr: { style: "margin-bottom: 20px; padding: 10px; background: var(--dnd-ui-color-bg-tertiary); border-radius: 6px; border: 1px solid var(--dnd-ui-color-border-active);" } });
+            subDiv.createEl("label", {
+                text: `Level ${this.newLevel} ${grantedSubclassFeatureName} (Select Subclass):`,
+                attr: { style: "display: block; margin-bottom: 8px; font-weight: bold; color: var(--dnd-ui-color-text-secondary);" }
+            });
 
             const subSelect = subDiv.createEl("select");
             subSelect.style.width = "100%";
@@ -5478,19 +5494,40 @@ class LevelUpModal extends Modal {
             }
 
             subSelect.value = this.currentSubclass || "";
-            subSelect.onchange = (e) => this.currentSubclass = (e.target as HTMLSelectElement).value;
+            subSelect.onchange = async (e) => {
+                this.currentSubclass = (e.target as HTMLSelectElement).value;
+                await this.renderDynamicMilestones(classData, frontmatter);
+            };
         }
 
-        // C. Fetch Live Stats & Handle Engine Milestones
-        const statsList = ["strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"];
-        statsList.forEach(s => {
-            this.currentStats[s] = Number(frontmatter[`DnD_${s}`]) || 10;
-        });
+        // C. Container for Dynamic Class/Subclass Milestones (Choices, Expertise, ASI/Feats)
+        this.milestonesContainer = contentEl.createDiv();
+        await this.renderDynamicMilestones(classData, frontmatter);
+
+        // D. Finalization Buttons
+        const btnDiv = contentEl.createDiv({ attr: { style: "display: flex; justify-content: flex-end; gap: 10px;" } });
+        const cancelBtn = btnDiv.createEl("button", { text: "Cancel" });
+        cancelBtn.onclick = () => this.close();
+
+        const confirmBtn = btnDiv.createEl("button", { text: "Complete Level Up", cls: "mod-cta" });
+        confirmBtn.onclick = async (e) => {
+            e.preventDefault();
+            await this.executeLevelUp();
+        };
+    }
+
+    async renderDynamicMilestones(classData: any, frontmatter: Record<string, any>) {
+        this.milestonesContainer.empty();
 
         this.isAsiLevel = false;
+        this.newGrantedExpertiseCount = 0;
+        this.expertisePool = [];
+        this.classChoicesState = [];
+        this.newExpertiseChoices = [];
 
-        // --- NEW: THE CLASS CHOICES SNAPSHOT ENGINE ---
-        let slotsByRouter: Record<string, number> = {};
+        const statsList = ["strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"];
+        const slotsByRouter: Record<string, number> = {};
+        const targetLevel = this.newLevel.toString();
 
         if (classData) {
             let subclassData: any = null;
@@ -5499,9 +5536,7 @@ class LevelUpModal extends Modal {
                 subclassData = await getSubclassData(this.app, this.plugin.settings, activeSubclassFile, this.currentSubclass);
             }
 
-            // INSTEAD of looping 1 to newLevel, we strictly read the JSON payload for the target level!
             let levelFeatures: any[] = [];
-
             if (classData?.features?.[targetLevel]) levelFeatures = levelFeatures.concat(classData.features[targetLevel]);
             if (subclassData?.[targetLevel]) levelFeatures = levelFeatures.concat(subclassData[targetLevel]);
 
@@ -5517,7 +5552,6 @@ class LevelUpModal extends Modal {
                     }
                 }
 
-                // Parse additive grantedExpertise array [allowedSkills[], grantedExpertiseCount]
                 if (feature.grantedExpertise && Array.isArray(feature.grantedExpertise) && feature.grantedExpertise.length === 2) {
                     this.expertisePool = [...new Set([...this.expertisePool, ...feature.grantedExpertise[0]])];
                     this.newGrantedExpertiseCount += feature.grantedExpertise[1] as number;
@@ -5525,46 +5559,40 @@ class LevelUpModal extends Modal {
             }
         }
 
-        // SMART PARSING: Gracefully handle the 2-part tuples (e.g., ["pact-of-the-blade", 1])
+        // 1. Class Choices Snapshot Engine
         let existingChoicesRaw = frontmatter["DnD_classChoices"] || [];
         if (typeof existingChoicesRaw === 'string') {
             try { existingChoicesRaw = JSON.parse(existingChoicesRaw); } catch { existingChoicesRaw = []; }
         }
-        const existingChoices = existingChoicesRaw.map((c: any) => {
-            if (c.length === 3) return { router: c[0], key: c[1], level: c[2] };
-            if (c.length === 2) return { router: null, key: c[0], level: c[1] }; // We don't know the router yet
+        const existingChoices = (Array.isArray(existingChoicesRaw) ? existingChoicesRaw : []).map((c: any) => {
+            if (Array.isArray(c) && c.length === 3) return { router: c[0], key: c[1], level: c[2] };
+            if (Array.isArray(c) && c.length === 2) return { router: null, key: c[0], level: c[1] };
             return null;
         }).filter((c: any) => c !== null);
 
-        this.classChoicesState = [];
-
         for (const [routerName, slotCount] of Object.entries(slotsByRouter)) {
-            // Load Router JSON Options from bundled registry (or custom rulebook)
             const routerData = await getClassChoiceData(this.app, this.plugin.settings, routerName);
 
             if (routerData) {
-                const routerDiv = contentEl.createDiv({ attr: { style: "margin-bottom: 20px; padding: 10px; background: var(--dnd-ui-color-bg-tertiary); border-radius: 6px; border: 1px solid var(--dnd-ui-color-border-primary);" } });
+                const routerDiv = this.milestonesContainer.createDiv({ attr: { style: "margin-bottom: 20px; padding: 10px; background: var(--dnd-ui-color-bg-tertiary); border-radius: 6px; border: 1px solid var(--dnd-ui-color-border-primary);" } });
                 const displayName = routerName.split(/[-_]/).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
 
                 routerDiv.createEl("label", { text: `Manage ${displayName} (${slotCount} Slots)`, attr: { style: "display: block; margin-bottom: 8px; font-weight: bold; color: var(--dnd-ui-color-text-secondary);" } });
                 routerDiv.createEl("small", { text: "Review your choices. If you wish to swap an old choice, select a new one.", attr: { style: "display: block; margin-bottom: 12px; color: var(--dnd-ui-color-text-muted);" } });
 
-                // REVERSE LOOKUP FIX: Match the choice to this router if the key exists inside routerData!
                 const pastChoicesForRouter = existingChoices.filter((c: any) =>
                     c.router === routerName || (c.router === null && routerData[c.key])
                 );
 
                 for (let slotIndex = 0; slotIndex < slotCount; slotIndex++) {
-
                     const selectDiv = routerDiv.createDiv({ attr: { style: "margin-bottom: 8px; display: flex; align-items: center;" } });
 
                     let assignedKey = "";
-                    let originalLevel = this.newLevel; // Default to the current level being gained
+                    let originalLevel = this.newLevel;
 
-                    // Sequentially assign past choices to the first available dropdowns
                     if (pastChoicesForRouter[slotIndex]) {
                         assignedKey = pastChoicesForRouter[slotIndex].key;
-                        originalLevel = pastChoicesForRouter[slotIndex].level; // Preserve history!
+                        originalLevel = pastChoicesForRouter[slotIndex].level;
                     }
 
                     selectDiv.createEl("small", { text: `Lvl ${originalLevel} Slot:`, attr: { style: "flex: 0 0 90px; color: var(--dnd-ui-color-text-sublabel);" } });
@@ -5577,8 +5605,6 @@ class LevelUpModal extends Modal {
                     });
 
                     selectEl.value = assignedKey;
-
-                    // Push the original level into the state so it is saved correctly in the frontmatter
                     this.classChoicesState.push({ router: routerName, key: assignedKey, level: originalLevel, domIndex: slotIndex });
 
                     selectEl.onchange = (e) => {
@@ -5590,34 +5616,30 @@ class LevelUpModal extends Modal {
             }
         }
 
-        // --- NEW: ADDITIVE EXPERTISE UI ---
+        // 2. Additive Expertise UI
         if (this.newGrantedExpertiseCount > 0) {
-            const expDiv = contentEl.createDiv({ attr: { style: "margin-bottom: 20px; padding: 10px; background: var(--dnd-ui-color-bg-tertiary); border-radius: 6px; border: 1px solid var(--dnd-ui-color-border-primary);" } });
+            const expDiv = this.milestonesContainer.createDiv({ attr: { style: "margin-bottom: 20px; padding: 10px; background: var(--dnd-ui-color-bg-tertiary); border-radius: 6px; border: 1px solid var(--dnd-ui-color-border-primary);" } });
             expDiv.createEl("label", { text: `New Expertise Granted (${this.newGrantedExpertiseCount} Choices)`, attr: { style: "display: block; margin-bottom: 8px; font-weight: bold; color: var(--dnd-ui-color-text-secondary);" } });
             expDiv.createEl("small", { text: "Select from your known proficiencies to gain Expertise.", attr: { style: "display: block; margin-bottom: 12px; color: var(--dnd-ui-color-text-muted);" } });
 
-            // 1. Parse existing proficiencies from Frontmatter safely
             let existingProfsRaw = frontmatter["DnD_skillProficiencies"] || [];
             if (typeof existingProfsRaw === 'string') try { existingProfsRaw = JSON.parse(existingProfsRaw); } catch { existingProfsRaw = []; }
 
             let knownSkills: string[] = [];
-            existingProfsRaw.forEach((p: any) => {
+            (Array.isArray(existingProfsRaw) ? existingProfsRaw : []).forEach((p: any) => {
                 if (Array.isArray(p) && p.length > 0) knownSkills.push(p[0]);
                 else if (typeof p === 'string') knownSkills.push(p);
             });
 
-            // 2. Filter known skills by the explicitly provided JSON pool
             if (this.expertisePool.length > 0) {
                 knownSkills = knownSkills.filter((s: string) => this.expertisePool.map(e => String(e).toLowerCase()).includes(String(s).toLowerCase()));
             }
 
-            // 3. Prevent selecting skills that ALREADY have Expertise
             let existingExpRaw = frontmatter["DnD_skillExpertise"] || [];
             if (typeof existingExpRaw === 'string') try { existingExpRaw = JSON.parse(existingExpRaw); } catch { existingExpRaw = []; }
-            const currentExpertise = existingExpRaw.map((e: any) => String(e[0]).toLowerCase());
+            const currentExpertise = (Array.isArray(existingExpRaw) ? existingExpRaw : []).map((e: any) => String(e[0]).toLowerCase());
 
             knownSkills = knownSkills.filter(s => !currentExpertise.includes(String(s).toLowerCase()));
-
             this.newExpertiseChoices = Array(this.newGrantedExpertiseCount).fill("");
 
             if (knownSkills.length === 0) {
@@ -5642,14 +5664,14 @@ class LevelUpModal extends Modal {
             }
         }
 
-        // --- Render ASI UI ---
+        // 3. Render ASI / Feat UI
         if (this.isAsiLevel) {
             const loadedGeneralFeats = await getFeatMapData(this.app, this.plugin.settings, "general-feats");
             if (loadedGeneralFeats && typeof loadedGeneralFeats === "object") {
                 this.availableFeats = loadedGeneralFeats;
             }
 
-            const asiDiv = contentEl.createDiv({ attr: { style: "margin-bottom: 20px; padding: 10px; background: var(--dnd-ui-color-bg-tertiary); border-radius: 6px; border: 1px solid var(--dnd-ui-color-border-active);" } });
+            const asiDiv = this.milestonesContainer.createDiv({ attr: { style: "margin-bottom: 20px; padding: 10px; background: var(--dnd-ui-color-bg-tertiary); border-radius: 6px; border: 1px solid var(--dnd-ui-color-border-active);" } });
 
             asiDiv.createEl("label", { text: `Level ${this.newLevel} Milestone: Ability Score Improvement or Feat`, attr: { style: "display: block; margin-bottom: 8px; color: var(--dnd-ui-color-text-secondary); font-weight: bold;" } });
 
@@ -5691,22 +5713,11 @@ class LevelUpModal extends Modal {
         }
 
         if (this.classChoicesState.length > 0 || this.newGrantedExpertiseCount > 0) {
-            contentEl.createEl("p", {
+            this.milestonesContainer.createEl("p", {
                 text: "Note: Please consult the rulebook regarding swapping choices. Generally, you may only replace one existing choice when you gain a level in a class.",
                 attr: { style: "color: var(--dnd-ui-color-text-muted); font-size: 0.85em; font-style: italic; margin-bottom: 15px;" }
             });
         }
-
-        // D. Finalization Buttons
-        const btnDiv = contentEl.createDiv({ attr: { style: "display: flex; justify-content: flex-end; gap: 10px;" } });
-        const cancelBtn = btnDiv.createEl("button", { text: "Cancel" });
-        cancelBtn.onclick = () => this.close();
-
-        const confirmBtn = btnDiv.createEl("button", { text: "Complete Level Up", cls: "mod-cta" });
-        confirmBtn.onclick = async (e) => {
-            e.preventDefault();
-            await this.executeLevelUp();
-        };
     }
 
     onClose() {
@@ -5728,7 +5739,7 @@ class LevelUpModal extends Modal {
             "DnD_level": this.newLevel,
             "DnD_maxHealth": this.newMaxHealth,
             "DnD_currentHealth": DnD_current_health,
-            "DnD_Subclass": this.currentSubclass ? [this.currentSubclass] : []
+            [this.subclassFmKey]: this.currentSubclass ? [this.currentSubclass] : []
         };
 
         // Fetch Class JSON for Proficiency Bonus Progression & Spell Slot Progression
@@ -5778,7 +5789,6 @@ class LevelUpModal extends Modal {
             .map(c => [String(c.key), String(c.level)]);
 
         if (this.classChoicesState.length > 0) {
-            // Stringify the output so the Obsidian API saves it as a single-line text string!
             updates["DnD_classChoices"] = JSON.stringify(finalClassChoices);
         }
 
@@ -5786,7 +5796,7 @@ class LevelUpModal extends Modal {
         let existingExpRaw = frontmatter["DnD_skillExpertise"] || [];
         if (typeof existingExpRaw === 'string') try { existingExpRaw = JSON.parse(existingExpRaw); } catch { existingExpRaw = []; }
 
-        const finalExpertise = existingExpRaw.map((e: any) => Array.isArray(e) ? [String(e[0]), String(e[1])] : e);
+        const finalExpertise = (Array.isArray(existingExpRaw) ? existingExpRaw : []).map((e: any) => Array.isArray(e) ? [String(e[0]), String(e[1])] : e);
 
         this.newExpertiseChoices.forEach(choice => {
             if (choice) {
