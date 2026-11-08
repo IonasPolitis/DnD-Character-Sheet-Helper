@@ -165,7 +165,7 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
         this.registerEvent(this.app.vault.on('modify', (file) => refreshIfCustomRulebookFile(file.path)));
         this.registerEvent(this.app.vault.on('create', (file) => refreshIfCustomRulebookFile(file.path)));
         this.registerEvent(this.app.vault.on('delete', (file) => refreshIfCustomRulebookFile(file.path)));
-        
+
         // Automatically reset expended spell slots (index 1 -> "0") in the 9-element array when Long Rest is clicked
         this.registerDomEvent(document, 'click', async (evt: MouseEvent) => {
             const target = evt.target as HTMLElement;
@@ -229,12 +229,12 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                         currentState.mode = 'source';
                         await view.setState(currentState, { history: false });
                     }
-                    setTimeout(() => {
-                        const content = MarkdownNotes['dnd_character_template'];
+                    setTimeout(async () => {
+                        const content = await this.getTemplateContent();
 
                         if (!content) {
                             const available = Object.keys(MarkdownNotes).join(', ');
-                            new Notice(`Template missing! Available files: ${available}`);
+                            new Notice(`Template missing! Available files: \${available}`);
                             return;
                         }
 
@@ -259,6 +259,29 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
 
     async saveSettings() {
         await this.saveData(this.settings);
+    }
+
+    // --- Helper: Fetch Character Sheet Template with 2-Stage Custom Rulebook Priority ---
+    async getTemplateContent(): Promise<string | null> {
+        const fetchNative = () => MarkdownNotes['dnd_character_template'] || null;
+        const basePath = this.settings.customRulebookPath?.replace(/^['"]+|['"]+$/g, '').trim().replace(/^\/+|\/+$/g, '');
+        if (!basePath) return fetchNative();
+
+        const fetchCustom = async () => {
+            const customPath = normalizePath(`${basePath}/markdown/dnd_character_template.md`);
+            if (await this.app.vault.adapter.exists(customPath)) {
+                try {
+                    return await this.app.vault.adapter.read(customPath);
+                } catch (e) {
+                    console.error(`Failed to read custom template at ${customPath}`, e);
+                }
+            }
+            return null;
+        };
+
+        return this.settings.customRulebookPriority
+            ? (await fetchCustom()) ?? fetchNative()
+            : fetchNative() ?? (await fetchCustom());
     }
 
     // --- Theme Engine Logic ---
@@ -488,24 +511,32 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                 return val;
             };
 
+            // Helper to check if a resolved frontmatter/YAML value actually contains non-empty data
+            const hasValidValue = (val: any): boolean => {
+                if (val === undefined || val === null) return false;
+                if (Array.isArray(val)) return val.some(item => hasValidValue(item));
+                if (typeof val === 'string') {
+                    const t = val.trim();
+                    return t !== '' && t !== '[]' && !t.startsWith('<');
+                }
+                return true;
+            };
+
             // 4. Resolve all core variables
             const level = resolveValue(blockData.level) ?? frontmatter['DnD_level'] ?? frontmatter['level'] ?? 1;
-            const dndClass = resolveValue(blockData.class) ?? frontmatter['DnD_class'];
-            const subclass = resolveValue(blockData.subclass) ?? frontmatter['DnD_subclass'] ?? frontmatter['DnD_Subclass'];
+            const rawClass = resolveValue(blockData.class) ?? frontmatter['DnD_class'];
+            const rawSubclass = resolveValue(blockData.subclass) ?? frontmatter['DnD_subclass'] ?? frontmatter['DnD_Subclass'];
             const classLevels = resolveValue(blockData['classLevels']) ?? frontmatter['DnD_classLevels'];
-            const race = resolveValue(blockData.race) ?? frontmatter['DnD_race'];
-            const raceLineage = resolveValue(blockData['raceLineage']) ?? frontmatter['DnD_raceLineage'];
-            const background = resolveValue(blockData.background) ?? frontmatter['DnD_background'];
+            const rawRace = resolveValue(blockData.race) ?? frontmatter['DnD_race'];
+            const rawRaceLineage = resolveValue(blockData['raceLineage']) ?? frontmatter['DnD_raceLineage'];
+            const rawBackground = resolveValue(blockData.background) ?? frontmatter['DnD_background'];
             const extraFeats = resolveValue(blockData['extraFeats']) ?? frontmatter['DnD_extraFeats'];
 
-            console.warn("D&D Plugin [dnd-features]: Rendering block with", {
-                sourcePath: ctx.sourcePath,
-                level,
-                dndClass,
-                subclass,
-                background,
-                customRulebookPath: this.settings.customRulebookPath
-            });
+            const dndClass = hasValidValue(rawClass) ? rawClass : null;
+            const subclass = hasValidValue(rawSubclass) ? rawSubclass : null;
+            const race = hasValidValue(rawRace) ? rawRace : null;
+            const raceLineage = hasValidValue(rawRaceLineage) ? rawRaceLineage : null;
+            const background = hasValidValue(rawBackground) ? rawBackground : null;
 
             let classChoicesRaw = resolveValue(blockData['classChoices']) ?? frontmatter['DnD_classChoices'];
             if (typeof classChoicesRaw === 'string' && classChoicesRaw.trim().startsWith('[')) {
@@ -515,14 +546,12 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
             const hideRaw = resolveValue(blockData.hide) ?? frontmatter['DnD_hideFeature'];
             const edition = resolveValue(blockData.edition);
 
-            // Create a localized settings object that injects the block's edition variable 
-            // without modifying the user's global plugin settings.
             const fetchOptions = {
                 ...this.settings,
                 edition: edition ? String(edition) : undefined
             };
 
-            // Normalize the 'hide' variable into a clean array of lowercased strings to prevent typo-misses
+            // Normalize the 'hide' variable into a clean array of lowercased strings
             let hiddenFeatures: string[] = [];
             let parsedHide = hideRaw;
             if (typeof parsedHide === 'string' && parsedHide.trim().startsWith('[')) {
@@ -535,12 +564,9 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
             }
 
             // 5. Validate Multiclassing Levels & Ensure Numbers
-            const parsedLevel = Number(level) || 0; // Force total level to be a number
+            const parsedLevel = Number(level) || 0;
 
-            // If the user has multiple classes listed, we must strictly validate the class-levels
             if (Array.isArray(dndClass) && dndClass.length > 1) {
-
-                // Error Check 1: Is the class-levels array missing or the wrong size?
                 if (!Array.isArray(classLevels) || classLevels.length !== dndClass.length) {
                     const errorBox = wrapper.createDiv({ cls: "dnd-error-window" });
                     errorBox.createEl("strong", { text: "D&D Features Plugin Error:" });
@@ -549,10 +575,9 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                     });
                     el.empty();
                     el.appendChild(wrapper);
-                    return; // Stop rendering features
+                    return;
                 }
 
-                // Error Check 2: Does the math add up?
                 const totalClassLevels = classLevels.reduce((sum, current) => sum + Number(current), 0);
                 if (totalClassLevels !== parsedLevel) {
                     const errorBox = wrapper.createDiv({ cls: "dnd-error-window" });
@@ -562,30 +587,26 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                     });
                     el.empty();
                     el.appendChild(wrapper);
-                    return; // Stop rendering features
+                    return;
                 }
             }
 
-            // 6. Setup the Registry Lookup (Preparation for Data Fetching)
-            const classArray = Array.isArray(dndClass) ? dndClass : [dndClass];
-            // Ensure subclass is an array, and pad it with nulls to safely match the class array length
-            const rawSubclassArray = Array.isArray(subclass) ? subclass : (subclass ? [subclass] : []);
+            // 6. Setup the Registry Lookup
+            const classArray = dndClass ? (Array.isArray(dndClass) ? dndClass.filter(hasValidValue) : [dndClass]) : [];
+            const rawSubclassArray = subclass ? (Array.isArray(subclass) ? subclass.filter(hasValidValue) : [subclass]) : [];
             const subclassArray = classArray.map((_, i) => rawSubclassArray[i] || null);
 
-            // 7. PRE-PASS: Gather all auto-granted feats and determine dynamic subclass level via grantedSubclass
-            let finalExtraFeats = Array.isArray(extraFeats) ? [...extraFeats] : (extraFeats ? [extraFeats] : []);
-
-            // This flag will tell our renderer if the character is high enough level to show the subclass
+            // 7. PRE-PASS: Gather all auto-granted feats and determine dynamic subclass level
+            let finalExtraFeats = Array.isArray(extraFeats) ? extraFeats.filter(hasValidValue) : (hasValidValue(extraFeats) ? [extraFeats] : []);
             let hasActiveSubclass = false;
 
-            if (dndClass) {
+            if (classArray.length > 0) {
                 for (let index = 0; index < classArray.length; index++) {
                     const className = classArray[index];
                     const currentClassLevel = (classArray.length > 1 && Array.isArray(classLevels) && classLevels.length > index)
                         ? Number(classLevels[index])
                         : Number(level);
 
-                    // Use fetchOptions instead of this.settings!
                     const classData = await getClassData(this.app, fetchOptions, className);
 
                     if (classData && classData.features) {
@@ -631,42 +652,35 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
             // Clean up the gathered feats to remove engine mechanics and router files
             const validFeats: string[] = [];
             for (const featId of finalExtraFeats) {
-                // 1. Hard-filter our core engine mechanic trigger
-                if (featId === "ability-score-improvement") continue;
+                if (!hasValidValue(featId) || featId === "ability-score-improvement") continue;
 
-                // 2. Check if this ID is a feat router map (e.g., general-feats or epic-boon-feats)
                 const routerData = await getFeatMapData(this.app, fetchOptions, String(featId));
                 const isRouter = !!routerData;
 
-                // If it is NOT a router file, it's a real feat we should display!
                 if (!isRouter) {
                     validFeats.push(featId);
                 }
             }
 
-            // Finalize the array with only valid, unique feats
             finalExtraFeats = [...new Set(validFeats)];
 
-            // Loop through the user's custom section order using a for...of loop to support async/await
+            // Loop through the user's custom section order
             for (const sectionName of this.settings.sectionOrder) {
-                // 1. CONDITIONAL RENDERING: Skip this section entirely if the user didn't provide the variable
-                if (sectionName === "Class" && !dndClass) continue;
+                if (sectionName === "Class" && classArray.length === 0) continue;
                 if (sectionName === "Subclass" && (!subclass || this.settings.combineClassSubclass || !hasActiveSubclass)) continue;
                 if (sectionName === "Race" && !race) continue;
                 if (sectionName === "Background" && !background) continue;
                 if (sectionName === "Extra Feats" && finalExtraFeats.length === 0) continue;
 
-                // Determine the dynamic header title for this section
                 let sectionTitle = `${sectionName} Features:`;
-                if (sectionName === "Class" && this.settings.combineClassSubclass && subclass) sectionTitle = "Class & Subclass Features:";
+                if (sectionName === "Class" && this.settings.combineClassSubclass && hasActiveSubclass) sectionTitle = "Class & Subclass Features:";
                 if (sectionName === "Race") sectionTitle = "Race Traits:";
                 if (sectionName === "Background") sectionTitle = "Background Feat:";
                 if (sectionName === "Extra Feats") sectionTitle = "Extra Feats:";
 
-                /// Create the Header Title using our new CSS class on the wrapper
-                wrapper.createEl("h3", { text: sectionTitle, cls: "dnd-section-header" });
-
-                const sectionWindow = wrapper.createDiv({ cls: "dnd-features-window" });
+                // Build in a detached container first so we only append the section if it actually has content!
+                const sectionWindow = document.createElement('div');
+                sectionWindow.className = "dnd-features-window";
                 const sectionDiv = sectionWindow.createDiv({ cls: `dnd-section-${sectionName.toLowerCase()}` });
 
                 // Render Class Section
@@ -677,15 +691,11 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                             ? Number(classLevels[index])
                             : Number(level);
 
+                        const classData = await getClassData(this.app, fetchOptions, className);
+                        if (!classData || !classData.features) continue;
+
                         if (classArray.length > 1) {
                             sectionDiv.createEl("h4", { text: `${className} Features (Level ${currentClassLevel})`, cls: "dnd-class-header" });
-                        }
-
-                        const classData = await getClassData(this.app, fetchOptions, className);
-
-                        if (!classData || !classData.features) {
-                            sectionDiv.createEl("p", { text: `Data for ${className} not found.`, cls: "dnd-error-text" });
-                            continue;
                         }
 
                         for (let i = 1; i <= currentClassLevel; i++) {
@@ -693,7 +703,6 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
 
                             if (levelFeatures && levelFeatures.length > 0) {
                                 for (const feature of levelFeatures) {
-                                    // IMPLEMENTED: JSON-level 'hide' boolean check
                                     if (feature.hide === true || (feature.name && hiddenFeatures.includes(feature.name.toLowerCase()))) continue;
 
                                     const featureBlock = sectionDiv.createDiv({ cls: "dnd-feature-block" });
@@ -707,13 +716,11 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                                 }
                             }
 
-                            // NEW: Dynamically inject class choices (e.g. Eldritch Invocations, Divine Orders)
                             for (const choiceTuple of classChoicesArray) {
                                 let routerFile = "";
                                 let choiceKey = "";
                                 let choiceLevel = 0;
 
-                                // Safely handle both ["router_file", "choice_key", level] and ["filename", level] formats
                                 if (Array.isArray(choiceTuple)) {
                                     if (choiceTuple.length === 3) {
                                         [routerFile, choiceKey, choiceLevel] = choiceTuple;
@@ -722,7 +729,6 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                                     }
                                 }
 
-                                // If this choice belongs to the current level we are rendering...
                                 if (Number(choiceLevel) === i && choiceKey) {
                                     const featureData = await getClassChoiceData(this.app, fetchOptions, choiceKey);
                                     if (featureData && featureData.name) {
@@ -749,7 +755,6 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
 
                                 if (subLevelFeatures && subLevelFeatures.length > 0) {
                                     for (const feature of subLevelFeatures) {
-                                        // IMPLEMENTED: JSON-level 'hide' boolean check
                                         if (feature.hide === true || (feature.name && hiddenFeatures.includes(feature.name.toLowerCase()))) continue;
 
                                         const featureBlock = sectionDiv.createDiv({ cls: "dnd-feature-block" });
@@ -780,18 +785,17 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                         const grantedSubclassFile = this.findGrantedSubclass(classData, currentClassLevel);
 
                         if (subclassName && classData && grantedSubclassFile) {
+                            const subclassData = await getSubclassData(this.app, fetchOptions, grantedSubclassFile, subclassName);
+                            if (!subclassData) continue;
+
                             if (classArray.length > 1) {
                                 sectionDiv.createEl("h4", { text: `${subclassName} Features`, cls: "dnd-class-header" });
                             }
-
-                            const subclassData = await getSubclassData(this.app, fetchOptions, grantedSubclassFile, subclassName);
-                            if (!subclassData) continue;
 
                             for (let i = 1; i <= currentClassLevel; i++) {
                                 const subLevelFeatures = subclassData[i.toString()];
                                 if (subLevelFeatures && subLevelFeatures.length > 0) {
                                     for (const feature of subLevelFeatures) {
-                                        // IMPLEMENTED: JSON-level 'hide' boolean check
                                         if (feature.hide === true || (feature.name && hiddenFeatures.includes(feature.name.toLowerCase()))) continue;
 
                                         const featureBlock = sectionDiv.createDiv({ cls: "dnd-feature-block" });
@@ -815,7 +819,6 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
 
                     if (raceData && raceData.traits) {
                         for (const trait of raceData.traits) {
-                            // IMPLEMENTED: JSON-level 'hide' boolean check
                             if (trait.hide === true || (trait.name && hiddenFeatures.includes(trait.name.toLowerCase()))) continue;
 
                             if (trait.lineage) {
@@ -836,8 +839,6 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                             const descDiv = featureBlock.createDiv({ cls: "dnd-feature-desc" });
                             await this.renderDndMarkdown(trait.description, descDiv, ctx.sourcePath, renderChild);
                         }
-                    } else {
-                        sectionDiv.createEl("p", { text: `Data for race "${race}" not found.`, cls: "dnd-error-text" });
                     }
                 }
 
@@ -846,8 +847,7 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                     const bgData = await getBackgroundData(this.app, fetchOptions, background);
                     const featData = bgData && bgData.feat ? await getExtraFeat(this.app, fetchOptions, bgData.feat) : null;
 
-                    // IMPLEMENTED: JSON-level 'hide' boolean check
-                    if (featData && featData.hide !== true && !hiddenFeatures.includes(featData.name.toLowerCase())) {
+                    if (featData && featData.hide !== true && (!featData.name || !hiddenFeatures.includes(featData.name.toLowerCase()))) {
                         const featureBlock = sectionDiv.createDiv({ cls: "dnd-feature-block" });
                         const titleContainer = featureBlock.createDiv({ cls: "dnd-feature-title" });
 
@@ -856,8 +856,6 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
 
                         const descDiv = featureBlock.createDiv({ cls: "dnd-feature-desc" });
                         await this.renderDndMarkdown(featData.description, descDiv, ctx.sourcePath, renderChild);
-                    } else if (!featData) {
-                        sectionDiv.createEl("p", { text: `Data for background "${background}" not found.`, cls: "dnd-error-text" });
                     }
                 }
 
@@ -868,23 +866,25 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                         const featData = await getExtraFeat(this.app, fetchOptions, safeFeatId);
 
                         if (featData) {
-                            // IMPLEMENTED: JSON-level 'hide' boolean check
                             if (featData.hide === true || (featData.name && hiddenFeatures.includes(featData.name.toLowerCase()))) continue;
 
                             const featureBlock = sectionDiv.createDiv({ cls: "dnd-feature-block" });
                             const titleContainer = featureBlock.createDiv({ cls: "dnd-feature-title" });
 
-                            // NEW: Dynamically pull the category or fallback to "Feat"
                             const badgeText = featData.badge ? featData.badge : (featData.category ? featData.category : "Feat");
                             titleContainer.createEl("span", { text: badgeText, cls: "dnd-level-badge" });
                             titleContainer.createEl("span", { text: featData.name, cls: "dnd-feature-name" });
 
                             const descDiv = featureBlock.createDiv({ cls: "dnd-feature-desc" });
                             await this.renderDndMarkdown(featData.description, descDiv, ctx.sourcePath, renderChild);
-                        } else {
-                            sectionDiv.createEl("p", { text: `Data for extra feat "${safeFeatId}" not found.`, cls: "dnd-error-text" });
                         }
                     }
+                }
+
+                // ONLY append the header and window if at least one feature block was actually rendered!
+                if (sectionDiv.querySelector(".dnd-feature-block")) {
+                    wrapper.createEl("h3", { text: sectionTitle, cls: "dnd-section-header" });
+                    wrapper.appendChild(sectionWindow);
                 }
             }
             el.empty();
@@ -1684,16 +1684,35 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
 
                     const pipsContainer = slotTracker.createDiv({ cls: "dnd-spell-slots-pips" });
 
+                    let currentLevelUsed = usedSlots;
+                    const pipElements: HTMLElement[] = [];
+
                     for (let slotIdx = 0; slotIdx < maxSlots; slotIdx++) {
-                        const isUsed = slotIdx < usedSlots;
+                        const isUsed = slotIdx < currentLevelUsed;
                         const pip = pipsContainer.createDiv({
                             cls: `dnd-slot-pip ${isUsed ? "is-used" : ""}`,
-                            attr: { title: isUsed ? "Click to restore slot" : "Click to expend slot" }
+                            attr: {
+                                title: isUsed ? "Tap to restore slot" : "Tap to expend slot",
+                                style: "touch-action: manipulation; user-select: none; -webkit-user-select: none; cursor: pointer;"
+                            }
                         });
+                        pipElements.push(pip);
 
-                        pip.onclick = async (e) => {
+                        pip.addEventListener("pointerdown", async (e: PointerEvent) => {
+                            if (e.button !== 0 && e.pointerType === "mouse") return;
+                            e.preventDefault();
                             e.stopPropagation();
-                            const newUsed = isUsed ? slotIdx : slotIdx + 1;
+
+                            // If tapping the highest currently-filled pip, decrement by 1; otherwise fill up to this pip
+                            const newUsed = (slotIdx + 1 === currentLevelUsed) ? slotIdx : (slotIdx + 1);
+                            currentLevelUsed = newUsed;
+                            slotsArray[slotArrayIdx].used = newUsed;
+
+                            // Instant visual feedback before disk write completes
+                            pipElements.forEach((el, i) => {
+                                el.classList.toggle("is-used", i < newUsed);
+                            });
+
                             const updatedTuples: [string, string][] = slotsArray.map((s, idx) => [
                                 String(s.max),
                                 idx === slotArrayIdx ? String(newUsed) : String(s.used)
@@ -1701,7 +1720,7 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                             await this.updateCharacterFrontmatter(ctx.sourcePath, {
                                 [targetSlotsFmKey]: JSON.stringify(updatedTuples)
                             });
-                        };
+                        });
                     }
                 }
 
@@ -2962,13 +2981,18 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                 const isUsed = i < usedHitDice;
                 const pip = hdPipsContainer.createDiv({
                     cls: `dnd-slot-pip ${isUsed ? "is-used" : ""}`,
-                    attr: { title: isUsed ? "Click to restore Hit Die" : "Click to spend Hit Die" }
+                    attr: {
+                        title: isUsed ? "Tap to restore Hit Die" : "Tap to spend Hit Die",
+                        style: "touch-action: manipulation; user-select: none; -webkit-user-select: none; cursor: pointer;"
+                    }
                 });
-                pip.onclick = (e) => {
+                pip.addEventListener("pointerdown", (e: PointerEvent) => {
+                    if (e.button !== 0 && e.pointerType === "mouse") return;
+                    e.preventDefault();
                     e.stopPropagation();
-                    usedHitDice = isUsed ? i : i + 1;
+                    usedHitDice = (i + 1 === usedHitDice) ? i : (i + 1);
                     renderContent();
-                };
+                });
             }
 
             // 4. Death Saves Section (Shows automatically at 0 HP or when manually toggled)
@@ -2978,17 +3002,26 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
 
                 const deathSavesRow = healthWindow.createDiv({ cls: "dnd-health-deathsaves-row" });
 
+                // Left Pips: Failures (--dnd-ui-color-accent-red)
                 const leftPips = deathSavesRow.createDiv({ cls: "dnd-spell-slots-pips" });
                 for (let i = 0; i < 3; i++) {
+                    const isFailed = deathSaveLeft[i];
                     const pip = leftPips.createDiv({
-                        cls: `dnd-slot-pip ${deathSaveLeft[i] ? "is-used" : ""}`,
-                        attr: { title: "Death Save Failure" }
+                        cls: `dnd-slot-pip dnd-deathsave-fail ${isFailed ? "is-used" : ""}`,
+                        attr: {
+                            title: "Death Save Failure",
+                            style: `touch-action: manipulation; user-select: none; -webkit-user-select: none; cursor: pointer; border-color: var(--dnd-ui-color-accent-red); ${
+                                isFailed ? "background-color: var(--dnd-ui-color-accent-red);" : "background-color: transparent;"
+                            }`
+                        }
                     });
-                    pip.onclick = (e) => {
+                    pip.addEventListener("pointerdown", (e: PointerEvent) => {
+                        if (e.button !== 0 && e.pointerType === "mouse") return;
+                        e.preventDefault();
                         e.stopPropagation();
                         deathSaveLeft[i] = !deathSaveLeft[i];
                         renderContent();
-                    };
+                    });
                 }
 
                 deathSavesRow.createEl("span", {
@@ -2996,17 +3029,26 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                     cls: "dnd-health-skull"
                 });
 
+                // Right Pips: Successes (--dnd-ui-color-accent-teal)
                 const rightPips = deathSavesRow.createDiv({ cls: "dnd-spell-slots-pips" });
                 for (let i = 0; i < 3; i++) {
+                    const isSuccess = deathSaveRight[i];
                     const pip = rightPips.createDiv({
-                        cls: `dnd-slot-pip ${deathSaveRight[i] ? "is-used" : ""}`,
-                        attr: { title: "Death Save Success" }
+                        cls: `dnd-slot-pip dnd-deathsave-success ${isSuccess ? "is-used" : ""}`,
+                        attr: {
+                            title: "Death Save Success",
+                            style: `touch-action: manipulation; user-select: none; -webkit-user-select: none; cursor: pointer; border-color: var(--dnd-ui-color-accent-teal); ${
+                                isSuccess ? "background-color: var(--dnd-ui-color-accent-teal);" : "background-color: transparent;"
+                            }`
+                        }
                     });
-                    pip.onclick = (e) => {
+                    pip.addEventListener("pointerdown", (e: PointerEvent) => {
+                        if (e.button !== 0 && e.pointerType === "mouse") return;
+                        e.preventDefault();
                         e.stopPropagation();
                         deathSaveRight[i] = !deathSaveRight[i];
                         renderContent();
-                    };
+                    });
                 }
             }
 
@@ -3979,7 +4021,7 @@ class CharacterWizardModal extends Modal {
         this.wizardData.armorAcMod = 0; // Initialize manual modifier strictly to 0
 
         // 3. Prepare the Template string
-        let finalContent = MarkdownNotes['dnd_character_template'] || "";
+        let finalContent = (await this.plugin.getTemplateContent()) || "";
         if (!finalContent) {
             new Notice("Error: Template missing from registry!");
             return;
