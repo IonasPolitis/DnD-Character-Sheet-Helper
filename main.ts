@@ -1509,6 +1509,8 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
         });
         renderChild.register(() => tooltipWindow.remove());
 
+        let isUpdatingSlots = false;
+
         const renderContent = async () => {
             const wrapper = document.createElement('div');
 
@@ -1683,19 +1685,24 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                     });
 
                     const pipsContainer = slotTracker.createDiv({ cls: "dnd-spell-slots-pips" });
-
-                    let currentLevelUsed = usedSlots;
+                    const pipStates: boolean[] = Array.from({ length: maxSlots }, (_, idx) => idx < usedSlots);
                     const pipElements: HTMLElement[] = [];
 
+                    const applyPipVisual = (pipEl: HTMLElement, active: boolean) => {
+                        pipEl.classList.toggle("is-used", active);
+                        pipEl.style.backgroundColor = active ? "var(--dnd-ui-color-accent-purple)" : "transparent";
+                        pipEl.style.borderColor = active ? "var(--dnd-ui-color-accent-purple)" : "var(--dnd-ui-color-border-active)";
+                        pipEl.setAttribute("title", active ? "Tap to restore slot" : "Tap to expend slot");
+                    };
+
                     for (let slotIdx = 0; slotIdx < maxSlots; slotIdx++) {
-                        const isUsed = slotIdx < currentLevelUsed;
                         const pip = pipsContainer.createDiv({
-                            cls: `dnd-slot-pip ${isUsed ? "is-used" : ""}`,
+                            cls: `dnd-slot-pip ${pipStates[slotIdx] ? "is-used" : ""}`,
                             attr: {
-                                title: isUsed ? "Tap to restore slot" : "Tap to expend slot",
                                 style: "touch-action: manipulation; user-select: none; -webkit-user-select: none; cursor: pointer;"
                             }
                         });
+                        applyPipVisual(pip, pipStates[slotIdx]);
                         pipElements.push(pip);
 
                         pip.addEventListener("pointerdown", async (e: PointerEvent) => {
@@ -1703,23 +1710,27 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                             e.preventDefault();
                             e.stopPropagation();
 
-                            // If tapping the highest currently-filled pip, decrement by 1; otherwise fill up to this pip
-                            const newUsed = (slotIdx + 1 === currentLevelUsed) ? slotIdx : (slotIdx + 1);
-                            currentLevelUsed = newUsed;
-                            slotsArray[slotArrayIdx].used = newUsed;
+                            // 1. Toggle this pip's state and update the UI FIRST (instant response)
+                            pipStates[slotIdx] = !pipStates[slotIdx];
+                            applyPipVisual(pip, pipStates[slotIdx]);
 
-                            // Instant visual feedback before disk write completes
-                            pipElements.forEach((el, i) => {
-                                el.classList.toggle("is-used", i < newUsed);
-                            });
+                            // 2. Count total used slots for this level and update memory
+                            const newUsedCount = pipStates.filter(Boolean).length;
+                            slotsArray[slotArrayIdx].used = newUsedCount;
 
+                            // 3. Save to frontmatter in the background without rebuilding the DOM
+                            isUpdatingSlots = true;
                             const updatedTuples: [string, string][] = slotsArray.map((s, idx) => [
                                 String(s.max),
-                                idx === slotArrayIdx ? String(newUsed) : String(s.used)
+                                idx === slotArrayIdx ? String(newUsedCount) : String(s.used)
                             ]);
-                            await this.updateCharacterFrontmatter(ctx.sourcePath, {
-                                [targetSlotsFmKey]: JSON.stringify(updatedTuples)
-                            });
+                            try {
+                                await this.updateCharacterFrontmatter(ctx.sourcePath, {
+                                    [targetSlotsFmKey]: JSON.stringify(updatedTuples)
+                                });
+                            } finally {
+                                setTimeout(() => { isUpdatingSlots = false; }, 150);
+                            }
                         });
                     }
                 }
@@ -1857,7 +1868,7 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
 
         renderChild.registerEvent(
             this.app.metadataCache.on('changed', (file) => {
-                if (file.path === ctx.sourcePath) renderContent();
+                if (file.path === ctx.sourcePath && !isUpdatingSlots) renderContent();
             })
         );
     }
@@ -2803,7 +2814,7 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
 
         // Persistent session states across frontmatter re-renders
         let tempHp = 0;
-        let usedHitDice = 0;
+        let hitDiceStates: boolean[] = [];
         let manualDeathSavesOpen = false;
         let deathSaveLeft: boolean[] = [false, false, false];
         let deathSaveRight: boolean[] = [false, false, false];
@@ -2858,8 +2869,9 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                 ? Math.max(1, Number(rawLevel))
                 : Math.max(1, Number(frontmatter["DnD_level"]) || 1);
 
-            // Clamp used hit dice to current level
-            if (usedHitDice > DnD_level) usedHitDice = DnD_level;
+            // Sync hitDiceStates array length with current level
+            while (hitDiceStates.length < DnD_level) hitDiceStates.push(false);
+            if (hitDiceStates.length > DnD_level) hitDiceStates.length = DnD_level;
 
             // Resolve DnD_current_health from frontmatter.DnD_currentHealth (or block override)
             let targetCurrentHpKey = "DnD_currentHealth";
@@ -2977,21 +2989,29 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
             });
 
             const hdPipsContainer = hitDiceRow.createDiv({ cls: "dnd-spell-slots-pips" });
+            const applyHdPipVisual = (pipEl: HTMLElement, active: boolean) => {
+                pipEl.classList.toggle("is-used", active);
+                pipEl.style.backgroundColor = active ? "var(--dnd-ui-color-accent-purple)" : "transparent";
+                pipEl.style.borderColor = active ? "var(--dnd-ui-color-accent-purple)" : "var(--dnd-ui-color-border-active)";
+                pipEl.setAttribute("title", active ? "Tap to restore Hit Die" : "Tap to spend Hit Die");
+            };
+
             for (let i = 0; i < DnD_level; i++) {
-                const isUsed = i < usedHitDice;
                 const pip = hdPipsContainer.createDiv({
-                    cls: `dnd-slot-pip ${isUsed ? "is-used" : ""}`,
+                    cls: `dnd-slot-pip ${hitDiceStates[i] ? "is-used" : ""}`,
                     attr: {
-                        title: isUsed ? "Tap to restore Hit Die" : "Tap to spend Hit Die",
                         style: "touch-action: manipulation; user-select: none; -webkit-user-select: none; cursor: pointer;"
                     }
                 });
+                applyHdPipVisual(pip, hitDiceStates[i]);
+
                 pip.addEventListener("pointerdown", (e: PointerEvent) => {
                     if (e.button !== 0 && e.pointerType === "mouse") return;
                     e.preventDefault();
                     e.stopPropagation();
-                    usedHitDice = (i + 1 === usedHitDice) ? i : (i + 1);
-                    renderContent();
+                    // Update state & visual immediately without destroying the DOM
+                    hitDiceStates[i] = !hitDiceStates[i];
+                    applyHdPipVisual(pip, hitDiceStates[i]);
                 });
             }
 
