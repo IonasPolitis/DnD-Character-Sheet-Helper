@@ -1,6 +1,5 @@
 {
     "class": "Rogue",
-    "subclassFile": "rogue-subclasses",
     "hitDice": "D8",
     "savingThroughProf": ["dexterity", "intelligence"],
     "proficiencyBonus": [ "2", "2", "2", "2", "3", "3", "3", "3", "4", "4", "4", "4", "5", "5", "5", "5", "6", "6", "6", "6", "7", "7", "7", "7", "8", "8", "8", "8", "9", "9" ],
@@ -47,6 +46,11 @@
             }
         ],
         "3": [
+            {
+                "name": "Rogue Subclass",
+                "grantedSubclases": "rogue-subclasses",
+                "hide": true
+            },
             {
                 "name": "Steady Aim",
                 "description": "As a Bonus Action, you give yourself Advantage on your next attack roll on the current turn. You can use this feature only if you haven't moved during this turn, and after you use it, your Speed is O until the end of the current turn."

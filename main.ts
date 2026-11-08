@@ -400,6 +400,23 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
         });
     }
 
+    // --- Helper: Discover if a class grants a subclass at or before maxLevel ---
+    findGrantedSubclass(classData: any, maxLevel: number): string | null {
+        if (!classData || !classData.features) return null;
+        for (let lvl = 1; lvl <= maxLevel; lvl++) {
+            const levelFeatures = classData.features[lvl.toString()];
+            if (Array.isArray(levelFeatures)) {
+                for (const feature of levelFeatures) {
+                    // Updated to match the new "grantedSubclasses" key
+                    if (feature.grantedSubclasses && typeof feature.grantedSubclasses === "string") {
+                        return feature.grantedSubclasses.trim();
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
     async processDnDFeaturesBlock(source: string, el: HTMLElement, ctx: MarkdownPostProcessorContext) {
         // 1. Create a Render Child to manage the lifecycle and reactivity
         const renderChild = new MarkdownRenderChild(el);
@@ -507,7 +524,7 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
             const rawSubclassArray = Array.isArray(subclass) ? subclass : (subclass ? [subclass] : []);
             const subclassArray = classArray.map((_, i) => rawSubclassArray[i] || null);
 
-            // 7. PRE-PASS: Gather all auto-granted feats and determine dynamic subclass level
+            // 7. PRE-PASS: Gather all auto-granted feats and determine dynamic subclass level via grantedSubclass
             let finalExtraFeats = Array.isArray(extraFeats) ? [...extraFeats] : (extraFeats ? [extraFeats] : []);
 
             // This flag will tell our renderer if the character is high enough level to show the subclass
@@ -524,6 +541,16 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                     const classData = await getClassData(this.app, fetchOptions, className);
 
                     if (classData && classData.features) {
+                        const grantedSubclassFile = this.findGrantedSubclass(classData, currentClassLevel);
+                        let subclassData: any = null;
+
+                        if (grantedSubclassFile && subclassArray[index]) {
+                            subclassData = await getSubclassData(this.app, fetchOptions, grantedSubclassFile, subclassArray[index]);
+                            if (subclassData) {
+                                hasActiveSubclass = true;
+                            }
+                        }
+
                         for (let i = 1; i <= currentClassLevel; i++) {
                             const levelFeatures = classData.features[i.toString()];
                             if (levelFeatures) {
@@ -534,22 +561,8 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                                 });
                             }
 
-                            if (classData.subclassFile && subclassArray[index]) {
-                                // Use fetchOptions instead of this.settings!
-                                const subclassData = await getSubclassData(this.app, fetchOptions, classData.subclassFile, subclassArray[index]);
-
-                                // DYNAMIC SUBCLASS LEVEL CHECK
-                                if (subclassData) {
-                                    // Extract all the keys (levels) from the subclass data, convert them to numbers, and find the lowest one.
-                                    const subclassStartLevel = Math.min(...Object.keys(subclassData).map(Number));
-
-                                    // If the current class level meets or exceeds the start level, flag it as active!
-                                    if (currentClassLevel >= subclassStartLevel) {
-                                        hasActiveSubclass = true;
-                                    }
-                                }
-
-                                const subLevelFeatures = subclassData ? subclassData[i.toString()] : null;
+                            if (subclassData) {
+                                const subLevelFeatures = subclassData[i.toString()];
                                 if (subLevelFeatures) {
                                     subLevelFeatures.forEach((feature: any) => {
                                         if (feature.grantedFeats && Array.isArray(feature.grantedFeats)) {
@@ -562,6 +575,7 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                     }
                 }
             }
+
             // Clean up the gathered feats to remove engine mechanics and router files
             const validFeats: string[] = [];
             for (const featId of finalExtraFeats) {
@@ -675,9 +689,10 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                                 }
                             }
 
-                            if (this.settings.combineClassSubclass && subclassArray[index] && classData.subclassFile) {
+                            const grantedSubclassFile = this.findGrantedSubclass(classData, currentClassLevel);
+                            if (this.settings.combineClassSubclass && subclassArray[index] && grantedSubclassFile) {
                                 const subclassName = subclassArray[index];
-                                const subclassData = await getSubclassData(this.app, fetchOptions, classData.subclassFile, subclassName);
+                                const subclassData = await getSubclassData(this.app, fetchOptions, grantedSubclassFile, subclassName);
                                 const subLevelFeatures = subclassData ? subclassData[i.toString()] : null;
 
                                 if (subLevelFeatures && subLevelFeatures.length > 0) {
@@ -704,17 +719,20 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                 else if (sectionName === "Subclass") {
                     for (let index = 0; index < classArray.length; index++) {
                         const className = classArray[index];
-                        const currentClassLevel = Array.isArray(classLevels) ? classLevels[index] : level;
+                        const currentClassLevel = (classArray.length > 1 && Array.isArray(classLevels) && classLevels.length > index)
+                            ? Number(classLevels[index])
+                            : Number(level);
                         const subclassName = subclassArray[index];
 
                         const classData = await getClassData(this.app, fetchOptions, className);
+                        const grantedSubclassFile = this.findGrantedSubclass(classData, currentClassLevel);
 
-                        if (subclassName && classData && classData.subclassFile) {
+                        if (subclassName && classData && grantedSubclassFile) {
                             if (classArray.length > 1) {
                                 sectionDiv.createEl("h4", { text: `${subclassName} Features`, cls: "dnd-class-header" });
                             }
 
-                            const subclassData = await getSubclassData(this.app, fetchOptions, classData.subclassFile, subclassName);
+                            const subclassData = await getSubclassData(this.app, fetchOptions, grantedSubclassFile, subclassName);
                             if (!subclassData) continue;
 
                             for (let i = 1; i <= currentClassLevel; i++) {
@@ -3133,7 +3151,10 @@ class CharacterWizardModal extends Modal {
         levelDiv.createEl("label", { text: "Level: ", attr: { style: "display: block; margin-bottom: 4px;" } });
         const levelInput = levelDiv.createEl("input", { type: "number", value: String(this.wizardData.level) });
         levelInput.min = "1"; levelInput.max = "20"; levelInput.style.width = "100%";
-        levelInput.onchange = (e) => this.wizardData.level = Number((e.target as HTMLInputElement).value);
+        levelInput.onchange = async (e) => {
+            this.wizardData.level = Number((e.target as HTMLInputElement).value) || 1;
+            await this.renderStep();
+        };
 
         // --- RACE SECTION ---
         const raceDiv = container.createDiv({ attr: { style: "margin-bottom: 12px;" } });
@@ -3187,11 +3208,13 @@ class CharacterWizardModal extends Modal {
             await this.renderStep();
         };
 
-        // Conditional Subclass
+        // Conditional Subclass (Only shows if the class grants a subclass at or before the chosen starting level)
         if (this.wizardData.dndClass) {
             const classData = await getClassData(this.app, this.plugin.settings, this.wizardData.dndClass);
-            if (classData && classData.subclassFile) {
-                const allSubclasses = await getSubclassData(this.app, this.plugin.settings, classData.subclassFile);
+            const grantedSubclassFile = this.plugin.findGrantedSubclass(classData, Number(this.wizardData.level) || 1);
+
+            if (grantedSubclassFile) {
+                const allSubclasses = await getSubclassData(this.app, this.plugin.settings, grantedSubclassFile);
                 if (allSubclasses && typeof allSubclasses === "object") {
                     const subclassNames = Object.keys(allSubclasses);
                     if (subclassNames.length > 0) {
@@ -3205,6 +3228,8 @@ class CharacterWizardModal extends Modal {
                         subSelect.onchange = (e) => this.wizardData.subclass = (e.target as HTMLSelectElement).value;
                     }
                 }
+            } else {
+                this.wizardData.subclass = "";
             }
         }
 
@@ -3457,10 +3482,11 @@ class CharacterWizardModal extends Modal {
         if (this.wizardData.dndClass) {
             const classData = await getClassData(this.app, this.plugin.settings, this.wizardData.dndClass);
 
-            // NEW: Fetch Subclass data if it exists!
+            // NEW: Fetch Subclass data if granted at or before this level!
             let subclassData: any = null;
-            if (this.wizardData.subclass && classData?.subclassFile) {
-                subclassData = await getSubclassData(this.app, this.plugin.settings, classData.subclassFile, this.wizardData.subclass);
+            const grantedSubclassFile = this.plugin.findGrantedSubclass(classData, Number(this.wizardData.level) || 1);
+            if (this.wizardData.subclass && grantedSubclassFile) {
+                subclassData = await getSubclassData(this.app, this.plugin.settings, grantedSubclassFile, this.wizardData.subclass);
             }
 
             if (classData && classData.features) {
@@ -4899,11 +4925,11 @@ class ManageCharacterModal extends Modal {
 
             let subclassData: any = null;
             let hasActiveSubclass = false;
-            if (classData.subclassFile && subclassArray[index]) {
-                subclassData = await getSubclassData(this.app, this.plugin.settings, classData.subclassFile, subclassArray[index]);
+            const grantedSubclassFile = this.plugin.findGrantedSubclass(classData, currentClassLevel);
+            if (grantedSubclassFile && subclassArray[index]) {
+                subclassData = await getSubclassData(this.app, this.plugin.settings, grantedSubclassFile, subclassArray[index]);
                 if (subclassData) {
-                    const subclassStartLevel = Math.min(...Object.keys(subclassData).map(Number));
-                    if (currentClassLevel >= subclassStartLevel) hasActiveSubclass = true;
+                    hasActiveSubclass = true;
                 }
             }
 
@@ -5419,25 +5445,38 @@ class LevelUpModal extends Modal {
             this.newMaxHealth = Number((e.target as HTMLInputElement).value);
         });
 
-        // B. Subclass Section (Conditional: Only at Level 3)
-        if (this.newLevel === 3) {
+        // B. Dynamic Subclass Section & Engine Milestones (Driven by "grantedSubclasses" in JSON)
+        let classData: any = null;
+        let newlyGrantedSubclassFile: string | null = null;
+        const targetLevel = this.newLevel.toString();
+
+        if (this.dndClass) {
+            classData = await getClassData(this.app, this.plugin.settings, this.dndClass);
+            const newLevelClassFeatures = classData?.features?.[targetLevel];
+            if (Array.isArray(newLevelClassFeatures)) {
+                for (const feature of newLevelClassFeatures) {
+                    // Updated to match the new "grantedSubclasses" key
+                    if (feature.grantedSubclasses && typeof feature.grantedSubclasses === "string") {
+                        newlyGrantedSubclassFile = feature.grantedSubclasses.trim();
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (newlyGrantedSubclassFile) {
             const subDiv = contentEl.createDiv({ attr: { style: "margin-bottom: 20px; padding: 10px; background: var(--dnd-ui-color-bg-tertiary); border-radius: 6px;" } });
-            subDiv.createEl("label", { text: "Subclass:", attr: { style: "display: block; margin-bottom: 8px; color: var(--dnd-ui-color-text-sublabel);" } });
+            subDiv.createEl("label", { text: `Level ${this.newLevel} Subclass:`, attr: { style: "display: block; margin-bottom: 8px; color: var(--dnd-ui-color-text-sublabel);" } });
 
             const subSelect = subDiv.createEl("select");
             subSelect.style.width = "100%";
             subSelect.createEl("option", { text: "-- Select a Subclass --", value: "" });
 
-            if (this.dndClass) {
-                const classData = await getClassData(this.app, this.plugin.settings, this.dndClass);
-                if (classData && classData.subclassFile) {
-                    const allSubclasses = await getSubclassData(this.app, this.plugin.settings, classData.subclassFile);
-                    if (allSubclasses && typeof allSubclasses === "object") {
-                        Object.keys(allSubclasses).forEach(s => subSelect.createEl("option", { text: s, value: s }));
-                    }
-                }
+            const allSubclasses = await getSubclassData(this.app, this.plugin.settings, newlyGrantedSubclassFile);
+            if (allSubclasses && typeof allSubclasses === "object") {
+                Object.keys(allSubclasses).forEach(s => subSelect.createEl("option", { text: s, value: s }));
             }
-            // Ensure strict string fallback so the placeholder displays correctly
+
             subSelect.value = this.currentSubclass || "";
             subSelect.onchange = (e) => this.currentSubclass = (e.target as HTMLSelectElement).value;
         }
@@ -5453,17 +5492,15 @@ class LevelUpModal extends Modal {
         // --- NEW: THE CLASS CHOICES SNAPSHOT ENGINE ---
         let slotsByRouter: Record<string, number> = {};
 
-        if (this.dndClass) {
-            const classData = await getClassData(this.app, this.plugin.settings, this.dndClass);
-
+        if (classData) {
             let subclassData: any = null;
-            if (this.currentSubclass && classData?.subclassFile) {
-                subclassData = await getSubclassData(this.app, this.plugin.settings, classData.subclassFile, this.currentSubclass);
+            const activeSubclassFile = this.plugin.findGrantedSubclass(classData, this.newLevel);
+            if (this.currentSubclass && activeSubclassFile) {
+                subclassData = await getSubclassData(this.app, this.plugin.settings, activeSubclassFile, this.currentSubclass);
             }
 
             // INSTEAD of looping 1 to newLevel, we strictly read the JSON payload for the target level!
             let levelFeatures: any[] = [];
-            const targetLevel = this.newLevel.toString();
 
             if (classData?.features?.[targetLevel]) levelFeatures = levelFeatures.concat(classData.features[targetLevel]);
             if (subclassData?.[targetLevel]) levelFeatures = levelFeatures.concat(subclassData[targetLevel]);

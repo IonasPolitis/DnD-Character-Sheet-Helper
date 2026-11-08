@@ -1,6 +1,5 @@
 {
     "class": "Druid",
-    "subclassFile": "druid-subclasses",
     "hitDice": "D8",
     "savingThroughProf": [ "intelligence", "wisdom" ],
     "proficiencyBonus": [ "2", "2", "2", "2", "3", "3", "3", "3", "4", "4", "4", "4", "5", "5", "5", "5", "6", "6", "6", "6", "7", "7", "7", "7", "8", "8", "8", "8", "9", "9" ],
@@ -69,6 +68,13 @@
             {
                 "name": "Wild Companion",
                 "description": "You can summon a nature spirit that assumes an animal form to aid you. As a Magic action, you can expend a spell slot or a use of Wild Shape to cast the Find Familiar spell without Material components.\n  When you cast the spell in this way, the familiar is Fey and disappears when you finish a Long Rest."
+            }
+        ],
+        "3": [
+            {
+                "name": "Druid Subclass",
+                "grantedSubclases": "druid-subclasses",
+                "hide": true
             }
         ],
         "4": [

@@ -1,6 +1,5 @@
 {
     "class": "Sorcerer",
-    "subclassFile": "sorcerer-subclasses",
     "hitDice": "D6",
     "savingThroughProf": ["constitution", "charisma"],
     "proficiencyBonus": [ "2", "2", "2", "2", "3", "3", "3", "3", "4", "4", "4", "4", "5", "5", "5", "5", "6", "6", "6", "6", "7", "7", "7", "7", "8", "8", "8", "8", "9", "9" ],
@@ -52,6 +51,13 @@
                 "name": "Metamagic",
                 "description": "Because your magic flows from within, you can alter your spells to suit your needs; you gain two [Metamagic Options](note:metamagic-options) of your choice. You use the chosen options to temporarily modify spells you cast. To use an option, you must spend the number of Sorcery Points that it costs.\n\tYou can use only one Metamagic option on a spell when you cast it unless otherwise noted in one of those options.",
                 "classChoices": ["metamagic", "metamagic"]
+            }
+        ],
+        "3": [
+            {
+                "name": "Sorcerer Subclass",
+                "grantedSubclases": "sorcerer-subclasses",
+                "hide": true
             }
         ],
         "4": [

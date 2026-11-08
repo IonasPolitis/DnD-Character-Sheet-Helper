@@ -1,6 +1,5 @@
 {
     "class": "Barbarian",
-    "subclassFile": "barbarian-subclasses",
     "hitDice": "D12",
     "savingThroughProf": ["strength", "constitution"],
     "proficiencyBonus": [ "2", "2", "2", "2", "3", "3", "3", "3", "4", "4", "4", "4", "5", "5", "5", "5", "6", "6", "6", "6", "7", "7", "7", "7", "8", "8", "8", "8", "9", "9" ],
@@ -30,6 +29,11 @@
             }
         ],
         "3": [
+            {
+                "name": "Barbarian Subclass",
+                "grantedSubclases": "barbarian-subclasses",
+                "hide": true
+            },
             {
                   "name": "Primal Knowledge",
                   "description": "while your Rage is active, you can channel primal power when you attempt certain tasks; whenever you make an ability check using one of the following skills, you can make it as a Strength check even if it normally uses a different ability: Acrobatics, Intimidation, Perception, Stealth, or Survival."

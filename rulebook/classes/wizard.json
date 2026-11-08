@@ -1,6 +1,5 @@
 {
     "class": "Wizard",
-    "subclassFile": "wizard-subclasses",
     "hitDice": "D6",
     "savingThroughProf": [ "intelligence", "wisdom" ],
     "proficiencyBonus": [ "2", "2", "2", "2", "3", "3", "3", "3", "4", "4", "4", "4", "5", "5", "5", "5", "6", "6", "6", "6", "7", "7", "7", "7", "8", "8", "8", "8", "9", "9" ],
@@ -50,6 +49,13 @@
             {
                 "name": "Arcane Recovery",
                 "description": "You can regain some of your magical energy by studying your spellbook. When you finish a Short Rest, you can choose expended spell slots to recover. The spell slots can have a combined level equal to no more than half your Wizard level (round up), and none of the slots can be level 6 or higher. For exam-ple, if you're a level 4 Wizard, you can recover up to two levels' worth of spell slots, regaining either one level 2 spell slot or two level 1 spell slots.\n\tOnce you use this feature, you can't do so again until you finish a Long Rest."
+            }
+        ],
+        "3": [
+            {
+                "name": "Wizard Subclass",
+                "grantedSubclases": "wizard-subclasses",
+                "hide": true
             }
         ],
         "4": [
