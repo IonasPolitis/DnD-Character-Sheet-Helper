@@ -1,12 +1,12 @@
 {
-      "Aasimar": "aasimar",
-      "Dragonborn": "dragonborn",
-      "Dwarf": "dwarf",
-      "Elf": "elf",
-      "Gnome": "gnome",
-      "Goliath": "goliath",
-      "Halfling": "halfling",
-      "Human": "human",
-      "Orc": "orc",
-      "Tiefling": "tiefling"
+      "aasimar": "Aasimar",
+      "dragonborn": "Dragonborn",
+      "dwarf": "Dwarf",
+      "elf": "Elf",
+      "gnome": "Gnome",
+      "goliath": "Goliath",
+      "halfling": "Halfling",
+      "human": "Human",
+      "orc": "Orc",
+      "tiefling": "Tiefling"
 }

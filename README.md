@@ -210,7 +210,7 @@ rulebook/
 ├── backgrounds.json
 ├── classes.json
 ├── epic-boon-feats.json
-├── genral-feats.json
+├── general-feats.json
 ├── items.json
 ├── races.json
 └── rules.json
@@ -225,14 +225,7 @@ The structure of each JSON file is as follows:
 - classes/races/items/rules.json:
 ```json
 {
-	"<Class/Race/Item/Rule_Name>": "<Class/Race/Item/Rule_Filename>"
-}
-```
-
-- spells/feats.json list files:
-```json
-{
-	"<Class/Race/Item/Rule_Filename>": "<Class/Race/Item/Rule_Display_Name>"
+	"<Class/Race/Item/Rule/Feat/Spell_Filename>": "<Class/Race/Item/Rule/Feat/Spell_Display_Name>"
 }
 ```
 

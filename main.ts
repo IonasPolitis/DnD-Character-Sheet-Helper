@@ -2,7 +2,7 @@ import { App, Plugin, PluginSettingTab, Setting, MarkdownPostProcessorContext, p
 import { getClassData, getSubclassData, getBackgroundData, getRaceData, getExtraFeat, getItemData, getRuleData, getSpellData, getSpellsPoolData, getClassChoiceData, getFeatMapData } from './data';
 import { MarkdownNotes, classesMap, racesMap, backgroundsMap, itemsMap } from './registry';
 import { THEMES } from './themes';
- 
+
 // 1. Define the shape of our settings
 interface DnDPluginSettings {
     combineClassSubclass: boolean;
@@ -144,6 +144,28 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
             this.processDnDHealthBlock.bind(this)
         );
 
+        // Automatically refresh open character sheets whenever a file inside the Custom Rulebook folder is edited
+        const refreshIfCustomRulebookFile = (filePath: string) => {
+            const basePath = this.settings.customRulebookPath?.replace(/^['"]+|['"]+$/g, '').trim().replace(/^\/+|\/+$/g, '');
+            if (!basePath) return;
+            const normBase = normalizePath(basePath);
+            if (filePath.startsWith(normBase + "/") || filePath === normBase) {
+                this.app.workspace.iterateAllLeaves((leaf) => {
+                    if (leaf.view instanceof MarkdownView && leaf.view.file) {
+                        const activeFile = leaf.view.file;
+                        const cache = this.app.metadataCache.getFileCache(activeFile);
+                        if (cache) {
+                            this.app.metadataCache.trigger('changed', activeFile, '', cache);
+                        }
+                    }
+                });
+            }
+        };
+
+        this.registerEvent(this.app.vault.on('modify', (file) => refreshIfCustomRulebookFile(file.path)));
+        this.registerEvent(this.app.vault.on('create', (file) => refreshIfCustomRulebookFile(file.path)));
+        this.registerEvent(this.app.vault.on('delete', (file) => refreshIfCustomRulebookFile(file.path)));
+        
         // Automatically reset expended spell slots (index 1 -> "0") in the 9-element array when Long Rest is clicked
         this.registerDomEvent(document, 'click', async (evt: MouseEvent) => {
             const target = evt.target as HTMLElement;
@@ -173,7 +195,7 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                 }
             }
         });
-        
+
         this.addCommand({
             id: 'csh-launch-character-wizard',
             name: 'Launch Character Creation Wizard',
@@ -402,17 +424,23 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
 
     // --- Helper: Discover if a class grants a subclass at or before maxLevel ---
     findGrantedSubclass(classData: any, maxLevel: number): string | null {
-        if (!classData || !classData.features) return null;
-        for (let lvl = 1; lvl <= maxLevel; lvl++) {
-            const levelFeatures = classData.features[lvl.toString()];
-            if (Array.isArray(levelFeatures)) {
-                for (const feature of levelFeatures) {
-                    // Updated to match the new "grantedSubclasses" key
-                    if (feature.grantedSubclasses && typeof feature.grantedSubclasses === "string") {
-                        return feature.grantedSubclasses.trim();
+        if (!classData) return null;
+        if (classData.features) {
+            for (let lvl = 1; lvl <= maxLevel; lvl++) {
+                const levelFeatures = classData.features[lvl.toString()];
+                if (Array.isArray(levelFeatures)) {
+                    for (const feature of levelFeatures) {
+                        const granted = feature.grantedSubclasses ?? feature.grantedSubclass;
+                        if (granted && typeof granted === "string") {
+                            return granted.trim().replace(/\.json$/i, '');
+                        }
                     }
                 }
             }
+        }
+        // Support "subclassFile" at the root of the class JSON (README standard & Custom Rulebook)
+        if (classData.subclassFile && typeof classData.subclassFile === "string") {
+            return classData.subclassFile.trim().replace(/\.json$/i, '');
         }
         return null;
     }
@@ -478,13 +506,13 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                 background,
                 customRulebookPath: this.settings.customRulebookPath
             });
-            
-            let classChoicesRaw = resolveValue(blockData['classChoices']);
+
+            let classChoicesRaw = resolveValue(blockData['classChoices']) ?? frontmatter['DnD_classChoices'];
             if (typeof classChoicesRaw === 'string' && classChoicesRaw.trim().startsWith('[')) {
                 try { classChoicesRaw = JSON.parse(classChoicesRaw.trim()); } catch { classChoicesRaw = []; }
             }
             const classChoicesArray = Array.isArray(classChoicesRaw) ? classChoicesRaw : [];
-            const hideRaw = resolveValue(blockData.hide);
+            const hideRaw = resolveValue(blockData.hide) ?? frontmatter['DnD_hideFeature'];
             const edition = resolveValue(blockData.edition);
 
             // Create a localized settings object that injects the block's edition variable 
@@ -567,7 +595,11 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                         if (grantedSubclassFile && subclassArray[index]) {
                             subclassData = await getSubclassData(this.app, fetchOptions, grantedSubclassFile, subclassArray[index]);
                             if (subclassData) {
-                                hasActiveSubclass = true;
+                                const levelKeys = Object.keys(subclassData).map(Number).filter(n => !isNaN(n));
+                                const subclassStartLevel = levelKeys.length > 0 ? Math.min(...levelKeys) : 1;
+                                if (currentClassLevel >= subclassStartLevel) {
+                                    hasActiveSubclass = true;
+                                }
                             }
                         }
 
@@ -3075,30 +3107,63 @@ class CharacterWizardModal extends Modal {
     }
 
     async fetchDropdownData() {
-        const getKeys = async (fileName: string, nativeMap: Record<string, any>) => {
-            const keys: Set<string> = new Set(Object.keys(nativeMap || {}));
-            const basePath = this.plugin.settings.customRulebookPath?.trim();
-            if (basePath) {
-                const customPath = normalizePath(`${basePath}/${fileName}`);
-                try {
-                    if (await this.app.vault.adapter.exists(customPath)) {
-                        const content = await this.app.vault.adapter.read(customPath);
-                        Object.keys(JSON.parse(content)).forEach(k => keys.add(k));
-                    }
-                } catch (e) {
-                    console.error(`Wizard Error: Could not read custom file at ${customPath}`, e);
+        const basePath = this.plugin.settings.customRulebookPath?.replace(/^['"]+|['"]+$/g, '').trim().replace(/^\/+|\/+$/g, '');
+        const priority = this.plugin.settings.customRulebookPriority;
+
+        const readCustomRouter = async (fileName: string): Promise<Record<string, any> | null> => {
+            if (!basePath) return null;
+            const customPath = normalizePath(`${basePath}/${fileName}`);
+            try {
+                if (await this.app.vault.adapter.exists(customPath)) {
+                    const content = await this.app.vault.adapter.read(customPath);
+                    return JSON.parse(content);
+                }
+            } catch (e) {
+                console.error(`Wizard Error: Could not read custom file at ${customPath}`, e);
+            }
+            return null;
+        };
+
+        // For Router Files ({ "<filename>": "<Display Name>" } like classes.json & races.json)
+        const getRouterDisplayNames = async (fileName: string, nativeMap: Record<string, any>) => {
+            const customMap = await readCustomRouter(fileName);
+            const merged = customMap
+                ? (priority ? { ...(nativeMap || {}), ...customMap } : { ...customMap, ...(nativeMap || {}) })
+                : (nativeMap || {});
+
+            const displayNames = new Set<string>();
+            for (const [k, v] of Object.entries(merged)) {
+                if (typeof v === "string") {
+                    displayNames.add(v.trim());
+                } else if (typeof k === "string") {
+                    displayNames.add(k.trim());
                 }
             }
-            if (keys.size === 0) {
+            if (displayNames.size === 0) {
                 console.warn(`Wizard: No data found for ${fileName}.`);
                 new Notice(`Warning: Could not load ${fileName}. Dropdown will be empty.`);
             }
-            return Array.from(keys).sort();
+            return Array.from(displayNames).sort((a, b) => a.localeCompare(b));
         };
 
-        this.availableClasses = await getKeys("classes.json", classesMap);
-        this.availableRaces = await getKeys("races.json", racesMap);
-        this.availableBackgrounds = await getKeys("backgrounds.json", backgroundsMap);
+        // For Inline Object Maps ({ "<Display Name>": { ... } } like backgrounds.json)
+        const getObjectKeys = async (fileName: string, nativeMap: Record<string, any>) => {
+            const customMap = await readCustomRouter(fileName);
+            const merged = customMap
+                ? (priority ? { ...(nativeMap || {}), ...customMap } : { ...customMap, ...(nativeMap || {}) })
+                : (nativeMap || {});
+
+            const keys = Object.keys(merged).sort((a, b) => a.localeCompare(b));
+            if (keys.length === 0) {
+                console.warn(`Wizard: No data found for ${fileName}.`);
+                new Notice(`Warning: Could not load ${fileName}. Dropdown will be empty.`);
+            }
+            return keys;
+        };
+
+        this.availableClasses = await getRouterDisplayNames("classes.json", classesMap);
+        this.availableRaces = await getRouterDisplayNames("races.json", racesMap);
+        this.availableBackgrounds = await getObjectKeys("backgrounds.json", backgroundsMap);
     }
 
     // Main rendering engine for the Wizard
@@ -4891,7 +4956,7 @@ class ManageCharacterModal extends Modal {
         createTabBtn("skills", "Skills", "🔨");
         createTabBtn("items", "Items", "🎒");
         createTabBtn("features", "Hide Features", "📜");
-        
+
 
         // --- FIXED CONTENT CONTAINER ---
         this.contentContainer = contentEl.createDiv({
@@ -6151,8 +6216,8 @@ class SpellbookModal extends Modal {
                 text: label,
                 attr: {
                     style: `padding: 4px 10px; border-radius: 4px; font-size: 0.85em; cursor: pointer; box-shadow: none; ${isActive
-                            ? "background: var(--dnd-ui-color-bg-tertiary); color: var(--dnd-ui-color-text-bright); font-weight: bold; border: 1px solid var(--dnd-ui-color-border-active);"
-                            : "background: transparent; color: var(--dnd-ui-color-text-muted); border: 1px solid transparent;"
+                        ? "background: var(--dnd-ui-color-bg-tertiary); color: var(--dnd-ui-color-text-bright); font-weight: bold; border: 1px solid var(--dnd-ui-color-border-active);"
+                        : "background: transparent; color: var(--dnd-ui-color-text-muted); border: 1px solid transparent;"
                         }`
                 }
             });

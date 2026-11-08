@@ -1,15 +1,15 @@
 {
-      "Barbarian": "barbarian",
-      "Bard": "bard",
-      "Blood Hunter": "blood-hunter",
-      "Cleric": "cleric",
-      "Druid": "druid",
-      "Fighter": "fighter",
-      "Monk": "monk",
-      "Paladin": "paladin",
-      "Ranger": "ranger",
-      "Rogue": "rogue",
-      "Sorcerer": "sorcerer",
-      "Warlock": "warlock",
-      "Wizard" :  "wizard"
+      "barbarian": "Barbarian",
+      "bard": "Bard",
+      "blood-hunter": "Blood Hunter",
+      "cleric": "Cleric",
+      "druid": "Druid",
+      "fighter": "Fighter",
+      "monk": "Monk",
+      "paladin": "Paladin",
+      "ranger": "Ranger",
+      "rogue": "Rogue",
+      "sorcerer": "Sorcerer",
+      "warlock": "Warlock",
+      "wizard": "Wizard"
 }
