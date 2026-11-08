@@ -67,23 +67,12 @@ async function readCustomJson(app: App, fullPath: string) {
 }
 
 // --- Helper: Custom Router Lookup ---
-// Reads the custom router file (e.g., classes.json, items.json) to find the mapped filename
+// Reads the custom router file (e.g., classes.json) to find the mapped filename
 async function getCustomMappedName(app: App, basePath: string, routerFile: string, searchKey: string) {
     const routerPath = normalizePath(`${basePath}/${routerFile}`);
     const routerData = await readCustomJson(app, routerPath);
-    if (!routerData || typeof routerData !== 'object') return null;
-
-    const normalizedKey = Array.isArray(searchKey) ? searchKey[0] : searchKey;
-    if (typeof normalizedKey !== 'string') return null;
-
-    // 1. Check if searchKey is already a mapped filename value in the router (just like getItemData does for itemsMap)
-    const matchedValue = Object.values(routerData).find(
-        v => typeof v === 'string' && v.toLowerCase() === normalizedKey.toLowerCase()
-    );
-    if (typeof matchedValue === 'string') return matchedValue;
-
-    // 2. Otherwise look up the key by display name (case-insensitive)
-    return getIgnoreCase(routerData, normalizedKey);
+    if (!routerData) return null;
+    return getIgnoreCase(routerData, searchKey);
 }
 
 // --- Helper: Merge Native & Custom Router Dictionaries by Priority ---
@@ -247,7 +236,10 @@ export async function getItemData(app: App, settings: FetchSettings, itemName: s
     
     const fetchCustom = async () => {
         if (!settings.customRulebookPath) return null;
-        const itemId = await getCustomMappedName(app, settings.customRulebookPath, 'items.json', itemName);
+        const customItemsMap = await readCustomJson(app, normalizePath(`${settings.customRulebookPath}/items.json`));
+        if (!customItemsMap) return null;
+        const isAlreadyFilename = Object.values(customItemsMap).includes(itemName);
+        const itemId = isAlreadyFilename ? itemName : getIgnoreCase(customItemsMap, itemName);
         if (!itemId) return null;
         return await readCustomJson(app, normalizePath(`${settings.customRulebookPath}/items/${itemId}.json`));
     };

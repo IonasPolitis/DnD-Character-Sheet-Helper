@@ -447,27 +447,38 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                 if (typeof val === 'string') {
                     const trimmed = val.trim().replace(/^\{\{\s*|\s*\}\}$/g, '');
                     if (trimmed.startsWith('frontmatter.')) {
-                        return frontmatter[trimmed.replace('frontmatter.', '')];
+                        const propName = trimmed.replace('frontmatter.', '').trim();
+                        if (frontmatter[propName] !== undefined) return frontmatter[propName];
+                        // Fallback for legacy template keys (level <-> DnD_level, DnD_Subclass <-> DnD_subclass)
+                        if (propName === 'level') return frontmatter['DnD_level'];
+                        if (propName === 'DnD_level') return frontmatter['level'];
+                        if (propName === 'DnD_Subclass') return frontmatter['DnD_subclass'];
+                        if (propName === 'DnD_subclass') return frontmatter['DnD_Subclass'];
+                        return undefined;
                     }
                 }
                 return val;
             };
 
             // 4. Resolve all core variables
-            const level = resolveValue(blockData.level) ?? frontmatter['DnD_level'];
-            const dndClass = resolveValue(blockData.class);
-            const subclass = resolveValue(blockData.subclass);
-            console.log("D&D Plugin [dnd-features]: Rendering block with", {
+            const level = resolveValue(blockData.level) ?? frontmatter['DnD_level'] ?? frontmatter['level'] ?? 1;
+            const dndClass = resolveValue(blockData.class) ?? frontmatter['DnD_class'];
+            const subclass = resolveValue(blockData.subclass) ?? frontmatter['DnD_subclass'] ?? frontmatter['DnD_Subclass'];
+            const classLevels = resolveValue(blockData['classLevels']) ?? frontmatter['DnD_classLevels'];
+            const race = resolveValue(blockData.race) ?? frontmatter['DnD_race'];
+            const raceLineage = resolveValue(blockData['raceLineage']) ?? frontmatter['DnD_raceLineage'];
+            const background = resolveValue(blockData.background) ?? frontmatter['DnD_background'];
+            const extraFeats = resolveValue(blockData['extraFeats']) ?? frontmatter['DnD_extraFeats'];
+
+            console.warn("D&D Plugin [dnd-features]: Rendering block with", {
+                sourcePath: ctx.sourcePath,
                 level,
                 dndClass,
-                background: resolveValue(blockData.background),
+                subclass,
+                background,
                 customRulebookPath: this.settings.customRulebookPath
             });
-            const classLevels = resolveValue(blockData['classLevels']);
-            const race = resolveValue(blockData.race);
-            const raceLineage = resolveValue(blockData['raceLineage']);
-            const background = resolveValue(blockData.background);
-            const extraFeats = resolveValue(blockData['extraFeats']);
+            
             let classChoicesRaw = resolveValue(blockData['classChoices']);
             if (typeof classChoicesRaw === 'string' && classChoicesRaw.trim().startsWith('[')) {
                 try { classChoicesRaw = JSON.parse(classChoicesRaw.trim()); } catch { classChoicesRaw = []; }
