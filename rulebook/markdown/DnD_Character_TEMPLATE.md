@@ -6,7 +6,7 @@ DnD_race:
 DnD_raceLineage:
 DnD_class:
 DnD_classLevels:
-DnD_Subclass:
+DnD_subclass:
 DnD_classEquipment:
 DnD_classProficiencies:
 DnD_classChosenItems:
