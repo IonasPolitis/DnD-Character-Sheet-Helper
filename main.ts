@@ -1563,34 +1563,18 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
         const fileCache = this.app.metadataCache.getCache(ctx.sourcePath);
         const frontmatter = fileCache?.frontmatter || {};
 
-        // 3. Determine Alignment & Line Shifting
-        let justifyContent = "flex-start";
-        let marginTop = "10px";
-        let marginBottom = "10px";
-        let position = "static";
-        let zIndex = "auto";
-
-        if (blockData.align === "right") justifyContent = "flex-end";
-        if (blockData.align === "center") justifyContent = "center";
-
-        if (blockData.align === "right-up") {
-            justifyContent = "flex-end";
-            marginTop = "-45px";
-            marginBottom = "15px";
-            position = "relative";
-            zIndex = "10";
-        }
-
-        if (blockData.align === "right-down") {
-            justifyContent = "flex-end";
-            marginTop = "25px";
-            marginBottom = "10px";
-        }
+        // 3. Determine Alignment & Line Shifting via CSS Modifier Classes
+        const alignClassMap: Record<string, string> = {
+            "right": "align-right",
+            "center": "align-center",
+            "right-up": "align-right-up",
+            "right-down": "align-right-down"
+        };
+        const alignCls = alignClassMap[String(blockData.align || "").toLowerCase()] || "";
 
         // 4. Create the Button Container
         const container = el.createDiv({
-            cls: "dnd-controls",
-            attr: { style: `display: flex; gap: 10px; flex-wrap: wrap; justify-content: ${justifyContent}; margin-top: ${marginTop}; margin-bottom: ${marginBottom}; position: ${position}; z-index: ${zIndex};` }
+            cls: `dnd-controls ${alignCls}`.trim()
         });
 
         // 5. Create the Buttons
@@ -1634,8 +1618,7 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
 
         // Create a single reusable hover tooltip for this block
         const tooltipWindow = document.body.createDiv({
-            cls: "dnd-inventory-tooltip",
-            attr: { style: "position: fixed; display: none; z-index: 9999; background: var(--dnd-ui-color-bg-secondary); border: 1px solid var(--dnd-ui-color-border-primary); border-radius: 6px; padding: 12px; width: 320px; box-shadow: 0 8px 16px rgba(0,0,0,0.6); pointer-events: none;" }
+            cls: "dnd-spell-tooltip"
         });
         renderChild.register(() => tooltipWindow.remove());
 
@@ -1779,7 +1762,7 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                 const emptyWindow = wrapper.createDiv({ cls: "dnd-features-window" });
                 emptyWindow.createEl("p", {
                     text: "No spells prepared or added yet. Click the 📖 Spellbook button to manage your spells!",
-                    attr: { style: "color: var(--dnd-ui-color-text-muted); font-style: italic; margin: 0; text-align: center;" }
+                    cls: "dnd-spells-empty"
                 });
                 el.empty();
                 el.appendChild(wrapper);
@@ -1814,24 +1797,17 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
 
                     const pipsContainer = slotTracker.createDiv({ cls: "dnd-spell-slots-pips" });
                     const pipStates: boolean[] = Array.from({ length: maxSlots }, (_, idx) => idx < usedSlots);
-                    const pipElements: HTMLElement[] = [];
 
                     const applyPipVisual = (pipEl: HTMLElement, active: boolean) => {
                         pipEl.classList.toggle("is-used", active);
-                        pipEl.style.backgroundColor = active ? "var(--dnd-ui-color-accent-purple)" : "transparent";
-                        pipEl.style.borderColor = active ? "var(--dnd-ui-color-accent-purple)" : "var(--dnd-ui-color-border-active)";
                         pipEl.setAttribute("title", active ? "Tap to restore slot" : "Tap to expend slot");
                     };
 
                     for (let slotIdx = 0; slotIdx < maxSlots; slotIdx++) {
                         const pip = pipsContainer.createDiv({
-                            cls: `dnd-slot-pip ${pipStates[slotIdx] ? "is-used" : ""}`,
-                            attr: {
-                                style: "touch-action: manipulation; user-select: none; -webkit-user-select: none; cursor: pointer;"
-                            }
+                            cls: `dnd-slot-pip ${pipStates[slotIdx] ? "is-used" : ""}`
                         });
                         applyPipVisual(pip, pipStates[slotIdx]);
-                        pipElements.push(pip);
 
                         pip.addEventListener("pointerdown", async (e: PointerEvent) => {
                             if (e.button !== 0 && e.pointerType === "mouse") return;
@@ -1867,7 +1843,7 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                 if (spellKeys.length === 0) {
                     spellsWindow.createEl("p", {
                         text: `No Level ${lvl} spells currently prepared.`,
-                        attr: { style: "color: var(--dnd-ui-color-text-muted); font-style: italic; font-size: 0.85em; margin: 0 0 12px 0;" }
+                        cls: "dnd-spells-level-empty"
                     });
                     continue;
                 }
@@ -1905,10 +1881,10 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                         badgeGroup.createEl("span", { text: spellData.school, cls: "dnd-spell-school-label" });
                     }
                     if (spellData.concentration) {
-                        badgeGroup.createEl("span", { text: "C", cls: "dnd-level-badge", attr: { title: "Concentration", style: "margin: 0; padding: 1px 6px; font-size: 0.75em;" } });
+                        badgeGroup.createEl("span", { text: "C", cls: "dnd-level-badge dnd-spell-badge-sm", attr: { title: "Concentration" } });
                     }
                     if (spellData.ritual) {
-                        badgeGroup.createEl("span", { text: "R", cls: "dnd-level-badge dnd-badge-combined", attr: { title: "Ritual", style: "margin: 0; padding: 1px 6px; font-size: 0.75em;" } });
+                        badgeGroup.createEl("span", { text: "R", cls: "dnd-level-badge dnd-badge-combined dnd-spell-badge-sm", attr: { title: "Ritual" } });
                     }
 
                     // --- B. CARD BODY (Left Combat Math Sidebar + Right 2x2 Metadata Grid) ---
@@ -1945,31 +1921,29 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                     // --- C. COLLAPSIBLE DESCRIPTION DRAWER (Click Card to Toggle) ---
                     if (spellData.description) {
                         const descDrawer = card.createDiv({ cls: "dnd-spell-desc-drawer" });
-                        descDrawer.style.display = "none";
                         await this.renderDndMarkdown(spellData.description, descDrawer, ctx.sourcePath, renderChild);
 
-                        card.style.cursor = "pointer";
+                        card.addClass("is-clickable");
                         card.onclick = () => {
-                            const isHidden = descDrawer.style.display === "none";
-                            descDrawer.style.display = isHidden ? "block" : "none";
+                            descDrawer.classList.toggle("is-open");
                         };
 
-                        // --- D. HOVER TOOLTIP (Matches dnd-inventory) ---
+                        // --- D. HOVER TOOLTIP ---
                         const X_OFFSET = 12;
                         const Y_OFFSET = 15;
 
                         card.addEventListener('mouseenter', async (e) => {
-                            if (descDrawer.style.display === "block") return; // Don't show tooltip if drawer is already expanded
+                            if (descDrawer.classList.contains("is-open")) return;
                             tooltipWindow.empty();
 
-                            tooltipWindow.createEl("h4", { text: spellData.name || fallbackName, attr: { style: "margin: 0 0 4px 0; color: var(--dnd-ui-color-text-bright); font-size: 1.05em;" } });
+                            tooltipWindow.createEl("h4", { text: spellData.name || fallbackName, cls: "dnd-spell-tooltip-title" });
                             const subHeader = lvl === "0" ? `${spellData.school || ""} Cantrip` : `Level ${lvl} ${spellData.school || ""}`;
-                            tooltipWindow.createEl("div", { text: subHeader.trim().toUpperCase(), attr: { style: "font-size: 0.75em; color: var(--dnd-ui-color-text-secondary); letter-spacing: 1px; margin-bottom: 8px;" } });
+                            tooltipWindow.createEl("div", { text: subHeader.trim().toUpperCase(), cls: "dnd-spell-tooltip-sub" });
 
-                            const tipDesc = tooltipWindow.createDiv({ attr: { style: "font-size: 0.9em; line-height: 1.4; color: var(--dnd-ui-color-text-primary);" } });
+                            const tipDesc = tooltipWindow.createDiv({ cls: "dnd-spell-tooltip-desc" });
                             await this.renderDndMarkdown(spellData.description, tipDesc, ctx.sourcePath, renderChild);
 
-                            tooltipWindow.style.display = "block";
+                            tooltipWindow.addClass("is-visible");
                             tooltipWindow.style.left = `${e.clientX + X_OFFSET}px`;
                             tooltipWindow.style.top = `${e.clientY + Y_OFFSET}px`;
                         });
@@ -1982,7 +1956,7 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                         });
 
                         card.addEventListener('mouseleave', () => {
-                            tooltipWindow.style.display = "none";
+                            tooltipWindow.removeClass("is-visible");
                         });
                     }
                 }
@@ -2472,12 +2446,8 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
 
             // 4. Render Responsive Grid Container
             const totalCards = cardsToRender.length;
-            const gridEl = wrapper.createDiv({
-                cls: "dnd-abilities-grid",
-                attr: {
-                    style: `display: grid; width: 100%; gap: 10px; margin: 10px 0; grid-template-columns: repeat(${totalCards}, minmax(0, 1fr)); box-sizing: border-box;`
-                }
-            });
+            const gridEl = wrapper.createDiv({ cls: "dnd-abilities-grid" });
+            gridEl.style.gridTemplateColumns = `repeat(${totalCards}, minmax(0, 1fr))`;
 
             // Dynamically split into 2 equal rows if the note width cannot fit all cards on 1 row
             const updateGridColumns = () => {
@@ -2742,13 +2712,7 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
 
             // Render 4-Column Responsive Grid (splits cleanly into 2x2 if narrow)
             const containerEl = wrapper.createDiv({ cls: "dnd-info-container" });
-
-            const gridEl = containerEl.createDiv({
-                cls: "dnd-info-grid",
-                attr: {
-                    style: "display: grid; width: 100%; gap: 10px; margin: 10px 0 6px 0; grid-template-columns: repeat(4, minmax(0, 1fr)); box-sizing: border-box;"
-                }
-            });
+            const gridEl = containerEl.createDiv({ cls: "dnd-info-grid" });
 
             const updateGridColumns = () => {
                 const width = gridEl.clientWidth;
@@ -2758,11 +2722,7 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                 const GAP_PX = 10;
                 const requiredWidth = (4 * MIN_CARD_WIDTH) + (3 * GAP_PX);
 
-                if (width < requiredWidth) {
-                    gridEl.style.gridTemplateColumns = "repeat(2, minmax(0, 1fr))";
-                } else {
-                    gridEl.style.gridTemplateColumns = "repeat(4, minmax(0, 1fr))";
-                }
+                gridEl.classList.toggle("is-2col", width < requiredWidth);
             };
 
             activeResizeObserver = new ResizeObserver(() => updateGridColumns());
@@ -2984,17 +2944,12 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
             const hdPipsContainer = hitDiceRow.createDiv({ cls: "dnd-spell-slots-pips" });
             const applyHdPipVisual = (pipEl: HTMLElement, active: boolean) => {
                 pipEl.classList.toggle("is-used", active);
-                pipEl.style.backgroundColor = active ? "var(--dnd-ui-color-accent-purple)" : "transparent";
-                pipEl.style.borderColor = active ? "var(--dnd-ui-color-accent-purple)" : "var(--dnd-ui-color-border-active)";
                 pipEl.setAttribute("title", active ? "Tap to restore Hit Die" : "Tap to spend Hit Die");
             };
 
             for (let i = 0; i < DnD_level; i++) {
                 const pip = hdPipsContainer.createDiv({
-                    cls: `dnd-slot-pip ${hitDiceStates[i] ? "is-used" : ""}`,
-                    attr: {
-                        style: "touch-action: manipulation; user-select: none; -webkit-user-select: none; cursor: pointer;"
-                    }
+                    cls: `dnd-slot-pip ${hitDiceStates[i] ? "is-used" : ""}`
                 });
                 applyHdPipVisual(pip, hitDiceStates[i]);
 
@@ -3002,7 +2957,6 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                     if (e.button !== 0 && e.pointerType === "mouse") return;
                     e.preventDefault();
                     e.stopPropagation();
-                    // Update state & visual immediately without destroying the DOM
                     hitDiceStates[i] = !hitDiceStates[i];
                     applyHdPipVisual(pip, hitDiceStates[i]);
                 });
@@ -3015,24 +2969,19 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
 
                 const deathSavesRow = healthWindow.createDiv({ cls: "dnd-health-deathsaves-row" });
 
-                // Left Pips: Failures (--dnd-ui-color-accent-red)
+                // Left Pips: Failures (--dnd-ui-color-accent-red in styles.css)
                 const leftPips = deathSavesRow.createDiv({ cls: "dnd-spell-slots-pips" });
                 for (let i = 0; i < 3; i++) {
-                    const isFailed = deathSaveLeft[i];
                     const pip = leftPips.createDiv({
-                        cls: `dnd-slot-pip dnd-deathsave-fail ${isFailed ? "is-used" : ""}`,
-                        attr: {
-                            title: "Death Save Failure",
-                            style: `touch-action: manipulation; user-select: none; -webkit-user-select: none; cursor: pointer; border-color: var(--dnd-ui-color-accent-red); ${isFailed ? "background-color: var(--dnd-ui-color-accent-red);" : "background-color: transparent;"
-                                }`
-                        }
+                        cls: `dnd-slot-pip dnd-deathsave-fail ${deathSaveLeft[i] ? "is-used" : ""}`,
+                        attr: { title: "Death Save Failure" }
                     });
                     pip.addEventListener("pointerdown", (e: PointerEvent) => {
                         if (e.button !== 0 && e.pointerType === "mouse") return;
                         e.preventDefault();
                         e.stopPropagation();
                         deathSaveLeft[i] = !deathSaveLeft[i];
-                        renderContent();
+                        pip.classList.toggle("is-used", deathSaveLeft[i]);
                     });
                 }
 
@@ -3041,24 +2990,19 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                     cls: "dnd-health-skull"
                 });
 
-                // Right Pips: Successes (--dnd-ui-color-accent-teal)
+                // Right Pips: Successes (--dnd-ui-color-accent-teal in styles.css)
                 const rightPips = deathSavesRow.createDiv({ cls: "dnd-spell-slots-pips" });
                 for (let i = 0; i < 3; i++) {
-                    const isSuccess = deathSaveRight[i];
                     const pip = rightPips.createDiv({
-                        cls: `dnd-slot-pip dnd-deathsave-success ${isSuccess ? "is-used" : ""}`,
-                        attr: {
-                            title: "Death Save Success",
-                            style: `touch-action: manipulation; user-select: none; -webkit-user-select: none; cursor: pointer; border-color: var(--dnd-ui-color-accent-teal); ${isSuccess ? "background-color: var(--dnd-ui-color-accent-teal);" : "background-color: transparent;"
-                                }`
-                        }
+                        cls: `dnd-slot-pip dnd-deathsave-success ${deathSaveRight[i] ? "is-used" : ""}`,
+                        attr: { title: "Death Save Success" }
                     });
                     pip.addEventListener("pointerdown", (e: PointerEvent) => {
                         if (e.button !== 0 && e.pointerType === "mouse") return;
                         e.preventDefault();
                         e.stopPropagation();
                         deathSaveRight[i] = !deathSaveRight[i];
-                        renderContent();
+                        pip.classList.toggle("is-used", deathSaveRight[i]);
                     });
                 }
             }

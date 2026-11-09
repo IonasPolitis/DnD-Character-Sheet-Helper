@@ -124,7 +124,7 @@ A Widget that uses a certain array strcuture to display DnD spells on your Obsid
 A Sample of the Code Block looks like this:
 ````markdown
 ```dnd-spells
-DnD_spellcasting_ability: $string$
+spellcastingAbility: $string$
 spells: $array$
 preparedSpells: $array$
 spellSlots: $array$
@@ -149,7 +149,9 @@ class-chosen-items: $array$ <optional>
 background: $string$
 background-equipment: $string$
 background-chosen-items: $array$ <optional>
-extra-items: $array$
+starterEquipment: $array$
+inventoryItems: $array$
+customItems: $array$
 ```
 ````
 Weapons and Amor related varibales are optional and when not set that section will not be made visible.
