@@ -41,11 +41,14 @@ DnD_armorAc:
 DnD_armorAcBonus:
 DnD_armorAcMod:
 DnD_attackRollMod:
+DnD_starterEquipment:
+DnD_inventoryItems:
+DnD_customItems:
 DnD_spells:
 DnD_preparedSpells:
 DnD_spellSlots:
-dnd_gold_added:
-dnd_gold_spent:
+DnD_wealthAdded:
+DnD_wealthSpent:
 DnD_hideFeature:
 cssclasses:
   - character-sheet

@@ -311,18 +311,28 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
         }
     }
 
-    // --- Helper: Safely Update Gold Frontmatter ---
-    async updateGoldFrontmatter(filePath: string, type: 'base' | 'added' | 'spent', amount: number) {
+    // --- Helper: Safely Update 4-Currency Wealth Frontmatter ([PP, GP, SP, CP]) ---
+    async updateWealthFrontmatter(filePath: string, type: 'added' | 'spent', currencyIndex: number, amount: number) {
+        if (amount <= 0 || currencyIndex < 0 || currencyIndex > 3) return;
         const file = this.app.vault.getAbstractFileByPath(filePath);
         if (file instanceof TFile) {
-            // Explicitly type the frontmatter parameter to prevent TS errors
             await this.app.fileManager.processFrontMatter(file, (frontmatter: Record<string, any>) => {
-                // Safely map the union type to the exact string key without string manipulation
-                const keyMap = { base: 'DnD_GoldBase', added: 'DnD_GoldAdded', spent: 'DnD_GoldSpent' };
-                const key = keyMap[type];
+                const key = type === 'added' ? 'DnD_wealthAdded' : 'DnD_wealthSpent';
+                let rawArr = frontmatter[key];
+                let parsedArr = ["0", "0", "0", "0"];
 
-                const current = Number(frontmatter[key]) || 0;
-                frontmatter[key] = current + amount;
+                if (typeof rawArr === "string" && rawArr.trim().startsWith("[")) {
+                    try { rawArr = JSON.parse(rawArr.trim()); } catch { rawArr = null; }
+                }
+                if (Array.isArray(rawArr)) {
+                    for (let i = 0; i < 4; i++) {
+                        parsedArr[i] = String(Number(rawArr[i]) || 0);
+                    }
+                }
+
+                const currentVal = Number(parsedArr[currencyIndex]) || 0;
+                parsedArr[currencyIndex] = String(Math.max(0, currentVal + amount));
+                frontmatter[key] = JSON.stringify(parsedArr);
             });
         }
     }
@@ -908,18 +918,34 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
         const renderChild = new MarkdownRenderChild(el);
         ctx.addChild(renderChild);
 
+        let isUpdatingInventory = false;
+        const expandedEditRows = new Set<string>();
+        let activeResizeObservers: ResizeObserver[] = [];
+
+        renderChild.register(() => {
+            activeResizeObservers.forEach(obs => obs.disconnect());
+        });
+
+        // Helper: Inject clean inline SVG vector icons
+        const setSvgIcon = (container: HTMLElement, iconType: "info" | "edit") => {
+            if (iconType === "info") {
+                container.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>`;
+            } else {
+                container.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>`;
+            }
+        };
+
         const renderContent = async () => {
+            activeResizeObservers.forEach(obs => obs.disconnect());
+            activeResizeObservers = [];
+
             const wrapper = document.createElement('div');
 
-            // --- THE INVENTORY TOOLTIP ---
-            const tooltipWindow = document.body.createDiv({
-                cls: "dnd-inventory-tooltip",
-                attr: { style: "position: fixed; display: none; z-index: 9999; background: var(--dnd-ui-color-bg-secondary); border: 1px solid var(--dnd-ui-color-border-primary); border-radius: 6px; padding: 12px; width: 300px; box-shadow: 0 8px 16px rgba(0,0,0,0.6); pointer-events: none;" }
-            });
-
-            let blockData;
+            let blockData: Record<string, any> = {};
             try {
-                blockData = parseYaml(source);
+                if (source.trim()) {
+                    blockData = parseYaml(source) || {};
+                }
             } catch (error) {
                 wrapper.createEl("p", { text: "Error: Invalid format in dnd-inventory block.", cls: "dnd-error" });
                 el.empty();
@@ -928,25 +954,32 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
             }
 
             const fileCache = this.app.metadataCache.getCache(ctx.sourcePath);
-            const frontmatter = fileCache?.frontmatter || {};
+            const frontmatter: Record<string, any> = fileCache?.frontmatter || {};
 
             const resolveValue = (val: any) => {
-                if (typeof val === 'string' && val.startsWith('frontmatter.')) {
-                    return frontmatter[val.replace('frontmatter.', '')];
+                if (typeof val === 'string') {
+                    const trimmed = val.trim().replace(/^\{\{\s*|\s*\}\}$/g, '');
+                    if (trimmed.startsWith('frontmatter.')) {
+                        return frontmatter[trimmed.replace('frontmatter.', '').trim()];
+                    }
                 }
                 return val;
             };
 
-            // 1. Resolve Variables
-            const dndClass = resolveValue(blockData.class);
-            const background = resolveValue(blockData.background);
-            const classEq = resolveValue(blockData['classEquipment']);
-            const bgEq = resolveValue(blockData['backgroundEquipment']);
-            const weaponSlot = resolveValue(blockData.weapon);
-            const weaponDamage = resolveValue(blockData.weaponDamage);
-            const armorSlot = resolveValue(blockData.armor);
-            const armorAc = resolveValue(blockData.armorAc);
-            const extraItemsRaw = resolveValue(blockData['extraItems']);
+            const sanitizeItem = (val: any) => {
+                if (!val) return null;
+                return String(val).toLowerCase().replace(/['"]/g, '').trim().replace(/\s+/g, '-');
+            };
+
+            // 1. Resolve Core Variables
+            const dndClass = resolveValue(blockData.class) ?? frontmatter['DnD_class'];
+            const background = resolveValue(blockData.background) ?? frontmatter['DnD_background'];
+            const classEq = resolveValue(blockData['classEquipment'] ?? blockData['class-equipment']) ?? frontmatter['DnD_classEquipment'];
+            const bgEq = resolveValue(blockData['backgroundEquipment'] ?? blockData['background-equipment']) ?? frontmatter['DnD_backgroundEquipment'];
+            const weaponSlot = resolveValue(blockData.weapon) ?? frontmatter['DnD_weapon'];
+            const weaponDamage = resolveValue(blockData.weaponDamage ?? blockData['weapon_damage']) ?? frontmatter['DnD_weaponDamage'];
+            const armorSlot = resolveValue(blockData.armor) ?? frontmatter['DnD_armor'];
+            const armorAc = resolveValue(blockData.armorAc ?? blockData['armor_ac']) ?? frontmatter['DnD_armorAc'];
             const edition = resolveValue(blockData.edition);
 
             const fetchOptions = {
@@ -954,218 +987,92 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                 edition: edition ? String(edition) : undefined
             };
 
-            // --- Phase 1 & 2: Pre-Pass & Build the "Available Choices" Pools ---
-            const classChosenItemsRaw = resolveValue(blockData['classChosenItems']);
-            const bgChosenItemsRaw = resolveValue(blockData['backgroundChosenItems']);
-
-            // Helper to sanitize items natively
-            const sanitizeItem = (val: any) => {
-                if (!val) return null;
-                return String(val).toLowerCase().replace(/['"]/g, '').trim().replace(/\s+/g, '-');
-            };
-
-            // Reusable helper to securely build a standalone item pool
-            const buildPool = async (rawItems: any) => {
-                const list = Array.isArray(rawItems) ? rawItems : (typeof rawItems === 'string' ? rawItems.split(',') : (rawItems ? [String(rawItems)] : []));
-                const pool: { id: string, type: string }[] = [];
-                for (const item of list) {
-                    const safeId = sanitizeItem(item);
-                    if (!safeId) continue;
-
-                    const data = await getItemData(this.app, fetchOptions, safeId);
-                    if (data && data.type) {
-                        // Fully sanitize the type to match class requirements perfectly
-                        pool.push({ id: safeId, type: sanitizeItem(data.type) as string });
-                    }
-                }
-                return pool;
-            };
-
-            // Build STRICTLY SEPARATE pools for class and background!
-            const classChosenItemsPool = await buildPool(classChosenItemsRaw);
-            const bgChosenItemsPool = await buildPool(bgChosenItemsRaw);
-
-            // 2. Fetch Core Data to read Starting Equipment
+            // 2. Calculate Base Granted Gold from Class & Background Starting Equipment
             let grantedGold = 0;
-            const startingItemCounts: Record<string, number> = {};
-            const extraItemCounts: Record<string, number> = {};
-
-            // --- Phase 3: The Greedy Matcher Engine ---
-            const addItemsToPool = (eqData: any, targetPool: Record<string, number>, sourcePool: { id: string, type: string }[]) => {
-                if (!eqData) return;
-                if (eqData.gold) grantedGold += Number(eqData.gold);
-
-                // Safely handle both Class format (eqData.items) and Background format (direct object)
-                const itemsList = eqData.items ? eqData.items : (eqData.gold ? null : eqData);
-
-                if (itemsList) {
-                    // Separate strict items from flexible "OR" slots
-                    const strictSlots: [string, number][] = [];
-                    const flexibleSlots: [string, number][] = [];
-
-                    for (const [itemId, qty] of Object.entries(itemsList)) {
-                        // Detect our Pipe syntax!
-                        if (itemId.includes('|')) {
-                            flexibleSlots.push([itemId, Number(qty)]);
-                        } else {
-                            strictSlots.push([itemId, Number(qty)]);
-                        }
-                    }
-
-                    // 1. Process strict items immediately (e.g., "dagger": 5)
-                    for (const [itemId, qty] of strictSlots) {
-                        targetPool[itemId] = (targetPool[itemId] || 0) + Number(qty);
-                    }
-
-                    // 2. Process flexible "OR" slots (e.g., "artisans-tool|musical-instrument": 1)
-                    // Sort them so slots with FEWER options are processed first to avoid starving them
-                    flexibleSlots.sort((a, b) => a[0].split('|').length - b[0].split('|').length);
-
-                    for (const [itemId, qty] of flexibleSlots) {
-                        // Pass each side of the pipe through our global sanitizer for a perfect 1:1 match
-                        const acceptedTypes = itemId.split('|').map(t => sanitizeItem(t) as string);
-                        let amountNeeded = Number(qty);
-
-                        // Search the SPECIFIC source pool for matching items
-                        for (let i = 0; i < sourcePool.length && amountNeeded > 0; i++) {
-                            const poolItem = sourcePool[i];
-
-                            // If the item's type matches one of the slot's accepted types...
-                            if (acceptedTypes.includes(poolItem.type)) {
-                                // Add it to the backpack
-                                targetPool[poolItem.id] = (targetPool[poolItem.id] || 0) + 1;
-                                amountNeeded -= 1;
-                                sourcePool.splice(i, 1);
-                                i--;
-                            }
-                        }
-                    }
-                }
-            };
-
             if (dndClass && classEq) {
                 const primaryClass = Array.isArray(dndClass) ? dndClass[0] : dndClass;
                 const classData = await getClassData(this.app, fetchOptions, primaryClass);
-                if (classData?.['startingEquipment']) addItemsToPool(classData['startingEquipment'][classEq], startingItemCounts, classChosenItemsPool);
+                const eqObj = classData?.startingEquipment?.[classEq];
+                if (eqObj?.gold) grantedGold += Number(eqObj.gold) || 0;
             }
-
-            // Check for both the background name AND the A/B choice variable
             if (background && bgEq) {
-                // Fetch the background data
                 const bgData = await getBackgroundData(this.app, fetchOptions, background);
+                const eqObj = bgData?.startingEquipment?.[bgEq];
+                if (eqObj?.gold) grantedGold += Number(eqObj.gold) || 0;
+            }
 
-                if (bgData?.['startingEquipment']) {
-                    addItemsToPool(bgData['startingEquipment'][bgEq], startingItemCounts, bgChosenItemsPool);
+            // 3. Parse Inventory Arrays from Frontmatter / Block
+            const parseJsonArray = (raw: any): any[] => {
+                const resolved = resolveValue(raw);
+                if (!resolved) return [];
+                if (Array.isArray(resolved)) return resolved;
+                if (typeof resolved === 'string' && resolved.trim().startsWith('[')) {
+                    try { return JSON.parse(resolved.trim()); } catch { return []; }
                 }
-            }
-
-            // Add manual extra items to the Extra Items pool
-            let extraItems: string[] = [];
-            if (Array.isArray(extraItemsRaw)) {
-                extraItems = extraItemsRaw;
-            } else if (typeof extraItemsRaw === 'string') {
-                extraItems = extraItemsRaw.split(',');
-            } else if (extraItemsRaw) {
-                extraItems = [String(extraItemsRaw)];
-            }
-
-            for (const item of extraItems) {
-                // Use our global helper to sanitize the string instantly
-                const safeItem = sanitizeItem(item);
-                if (!safeItem) continue;
-
-                // Directly load the item! No variantMap interception is needed.
-                extraItemCounts[safeItem] = (extraItemCounts[safeItem] || 0) + 1;
-            }
-
-            // 3. Omission Logic for Equipped Slots (Checks both pools!)
-            const consumeItem = (rawItemName: any) => {
-                // Using the helper protects against stray quotes in the frontmatter!
-                const safeName = sanitizeItem(rawItemName);
-                if (!safeName) return null;
-
-                if (startingItemCounts[safeName] && startingItemCounts[safeName] > 0) {
-                    startingItemCounts[safeName] -= 1;
-                } else if (extraItemCounts[safeName] && extraItemCounts[safeName] > 0) {
-                    extraItemCounts[safeName] -= 1;
-                }
-                // Return clean, exact text (without quotes) for fallback display
-                return String(rawItemName).replace(/['"]/g, '').trim();
+                return [];
             };
 
-            const equippedWeapon = consumeItem(weaponSlot);
-            const equippedArmor = consumeItem(armorSlot);
+            // Structure: [ ["<item-id>", "<qty>", "<show: true/false>"], ... ]
+            const rawStarter = parseJsonArray(blockData.starterEquipment ?? frontmatter['DnD_starterEquipment']);
+            const rawInvItems = parseJsonArray(blockData.inventoryItems ?? frontmatter['DnD_inventoryItems']);
+            // Structure: [ ["<Name>", "<qty>", "<show>", "<weight>", "<cost>", "<type>", "<description>"], ... ]
+            const rawCustomItems = parseJsonArray(blockData.customItems ?? frontmatter['DnD_customItems']);
 
-            // --- 4. RENDER UI ---
             wrapper.createEl("h3", { text: "Equipment, Wealth & Items:", cls: "dnd-section-header" });
 
             // -----------------------------------------------------------
-            // A. WEAPON & ARMOR 
+            // A. EQUIPPED WEAPON & ARMOR
             // -----------------------------------------------------------
-            if (equippedWeapon || equippedArmor) {
-                // Main container with attr to ensure Flexbox works
+            const cleanWeapon = weaponSlot ? String(weaponSlot).replace(/['"]/g, '').trim() : "";
+            const cleanArmor = armorSlot ? String(armorSlot).replace(/['"]/g, '').trim() : "";
+            const hasWeapon = cleanWeapon !== "" && cleanWeapon.toLowerCase() !== "none" && !cleanWeapon.startsWith("<");
+            const hasArmor = cleanArmor !== "" && cleanArmor.toLowerCase() !== "none" && !cleanArmor.startsWith("<");
+
+            if (hasWeapon || hasArmor) {
                 const equipGrid = wrapper.createDiv({
-                    attr: { style: "display: flex; gap: 10px;" }
+                    attr: { style: "display: flex; gap: 10px; margin-bottom: 10px;" }
                 });
 
                 const renderSlot = async (
-                    slotLabel: "Weapon" | "Armor",
-                    rawItemInput: any,
+                    rawItemInput: string,
                     manualStat: any,
                     expectedType: "Weapon" | "Armor"
                 ) => {
                     if (!rawItemInput) return;
-
-                    const actualName = String(rawItemInput).replace(/['"]/g, '').trim();
-                    if (actualName.toLowerCase() === "none") return;
-
-                    // Use the global helper so item mapping is always perfectly consistent
                     const safeName = sanitizeItem(rawItemInput) as string;
-
-                    let data = await getItemData(this.app, fetchOptions, safeName);
-
-                    // 2. Type-Checking: Ensure the item exists AND matches the expected type
+                    const data = await getItemData(this.app, fetchOptions, safeName);
                     const isRecognizedType = data && data.type && String(data.type).toLowerCase().includes(expectedType.toLowerCase());
 
-                    // Default to fallback behavior (raw name, manual stat, no description)
-                    let displayName = actualName;
+                    let displayName = rawItemInput;
                     let displayStat = manualStat ? String(manualStat) : "-";
                     let displayDesc = "";
 
-                    // 3. Apply Official Data if recognized
                     if (isRecognizedType) {
-                        displayName = data.name || actualName;
+                        displayName = data.name || rawItemInput;
                         displayStat = manualStat ? String(manualStat) : (expectedType === "Weapon" ? (data.damage || "-") : (data.ac || "-"));
                         displayDesc = data.description || "";
                     }
 
-                    // Card styling
                     const card = equipGrid.createDiv({
                         cls: "dnd-features-window",
                         attr: { style: "flex: 1; display: flex; flex-direction: column; padding: 10px; text-align: center; margin: 0; justify-content: center; gap: 6px;" }
                     });
 
-                    // TOP: Item Name
                     card.createDiv({
                         text: displayName.toUpperCase(),
                         attr: { style: "font-size: 0.85em; color: var(--dnd-ui-color-text-secondary); letter-spacing: 1.5px; font-weight: 600;" }
                     });
 
-                    // MIDDLE: The Stat
                     card.createDiv({
                         text: displayStat,
                         attr: { style: "font-size: 1.6em; font-weight: bold; color: var(--dnd-ui-color-text-bright);" }
                     });
 
-                    // BOTTOM: Description 
                     if (displayDesc) {
                         const noteDiv = card.createDiv({
                             attr: { style: "font-size: 0.9em; color: var(--dnd-ui-color-text-sublabel); line-height: 1.3;" }
                         });
-
                         await this.renderDndMarkdown(displayDesc, noteDiv, ctx.sourcePath, renderChild);
-
-                        // Strip Obsidian's block paragraph margins so the card stays beautifully compact
                         noteDiv.querySelectorAll('*').forEach((childNode: Element) => {
                             const childEl = childNode as HTMLElement;
                             childEl.style.display = "inline";
@@ -1175,40 +1082,133 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                     }
                 };
 
-                // Inject the updated parameters including our expected Types!
-                await renderSlot("Weapon", equippedWeapon, weaponDamage, "Weapon");
-                await renderSlot("Armor", equippedArmor, armorAc, "Armor");
+                if (hasWeapon) await renderSlot(cleanWeapon, weaponDamage, "Weapon");
+                if (hasArmor) await renderSlot(cleanArmor, armorAc, "Armor");
             }
 
             // -----------------------------------------------------------
-            // B. WEALTH
+            // B. 4-CURRENCY WEALTH ([ "<platinum>", "<gold>", "<silver>", "<copper>" ])
             // -----------------------------------------------------------
-            const goldBase = Number(frontmatter['DnD_GoldBase']) || 0;
-            const goldAdded = Number(frontmatter['DnD_GoldAdded']) || 0;
-            const goldSpent = Number(frontmatter['DnD_GoldSpent']) || 0;
-            const totalGold = goldBase + goldAdded + grantedGold - goldSpent;
+            const parseWealthTuple = (raw: any): number[] => {
+                const arr = parseJsonArray(raw);
+                return [
+                    Number(arr[0]) || 0,
+                    Number(arr[1]) || 0,
+                    Number(arr[2]) || 0,
+                    Number(arr[3]) || 0
+                ];
+            };
 
-            const wealthWindow = wrapper.createDiv({
-                cls: "dnd-features-window",
-                attr: { style: "display: flex; flex-direction: row; align-items: center; gap: 10px; padding: 12px 16px;" }
+            const wealthAdded = parseWealthTuple(blockData.wealthAdded ?? frontmatter['DnD_wealthAdded']);
+            const wealthSpent = parseWealthTuple(blockData.wealthSpent ?? frontmatter['DnD_wealthSpent']);
+            const baseWealth = [0, grantedGold, 0, 0];
+
+            const CURRENCIES = [
+                { name: "Platinum", abbr: "PP", idx: 0 },
+                { name: "Gold", abbr: "GP", idx: 1 },
+                { name: "Silver", abbr: "SP", idx: 2 },
+                { name: "Copper", abbr: "CP", idx: 3 }
+            ];
+
+            const wealthGrid = wrapper.createDiv({
+                cls: "dnd-wealth-grid",
+                attr: {
+                    style: "display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin: 10px 0;"
+                }
             });
 
-            // 1. The Left Group (Badge + Gold Text remain close together)
-            const wealth = wealthWindow.createEl("span", { attr: { style: "display: flex; align-items: center;" } });
-            wealth.createEl("span", { text: "Wealth", cls: "dnd-level-badge", attr: { style: "margin-right: 10px;" } });
-            wealth.createEl("strong", { text: `${totalGold} GP`, attr: { style: "font-size: 1.1em; color: var(--dnd-ui-color-text-bright);" } });
-            // 2. The Controls
-            const amountInput = wealthWindow.createEl("input", { type: "number", value: "1", attr: { style: "text-align: center; background: var(--dnd-ui-color-bg-darker); border: 1px solid var(--dnd-ui-color-border-primary); color: var(--dnd-ui-color-text-bright); border-radius: 4px; padding: 4px; width: 40px;" } });
-            const addBtn = wealthWindow.createEl("button", { text: "Add" });
-            const subBtn = wealthWindow.createEl("button", { text: "Spend" });
+            const updateWealthGridCols = () => {
+                const w = wealthGrid.clientWidth;
+                if (w <= 0) return;
+                if (w < 380) {
+                    wealthGrid.style.gridTemplateColumns = "minmax(0, 1fr)";
+                } else if (w < 680) {
+                    wealthGrid.style.gridTemplateColumns = "repeat(2, minmax(0, 1fr))";
+                } else {
+                    wealthGrid.style.gridTemplateColumns = "repeat(4, minmax(0, 1fr))";
+                }
+            };
+            const wealthObserver = new ResizeObserver(() => updateWealthGridCols());
+            wealthObserver.observe(wealthGrid);
+            activeResizeObservers.push(wealthObserver);
 
-            addBtn.onclick = () => this.updateGoldFrontmatter(ctx.sourcePath, 'added', Number(amountInput.value) || 0);
-            subBtn.onclick = () => this.updateGoldFrontmatter(ctx.sourcePath, 'spent', Number(amountInput.value) || 0);
+            for (const curr of CURRENCIES) {
+                let currentTotal = baseWealth[curr.idx] + wealthAdded[curr.idx] - wealthSpent[curr.idx];
+
+                const currCard = wealthGrid.createDiv({
+                    cls: "dnd-features-window",
+                    attr: {
+                        style: "margin: 0; padding: 10px 12px; display: flex; flex-direction: column; justify-content: space-between; gap: 8px;"
+                    }
+                });
+
+                // Top Row: Badge + Total Value
+                const topRow = currCard.createDiv({
+                    attr: { style: "display: flex; justify-content: space-between; align-items: center;" }
+                });
+                topRow.createEl("span", {
+                    text: curr.name,
+                    cls: "dnd-level-badge",
+                    attr: { style: "margin: 0; font-size: 0.78em; padding: 2px 7px;" }
+                });
+                const totalValueEl = topRow.createEl("strong", {
+                    text: `${currentTotal} ${curr.abbr}`,
+                    attr: { style: "font-size: 1.15em; color: var(--dnd-ui-color-text-bright);" }
+                });
+
+                // Bottom Row: Input + Add / Spend Buttons
+                const controlsRow = currCard.createDiv({
+                    attr: { style: "display: flex; align-items: center; gap: 6px; width: 100%;" }
+                });
+
+                const amtInput = controlsRow.createEl("input", {
+                    type: "number",
+                    value: "1",
+                    attr: {
+                        min: "1",
+                        style: "width: 44px; flex-shrink: 0; text-align: center; background: var(--dnd-ui-color-bg-darker); border: 1px solid var(--dnd-ui-color-border-primary); color: var(--dnd-ui-color-text-bright); border-radius: 4px; padding: 3px 4px; font-size: 0.9em;"
+                    }
+                });
+
+                const addBtn = controlsRow.createEl("button", {
+                    text: "Add",
+                    attr: { style: "flex: 1; padding: 4px 6px; font-size: 0.82em; cursor: pointer;" }
+                });
+                const spendBtn = controlsRow.createEl("button", {
+                    text: "Spend",
+                    attr: { style: "flex: 1; padding: 4px 6px; font-size: 0.82em; cursor: pointer;" }
+                });
+
+                addBtn.onclick = async () => {
+                    const amt = Math.max(0, Number(amtInput.value) || 0);
+                    if (amt <= 0) return;
+                    currentTotal += amt;
+                    totalValueEl.setText(`${currentTotal} ${curr.abbr}`);
+                    isUpdatingInventory = true;
+                    try {
+                        await this.updateWealthFrontmatter(ctx.sourcePath, 'added', curr.idx, amt);
+                    } finally {
+                        setTimeout(() => { isUpdatingInventory = false; }, 150);
+                    }
+                };
+
+                spendBtn.onclick = async () => {
+                    const amt = Math.max(0, Number(amtInput.value) || 0);
+                    if (amt <= 0) return;
+                    currentTotal -= amt;
+                    totalValueEl.setText(`${currentTotal} ${curr.abbr}`);
+                    isUpdatingInventory = true;
+                    try {
+                        await this.updateWealthFrontmatter(ctx.sourcePath, 'spent', curr.idx, amt);
+                    } finally {
+                        setTimeout(() => { isUpdatingInventory = false; }, 150);
+                    }
+                };
+            }
 
             // -----------------------------------------------------------
-            // C. BACKPACK CONTENTS
+            // C. BACKPACK CONTENTS (3-Column Desktop / 1-Column Mobile)
             // -----------------------------------------------------------
-            // Restored the window class so the outer box appears!
             const backpackWindow = wrapper.createDiv({ cls: "dnd-features-window" });
 
             const backpackHeader = backpackWindow.createDiv({
@@ -1221,116 +1221,319 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                 text: "Weight: 0 lbs",
                 attr: { style: "font-size: 0.85em; color: var(--dnd-ui-color-text-muted); font-weight: normal; letter-spacing: 0.5px;" }
             });
-            let totalWeight = 0;
 
-            const renderPool = async (pool: Record<string, number>, title?: string) => {
-                // Filter out items with 0 quantity so we only create headers/grids if there are items to show
-                const validItems = Object.entries(pool).filter(([_, qty]) => qty > 0);
-                if (validItems.length === 0) return;
+            interface RenderableInventoryItem {
+                rowKey: string;
+                sourceType: "starter" | "rulebook" | "custom";
+                arrayIndex: number;
+                idOrName: string;
+                displayName: string;
+                qty: number;
+                show: boolean;
+                unitWeight: number;
+                unitCost: number;
+                rulebookData: any | null;
+            }
 
-                if (title) {
-                    // Small divider sub-header strictly for Extra Items
-                    backpackWindow.createEl("div", { text: title, attr: { style: "margin: 16px 0 8px 0; font-weight: bold; font-size: 0.85em; text-transform: uppercase; color: var(--dnd-ui-color-text-sublabel); border-bottom: 1px solid var(--dnd-ui-color-bg-tertiary); padding-bottom: 4px;" } });
-                }
+            const itemsToRender: RenderableInventoryItem[] = [];
 
-                // --- THE RESPONSIVE GRID CONTAINER ---
-                const gridContainer = backpackWindow.createDiv({
-                    cls: "dnd-inventory-grid"
+            // 1. Gather Starter Equipment
+            for (let i = 0; i < rawStarter.length; i++) {
+                const entry = rawStarter[i];
+                if (!Array.isArray(entry) || entry.length < 2) continue;
+                const itemId = String(entry[0]).trim();
+                if (!itemId || itemId.startsWith("<")) continue;
+                const qty = Math.max(0, Number(entry[1]) || 0);
+                const show = entry.length >= 3 ? String(entry[2]).toLowerCase() !== "false" : true;
+                if (!show) continue;
+
+                const data = await getItemData(this.app, fetchOptions, itemId);
+                const fallbackName = itemId.replace(/\b\w/g, c => c.toUpperCase()).replace(/-/g, ' ');
+                itemsToRender.push({
+                    rowKey: `starter_${i}_${itemId}`,
+                    sourceType: "starter",
+                    arrayIndex: i,
+                    idOrName: itemId,
+                    displayName: data?.name || fallbackName,
+                    qty,
+                    show,
+                    unitWeight: Number(data?.weight) || 0,
+                    unitCost: Number(data?.cost) || 0,
+                    rulebookData: data || null
                 });
+            }
 
-                for (const [itemId, qty] of validItems) {
-                    let data = await getItemData(this.app, fetchOptions, itemId);
-                    const fallbackName = itemId.replace(/\b\w/g, c => c.toUpperCase()).replace(/-/g, ' ');
-                    if (!data) data = { name: fallbackName, description: "" };
+            // 2. Gather Added Rulebook / Custom-Rulebook Items
+            for (let i = 0; i < rawInvItems.length; i++) {
+                const entry = rawInvItems[i];
+                if (!Array.isArray(entry) || entry.length < 2) continue;
+                const itemId = String(entry[0]).trim();
+                if (!itemId || itemId.startsWith("<")) continue;
+                const qty = Math.max(0, Number(entry[1]) || 0);
+                const show = entry.length >= 3 ? String(entry[2]).toLowerCase() !== "false" : true;
+                if (!show) continue;
 
-                    // STRICT ONE LINE CONTAINER
-                    const itemRow = gridContainer.createEl("span", {
-                        attr: { style: "display: flex; flex-direction: row; align-items: center; width: 100%; padding: 3px 0; cursor: default;" }
-                    });
+                const data = await getItemData(this.app, fetchOptions, itemId);
+                const fallbackName = itemId.replace(/\b\w/g, c => c.toUpperCase()).replace(/-/g, ' ');
+                itemsToRender.push({
+                    rowKey: `rulebook_${i}_${itemId}`,
+                    sourceType: "rulebook",
+                    arrayIndex: i,
+                    idOrName: itemId,
+                    displayName: data?.name || fallbackName,
+                    qty,
+                    show,
+                    unitWeight: Number(data?.weight) || 0,
+                    unitCost: Number(data?.cost) || 0,
+                    rulebookData: data || null
+                });
+            }
 
-                    // --- HOVER TOOLTIP ENGINE ---
-                    const X_OFFSET = 12; // Pixels to the right of the cursor
-                    const Y_OFFSET = 15; // Pixels below the cursor
+            // 3. Gather On-the-Fly Custom UI Items
+            for (let i = 0; i < rawCustomItems.length; i++) {
+                const entry = rawCustomItems[i];
+                if (!Array.isArray(entry) || entry.length < 2) continue;
+                const customName = String(entry[0]).trim();
+                if (!customName || customName.startsWith("<")) continue;
+                const qty = Math.max(0, Number(entry[1]) || 0);
+                const show = entry.length >= 3 ? String(entry[2]).toLowerCase() !== "false" : true;
+                if (!show) continue;
 
-                    itemRow.addEventListener('mouseenter', async (e) => {
-                        tooltipWindow.empty(); // Wipe the previous item's data
+                itemsToRender.push({
+                    rowKey: `custom_${i}_${customName}`,
+                    sourceType: "custom",
+                    arrayIndex: i,
+                    idOrName: customName,
+                    displayName: customName,
+                    qty,
+                    show,
+                    unitWeight: Number(entry[3]) || 0,
+                    unitCost: Number(entry[4]) || 0,
+                    rulebookData: null
+                });
+            }
 
-                        // 1. Name & Category
-                        tooltipWindow.createEl("h4", { text: data.name, attr: { style: "margin: 0 0 4px 0; color: var(--dnd-ui-color-text-bright); font-size: 1.1em;" } });
-                        if (data.type) {
-                            tooltipWindow.createEl("div", { text: data.type.toUpperCase(), attr: { style: "font-size: 0.75em; color: var(--dnd-ui-color-text-secondary); letter-spacing: 1px; margin-bottom: 8px;" } });
-                        }
+            const recalculateTotalWeight = () => {
+                const totalWeight = itemsToRender.reduce((sum, it) => sum + (it.unitWeight * it.qty), 0);
+                weightTracker.setText(`Weight: ${totalWeight % 1 === 0 ? totalWeight : totalWeight.toFixed(1)} lbs`);
+            };
 
-                        // 2. Stats (Weight & Cost)
-                        const statsDiv = tooltipWindow.createDiv({ attr: { style: "display: flex; gap: 15px; margin-bottom: 8px; font-size: 0.85em; color: var(--dnd-ui-color-text-muted);" } });
-
-                        if (data.weight) statsDiv.createEl("span", { text: `Weight: ${data.weight} lbs` });
-                        if (data.cost) statsDiv.createEl("span", { text: `Cost: ${data.cost} GP` });
-
-                        // 3. Description (Rendered securely with your Markdown engine!)
-                        if (data.description) {
-                            const descDiv = tooltipWindow.createDiv({ attr: { style: "font-size: 0.9em; line-height: 1.4; color: var(--dnd-ui-color-text-primary);" } });
-                            await this.renderDndMarkdown(data.description, descDiv, ctx.sourcePath, renderChild);
-                        }
-
-                        // Make visible and position using your custom variables
-                        tooltipWindow.style.display = "block";
-                        tooltipWindow.style.left = `${e.clientX + X_OFFSET}px`;
-                        tooltipWindow.style.top = `${e.clientY + Y_OFFSET}px`;
-                    });
-
-                    // Smoothly follow the mouse, using your custom variables
-                    itemRow.addEventListener('mousemove', (e) => {
-                        const xPos = e.clientX + X_OFFSET;
-                        const safeX = (xPos + 300 > window.innerWidth) ? e.clientX - 300 - X_OFFSET : xPos;
-
-                        tooltipWindow.style.left = `${safeX}px`;
-                        tooltipWindow.style.top = `${e.clientY + Y_OFFSET}px`;
-                    });
-
-                    // Hide it instantly when the mouse leaves the row
-                    itemRow.addEventListener('mouseleave', () => {
-                        tooltipWindow.style.display = "none";
-                    });
-
-                    // 1. Badge 
-                    itemRow.createEl("span", { text: `x${qty}`, cls: "dnd-level-badge", attr: { style: "margin: 0 10px 0 0; flex-shrink: 0;" } });
-
-                    // 2. Name (Conditional Colon!)
-                    const hasExtraInfo = !!(data.weight || data.cost);
-                    const colon = hasExtraInfo ? ": " : "";
-
-                    itemRow.createEl("strong", { text: data.name + colon, attr: { style: "color: var(--dnd-ui-color-text-bright); margin-right: 4px" } });
-
-                    // 3. Weight & Cost (Fixed the 'display: color:' typo here)
-                    const rightSide = itemRow.createEl("span", {
-                        attr: { style: "color: var(--dnd-ui-color-text-muted); font-size: 0.9em; white-space: nowrap; text-align: center;" }
-                    });
-
-                    if (data.weight) {
-                        rightSide.createEl("span", { text: `${data.weight * qty}lbs,  ` });
-
-                        totalWeight += (data.weight * qty);
+            const saveItemQuantity = async (item: RenderableInventoryItem, newQty: number) => {
+                isUpdatingInventory = true;
+                try {
+                    if (item.sourceType === "starter" && Array.isArray(rawStarter[item.arrayIndex])) {
+                        rawStarter[item.arrayIndex] = [
+                            String(rawStarter[item.arrayIndex][0]),
+                            String(newQty),
+                            String(rawStarter[item.arrayIndex][2] ?? "true")
+                        ];
+                        await this.updateCharacterFrontmatter(ctx.sourcePath, {
+                            "DnD_starterEquipment": JSON.stringify(rawStarter)
+                        });
+                    } else if (item.sourceType === "rulebook" && Array.isArray(rawInvItems[item.arrayIndex])) {
+                        rawInvItems[item.arrayIndex] = [
+                            String(rawInvItems[item.arrayIndex][0]),
+                            String(newQty),
+                            String(rawInvItems[item.arrayIndex][2] ?? "true")
+                        ];
+                        await this.updateCharacterFrontmatter(ctx.sourcePath, {
+                            "DnD_inventoryItems": JSON.stringify(rawInvItems)
+                        });
+                    } else if (item.sourceType === "custom" && Array.isArray(rawCustomItems[item.arrayIndex])) {
+                        const existing = rawCustomItems[item.arrayIndex];
+                        rawCustomItems[item.arrayIndex] = [
+                            String(existing[0] ?? ""),
+                            String(newQty),
+                            String(existing[2] ?? "true"),
+                            String(existing[3] ?? "0"),
+                            String(existing[4] ?? "0"),
+                            String(existing[5] ?? "Gear"),
+                            String(existing[6] ?? "")
+                        ];
+                        await this.updateCharacterFrontmatter(ctx.sourcePath, {
+                            "DnD_customItems": JSON.stringify(rawCustomItems)
+                        });
                     }
-                    if (data.cost) {
-                        rightSide.createEl("span", { text: `${data.cost}GP` });
-                    }
+                } finally {
+                    setTimeout(() => { isUpdatingInventory = false; }, 150);
                 }
             };
 
-            await renderPool(startingItemCounts);
-            await renderPool(extraItemCounts, "Extra Items");
-            weightTracker.setText(`Weight: ${totalWeight % 1 === 0 ? totalWeight : totalWeight.toFixed(1)} lbs`);
+            if (itemsToRender.length === 0) {
+                backpackWindow.createEl("p", {
+                    text: "No visible items in backpack. Click the 🎒 Inventory button to manage or add items!",
+                    attr: { style: "color: var(--dnd-ui-color-text-muted); font-style: italic; margin: 6px 0; text-align: center;" }
+                });
+            } else {
+                const gridContainer = backpackWindow.createDiv({
+                    cls: "dnd-inventory-grid",
+                    attr: {
+                        style: "display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px 14px; width: 100%; box-sizing: border-box;"
+                    }
+                });
 
+                const updateBackpackCols = () => {
+                    const w = gridContainer.clientWidth;
+                    if (w <= 0) return;
+                    // 1-column simple list on small screens & phones; 3 columns on standard screens
+                    if (w < 580) {
+                        gridContainer.style.gridTemplateColumns = "minmax(0, 1fr)";
+                    } else {
+                        gridContainer.style.gridTemplateColumns = "repeat(3, minmax(0, 1fr))";
+                    }
+                };
+                const bpObserver = new ResizeObserver(() => updateBackpackCols());
+                bpObserver.observe(gridContainer);
+                activeResizeObservers.push(bpObserver);
+
+                for (const item of itemsToRender) {
+                    const itemRow = gridContainer.createDiv({
+                        attr: {
+                            style: "display: flex; flex-direction: row; align-items: center; justify-content: space-between; width: 100%; padding: 4px 8px; border-radius: 5px; background: var(--dnd-ui-color-bg-secondary); border: 1px solid var(--dnd-ui-color-border-primary); box-sizing: border-box; gap: 6px; min-width: 0;"
+                        }
+                    });
+
+                    // Left Group: [xQty] Badge + Name + Weight/Cost
+                    const leftGroup = itemRow.createDiv({
+                        attr: { style: "display: flex; align-items: center; min-width: 0; flex: 1; overflow: hidden;" }
+                    });
+
+                    const qtyBadge = leftGroup.createEl("span", {
+                        text: `x${item.qty}`,
+                        cls: "dnd-level-badge",
+                        attr: { style: "margin: 0 8px 0 0; flex-shrink: 0; padding: 1px 6px; font-size: 0.8em;" }
+                    });
+
+                    const hasStats = item.unitWeight > 0 || item.unitCost > 0;
+                    leftGroup.createEl("strong", {
+                        text: item.displayName + (hasStats ? ": " : ""),
+                        attr: { style: "color: var(--dnd-ui-color-text-bright); margin-right: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 0.92em;" }
+                    });
+
+                    const statsSpan = leftGroup.createEl("span", {
+                        attr: { style: "color: var(--dnd-ui-color-text-muted); font-size: 0.82em; white-space: nowrap; flex-shrink: 0;" }
+                    });
+
+                    const updateStatsText = () => {
+                        const parts: string[] = [];
+                        if (item.unitWeight > 0) {
+                            const w = item.unitWeight * item.qty;
+                            parts.push(`${w % 1 === 0 ? w : w.toFixed(1)}lbs`);
+                        }
+                        if (item.unitCost > 0) {
+                            parts.push(`${item.unitCost}GP`);
+                        }
+                        statsSpan.setText(parts.join(", "));
+                    };
+                    updateStatsText();
+
+                    // Right Group: Optional Stepper (- / +) + Info Vector Button + Edit Vector Button
+                    const rightActions = itemRow.createDiv({
+                        attr: { style: "display: flex; align-items: center; gap: 4px; flex-shrink: 0;" }
+                    });
+
+                    const isExpanded = expandedEditRows.has(item.rowKey);
+                    const stepperGroup = rightActions.createDiv({
+                        attr: { style: `display: ${isExpanded ? "flex" : "none"}; align-items: center; gap: 3px; margin-right: 2px;` }
+                    });
+
+                    const minusBtn = stepperGroup.createEl("button", {
+                        text: "−",
+                        attr: {
+                            title: "Decrease Quantity",
+                            style: "width: 22px; height: 22px; padding: 0; font-size: 0.95em; line-height: 1; display: flex; align-items: center; justify-content: center; border-radius: 4px; cursor: pointer; touch-action: manipulation; user-select: none;"
+                        }
+                    });
+
+                    const plusBtn = stepperGroup.createEl("button", {
+                        text: "+",
+                        attr: {
+                            title: "Increase Quantity",
+                            style: "width: 22px; height: 22px; padding: 0; font-size: 0.95em; line-height: 1; display: flex; align-items: center; justify-content: center; border-radius: 4px; cursor: pointer; touch-action: manipulation; user-select: none;"
+                        }
+                    });
+
+                    minusBtn.addEventListener("pointerdown", async (e: PointerEvent) => {
+                        if (e.button !== 0 && e.pointerType === "mouse") return;
+                        e.preventDefault();
+                        e.stopPropagation();
+                        if (item.qty <= 0) return;
+                        item.qty -= 1;
+                        qtyBadge.setText(`x${item.qty}`);
+                        updateStatsText();
+                        recalculateTotalWeight();
+                        await saveItemQuantity(item, item.qty);
+                    });
+
+                    plusBtn.addEventListener("pointerdown", async (e: PointerEvent) => {
+                        if (e.button !== 0 && e.pointerType === "mouse") return;
+                        e.preventDefault();
+                        e.stopPropagation();
+                        item.qty += 1;
+                        qtyBadge.setText(`x${item.qty}`);
+                        updateStatsText();
+                        recalculateTotalWeight();
+                        await saveItemQuantity(item, item.qty);
+                    });
+
+                    // 1. Info Button (Vector SVG) - ONLY for Native / Custom Rulebook items (not on-the-fly custom items)
+                    if (item.sourceType !== "custom" && item.rulebookData) {
+                        const infoBtn = rightActions.createEl("button", {
+                            attr: {
+                                title: "Item Details",
+                                style: "width: 24px; height: 24px; padding: 0; display: flex; align-items: center; justify-content: center; background: transparent; border: 1px solid transparent; border-radius: 4px; color: var(--dnd-ui-color-text-secondary); box-shadow: none; cursor: pointer;"
+                            }
+                        });
+                        setSvgIcon(infoBtn, "info");
+                        infoBtn.onmouseenter = () => { infoBtn.style.background = "var(--dnd-ui-color-bg-hover)"; infoBtn.style.color = "var(--dnd-ui-color-text-bright)"; };
+                        infoBtn.onmouseleave = () => { infoBtn.style.background = "transparent"; infoBtn.style.color = "var(--dnd-ui-color-text-secondary)"; };
+                        infoBtn.onclick = (e) => {
+                            e.stopPropagation();
+                            new ItemInfoModal(this.app, this, item.rulebookData, ctx.sourcePath).open();
+                        };
+                    }
+
+                    // 2. Edit Button (Vector SVG) - Toggles - / + stepper buttons
+                    const editBtn = rightActions.createEl("button", {
+                        attr: {
+                            title: "Adjust Quantity",
+                            style: `width: 24px; height: 24px; padding: 0; display: flex; align-items: center; justify-content: center; background: ${isExpanded ? "var(--dnd-ui-color-bg-tertiary)" : "transparent"}; border: 1px solid ${isExpanded ? "var(--dnd-ui-color-border-active)" : "transparent"}; border-radius: 4px; color: ${isExpanded ? "var(--dnd-ui-color-text-bright)" : "var(--dnd-ui-color-text-muted)"}; box-shadow: none; cursor: pointer;`
+                        }
+                    });
+                    setSvgIcon(editBtn, "edit");
+                    editBtn.onclick = (e) => {
+                        e.stopPropagation();
+                        const nowHidden = stepperGroup.style.display !== "none";
+                        if (nowHidden) {
+                            stepperGroup.style.display = "none";
+                            expandedEditRows.delete(item.rowKey);
+                            editBtn.style.background = "transparent";
+                            editBtn.style.borderColor = "transparent";
+                            editBtn.style.color = "var(--dnd-ui-color-text-muted)";
+                        } else {
+                            stepperGroup.style.display = "flex";
+                            expandedEditRows.add(item.rowKey);
+                            editBtn.style.background = "var(--dnd-ui-color-bg-tertiary)";
+                            editBtn.style.borderColor = "var(--dnd-ui-color-border-active)";
+                            editBtn.style.color = "var(--dnd-ui-color-text-bright)";
+                        }
+                    };
+                }
+
+                requestAnimationFrame(() => updateBackpackCols());
+            }
+
+            recalculateTotalWeight();
             el.empty();
             el.appendChild(wrapper);
+            requestAnimationFrame(() => updateWealthGridCols());
         };
 
         renderContent();
 
         renderChild.registerEvent(
             this.app.metadataCache.on('changed', (file) => {
-                if (file.path === ctx.sourcePath) renderContent();
+                if (file.path === ctx.sourcePath && !isUpdatingInventory) renderContent();
             })
         );
     }
@@ -1477,6 +1680,11 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
         const equipItemsBtn = container.createEl("button", { text: "⚔️ Equip Items" });
         equipItemsBtn.onclick = () => {
             new EquipItemsModal(this.app, this, ctx.sourcePath).open();
+        };
+
+        const inventoryBtn = container.createEl("button", { text: "🎒 Inventory" });
+        inventoryBtn.onclick = () => {
+            new InventoryModal(this.app, this, ctx.sourcePath).open();
         };
 
         const manageCharBtn = container.createEl("button", { text: "⚙️ Manage Character" });
@@ -3092,7 +3300,7 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
             });
             longRestBtn.onclick = async () => {
                 tempHp = 0;
-                usedHitDice = 0;
+                hitDiceStates = Array(DnD_level).fill(false);
                 manualDeathSavesOpen = false;
                 deathSaveLeft = [false, false, false];
                 deathSaveRight = [false, false, false];
@@ -4103,6 +4311,87 @@ class CharacterWizardModal extends Modal {
         // Wrapping in single quotes forces Obsidian's UI to accept it as a clean text string!
         injectYAML("DnD_classChoices", `'${JSON.stringify(finalClassChoices)}'`);
 
+        // --- Compile Starting Equipment into DnD_starterEquipment ---
+        const sanitizeWizardItem = (val: any) => {
+            if (!val) return null;
+            return String(val).toLowerCase().replace(/['"]/g, '').trim().replace(/\s+/g, '-');
+        };
+
+        const buildWizardItemPool = async (rawItems: any) => {
+            const list = Array.isArray(rawItems) ? rawItems : (typeof rawItems === 'string' ? rawItems.split(',') : (rawItems ? [String(rawItems)] : []));
+            const pool: { id: string; type: string }[] = [];
+            for (const item of list) {
+                const safeId = sanitizeWizardItem(item);
+                if (!safeId) continue;
+                const data = await getItemData(this.app, this.plugin.settings, safeId);
+                if (data && data.type) {
+                    pool.push({ id: safeId, type: sanitizeWizardItem(data.type) as string });
+                }
+            }
+            return pool;
+        };
+
+        const classChosenPool = await buildWizardItemPool(this.wizardData.classChosenItems);
+        const bgChosenPool = await buildWizardItemPool(this.wizardData.backgroundChosenItems);
+        const starterItemCounts: Record<string, number> = {};
+
+        const collectStartingItems = (eqData: any, sourcePool: { id: string; type: string }[]) => {
+            if (!eqData) return;
+            const itemsList = eqData.items ? eqData.items : (eqData.gold ? null : eqData);
+            if (!itemsList) return;
+
+            const strictSlots: [string, number][] = [];
+            const flexibleSlots: [string, number][] = [];
+
+            for (const [itemId, qty] of Object.entries(itemsList)) {
+                if (itemId.includes('|')) flexibleSlots.push([itemId, Number(qty)]);
+                else strictSlots.push([itemId, Number(qty)]);
+            }
+
+            for (const [itemId, qty] of strictSlots) {
+                starterItemCounts[itemId] = (starterItemCounts[itemId] || 0) + Number(qty);
+            }
+
+            flexibleSlots.sort((a, b) => a[0].split('|').length - b[0].split('|').length);
+            for (const [itemId, qty] of flexibleSlots) {
+                const acceptedTypes = itemId.split('|').map(t => sanitizeWizardItem(t) as string);
+                let amountNeeded = Number(qty);
+                for (let i = 0; i < sourcePool.length && amountNeeded > 0; i++) {
+                    const poolItem = sourcePool[i];
+                    if (acceptedTypes.includes(poolItem.type)) {
+                        starterItemCounts[poolItem.id] = (starterItemCounts[poolItem.id] || 0) + 1;
+                        amountNeeded -= 1;
+                        sourcePool.splice(i, 1);
+                        i--;
+                    }
+                }
+            }
+        };
+
+        if (this.wizardData.dndClass && this.wizardData.classEquipment) {
+            const cData = await getClassData(this.app, this.plugin.settings, this.wizardData.dndClass);
+            if (cData?.startingEquipment) {
+                collectStartingItems(cData.startingEquipment[this.wizardData.classEquipment], classChosenPool);
+            }
+        }
+        if (bgDataStore && this.wizardData.backgroundEquipment && bgDataStore.startingEquipment) {
+            collectStartingItems(bgDataStore.startingEquipment[this.wizardData.backgroundEquipment], bgChosenPool);
+        }
+
+        const compiledStarterEquipment: [string, string, string][] = Object.entries(starterItemCounts)
+            .filter(([_, qty]) => qty > 0)
+            .map(([id, qty]) => [String(id), String(qty), "true"]);
+
+        injectYAML("DnD_starterEquipment", `'${JSON.stringify(compiledStarterEquipment)}'`);
+        injectYAML("DnD_inventoryItems", `'[]'`);
+        injectYAML("DnD_customItems", `'[]'`);
+
+        // Upgrade legacy gold frontmatter lines to 4-Currency Wealth arrays
+        finalContent = finalContent.replace(/^dnd_gold_added:/m, "DnD_wealthAdded:");
+        finalContent = finalContent.replace(/^dnd_gold_spent:/m, "DnD_wealthSpent:");
+        injectYAML("DnD_wealthAdded", `'["0","0","0","0"]'`);
+        injectYAML("DnD_wealthSpent", `'["0","0","0","0"]'`);
+
         // Initialize Empty Spells Arrays
         injectYAML("DnD_spells", `'[]'`);
         injectYAML("DnD_preparedSpells", `'[]'`);
@@ -4885,6 +5174,682 @@ class EquipItemsModal extends Modal {
         }
 
         this.close();
+    }
+}
+
+// --- ITEM INFO POP-UP MODAL ---
+class ItemInfoModal extends Modal {
+    plugin: DnDCharacterSheetHelperPlugin;
+    itemData: any;
+    sourcePath: string;
+    renderChild!: MarkdownRenderChild;
+
+    constructor(app: App, plugin: DnDCharacterSheetHelperPlugin, itemData: any, sourcePath: string) {
+        super(app);
+        this.plugin = plugin;
+        this.itemData = itemData;
+        this.sourcePath = sourcePath;
+    }
+
+    async onOpen() {
+        const { contentEl, titleEl } = this;
+        this.renderChild = new MarkdownRenderChild(contentEl);
+        this.renderChild.load();
+
+        titleEl.setText(this.itemData?.name || "Item Details");
+
+        const container = contentEl.createDiv({ cls: "dnd-features-window", attr: { style: "margin: 0;" } });
+
+        if (this.itemData?.type) {
+            const typeText = String(this.itemData.type).replace(/-/g, ' ').toUpperCase();
+            const catText = this.itemData.category ? ` (${String(this.itemData.category).toUpperCase()})` : "";
+            container.createDiv({
+                text: `${typeText}${catText}`,
+                attr: { style: "font-size: 0.8em; color: var(--dnd-ui-color-text-secondary); letter-spacing: 1px; font-weight: 600; margin-bottom: 10px;" }
+            });
+        }
+
+        const statsRow = container.createDiv({
+            attr: { style: "display: flex; flex-wrap: wrap; gap: 14px; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--dnd-ui-color-border-primary); font-size: 0.9em; color: var(--dnd-ui-color-text-sublabel);" }
+        });
+
+        if (this.itemData?.damage) {
+            statsRow.createEl("span", { text: `Damage: ${this.itemData.damage}` });
+        }
+        if (this.itemData?.ac) {
+            statsRow.createEl("span", { text: `AC: ${this.itemData.ac}` });
+        }
+        if (this.itemData?.weight !== undefined && this.itemData?.weight !== "") {
+            statsRow.createEl("span", { text: `Weight: ${this.itemData.weight} lbs` });
+        }
+        if (this.itemData?.cost !== undefined && this.itemData?.cost !== "") {
+            statsRow.createEl("span", { text: `Cost: ${this.itemData.cost} GP` });
+        }
+
+        if (this.itemData?.description) {
+            const descDiv = container.createDiv({
+                attr: { style: "font-size: 0.95em; line-height: 1.5; color: var(--dnd-ui-color-text-primary);" }
+            });
+            await this.plugin.renderDndMarkdown(String(this.itemData.description), descDiv, this.sourcePath, this.renderChild);
+        } else {
+            container.createEl("p", {
+                text: "No additional description available for this item.",
+                attr: { style: "color: var(--dnd-ui-color-text-muted); font-style: italic; margin: 0;" }
+            });
+        }
+    }
+
+    onClose() {
+        if (this.renderChild) this.renderChild.unload();
+        this.contentEl.empty();
+    }
+}
+
+// --- INVENTORY MANAGER MODAL (Rulebook & On-the-Fly Custom Items) ---
+class InventoryModal extends Modal {
+    plugin: DnDCharacterSheetHelperPlugin;
+    sourcePath: string;
+
+    activeTab: "rulebook" | "custom" = "rulebook";
+
+    // Router pool from native items.json + Custom Rulebook items.json: { "<filename>": "<Display Name>" }
+    availableRulebookItems: Record<string, string> = {};
+
+    // Internal State Arrays
+    // [id, qty, show]
+    starterItems: [string, string, string][] = [];
+    // [id, qty, show]
+    inventoryItems: [string, string, string][] = [];
+    // [name, qty, show, weight, cost, type, description]
+    customItems: [string, string, string, string, string, string, string][] = [];
+
+    // Cached rulebook metadata for weight/preview calculations
+    itemDataCache: Record<string, any> = {};
+
+    trackerContainer!: HTMLElement;
+    tabsContainer!: HTMLElement;
+    listContainer!: HTMLElement;
+    previewContainer!: HTMLElement;
+    renderChild!: MarkdownRenderChild;
+
+    constructor(app: App, plugin: DnDCharacterSheetHelperPlugin, sourcePath: string) {
+        super(app);
+        this.plugin = plugin;
+        this.sourcePath = sourcePath;
+    }
+
+    private parseArrayProp(raw: any): any[] {
+        if (!raw) return [];
+        if (Array.isArray(raw)) return raw;
+        if (typeof raw === "string" && raw.trim().startsWith("[")) {
+            try { return JSON.parse(raw.trim()); } catch { return []; }
+        }
+        return [];
+    }
+
+    async onOpen() {
+        const { contentEl } = this;
+        this.modalEl.addClass("dnd-spellbook-modal");
+
+        this.renderChild = new MarkdownRenderChild(contentEl);
+        this.renderChild.load();
+
+        contentEl.createEl("h3", { text: "🎒 Inventory Manager", cls: "dnd-section-header", attr: { style: "margin-bottom: 10px;" } });
+
+        // 1. Read Frontmatter
+        const fileCache = this.app.metadataCache.getCache(this.sourcePath);
+        const frontmatter = fileCache?.frontmatter || {};
+
+        this.starterItems = this.parseArrayProp(frontmatter["DnD_starterEquipment"]).map((e: any) => [
+            String(e[0] ?? ""),
+            String(Math.max(0, Number(e[1]) || 0)),
+            String(e[2] ?? "true")
+        ]);
+
+        this.inventoryItems = this.parseArrayProp(frontmatter["DnD_inventoryItems"]).map((e: any) => [
+            String(e[0] ?? ""),
+            String(Math.max(0, Number(e[1]) || 0)),
+            String(e[2] ?? "true")
+        ]);
+
+        this.customItems = this.parseArrayProp(frontmatter["DnD_customItems"]).map((e: any) => [
+            String(e[0] ?? ""),
+            String(Math.max(0, Number(e[1]) || 0)),
+            String(e[2] ?? "true"),
+            String(Number(e[3]) || 0),
+            String(Number(e[4]) || 0),
+            String(e[5] ?? "Gear"),
+            String(e[6] ?? "")
+        ]);
+
+        // 2. Load Merged Rulebook Items Router (items.json)
+        await this.loadRulebookItemsPool();
+
+        // Pre-cache item data for starter & inventory items
+        const allIds = new Set<string>([
+            ...this.starterItems.map(i => i[0]),
+            ...this.inventoryItems.map(i => i[0])
+        ]);
+        for (const id of allIds) {
+            if (id) {
+                this.itemDataCache[id] = await getItemData(this.app, this.plugin.settings, id);
+            }
+        }
+
+        // 3. Build Layout Containers
+        this.trackerContainer = contentEl.createDiv({
+            attr: { style: "display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: var(--dnd-ui-color-bg-tertiary); border: 1px solid var(--dnd-ui-color-border-primary); border-radius: 6px; margin-bottom: 12px;" }
+        });
+
+        this.tabsContainer = contentEl.createDiv({
+            attr: { style: "display: flex; gap: 6px; border-bottom: 1px solid var(--dnd-ui-color-border-primary); padding-bottom: 6px; margin-bottom: 12px;" }
+        });
+
+        const bodyGrid = contentEl.createDiv({ cls: "dnd-spellbook-body" });
+        this.listContainer = bodyGrid.createDiv({ cls: "dnd-spellbook-list" });
+        this.previewContainer = bodyGrid.createDiv({ cls: "dnd-spellbook-preview" });
+
+        // 4. Footer Buttons
+        const footerDiv = contentEl.createDiv({
+            attr: { style: "display: flex; justify-content: flex-end; gap: 10px; margin-top: 16px; border-top: 1px solid var(--dnd-ui-color-border-primary); padding-top: 12px;" }
+        });
+
+        const cancelBtn = footerDiv.createEl("button", { text: "Cancel" });
+        cancelBtn.onclick = () => this.close();
+
+        const saveBtn = footerDiv.createEl("button", { text: "Save Inventory", cls: "mod-cta" });
+        saveBtn.onclick = async () => {
+            await this.saveInventory();
+        };
+
+        this.renderTracker();
+        this.renderTabs();
+        this.renderActiveTab();
+    }
+
+    async loadRulebookItemsPool() {
+        const basePath = this.plugin.settings.customRulebookPath?.replace(/^['"]+|['"]+$/g, '').trim().replace(/^\/+|\/+$/g, '');
+        const priority = this.plugin.settings.customRulebookPriority;
+        let customMap: Record<string, string> | null = null;
+
+        if (basePath) {
+            const customPath = normalizePath(`${basePath}/items.json`);
+            try {
+                if (await this.app.vault.adapter.exists(customPath)) {
+                    const content = await this.app.vault.adapter.read(customPath);
+                    customMap = JSON.parse(content);
+                }
+            } catch (e) {
+                console.error(`InventoryModal: Failed to read custom items.json at ${customPath}`, e);
+            }
+        }
+
+        const nativeMap = (itemsMap as Record<string, string>) || {};
+        this.availableRulebookItems = customMap
+            ? (priority ? { ...nativeMap, ...customMap } : { ...customMap, ...nativeMap })
+            : { ...nativeMap };
+    }
+
+    renderTracker() {
+        this.trackerContainer.empty();
+
+        let shownCount = 0;
+        let totalWeight = 0;
+
+        for (const [id, qtyStr, showStr] of this.starterItems) {
+            const qty = Number(qtyStr) || 0;
+            const show = showStr.toLowerCase() !== "false";
+            if (show) {
+                shownCount++;
+                const w = Number(this.itemDataCache[id]?.weight) || 0;
+                totalWeight += w * qty;
+            }
+        }
+        for (const [id, qtyStr, showStr] of this.inventoryItems) {
+            const qty = Number(qtyStr) || 0;
+            const show = showStr.toLowerCase() !== "false";
+            if (show) {
+                shownCount++;
+                const w = Number(this.itemDataCache[id]?.weight) || 0;
+                totalWeight += w * qty;
+            }
+        }
+        for (const [_, qtyStr, showStr, weightStr] of this.customItems) {
+            const qty = Number(qtyStr) || 0;
+            const show = showStr.toLowerCase() !== "false";
+            if (show) {
+                shownCount++;
+                const w = Number(weightStr) || 0;
+                totalWeight += w * qty;
+            }
+        }
+
+        const totalEntries = this.starterItems.length + this.inventoryItems.length + this.customItems.length;
+
+        const leftInfo = this.trackerContainer.createDiv();
+        leftInfo.createEl("strong", {
+            text: `Check items to display them on your Character Sheet`,
+            attr: { style: "color: var(--dnd-ui-color-text-bright); font-size: 0.92em;" }
+        });
+
+        const rightCounters = this.trackerContainer.createDiv({
+            attr: { style: "display: flex; gap: 16px; font-size: 0.9em;" }
+        });
+
+        const sSpan = rightCounters.createEl("span", { attr: { style: "color: var(--dnd-ui-color-text-sublabel);" } });
+        sSpan.createEl("strong", { text: "Shown on Sheet: ", attr: { style: "color: var(--dnd-ui-color-text-secondary);" } });
+        sSpan.createSpan({ text: `${shownCount} / ${totalEntries}` });
+
+        const wSpan = rightCounters.createEl("span", { attr: { style: "color: var(--dnd-ui-color-text-sublabel);" } });
+        wSpan.createEl("strong", { text: "Visible Weight: ", attr: { style: "color: var(--dnd-ui-color-text-secondary);" } });
+        wSpan.createSpan({ text: `${totalWeight % 1 === 0 ? totalWeight : totalWeight.toFixed(1)} lbs` });
+    }
+
+    renderTabs() {
+        this.tabsContainer.empty();
+
+        const createTab = (id: "rulebook" | "custom", label: string) => {
+            const isActive = this.activeTab === id;
+            const btn = this.tabsContainer.createEl("button", {
+                text: label,
+                attr: {
+                    style: `padding: 6px 14px; border-radius: 4px; font-size: 0.9em; cursor: pointer; box-shadow: none; ${
+                        isActive
+                            ? "background: var(--dnd-ui-color-bg-tertiary); color: var(--dnd-ui-color-text-bright); font-weight: bold; border: 1px solid var(--dnd-ui-color-border-active);"
+                            : "background: transparent; color: var(--dnd-ui-color-text-muted); border: 1px solid transparent;"
+                    }`
+                }
+            });
+            btn.onclick = () => {
+                this.activeTab = id;
+                this.renderTabs();
+                this.renderActiveTab();
+            };
+        };
+
+        createTab("rulebook", "🎒 Rulebook & Starter Items");
+        createTab("custom", "✨ Custom Items (On-the-Fly)");
+    }
+
+    renderActiveTab() {
+        this.listContainer.empty();
+        this.previewContainer.empty();
+
+        if (this.activeTab === "rulebook") {
+            this.renderRulebookTab();
+        } else {
+            this.renderCustomTab();
+        }
+    }
+
+    renderRulebookTab() {
+        this.previewContainer.createEl("p", {
+            text: "Click on any item in your inventory or select one from the dropdown to inspect its details.",
+            attr: { style: "color: var(--dnd-ui-color-text-muted); font-style: italic; text-align: center; margin-top: 40px;" }
+        });
+
+        // 1. Add Item from Rulebook Bar
+        const addBar = this.listContainer.createDiv({
+            attr: { style: "display: flex; gap: 8px; align-items: center; margin-bottom: 10px;" }
+        });
+
+        const selectEl = addBar.createEl("select", { attr: { style: "flex: 1;" } });
+        selectEl.createEl("option", { text: "-- Add Item from Rulebook --", value: "" });
+
+        Object.entries(this.availableRulebookItems)
+            .sort((a, b) => String(a[1]).localeCompare(String(b[1])))
+            .forEach(([fileKey, displayName]) => {
+                selectEl.createEl("option", { text: String(displayName), value: fileKey });
+            });
+
+        selectEl.onchange = async () => {
+            const chosenKey = selectEl.value;
+            if (chosenKey) {
+                await this.renderItemPreview(chosenKey, this.availableRulebookItems[chosenKey]);
+            }
+        };
+
+        const addBtn = addBar.createEl("button", { text: "Add Item" });
+        addBtn.onclick = async () => {
+            const chosenKey = selectEl.value;
+            if (!chosenKey) return;
+
+            if (!this.itemDataCache[chosenKey]) {
+                this.itemDataCache[chosenKey] = await getItemData(this.app, this.plugin.settings, chosenKey);
+            }
+
+            // If already in inventoryItems, increment quantity; otherwise push a new tuple
+            const existing = this.inventoryItems.find(i => i[0] === chosenKey);
+            if (existing) {
+                existing[1] = String((Number(existing[1]) || 0) + 1);
+                existing[2] = "true";
+            } else {
+                this.inventoryItems.push([chosenKey, "1", "true"]);
+            }
+
+            this.renderTracker();
+            this.renderRulebookTab();
+            await this.renderItemPreview(chosenKey, this.availableRulebookItems[chosenKey]);
+        };
+
+        // 2. Render Starter Equipment Section
+        if (this.starterItems.length > 0) {
+            this.listContainer.createEl("div", {
+                text: "STARTER EQUIPMENT",
+                attr: { style: "font-size: 0.78em; font-weight: bold; letter-spacing: 1px; color: var(--dnd-ui-color-text-sublabel); margin: 6px 0 4px 0;" }
+            });
+
+            this.starterItems.forEach((tuple) => {
+                this.createModalItemRow(tuple, true);
+            });
+        }
+
+        // 3. Render Added Rulebook Items Section
+        this.listContainer.createEl("div", {
+            text: "ADDED RULEBOOK ITEMS",
+            attr: { style: "font-size: 0.78em; font-weight: bold; letter-spacing: 1px; color: var(--dnd-ui-color-text-sublabel); margin: 12px 0 4px 0;" }
+        });
+
+        if (this.inventoryItems.length === 0) {
+            this.listContainer.createEl("p", {
+                text: "No extra rulebook items added yet.",
+                attr: { style: "color: var(--dnd-ui-color-text-muted); font-style: italic; font-size: 0.9em; margin: 4px 0;" }
+            });
+        } else {
+            this.inventoryItems.forEach((tuple, idx) => {
+                this.createModalItemRow(tuple, false, () => {
+                    this.inventoryItems.splice(idx, 1);
+                    this.renderTracker();
+                    this.renderRulebookTab();
+                });
+            });
+        }
+    }
+
+    private createModalItemRow(tuple: [string, string, string], isStarter: boolean, onDelete?: () => void) {
+        const itemId = tuple[0];
+        const qty = Number(tuple[1]) || 0;
+        const isShown = tuple[2].toLowerCase() !== "false";
+        const data = this.itemDataCache[itemId];
+        const displayName = data?.name || this.availableRulebookItems[itemId] || itemId.replace(/\b\w/g, c => c.toUpperCase()).replace(/-/g, ' ');
+
+        const row = this.listContainer.createDiv({
+            attr: {
+                style: `display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; border-radius: 6px; margin-bottom: 6px; background: var(--dnd-ui-color-bg-tertiary); border: 1px solid ${
+                    isShown ? "var(--dnd-ui-color-border-active)" : "var(--dnd-ui-color-border-primary)"
+                }; gap: 8px;`
+            }
+        });
+
+        const leftGroup = row.createDiv({
+            attr: { style: "display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; cursor: pointer;" }
+        });
+
+        const showCheckbox = leftGroup.createEl("input", {
+            type: "checkbox",
+            attr: { title: "Show on Character Sheet" }
+        });
+        showCheckbox.checked = isShown;
+        showCheckbox.onclick = (e) => {
+            e.stopPropagation();
+            tuple[2] = showCheckbox.checked ? "true" : "false";
+            row.style.borderColor = showCheckbox.checked ? "var(--dnd-ui-color-border-active)" : "var(--dnd-ui-color-border-primary)";
+            this.renderTracker();
+        };
+
+        if (isStarter) {
+            leftGroup.createEl("span", {
+                text: "Starter",
+                cls: "dnd-level-badge",
+                attr: { style: "margin: 0; padding: 1px 5px; font-size: 0.7em;" }
+            });
+        }
+
+        leftGroup.createEl("span", {
+            text: displayName,
+            attr: { style: "color: var(--dnd-ui-color-text-bright); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" }
+        });
+
+        leftGroup.onclick = async () => {
+            await this.renderItemPreview(itemId, displayName);
+        };
+
+        const rightGroup = row.createDiv({
+            attr: { style: "display: flex; align-items: center; gap: 6px; flex-shrink: 0;" }
+        });
+
+        const qtyInput = rightGroup.createEl("input", {
+            type: "number",
+            value: String(qty),
+            attr: {
+                min: "0",
+                title: "Quantity (0 stays in inventory)",
+                style: "width: 52px; text-align: center; padding: 2px 4px; background: var(--dnd-ui-color-bg-darker); border: 1px solid var(--dnd-ui-color-border-primary); color: var(--dnd-ui-color-text-bright); border-radius: 4px;"
+            }
+        });
+        qtyInput.oninput = () => {
+            const val = Math.max(0, Number(qtyInput.value) || 0);
+            tuple[1] = String(val);
+            this.renderTracker();
+        };
+
+        if (!isStarter && onDelete) {
+            const delBtn = rightGroup.createEl("button", {
+                text: "✕",
+                attr: {
+                    title: "Remove from Inventory",
+                    style: "width: 24px; height: 24px; padding: 0; background: transparent; box-shadow: none; color: var(--dnd-ui-color-text-muted); cursor: pointer;"
+                }
+            });
+            delBtn.onmouseenter = () => { delBtn.style.background = "var(--dnd-ui-color-accent-red)"; delBtn.style.color = "white"; };
+            delBtn.onmouseleave = () => { delBtn.style.background = "transparent"; delBtn.style.color = "var(--dnd-ui-color-text-muted)"; };
+            delBtn.onclick = () => onDelete();
+        }
+    }
+
+    renderCustomTab() {
+        // Right pane: Form to Create a New On-the-Fly Custom Item
+        this.previewContainer.empty();
+        this.previewContainer.createEl("h4", {
+            text: "✨ Create Custom Item",
+            attr: { style: "margin: 0 0 10px 0; color: var(--dnd-ui-color-text-bright);" }
+        });
+
+        const formDiv = this.previewContainer.createDiv({
+            attr: { style: "display: flex; flex-direction: column; gap: 8px;" }
+        });
+
+        const nameInput = formDiv.createEl("input", {
+            type: "text",
+            placeholder: "Item Name (e.g., Mystery Key)",
+            attr: { style: "width: 100%;" }
+        });
+
+        const rowGrid = formDiv.createDiv({
+            attr: { style: "display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px;" }
+        });
+
+        const qtyInput = rowGrid.createEl("input", {
+            type: "number",
+            value: "1",
+            placeholder: "Qty",
+            attr: { min: "0", title: "Quantity", style: "width: 100%;" }
+        });
+        const weightInput = rowGrid.createEl("input", {
+            type: "number",
+            placeholder: "Weight (lbs)",
+            attr: { min: "0", step: "0.1", style: "width: 100%;" }
+        });
+        const costInput = rowGrid.createEl("input", {
+            type: "number",
+            placeholder: "Cost (GP)",
+            attr: { min: "0", step: "0.1", style: "width: 100%;" }
+        });
+
+        const createBtn = formDiv.createEl("button", {
+            text: "Add Custom Item",
+            cls: "mod-cta",
+            attr: { style: "margin-top: 4px; cursor: pointer;" }
+        });
+
+        createBtn.onclick = () => {
+            const cleanName = nameInput.value.trim();
+            if (!cleanName) {
+                new Notice("Please enter a name for the custom item.");
+                return;
+            }
+            const qty = String(Math.max(0, Number(qtyInput.value) || 0));
+            const weight = String(Math.max(0, Number(weightInput.value) || 0));
+            const cost = String(Math.max(0, Number(costInput.value) || 0));
+
+            this.customItems.push([cleanName, qty, "true", weight, cost, "Custom", ""]);
+            this.renderTracker();
+            this.renderCustomTab();
+        };
+
+        // Left pane: List of existing On-the-Fly Custom Items
+        this.listContainer.empty();
+        this.listContainer.createEl("div", {
+            text: "ON-THE-FLY CUSTOM ITEMS",
+            attr: { style: "font-size: 0.78em; font-weight: bold; letter-spacing: 1px; color: var(--dnd-ui-color-text-sublabel); margin: 0 0 6px 0;" }
+        });
+
+        if (this.customItems.length === 0) {
+            this.listContainer.createEl("p", {
+                text: "No custom items created yet. Use the form on the right to add one!",
+                attr: { style: "color: var(--dnd-ui-color-text-muted); font-style: italic; text-align: center; margin-top: 20px;" }
+            });
+            return;
+        }
+
+        this.customItems.forEach((tuple, idx) => {
+            const [cName, qtyStr, showStr, weightStr, costStr] = tuple;
+            const isShown = showStr.toLowerCase() !== "false";
+
+            const row = this.listContainer.createDiv({
+                attr: {
+                    style: `display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; border-radius: 6px; margin-bottom: 6px; background: var(--dnd-ui-color-bg-tertiary); border: 1px solid ${
+                        isShown ? "var(--dnd-ui-color-border-active)" : "var(--dnd-ui-color-border-primary)"
+                    }; gap: 8px;`
+                }
+            });
+
+            const leftGroup = row.createDiv({
+                attr: { style: "display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0;" }
+            });
+
+            const showCheckbox = leftGroup.createEl("input", {
+                type: "checkbox",
+                attr: { title: "Show on Character Sheet" }
+            });
+            showCheckbox.checked = isShown;
+            showCheckbox.onclick = () => {
+                tuple[2] = showCheckbox.checked ? "true" : "false";
+                row.style.borderColor = showCheckbox.checked ? "var(--dnd-ui-color-border-active)" : "var(--dnd-ui-color-border-primary)";
+                this.renderTracker();
+            };
+
+            leftGroup.createEl("span", {
+                text: cName,
+                attr: { style: "color: var(--dnd-ui-color-text-bright); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" }
+            });
+
+            const metaParts: string[] = [];
+            if (Number(weightStr) > 0) metaParts.push(`${weightStr}lbs`);
+            if (Number(costStr) > 0) metaParts.push(`${costStr}GP`);
+            if (metaParts.length > 0) {
+                leftGroup.createEl("small", {
+                    text: `(${metaParts.join(", ")})`,
+                    attr: { style: "color: var(--dnd-ui-color-text-muted); flex-shrink: 0;" }
+                });
+            }
+
+            const rightGroup = row.createDiv({
+                attr: { style: "display: flex; align-items: center; gap: 6px; flex-shrink: 0;" }
+            });
+
+            const qInput = rightGroup.createEl("input", {
+                type: "number",
+                value: String(Number(qtyStr) || 0),
+                attr: {
+                    min: "0",
+                    title: "Quantity (0 stays in inventory)",
+                    style: "width: 52px; text-align: center; padding: 2px 4px; background: var(--dnd-ui-color-bg-darker); border: 1px solid var(--dnd-ui-color-border-primary); color: var(--dnd-ui-color-text-bright); border-radius: 4px;"
+                }
+            });
+            qInput.oninput = () => {
+                tuple[1] = String(Math.max(0, Number(qInput.value) || 0));
+                this.renderTracker();
+            };
+
+            const delBtn = rightGroup.createEl("button", {
+                text: "✕",
+                attr: {
+                    title: "Delete Custom Item",
+                    style: "width: 24px; height: 24px; padding: 0; background: transparent; box-shadow: none; color: var(--dnd-ui-color-text-muted); cursor: pointer;"
+                }
+            });
+            delBtn.onmouseenter = () => { delBtn.style.background = "var(--dnd-ui-color-accent-red)"; delBtn.style.color = "white"; };
+            delBtn.onmouseleave = () => { delBtn.style.background = "transparent"; delBtn.style.color = "var(--dnd-ui-color-text-muted)"; };
+            delBtn.onclick = () => {
+                this.customItems.splice(idx, 1);
+                this.renderTracker();
+                this.renderCustomTab();
+            };
+        });
+    }
+
+    async renderItemPreview(itemKey: string, fallbackName: string) {
+        this.previewContainer.empty();
+        if (!this.itemDataCache[itemKey]) {
+            this.itemDataCache[itemKey] = await getItemData(this.app, this.plugin.settings, itemKey);
+        }
+        const data = this.itemDataCache[itemKey];
+
+        if (!data) {
+            this.previewContainer.createEl("h4", { text: fallbackName, attr: { style: "margin: 0 0 6px 0; color: var(--dnd-ui-color-text-bright);" } });
+            this.previewContainer.createEl("p", {
+                text: `Details file (/rulebook/items/${itemKey}.json) not found.`,
+                attr: { style: "color: var(--dnd-ui-color-text-muted); font-style: italic;" }
+            });
+            return;
+        }
+
+        this.previewContainer.createEl("h4", { text: data.name || fallbackName, attr: { style: "margin: 0 0 4px 0; color: var(--dnd-ui-color-text-bright);" } });
+        if (data.type) {
+            this.previewContainer.createEl("div", {
+                text: String(data.type).toUpperCase(),
+                attr: { style: "font-size: 0.78em; color: var(--dnd-ui-color-text-secondary); letter-spacing: 0.8px; margin-bottom: 10px;" }
+            });
+        }
+
+        const metaDiv = this.previewContainer.createDiv({
+            attr: { style: "font-size: 0.85em; color: var(--dnd-ui-color-text-sublabel); margin-bottom: 10px; border-bottom: 1px solid var(--dnd-ui-color-border-primary); padding-bottom: 8px; line-height: 1.5;" }
+        });
+        if (data.damage) metaDiv.createEl("div", { text: `Damage: ${data.damage}` });
+        if (data.ac) metaDiv.createEl("div", { text: `AC: ${data.ac}` });
+        if (data.weight !== undefined) metaDiv.createEl("div", { text: `Weight: ${data.weight} lbs` });
+        if (data.cost !== undefined) metaDiv.createEl("div", { text: `Cost: ${data.cost} GP` });
+
+        if (data.description) {
+            const descDiv = this.previewContainer.createDiv({ attr: { style: "font-size: 0.9em; line-height: 1.4;" } });
+            await this.plugin.renderDndMarkdown(String(data.description), descDiv, this.sourcePath, this.renderChild);
+        }
+    }
+
+    async saveInventory() {
+        await this.plugin.updateCharacterFrontmatter(this.sourcePath, {
+            "DnD_starterEquipment": JSON.stringify(this.starterItems),
+            "DnD_inventoryItems": JSON.stringify(this.inventoryItems),
+            "DnD_customItems": JSON.stringify(this.customItems)
+        });
+        new Notice("Inventory saved!");
+        this.close();
+    }
+
+    onClose() {
+        if (this.renderChild) this.renderChild.unload();
+        this.contentEl.empty();
     }
 }
 
