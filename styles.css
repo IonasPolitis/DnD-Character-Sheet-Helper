@@ -775,6 +775,111 @@
     width: 360px;
     max-width: 90vw;
     margin-left: auto;
+    overflow: visible;
+    box-sizing: border-box;
+    cursor: default;
+}
+
+.dnd-notice-layout {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 14px;
+    width: 100%;
+}
+
+.dnd-notice-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 10px;
+    flex-shrink: 0;
+    background-color: var(--dnd-ui-color-bg-secondary);
+    border: 1px solid var(--dnd-ui-color-border-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.25);
+}
+
+.dnd-notice-content {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 0;
+}
+
+.dnd-notice-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 8px;
+    margin-bottom: 4px;
+}
+
+.dnd-notice-title {
+    font-size: 1.1em;
+    font-weight: 700;
+    color: var(--dnd-ui-color-text-bright);
+    line-height: 1.25;
+}
+
+.notice.dnd-custom-notice button.dnd-notice-close {
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    color: var(--dnd-ui-color-text-muted);
+    font-size: 14px;
+    padding: 0 2px;
+    height: auto;
+    cursor: pointer;
+    line-height: 1;
+}
+
+.notice.dnd-custom-notice button.dnd-notice-close:hover {
+    color: var(--dnd-ui-color-text-bright);
+}
+
+.dnd-notice-message {
+    font-size: 0.92em;
+    line-height: 1.4;
+    color: var(--dnd-ui-color-text-muted);
+    margin-bottom: 14px;
+    word-wrap: break-word;
+}
+
+.dnd-notice-buttons {
+    display: flex;
+    flex-direction: row;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.notice.dnd-custom-notice .dnd-notice-buttons button.dnd-notice-btn-primary {
+    padding: 7px 16px;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 0.9em;
+    cursor: pointer;
+    border: 1px solid var(--dnd-ui-color-border-active);
+    background-color: var(--dnd-ui-color-border-active);
+    color: var(--dnd-ui-color-text-bright);
+    box-shadow: none;
+    height: auto;
+}
+
+.notice.dnd-custom-notice .dnd-notice-buttons button.dnd-notice-btn-secondary {
+    padding: 7px 16px;
+    border-radius: 8px;
+    font-weight: 500;
+    font-size: 0.9em;
+    cursor: pointer;
+    border: 1px solid var(--dnd-ui-color-border-primary);
+    background-color: var(--dnd-ui-color-bg-secondary);
+    color: var(--dnd-ui-color-text-primary);
+    box-shadow: none;
+    height: auto;
 }
 
 .notice.dnd-custom-notice .dnd-notice-buttons button:hover {
@@ -1268,6 +1373,47 @@
     color: var(--dnd-ui-color-text-bright);
 }
 
+/* D. Item Info Pop-up Modal */
+.dnd-features-window.dnd-item-info-window {
+    margin: 0;
+}
+
+.dnd-features-window.dnd-item-info-window > div {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.dnd-item-info-type {
+    font-size: 0.8em;
+    color: var(--dnd-ui-color-text-secondary);
+    letter-spacing: 1px;
+    font-weight: 600;
+    margin-bottom: 10px;
+}
+
+.dnd-features-window.dnd-item-info-window > .dnd-item-info-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--dnd-ui-color-border-primary);
+    font-size: 0.9em;
+    color: var(--dnd-ui-color-text-sublabel);
+}
+
+.dnd-item-info-desc {
+    font-size: 0.95em;
+    line-height: 1.5;
+    color: var(--dnd-ui-color-text-primary);
+}
+
+.dnd-item-info-empty {
+    color: var(--dnd-ui-color-text-muted);
+    font-style: italic;
+    margin: 0;
+}
+
 /* ==========================================
    16. NATIVE DND-HEALTH CARD & REST BAR
    ========================================== */
@@ -1632,4 +1778,259 @@
         height: 420px;
         max-height: 62vh;
     }
+}
+
+/* Shared Modal UI Components (SpellbookModal & InventoryModal) */
+.dnd-modal-header {
+    margin-bottom: 10px;
+}
+
+.dnd-modal-tracker {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 14px;
+    background-color: var(--dnd-ui-color-bg-tertiary);
+    border: 1px solid var(--dnd-ui-color-border-primary);
+    border-radius: 6px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.dnd-modal-tracker-title {
+    color: var(--dnd-ui-color-text-bright);
+    font-size: 0.92em;
+}
+
+.dnd-modal-tracker-counters {
+    display: flex;
+    gap: 16px;
+    font-size: 0.9em;
+}
+
+.dnd-modal-tracker-stat {
+    color: var(--dnd-ui-color-text-sublabel);
+}
+
+.dnd-modal-tracker-stat strong {
+    color: var(--dnd-ui-color-text-secondary);
+}
+
+.dnd-modal-tabs {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    border-bottom: 1px solid var(--dnd-ui-color-border-primary);
+    padding-bottom: 6px;
+    margin-bottom: 12px;
+}
+
+.modal.dnd-spellbook-modal .dnd-modal-tabs button.dnd-modal-tab-btn {
+    padding: 5px 12px;
+    border-radius: 4px;
+    font-size: 0.88em;
+    cursor: pointer;
+    box-shadow: none;
+    background-color: transparent;
+    color: var(--dnd-ui-color-text-muted);
+    border: 1px solid transparent;
+    height: auto;
+}
+
+.modal.dnd-spellbook-modal .dnd-modal-tabs button.dnd-modal-tab-btn:hover {
+    background-color: var(--dnd-ui-color-bg-hover);
+    color: var(--dnd-ui-color-text-primary);
+}
+
+.modal.dnd-spellbook-modal .dnd-modal-tabs button.dnd-modal-tab-btn.is-active {
+    background-color: var(--dnd-ui-color-bg-tertiary);
+    color: var(--dnd-ui-color-text-bright);
+    font-weight: bold;
+    border: 1px solid var(--dnd-ui-color-border-active);
+}
+
+.dnd-modal-add-bar {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 6px;
+}
+
+.dnd-modal-add-select {
+    flex: 1;
+    min-width: 0;
+}
+
+.dnd-modal-section-label {
+    font-size: 0.78em;
+    font-weight: bold;
+    letter-spacing: 1px;
+    color: var(--dnd-ui-color-text-sublabel);
+    margin: 8px 0 2px 0;
+}
+
+.dnd-modal-list-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 10px;
+    border-radius: 6px;
+    background-color: var(--dnd-ui-color-bg-tertiary);
+    border: 1px solid var(--dnd-ui-color-border-primary);
+    gap: 8px;
+}
+
+.dnd-modal-list-row.is-active {
+    border-color: var(--dnd-ui-color-border-active);
+}
+
+.dnd-modal-row-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+    min-width: 0;
+}
+
+.dnd-modal-row-left.is-clickable {
+    cursor: pointer;
+}
+
+.dnd-modal-row-name {
+    color: var(--dnd-ui-color-text-bright);
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.dnd-modal-row-meta {
+    color: var(--dnd-ui-color-text-muted);
+    flex-shrink: 0;
+}
+
+.dnd-modal-row-right {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+.dnd-level-badge.dnd-modal-badge-sm {
+    margin: 0;
+    padding: 1px 5px;
+    font-size: 0.7em;
+}
+
+.modal.dnd-spellbook-modal input.dnd-modal-qty-input {
+    width: 52px;
+    text-align: center;
+    padding: 2px 4px;
+    background-color: var(--dnd-ui-color-bg-darker);
+    border: 1px solid var(--dnd-ui-color-border-primary);
+    color: var(--dnd-ui-color-text-bright);
+    border-radius: 4px;
+}
+
+.modal.dnd-spellbook-modal button.dnd-modal-del-btn {
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    background-color: transparent;
+    border: none;
+    box-shadow: none;
+    color: var(--dnd-ui-color-text-muted);
+    cursor: pointer;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal.dnd-spellbook-modal button.dnd-modal-del-btn:hover {
+    background-color: var(--dnd-ui-color-accent-red);
+    color: #ffffff;
+}
+
+.dnd-modal-empty-text {
+    color: var(--dnd-ui-color-text-muted);
+    font-style: italic;
+    text-align: center;
+    margin-top: 20px;
+}
+
+.dnd-modal-preview-empty {
+    color: var(--dnd-ui-color-text-muted);
+    font-style: italic;
+    text-align: center;
+    margin-top: 40px;
+}
+
+.dnd-modal-preview-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 4px;
+}
+
+.dnd-modal-preview-title {
+    margin: 0 0 4px 0;
+    color: var(--dnd-ui-color-text-bright);
+}
+
+.dnd-modal-preview-header .dnd-modal-preview-title {
+    margin: 0;
+}
+
+.dnd-modal-preview-badges {
+    display: flex;
+    gap: 4px;
+}
+
+.dnd-modal-preview-sub {
+    font-size: 0.8em;
+    color: var(--dnd-ui-color-text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 10px;
+}
+
+.dnd-modal-preview-meta {
+    font-size: 0.85em;
+    color: var(--dnd-ui-color-text-sublabel);
+    margin-bottom: 10px;
+    border-bottom: 1px solid var(--dnd-ui-color-border-primary);
+    padding-bottom: 8px;
+    line-height: 1.5;
+}
+
+.dnd-modal-preview-desc {
+    font-size: 0.9em;
+    line-height: 1.4;
+}
+
+.dnd-modal-form {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.dnd-modal-form-input {
+    width: 100%;
+}
+
+.dnd-modal-form-grid-3 {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 6px;
+}
+
+.dnd-modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 16px;
+    border-top: 1px solid var(--dnd-ui-color-border-primary);
+    padding-top: 12px;
 }

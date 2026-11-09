@@ -4220,21 +4220,6 @@ class CharacterWizardModal extends Modal {
         const expRegex = /(expertise:\s*\n)([\s\S]*?)(?=\n[ \t]*half_proficiencies:)/;
         finalContent = finalContent.replace(expRegex, `$1${expInject}`);
 
-        // --- 5D. Update Stat History Table ---
-        const formatTableStat = (abbr: string, stats: { base: number, bonus: number }) => {
-            const baseStr = String(stats.base).padStart(2, ' ');
-            const bonusStr = stats.bonus > 0 ? `+${stats.bonus}` : " - ";
-            const regex = new RegExp(`\\|\\s*${abbr}\\s*\\|\\s*-\\s*\\|\\s*--->\\s*\\|`);
-            finalContent = finalContent.replace(regex, `| ${abbr} |  ${baseStr}  |  ${bonusStr.padEnd(4, ' ')} |`);
-        };
-
-        formatTableStat("STR", strStats);
-        formatTableStat("DEX", dexStats);
-        formatTableStat("CON", conStats);
-        formatTableStat("INT", intStats);
-        formatTableStat("WIS", wisStats);
-        formatTableStat("CHA", chaStats);
-
         // 6. Paste to Editor and Finalize UI State
         try {
             const currentState = view.getState();
@@ -4930,20 +4915,18 @@ class ItemInfoModal extends Modal {
 
         titleEl.setText(this.itemData?.name || "Item Details");
 
-        const container = contentEl.createDiv({ cls: "dnd-features-window", attr: { style: "margin: 0;" } });
+        const container = contentEl.createDiv({ cls: "dnd-features-window dnd-item-info-window" });
 
         if (this.itemData?.type) {
             const typeText = String(this.itemData.type).replace(/-/g, ' ').toUpperCase();
             const catText = this.itemData.category ? ` (${String(this.itemData.category).toUpperCase()})` : "";
             container.createDiv({
                 text: `${typeText}${catText}`,
-                attr: { style: "font-size: 0.8em; color: var(--dnd-ui-color-text-secondary); letter-spacing: 1px; font-weight: 600; margin-bottom: 10px;" }
+                cls: "dnd-item-info-type"
             });
         }
 
-        const statsRow = container.createDiv({
-            attr: { style: "display: flex; flex-wrap: wrap; gap: 14px; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--dnd-ui-color-border-primary); font-size: 0.9em; color: var(--dnd-ui-color-text-sublabel);" }
-        });
+        const statsRow = container.createDiv({ cls: "dnd-item-info-stats" });
 
         if (this.itemData?.damage) {
             statsRow.createEl("span", { text: `Damage: ${this.itemData.damage}` });
@@ -4959,14 +4942,12 @@ class ItemInfoModal extends Modal {
         }
 
         if (this.itemData?.description) {
-            const descDiv = container.createDiv({
-                attr: { style: "font-size: 0.95em; line-height: 1.5; color: var(--dnd-ui-color-text-primary);" }
-            });
+            const descDiv = container.createDiv({ cls: "dnd-item-info-desc" });
             await this.plugin.renderDndMarkdown(String(this.itemData.description), descDiv, this.sourcePath, this.renderChild);
         } else {
             container.createEl("p", {
                 text: "No additional description available for this item.",
-                attr: { style: "color: var(--dnd-ui-color-text-muted); font-style: italic; margin: 0;" }
+                cls: "dnd-item-info-empty"
             });
         }
     }
@@ -5026,7 +5007,7 @@ class InventoryModal extends Modal {
         this.renderChild = new MarkdownRenderChild(contentEl);
         this.renderChild.load();
 
-        contentEl.createEl("h3", { text: "🎒 Inventory Manager", cls: "dnd-section-header", attr: { style: "margin-bottom: 10px;" } });
+        contentEl.createEl("h3", { text: "🎒 Inventory Manager", cls: "dnd-section-header dnd-modal-header" });
 
         // 1. Read Frontmatter
         const fileCache = this.app.metadataCache.getCache(this.sourcePath);
@@ -5069,22 +5050,15 @@ class InventoryModal extends Modal {
         }
 
         // 3. Build Layout Containers
-        this.trackerContainer = contentEl.createDiv({
-            attr: { style: "display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: var(--dnd-ui-color-bg-tertiary); border: 1px solid var(--dnd-ui-color-border-primary); border-radius: 6px; margin-bottom: 12px;" }
-        });
-
-        this.tabsContainer = contentEl.createDiv({
-            attr: { style: "display: flex; gap: 6px; border-bottom: 1px solid var(--dnd-ui-color-border-primary); padding-bottom: 6px; margin-bottom: 12px;" }
-        });
+        this.trackerContainer = contentEl.createDiv({ cls: "dnd-modal-tracker" });
+        this.tabsContainer = contentEl.createDiv({ cls: "dnd-modal-tabs" });
 
         const bodyGrid = contentEl.createDiv({ cls: "dnd-spellbook-body" });
         this.listContainer = bodyGrid.createDiv({ cls: "dnd-spellbook-list" });
         this.previewContainer = bodyGrid.createDiv({ cls: "dnd-spellbook-preview" });
 
         // 4. Footer Buttons
-        const footerDiv = contentEl.createDiv({
-            attr: { style: "display: flex; justify-content: flex-end; gap: 10px; margin-top: 16px; border-top: 1px solid var(--dnd-ui-color-border-primary); padding-top: 12px;" }
-        });
+        const footerDiv = contentEl.createDiv({ cls: "dnd-modal-footer" });
 
         const cancelBtn = footerDiv.createEl("button", { text: "Cancel" });
         cancelBtn.onclick = () => this.close();
@@ -5161,19 +5135,17 @@ class InventoryModal extends Modal {
         const leftInfo = this.trackerContainer.createDiv();
         leftInfo.createEl("strong", {
             text: `Check items to display them on your Character Sheet`,
-            attr: { style: "color: var(--dnd-ui-color-text-bright); font-size: 0.92em;" }
+            cls: "dnd-modal-tracker-title"
         });
 
-        const rightCounters = this.trackerContainer.createDiv({
-            attr: { style: "display: flex; gap: 16px; font-size: 0.9em;" }
-        });
+        const rightCounters = this.trackerContainer.createDiv({ cls: "dnd-modal-tracker-counters" });
 
-        const sSpan = rightCounters.createEl("span", { attr: { style: "color: var(--dnd-ui-color-text-sublabel);" } });
-        sSpan.createEl("strong", { text: "Shown on Sheet: ", attr: { style: "color: var(--dnd-ui-color-text-secondary);" } });
+        const sSpan = rightCounters.createEl("span", { cls: "dnd-modal-tracker-stat" });
+        sSpan.createEl("strong", { text: "Shown on Sheet: " });
         sSpan.createSpan({ text: `${shownCount} / ${totalEntries}` });
 
-        const wSpan = rightCounters.createEl("span", { attr: { style: "color: var(--dnd-ui-color-text-sublabel);" } });
-        wSpan.createEl("strong", { text: "Visible Weight: ", attr: { style: "color: var(--dnd-ui-color-text-secondary);" } });
+        const wSpan = rightCounters.createEl("span", { cls: "dnd-modal-tracker-stat" });
+        wSpan.createEl("strong", { text: "Visible Weight: " });
         wSpan.createSpan({ text: `${totalWeight % 1 === 0 ? totalWeight : totalWeight.toFixed(1)} lbs` });
     }
 
@@ -5184,12 +5156,7 @@ class InventoryModal extends Modal {
             const isActive = this.activeTab === id;
             const btn = this.tabsContainer.createEl("button", {
                 text: label,
-                attr: {
-                    style: `padding: 6px 14px; border-radius: 4px; font-size: 0.9em; cursor: pointer; box-shadow: none; ${isActive
-                            ? "background: var(--dnd-ui-color-bg-tertiary); color: var(--dnd-ui-color-text-bright); font-weight: bold; border: 1px solid var(--dnd-ui-color-border-active);"
-                            : "background: transparent; color: var(--dnd-ui-color-text-muted); border: 1px solid transparent;"
-                        }`
-                }
+                cls: `dnd-modal-tab-btn ${isActive ? "is-active" : ""}`.trim()
             });
             btn.onclick = () => {
                 this.activeTab = id;
@@ -5216,15 +5183,13 @@ class InventoryModal extends Modal {
     renderRulebookTab() {
         this.previewContainer.createEl("p", {
             text: "Click on any item in your inventory or select one from the dropdown to inspect its details.",
-            attr: { style: "color: var(--dnd-ui-color-text-muted); font-style: italic; text-align: center; margin-top: 40px;" }
+            cls: "dnd-modal-preview-empty"
         });
 
         // 1. Add Item from Rulebook Bar
-        const addBar = this.listContainer.createDiv({
-            attr: { style: "display: flex; gap: 8px; align-items: center; margin-bottom: 10px;" }
-        });
+        const addBar = this.listContainer.createDiv({ cls: "dnd-modal-add-bar" });
 
-        const selectEl = addBar.createEl("select", { attr: { style: "flex: 1;" } });
+        const selectEl = addBar.createEl("select", { cls: "dnd-modal-add-select" });
         selectEl.createEl("option", { text: "-- Add Item from Rulebook --", value: "" });
 
         Object.entries(this.availableRulebookItems)
@@ -5249,7 +5214,6 @@ class InventoryModal extends Modal {
                 this.itemDataCache[chosenKey] = await getItemData(this.app, this.plugin.settings, chosenKey);
             }
 
-            // If already in inventoryItems, increment quantity; otherwise push a new tuple
             const existing = this.inventoryItems.find(i => i[0] === chosenKey);
             if (existing) {
                 existing[1] = String((Number(existing[1]) || 0) + 1);
@@ -5267,7 +5231,7 @@ class InventoryModal extends Modal {
         if (this.starterItems.length > 0) {
             this.listContainer.createEl("div", {
                 text: "STARTER EQUIPMENT",
-                attr: { style: "font-size: 0.78em; font-weight: bold; letter-spacing: 1px; color: var(--dnd-ui-color-text-sublabel); margin: 6px 0 4px 0;" }
+                cls: "dnd-modal-section-label"
             });
 
             this.starterItems.forEach((tuple) => {
@@ -5278,13 +5242,13 @@ class InventoryModal extends Modal {
         // 3. Render Added Rulebook Items Section
         this.listContainer.createEl("div", {
             text: "ADDED RULEBOOK ITEMS",
-            attr: { style: "font-size: 0.78em; font-weight: bold; letter-spacing: 1px; color: var(--dnd-ui-color-text-sublabel); margin: 12px 0 4px 0;" }
+            cls: "dnd-modal-section-label"
         });
 
         if (this.inventoryItems.length === 0) {
             this.listContainer.createEl("p", {
                 text: "No extra rulebook items added yet.",
-                attr: { style: "color: var(--dnd-ui-color-text-muted); font-style: italic; font-size: 0.9em; margin: 4px 0;" }
+                cls: "dnd-modal-empty-text"
             });
         } else {
             this.inventoryItems.forEach((tuple, idx) => {
@@ -5305,15 +5269,10 @@ class InventoryModal extends Modal {
         const displayName = data?.name || this.availableRulebookItems[itemId] || itemId.replace(/\b\w/g, c => c.toUpperCase()).replace(/-/g, ' ');
 
         const row = this.listContainer.createDiv({
-            attr: {
-                style: `display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; border-radius: 6px; margin-bottom: 6px; background: var(--dnd-ui-color-bg-tertiary); border: 1px solid ${isShown ? "var(--dnd-ui-color-border-active)" : "var(--dnd-ui-color-border-primary)"
-                    }; gap: 8px;`
-            }
+            cls: `dnd-modal-list-row ${isShown ? "is-active" : ""}`.trim()
         });
 
-        const leftGroup = row.createDiv({
-            attr: { style: "display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; cursor: pointer;" }
-        });
+        const leftGroup = row.createDiv({ cls: "dnd-modal-row-left is-clickable" });
 
         const showCheckbox = leftGroup.createEl("input", {
             type: "checkbox",
@@ -5323,39 +5282,30 @@ class InventoryModal extends Modal {
         showCheckbox.onclick = (e) => {
             e.stopPropagation();
             tuple[2] = showCheckbox.checked ? "true" : "false";
-            row.style.borderColor = showCheckbox.checked ? "var(--dnd-ui-color-border-active)" : "var(--dnd-ui-color-border-primary)";
+            row.classList.toggle("is-active", showCheckbox.checked);
             this.renderTracker();
         };
 
         if (isStarter) {
             leftGroup.createEl("span", {
                 text: "Starter",
-                cls: "dnd-level-badge",
-                attr: { style: "margin: 0; padding: 1px 5px; font-size: 0.7em;" }
+                cls: "dnd-level-badge dnd-modal-badge-sm"
             });
         }
 
-        leftGroup.createEl("span", {
-            text: displayName,
-            attr: { style: "color: var(--dnd-ui-color-text-bright); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" }
-        });
+        leftGroup.createEl("span", { text: displayName, cls: "dnd-modal-row-name" });
 
         leftGroup.onclick = async () => {
             await this.renderItemPreview(itemId, displayName);
         };
 
-        const rightGroup = row.createDiv({
-            attr: { style: "display: flex; align-items: center; gap: 6px; flex-shrink: 0;" }
-        });
+        const rightGroup = row.createDiv({ cls: "dnd-modal-row-right" });
 
         const qtyInput = rightGroup.createEl("input", {
             type: "number",
             value: String(qty),
-            attr: {
-                min: "0",
-                title: "Quantity (0 stays in inventory)",
-                style: "width: 52px; text-align: center; padding: 2px 4px; background: var(--dnd-ui-color-bg-darker); border: 1px solid var(--dnd-ui-color-border-primary); color: var(--dnd-ui-color-text-bright); border-radius: 4px;"
-            }
+            cls: "dnd-modal-qty-input",
+            attr: { min: "0", title: "Quantity (0 stays in inventory)" }
         });
         qtyInput.oninput = () => {
             const val = Math.max(0, Number(qtyInput.value) || 0);
@@ -5366,60 +5316,53 @@ class InventoryModal extends Modal {
         if (!isStarter && onDelete) {
             const delBtn = rightGroup.createEl("button", {
                 text: "✕",
-                attr: {
-                    title: "Remove from Inventory",
-                    style: "width: 24px; height: 24px; padding: 0; background: transparent; box-shadow: none; color: var(--dnd-ui-color-text-muted); cursor: pointer;"
-                }
+                cls: "dnd-modal-del-btn",
+                attr: { title: "Remove from Inventory" }
             });
-            delBtn.onmouseenter = () => { delBtn.style.background = "var(--dnd-ui-color-accent-red)"; delBtn.style.color = "white"; };
-            delBtn.onmouseleave = () => { delBtn.style.background = "transparent"; delBtn.style.color = "var(--dnd-ui-color-text-muted)"; };
             delBtn.onclick = () => onDelete();
         }
     }
 
     renderCustomTab() {
-        // Right pane: Form to Create a New On-the-Fly Custom Item
         this.previewContainer.empty();
         this.previewContainer.createEl("h4", {
             text: "✨ Create Custom Item",
-            attr: { style: "margin: 0 0 10px 0; color: var(--dnd-ui-color-text-bright);" }
+            cls: "dnd-modal-preview-title"
         });
 
-        const formDiv = this.previewContainer.createDiv({
-            attr: { style: "display: flex; flex-direction: column; gap: 8px;" }
-        });
+        const formDiv = this.previewContainer.createDiv({ cls: "dnd-modal-form" });
 
         const nameInput = formDiv.createEl("input", {
             type: "text",
             placeholder: "Item Name (e.g., Mystery Key)",
-            attr: { style: "width: 100%;" }
+            cls: "dnd-modal-form-input"
         });
 
-        const rowGrid = formDiv.createDiv({
-            attr: { style: "display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px;" }
-        });
+        const rowGrid = formDiv.createDiv({ cls: "dnd-modal-form-grid-3" });
 
         const qtyInput = rowGrid.createEl("input", {
             type: "number",
             value: "1",
             placeholder: "Qty",
-            attr: { min: "0", title: "Quantity", style: "width: 100%;" }
+            cls: "dnd-modal-form-input",
+            attr: { min: "0", title: "Quantity" }
         });
         const weightInput = rowGrid.createEl("input", {
             type: "number",
             placeholder: "Weight (lbs)",
-            attr: { min: "0", step: "0.1", style: "width: 100%;" }
+            cls: "dnd-modal-form-input",
+            attr: { min: "0", step: "0.1" }
         });
         const costInput = rowGrid.createEl("input", {
             type: "number",
             placeholder: "Cost (GP)",
-            attr: { min: "0", step: "0.1", style: "width: 100%;" }
+            cls: "dnd-modal-form-input",
+            attr: { min: "0", step: "0.1" }
         });
 
         const createBtn = formDiv.createEl("button", {
             text: "Add Custom Item",
-            cls: "mod-cta",
-            attr: { style: "margin-top: 4px; cursor: pointer;" }
+            cls: "mod-cta"
         });
 
         createBtn.onclick = () => {
@@ -5437,17 +5380,16 @@ class InventoryModal extends Modal {
             this.renderCustomTab();
         };
 
-        // Left pane: List of existing On-the-Fly Custom Items
         this.listContainer.empty();
         this.listContainer.createEl("div", {
             text: "ON-THE-FLY CUSTOM ITEMS",
-            attr: { style: "font-size: 0.78em; font-weight: bold; letter-spacing: 1px; color: var(--dnd-ui-color-text-sublabel); margin: 0 0 6px 0;" }
+            cls: "dnd-modal-section-label"
         });
 
         if (this.customItems.length === 0) {
             this.listContainer.createEl("p", {
                 text: "No custom items created yet. Use the form on the right to add one!",
-                attr: { style: "color: var(--dnd-ui-color-text-muted); font-style: italic; text-align: center; margin-top: 20px;" }
+                cls: "dnd-modal-empty-text"
             });
             return;
         }
@@ -5457,15 +5399,10 @@ class InventoryModal extends Modal {
             const isShown = showStr.toLowerCase() !== "false";
 
             const row = this.listContainer.createDiv({
-                attr: {
-                    style: `display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; border-radius: 6px; margin-bottom: 6px; background: var(--dnd-ui-color-bg-tertiary); border: 1px solid ${isShown ? "var(--dnd-ui-color-border-active)" : "var(--dnd-ui-color-border-primary)"
-                        }; gap: 8px;`
-                }
+                cls: `dnd-modal-list-row ${isShown ? "is-active" : ""}`.trim()
             });
 
-            const leftGroup = row.createDiv({
-                attr: { style: "display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0;" }
-            });
+            const leftGroup = row.createDiv({ cls: "dnd-modal-row-left" });
 
             const showCheckbox = leftGroup.createEl("input", {
                 type: "checkbox",
@@ -5474,14 +5411,11 @@ class InventoryModal extends Modal {
             showCheckbox.checked = isShown;
             showCheckbox.onclick = () => {
                 tuple[2] = showCheckbox.checked ? "true" : "false";
-                row.style.borderColor = showCheckbox.checked ? "var(--dnd-ui-color-border-active)" : "var(--dnd-ui-color-border-primary)";
+                row.classList.toggle("is-active", showCheckbox.checked);
                 this.renderTracker();
             };
 
-            leftGroup.createEl("span", {
-                text: cName,
-                attr: { style: "color: var(--dnd-ui-color-text-bright); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" }
-            });
+            leftGroup.createEl("span", { text: cName, cls: "dnd-modal-row-name" });
 
             const metaParts: string[] = [];
             if (Number(weightStr) > 0) metaParts.push(`${weightStr}lbs`);
@@ -5489,22 +5423,17 @@ class InventoryModal extends Modal {
             if (metaParts.length > 0) {
                 leftGroup.createEl("small", {
                     text: `(${metaParts.join(", ")})`,
-                    attr: { style: "color: var(--dnd-ui-color-text-muted); flex-shrink: 0;" }
+                    cls: "dnd-modal-row-meta"
                 });
             }
 
-            const rightGroup = row.createDiv({
-                attr: { style: "display: flex; align-items: center; gap: 6px; flex-shrink: 0;" }
-            });
+            const rightGroup = row.createDiv({ cls: "dnd-modal-row-right" });
 
             const qInput = rightGroup.createEl("input", {
                 type: "number",
                 value: String(Number(qtyStr) || 0),
-                attr: {
-                    min: "0",
-                    title: "Quantity (0 stays in inventory)",
-                    style: "width: 52px; text-align: center; padding: 2px 4px; background: var(--dnd-ui-color-bg-darker); border: 1px solid var(--dnd-ui-color-border-primary); color: var(--dnd-ui-color-text-bright); border-radius: 4px;"
-                }
+                cls: "dnd-modal-qty-input",
+                attr: { min: "0", title: "Quantity (0 stays in inventory)" }
             });
             qInput.oninput = () => {
                 tuple[1] = String(Math.max(0, Number(qInput.value) || 0));
@@ -5513,13 +5442,9 @@ class InventoryModal extends Modal {
 
             const delBtn = rightGroup.createEl("button", {
                 text: "✕",
-                attr: {
-                    title: "Delete Custom Item",
-                    style: "width: 24px; height: 24px; padding: 0; background: transparent; box-shadow: none; color: var(--dnd-ui-color-text-muted); cursor: pointer;"
-                }
+                cls: "dnd-modal-del-btn",
+                attr: { title: "Delete Custom Item" }
             });
-            delBtn.onmouseenter = () => { delBtn.style.background = "var(--dnd-ui-color-accent-red)"; delBtn.style.color = "white"; };
-            delBtn.onmouseleave = () => { delBtn.style.background = "transparent"; delBtn.style.color = "var(--dnd-ui-color-text-muted)"; };
             delBtn.onclick = () => {
                 this.customItems.splice(idx, 1);
                 this.renderTracker();
@@ -5536,32 +5461,30 @@ class InventoryModal extends Modal {
         const data = this.itemDataCache[itemKey];
 
         if (!data) {
-            this.previewContainer.createEl("h4", { text: fallbackName, attr: { style: "margin: 0 0 6px 0; color: var(--dnd-ui-color-text-bright);" } });
+            this.previewContainer.createEl("h4", { text: fallbackName, cls: "dnd-modal-preview-title" });
             this.previewContainer.createEl("p", {
                 text: `Details file (/rulebook/items/${itemKey}.json) not found.`,
-                attr: { style: "color: var(--dnd-ui-color-text-muted); font-style: italic;" }
+                cls: "dnd-modal-empty-text"
             });
             return;
         }
 
-        this.previewContainer.createEl("h4", { text: data.name || fallbackName, attr: { style: "margin: 0 0 4px 0; color: var(--dnd-ui-color-text-bright);" } });
+        this.previewContainer.createEl("h4", { text: data.name || fallbackName, cls: "dnd-modal-preview-title" });
         if (data.type) {
             this.previewContainer.createEl("div", {
                 text: String(data.type).toUpperCase(),
-                attr: { style: "font-size: 0.78em; color: var(--dnd-ui-color-text-secondary); letter-spacing: 0.8px; margin-bottom: 10px;" }
+                cls: "dnd-modal-preview-sub"
             });
         }
 
-        const metaDiv = this.previewContainer.createDiv({
-            attr: { style: "font-size: 0.85em; color: var(--dnd-ui-color-text-sublabel); margin-bottom: 10px; border-bottom: 1px solid var(--dnd-ui-color-border-primary); padding-bottom: 8px; line-height: 1.5;" }
-        });
+        const metaDiv = this.previewContainer.createDiv({ cls: "dnd-modal-preview-meta" });
         if (data.damage) metaDiv.createEl("div", { text: `Damage: ${data.damage}` });
         if (data.ac) metaDiv.createEl("div", { text: `AC: ${data.ac}` });
         if (data.weight !== undefined) metaDiv.createEl("div", { text: `Weight: ${data.weight} lbs` });
         if (data.cost !== undefined) metaDiv.createEl("div", { text: `Cost: ${data.cost} GP` });
 
         if (data.description) {
-            const descDiv = this.previewContainer.createDiv({ attr: { style: "font-size: 0.9em; line-height: 1.4;" } });
+            const descDiv = this.previewContainer.createDiv({ cls: "dnd-modal-preview-desc" });
             await this.plugin.renderDndMarkdown(String(data.description), descDiv, this.sourcePath, this.renderChild);
         }
     }
@@ -6165,23 +6088,6 @@ class ManageCharacterModal extends Modal {
                 const profRegex = /(```(?:dnd-)?skills[\s\S]*?proficiencies:\s*\n)([\s\S]*?)(?=\n[ \t]*expertise:)/;
                 updatedContent = updatedContent.replace(profRegex, `$1${profInject}`);
 
-                // C. Update Stat History Table
-                const colMap: Record<number, number> = { 4: 4, 6: 5, 8: 5, 10: 6, 12: 6, 14: 7, 16: 7, 19: 8 };
-                const targetCol = colMap[Number(frontmatter["DnD_level"])];
-                if (targetCol !== undefined) {
-                    const abbreviations: Record<string, string> = { strength: "STR", dexterity: "DEX", constitution: "CON", intelligence: "INT", wisdom: "WIS", charisma: "CHA" };
-                    Object.keys(this.currentStats).forEach(stat => {
-                        const abbr = abbreviations[stat];
-                        const newVal = String(this.currentStats[stat]).padStart(2, ' ');
-                        const rowRegex = new RegExp(`(\\|\\s*${abbr}\\s*\\|[^\\n]+)`);
-                        updatedContent = updatedContent.replace(rowRegex, (match) => {
-                            const cells = match.split('|');
-                            if (cells.length > targetCol) cells[targetCol] = `  ${newVal}   `;
-                            return cells.join('|');
-                        });
-                    });
-                }
-
                 return updatedContent;
             });
         }
@@ -6700,41 +6606,16 @@ class LevelUpModal extends Modal {
         // 1. Thread-safe Frontmatter Update
         await this.plugin.updateCharacterFrontmatter(this.sourcePath, updates);
 
-        // 2. Thread-safe Markdown String Update (Expertise & ASI Table)
-        const file = this.app.vault.getAbstractFileByPath(this.sourcePath);
-        if (file instanceof TFile) {
-            await this.app.vault.process(file, (content) => {
-                let updatedContent = content;
-
-                // A. Rewrite Expertise in skills block
-                if (finalExpertise.length > 0) {
+        // 2. Thread-safe Markdown String Update (Expertise in skills block)
+        if (finalExpertise.length > 0) {
+            const file = this.app.vault.getAbstractFileByPath(this.sourcePath);
+            if (file instanceof TFile) {
+                await this.app.vault.process(file, (content) => {
                     const expInject = finalExpertise.map((e: any) => `  - ${e[0]}`).join('\n') + '\n';
                     const expRegex = /(expertise:\s*\n)([\s\S]*?)(?=\n[ \t]*half_proficiencies:)/;
-                    updatedContent = updatedContent.replace(expRegex, `$1${expInject}`);
-                }
-
-                // B. Update Stat History Table if ASI was taken
-                if (this.isAsiLevel && this.asiChoice === "asi") {
-                    const colMap: Record<number, number> = { 4: 4, 6: 5, 8: 5, 10: 6, 12: 6, 14: 7, 16: 7, 19: 8 };
-                    const targetCol = colMap[this.newLevel];
-
-                    if (targetCol !== undefined) {
-                        const abbreviations: Record<string, string> = { strength: "STR", dexterity: "DEX", constitution: "CON", intelligence: "INT", wisdom: "WIS", charisma: "CHA" };
-
-                        Object.keys(this.currentStats).forEach(stat => {
-                            const abbr = abbreviations[stat];
-                            const newVal = String(this.currentStats[stat]).padStart(2, ' ');
-                            const rowRegex = new RegExp(`(\\|\\s*${abbr}\\s*\\|[^\\n]+)`);
-                            updatedContent = updatedContent.replace(rowRegex, (match) => {
-                                const cells = match.split('|');
-                                if (cells.length > targetCol) cells[targetCol] = `  ${newVal}   `;
-                                return cells.join('|');
-                            });
-                        });
-                    }
-                }
-                return updatedContent;
-            });
+                    return content.replace(expRegex, `$1${expInject}`);
+                });
+            }
         }
 
         new Notice(`Successfully leveled up to Level ${this.newLevel}!`);
@@ -6825,7 +6706,7 @@ class SpellbookModal extends Modal {
         this.renderChild = new MarkdownRenderChild(contentEl);
         this.renderChild.load();
 
-        contentEl.createEl("h3", { text: "📖 Spellbook Manager", cls: "dnd-section-header", attr: { style: "margin-bottom: 10px;" } });
+        contentEl.createEl("h3", { text: "📖 Spellbook Manager", cls: "dnd-section-header dnd-modal-header" });
 
         // 1. Read Frontmatter
         const fileCache = this.app.metadataCache.getCache(this.sourcePath);
@@ -6882,31 +6763,16 @@ class SpellbookModal extends Modal {
         }
 
         // 4. Build Layout Containers
-        this.trackerContainer = contentEl.createDiv({
-            attr: { style: "display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: var(--dnd-ui-color-bg-tertiary); border: 1px solid var(--dnd-ui-color-border-primary); border-radius: 6px; margin-bottom: 12px;" }
-        });
+        this.trackerContainer = contentEl.createDiv({ cls: "dnd-modal-tracker" });
+        this.tabsContainer = contentEl.createDiv({ cls: "dnd-modal-tabs" });
 
-        this.tabsContainer = contentEl.createDiv({
-            attr: { style: "display: flex; gap: 4px; flex-wrap: wrap; border-bottom: 1px solid var(--dnd-ui-color-border-primary); padding-bottom: 6px; margin-bottom: 12px;" }
-        });
-
-        const bodyGrid = contentEl.createDiv({
-            cls: "dnd-spellbook-body"
-        });
-
-        this.listContainer = bodyGrid.createDiv({
-            cls: "dnd-spellbook-list"
-        });
-
-        this.previewContainer = bodyGrid.createDiv({
-            cls: "dnd-spellbook-preview"
-        });
+        const bodyGrid = contentEl.createDiv({ cls: "dnd-spellbook-body" });
+        this.listContainer = bodyGrid.createDiv({ cls: "dnd-spellbook-list" });
+        this.previewContainer = bodyGrid.createDiv({ cls: "dnd-spellbook-preview" });
         this.renderEmptyPreview();
 
         // 5. Footer Buttons
-        const footerDiv = contentEl.createDiv({
-            attr: { style: "display: flex; justify-content: flex-end; gap: 10px; margin-top: 16px; border-top: 1px solid var(--dnd-ui-color-border-primary); padding-top: 12px;" }
-        });
+        const footerDiv = contentEl.createDiv({ cls: "dnd-modal-footer" });
 
         const cancelBtn = footerDiv.createEl("button", { text: "Cancel" });
         cancelBtn.onclick = () => this.close();
@@ -6941,22 +6807,20 @@ class SpellbookModal extends Modal {
         const leftInfo = this.trackerContainer.createDiv();
         leftInfo.createEl("strong", {
             text: `${this.dndClass} (Level ${this.characterLevel})`,
-            attr: { style: "color: var(--dnd-ui-color-text-bright);" }
+            cls: "dnd-modal-tracker-title"
         });
 
-        const rightCounters = this.trackerContainer.createDiv({
-            attr: { style: "display: flex; gap: 16px; font-size: 0.9em;" }
-        });
+        const rightCounters = this.trackerContainer.createDiv({ cls: "dnd-modal-tracker-counters" });
 
         const cantripText = this.maxCantrips > 0 ? `${cantrips} / ${this.maxCantrips}` : `${cantrips}`;
         const prepText = this.maxPreparedSpells > 0 ? `${leveled} / ${this.maxPreparedSpells}` : `${leveled}`;
 
-        const cSpan = rightCounters.createEl("span", { attr: { style: "color: var(--dnd-ui-color-text-sublabel);" } });
-        cSpan.createEl("strong", { text: "Cantrips Prepared: ", attr: { style: "color: var(--dnd-ui-color-text-secondary);" } });
+        const cSpan = rightCounters.createEl("span", { cls: "dnd-modal-tracker-stat" });
+        cSpan.createEl("strong", { text: "Cantrips Prepared: " });
         cSpan.createSpan({ text: cantripText });
 
-        const pSpan = rightCounters.createEl("span", { attr: { style: "color: var(--dnd-ui-color-text-sublabel);" } });
-        pSpan.createEl("strong", { text: "Spells Prepared: ", attr: { style: "color: var(--dnd-ui-color-text-secondary);" } });
+        const pSpan = rightCounters.createEl("span", { cls: "dnd-modal-tracker-stat" });
+        pSpan.createEl("strong", { text: "Spells Prepared: " });
         pSpan.createSpan({ text: prepText });
     }
 
@@ -6970,12 +6834,7 @@ class SpellbookModal extends Modal {
 
             const btn = this.tabsContainer.createEl("button", {
                 text: label,
-                attr: {
-                    style: `padding: 4px 10px; border-radius: 4px; font-size: 0.85em; cursor: pointer; box-shadow: none; ${isActive
-                        ? "background: var(--dnd-ui-color-bg-tertiary); color: var(--dnd-ui-color-text-bright); font-weight: bold; border: 1px solid var(--dnd-ui-color-border-active);"
-                        : "background: transparent; color: var(--dnd-ui-color-text-muted); border: 1px solid transparent;"
-                        }`
-                }
+                cls: `dnd-modal-tab-btn ${isActive ? "is-active" : ""}`.trim()
             });
 
             btn.onclick = () => {
@@ -6998,12 +6857,9 @@ class SpellbookModal extends Modal {
         const knownList = this.knownSpellsByLevel[lvl];
         const preparedList = this.preparedSpellsByLevel[lvl];
 
-        // 1. Add Spell Bar (from Router Pool)
-        const addBar = this.listContainer.createDiv({
-            attr: { style: "display: flex; gap: 8px; align-items: center;" }
-        });
+        const addBar = this.listContainer.createDiv({ cls: "dnd-modal-add-bar" });
 
-        const selectEl = addBar.createEl("select", { attr: { style: "flex: 1;" } });
+        const selectEl = addBar.createEl("select", { cls: "dnd-modal-add-select" });
         selectEl.createEl("option", { text: `-- Add ${lvl === "0" ? "Cantrip" : `Level ${lvl} Spell`} --`, value: "" });
 
         Object.entries(levelPool)
@@ -7014,7 +6870,6 @@ class SpellbookModal extends Modal {
                 }
             });
 
-        // Preview the spell immediately when selected in the dropdown before adding it
         selectEl.onchange = async () => {
             const chosenKey = selectEl.value;
             if (chosenKey) {
@@ -7034,11 +6889,10 @@ class SpellbookModal extends Modal {
             await this.renderSpellPreview(chosenKey, levelPool[chosenKey]);
         };
 
-        // 2. Known Spells List for this Level
         if (knownList.length === 0) {
             this.listContainer.createEl("p", {
                 text: `No ${lvl === "0" ? "cantrips" : `level ${lvl} spells`} in your Spellbook yet.`,
-                attr: { style: "color: var(--dnd-ui-color-text-muted); font-style: italic; text-align: center; margin-top: 20px;" }
+                cls: "dnd-modal-empty-text"
             });
             return;
         }
@@ -7048,14 +6902,10 @@ class SpellbookModal extends Modal {
             const isPrepared = preparedList.includes(spellKey);
 
             const row = this.listContainer.createDiv({
-                attr: {
-                    style: `display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; border-radius: 6px; background: var(--dnd-ui-color-bg-tertiary); border: 1px solid ${isPrepared ? "var(--dnd-ui-color-border-active)" : "var(--dnd-ui-color-border-primary)"
-                        };`
-                }
+                cls: `dnd-modal-list-row ${isPrepared ? "is-active" : ""}`.trim()
             });
 
-            // Left: Prepared Checkbox + Clickable Spell Name
-            const leftGroup = row.createDiv({ attr: { style: "display: flex; align-items: center; gap: 8px; flex: 1; cursor: pointer;" } });
+            const leftGroup = row.createDiv({ cls: "dnd-modal-row-left is-clickable" });
 
             const prepCheckbox = leftGroup.createEl("input", {
                 type: "checkbox",
@@ -7068,7 +6918,6 @@ class SpellbookModal extends Modal {
                 const { cantrips, leveled } = this.getPreparedCounts();
 
                 if (prepCheckbox.checked) {
-                    // Enforce limits when preparing a new spell
                     if (lvl === "0" && this.maxCantrips > 0 && cantrips >= this.maxCantrips) {
                         prepCheckbox.checked = false;
                         new Notice(`Cantrip limit reached (${this.maxCantrips} max). Unprepare a cantrip first!`);
@@ -7088,24 +6937,16 @@ class SpellbookModal extends Modal {
                 this.renderSpellList();
             };
 
-            const nameSpan = leftGroup.createEl("span", {
-                text: displayName,
-                attr: { style: "color: var(--dnd-ui-color-text-bright); font-weight: 500;" }
-            });
+            leftGroup.createEl("span", { text: displayName, cls: "dnd-modal-row-name" });
             leftGroup.onclick = async () => {
                 await this.renderSpellPreview(spellKey, displayName);
             };
 
-            // Right: Remove Button
             const delBtn = row.createEl("button", {
                 text: "✕",
-                attr: {
-                    title: "Remove from Spellbook",
-                    style: "width: 24px; height: 24px; padding: 0; background: transparent; box-shadow: none; color: var(--dnd-ui-color-text-muted);"
-                }
+                cls: "dnd-modal-del-btn",
+                attr: { title: "Remove from Spellbook" }
             });
-            delBtn.onmouseenter = () => { delBtn.style.background = "var(--dnd-ui-color-accent-red)"; delBtn.style.color = "white"; };
-            delBtn.onmouseleave = () => { delBtn.style.background = "transparent"; delBtn.style.color = "var(--dnd-ui-color-text-muted)"; };
             delBtn.onclick = () => {
                 this.knownSpellsByLevel[lvl] = knownList.filter(k => k !== spellKey);
                 this.preparedSpellsByLevel[lvl] = this.preparedSpellsByLevel[lvl].filter(k => k !== spellKey);
@@ -7119,7 +6960,7 @@ class SpellbookModal extends Modal {
         this.previewContainer.empty();
         this.previewContainer.createEl("p", {
             text: "Click on any spell in your Spellbook to inspect its details.",
-            attr: { style: "color: var(--dnd-ui-color-text-muted); font-style: italic; text-align: center; margin-top: 40px;" }
+            cls: "dnd-modal-preview-empty"
         });
     }
 
@@ -7128,36 +6969,32 @@ class SpellbookModal extends Modal {
         const spellData = await this.loadSpellJson(spellKey);
 
         if (!spellData) {
-            this.previewContainer.createEl("h4", { text: fallbackName, attr: { style: "margin: 0 0 6px 0; color: var(--dnd-ui-color-text-bright);" } });
+            this.previewContainer.createEl("h4", { text: fallbackName, cls: "dnd-modal-preview-title" });
             this.previewContainer.createEl("p", {
                 text: `Details file (/rulebook/spells/${spellKey}.json) not found.`,
-                attr: { style: "color: var(--dnd-ui-color-text-muted); font-style: italic;" }
+                cls: "dnd-modal-empty-text"
             });
             return;
         }
 
-        // Title & Badges
-        const headerDiv = this.previewContainer.createDiv({ attr: { style: "display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;" } });
-        headerDiv.createEl("h4", { text: spellData.name || fallbackName, attr: { style: "margin: 0; color: var(--dnd-ui-color-text-bright);" } });
+        const headerDiv = this.previewContainer.createDiv({ cls: "dnd-modal-preview-header" });
+        headerDiv.createEl("h4", { text: spellData.name || fallbackName, cls: "dnd-modal-preview-title" });
 
-        const badgesDiv = headerDiv.createDiv({ attr: { style: "display: flex; gap: 4px;" } });
+        const badgesDiv = headerDiv.createDiv({ cls: "dnd-modal-preview-badges" });
         if (spellData.concentration) {
-            badgesDiv.createEl("span", { text: "C", cls: "dnd-level-badge", attr: { title: "Concentration", style: "margin: 0; padding: 2px 6px;" } });
+            badgesDiv.createEl("span", { text: "C", cls: "dnd-level-badge dnd-spell-badge-sm", attr: { title: "Concentration" } });
         }
         if (spellData.ritual) {
-            badgesDiv.createEl("span", { text: "R", cls: "dnd-level-badge dnd-badge-combined", attr: { title: "Ritual", style: "margin: 0; padding: 2px 6px;" } });
+            badgesDiv.createEl("span", { text: "R", cls: "dnd-level-badge dnd-badge-combined dnd-spell-badge-sm", attr: { title: "Ritual" } });
         }
 
         const lvlText = Number(spellData.level) === 0 ? `${spellData.school || ""} Cantrip` : `Level ${spellData.level} ${spellData.school || ""}`;
         this.previewContainer.createEl("div", {
             text: lvlText.trim(),
-            attr: { style: "font-size: 0.8em; color: var(--dnd-ui-color-text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px;" }
+            cls: "dnd-modal-preview-sub"
         });
 
-        // Core Metadata Grid
-        const metaDiv = this.previewContainer.createDiv({
-            attr: { style: "font-size: 0.85em; color: var(--dnd-ui-color-text-sublabel); margin-bottom: 10px; border-bottom: 1px solid var(--dnd-ui-color-border-primary); padding-bottom: 8px; line-height: 1.5;" }
-        });
+        const metaDiv = this.previewContainer.createDiv({ cls: "dnd-modal-preview-meta" });
 
         if (spellData.castingTime) metaDiv.createEl("div", { text: `Casting Time: ${spellData.castingTime}` });
         if (spellData.range) metaDiv.createEl("div", { text: `Range: ${spellData.range}` });
@@ -7168,9 +7005,8 @@ class SpellbookModal extends Modal {
         }
         if (spellData.duration) metaDiv.createEl("div", { text: `Duration: ${spellData.duration}` });
 
-        // Description
         if (spellData.description) {
-            const descDiv = this.previewContainer.createDiv({ attr: { style: "font-size: 0.9em; line-height: 1.4;" } });
+            const descDiv = this.previewContainer.createDiv({ cls: "dnd-modal-preview-desc" });
             await this.plugin.renderDndMarkdown(spellData.description, descDiv, this.sourcePath, this.renderChild);
         }
     }
@@ -7204,113 +7040,44 @@ export class DnDCustomNotice extends Notice {
         iconString: string = "🎲",
         primaryAction?: { text: string; callback: () => void },
         secondaryAction?: { text: string; callback: () => void },
-        duration: number = 0 // 0 = stays open until clicked or dismissed with X
+        duration: number = 0
     ) {
         super("", duration);
 
-        // Grab the true outer .notice element so Obsidian doesn't render a second box behind ours
         const rootEl = (this.noticeEl.closest(".notice") as HTMLElement) || this.noticeEl;
         rootEl.empty();
         rootEl.addClass("dnd-custom-notice");
-
-        // Enforce solid, unclipped horizontal card styling matching our plugin windows
-        rootEl.style.backgroundColor = "var(--dnd-ui-color-bg-primary)";
-        rootEl.style.border = "1px solid var(--dnd-ui-color-border-primary)";
-        rootEl.style.borderRadius = "12px";
-        rootEl.style.padding = "16px 18px";
-        rootEl.style.boxShadow = "0 8px 24px rgba(0, 0, 0, 0.45)";
-        rootEl.style.opacity = "1";
-        rootEl.style.backdropFilter = "none";
-        rootEl.style.width = "360px";
-        rootEl.style.maxWidth = "90vw";
-        rootEl.style.overflow = "visible";
-        rootEl.style.boxSizing = "border-box";
-        rootEl.style.cursor = "default";
-
-        // Stop Obsidian from closing the notice when clicking on the card body itself
         rootEl.onclick = (e) => e.stopPropagation();
 
-        // Main 2-Column Layout: [Left Icon] + [Right Content Column]
-        const layout = rootEl.createDiv({
-            cls: "dnd-notice-layout",
-            attr: {
-                style: "display: flex; flex-direction: row; align-items: flex-start; gap: 14px; width: 100%;"
-            }
-        });
+        const layout = rootEl.createDiv({ cls: "dnd-notice-layout" });
 
-        // 1. Left App-Style Icon Box
-        const iconBox = layout.createDiv({
-            cls: "dnd-notice-icon",
-            attr: {
-                style: "width: 48px; height: 48px; border-radius: 10px; flex-shrink: 0; background-color: var(--dnd-ui-color-bg-secondary); border: 1px solid var(--dnd-ui-color-border-primary); display: flex; align-items: center; justify-content: center; font-size: 24px; box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.25);"
-            }
-        });
+        const iconBox = layout.createDiv({ cls: "dnd-notice-icon" });
         iconBox.innerText = iconString;
 
-        // 2. Right Column: Header (Title + Close X), Message, and Action Buttons
-        const contentCol = layout.createDiv({
-            cls: "dnd-notice-content",
-            attr: {
-                style: "display: flex; flex-direction: column; flex: 1; min-width: 0;"
-            }
-        });
+        const contentCol = layout.createDiv({ cls: "dnd-notice-content" });
+        const headerRow = contentCol.createDiv({ cls: "dnd-notice-header" });
 
-        // Top Row: Title on the left, '✕' Close button on the right
-        const headerRow = contentCol.createDiv({
-            cls: "dnd-notice-header",
-            attr: {
-                style: "display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; margin-bottom: 4px;"
-            }
-        });
-
-        headerRow.createEl("div", {
-            text: title,
-            cls: "dnd-notice-title",
-            attr: {
-                style: "font-size: 1.1em; font-weight: 700; color: var(--dnd-ui-color-text-bright); line-height: 1.25;"
-            }
-        });
+        headerRow.createEl("div", { text: title, cls: "dnd-notice-title" });
 
         const closeBtn = headerRow.createEl("button", {
             text: "✕",
             cls: "dnd-notice-close",
-            attr: {
-                title: "Dismiss",
-                style: "background: transparent; border: none; box-shadow: none; color: var(--dnd-ui-color-text-muted); font-size: 14px; padding: 0 2px; height: auto; cursor: pointer; line-height: 1;"
-            }
+            attr: { title: "Dismiss" }
         });
-        closeBtn.onmouseenter = () => { closeBtn.style.color = "var(--dnd-ui-color-text-bright)"; };
-        closeBtn.onmouseleave = () => { closeBtn.style.color = "var(--dnd-ui-color-text-muted)"; };
         closeBtn.onclick = (e) => {
             e.stopPropagation();
             this.hide();
         };
 
-        // Subtitle / Message Text
-        contentCol.createEl("div", {
-            text: message,
-            cls: "dnd-notice-message",
-            attr: {
-                style: "font-size: 0.92em; line-height: 1.4; color: var(--dnd-ui-color-text-muted); margin-bottom: 14px; word-wrap: break-word;"
-            }
-        });
+        contentCol.createEl("div", { text: message, cls: "dnd-notice-message" });
 
-        // Bottom Row: Action Buttons aligned beneath the message (matching Reference Image 2)
         if (primaryAction || secondaryAction) {
-            const btnRow = contentCol.createDiv({
-                cls: "dnd-notice-buttons",
-                attr: {
-                    style: "display: flex; flex-direction: row; gap: 10px; align-items: center; flex-wrap: wrap;"
-                }
-            });
+            const btnRow = contentCol.createDiv({ cls: "dnd-notice-buttons" });
 
             if (primaryAction) {
                 const pBtn = btnRow.createEl("button", {
                     text: primaryAction.text,
-                    cls: "mod-cta",
-                    attr: {
-                        style: "padding: 7px 16px; border-radius: 8px; font-weight: 600; font-size: 0.9em; cursor: pointer; border: 1px solid var(--dnd-ui-color-border-active); background-color: var(--dnd-ui-color-border-active); color: var(--dnd-ui-color-text-bright); box-shadow: none; height: auto;"
-                    }
+                    cls: "mod-cta dnd-notice-btn-primary"
                 });
                 pBtn.onclick = (e) => {
                     e.stopPropagation();
@@ -7322,9 +7089,7 @@ export class DnDCustomNotice extends Notice {
             if (secondaryAction) {
                 const sBtn = btnRow.createEl("button", {
                     text: secondaryAction.text,
-                    attr: {
-                        style: "padding: 7px 16px; border-radius: 8px; font-weight: 500; font-size: 0.9em; cursor: pointer; border: 1px solid var(--dnd-ui-color-border-primary); background-color: var(--dnd-ui-color-bg-secondary); color: var(--dnd-ui-color-text-primary); box-shadow: none; height: auto;"
-                    }
+                    cls: "dnd-notice-btn-secondary"
                 });
                 sBtn.onclick = (e) => {
                     e.stopPropagation();
