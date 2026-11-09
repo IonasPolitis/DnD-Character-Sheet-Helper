@@ -118,11 +118,13 @@ weapon: frontmatter.DnD_weapon
 weaponDamage: frontmatter.DnD_weaponDamage
 armor: frontmatter.DnD_armor
 armorAc: frontmatter.DnD_armorAc
-extraItems: frontmatter.DnD_extraItems
+starterEquipment: frontmatter.DnD_starterEquipment
+inventoryItems: frontmatter.DnD_inventoryItems
+customItems: frontmatter.DnD_customItems
 ```
 
 ```dnd-spells
-DnD_spellcasting_ability: frontmatter.DnD_spellcastingAbility
+spellcastingAbility: frontmatter.DnD_spellcastingAbility
 spells: frontmatter.DnD_spells
 preparedSpells: frontmatter.DnD_preparedSpells
 spellSlots: frontmatter.DnD_spellSlots

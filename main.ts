@@ -971,15 +971,15 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                 return String(val).toLowerCase().replace(/['"]/g, '').trim().replace(/\s+/g, '-');
             };
 
-            // 1. Resolve Core Variables
-            const dndClass = resolveValue(blockData.class) ?? frontmatter['DnD_class'];
-            const background = resolveValue(blockData.background) ?? frontmatter['DnD_background'];
-            const classEq = resolveValue(blockData['classEquipment'] ?? blockData['class-equipment']) ?? frontmatter['DnD_classEquipment'];
-            const bgEq = resolveValue(blockData['backgroundEquipment'] ?? blockData['background-equipment']) ?? frontmatter['DnD_backgroundEquipment'];
-            const weaponSlot = resolveValue(blockData.weapon) ?? frontmatter['DnD_weapon'];
-            const weaponDamage = resolveValue(blockData.weaponDamage ?? blockData['weapon_damage']) ?? frontmatter['DnD_weaponDamage'];
-            const armorSlot = resolveValue(blockData.armor) ?? frontmatter['DnD_armor'];
-            const armorAc = resolveValue(blockData.armorAc ?? blockData['armor_ac']) ?? frontmatter['DnD_armorAc'];
+            // 1. Resolve Core Variables strictly from the code block (supports "frontmatter.<key>")
+            const dndClass = resolveValue(blockData.class);
+            const background = resolveValue(blockData.background);
+            const classEq = resolveValue(blockData.classEquipment ?? blockData['class-equipment']);
+            const bgEq = resolveValue(blockData.backgroundEquipment ?? blockData['background-equipment']);
+            const weaponSlot = resolveValue(blockData.weapon);
+            const weaponDamage = resolveValue(blockData.weaponDamage ?? blockData['weapon_damage']);
+            const armorSlot = resolveValue(blockData.armor);
+            const armorAc = resolveValue(blockData.armorAc ?? blockData['armor_ac']);
             const edition = resolveValue(blockData.edition);
 
             const fetchOptions = {
@@ -1001,7 +1001,7 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                 if (eqObj?.gold) grantedGold += Number(eqObj.gold) || 0;
             }
 
-            // 3. Parse Inventory Arrays from Frontmatter / Block
+            // 3. Parse Inventory Arrays strictly from blockData variables
             const parseJsonArray = (raw: any): any[] => {
                 const resolved = resolveValue(raw);
                 if (!resolved) return [];
@@ -1012,11 +1012,26 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                 return [];
             };
 
+            // Helper to extract the target frontmatter key if a block property is mapped via "frontmatter.<Key>"
+            const getTargetFmKey = (rawProp: any, fallbackKey: string): string => {
+                if (typeof rawProp === 'string') {
+                    const trimmed = rawProp.trim().replace(/^\{\{\s*|\s*\}\}$/g, '');
+                    if (trimmed.startsWith('frontmatter.')) {
+                        return trimmed.replace('frontmatter.', '').trim();
+                    }
+                }
+                return fallbackKey;
+            };
+
+            const starterFmKey = getTargetFmKey(blockData.starterEquipment, "DnD_starterEquipment");
+            const invItemsFmKey = getTargetFmKey(blockData.inventoryItems, "DnD_inventoryItems");
+            const customItemsFmKey = getTargetFmKey(blockData.customItems, "DnD_customItems");
+
             // Structure: [ ["<item-id>", "<qty>", "<show: true/false>"], ... ]
-            const rawStarter = parseJsonArray(blockData.starterEquipment ?? frontmatter['DnD_starterEquipment']);
-            const rawInvItems = parseJsonArray(blockData.inventoryItems ?? frontmatter['DnD_inventoryItems']);
+            const rawStarter = parseJsonArray(blockData.starterEquipment);
+            const rawInvItems = parseJsonArray(blockData.inventoryItems);
             // Structure: [ ["<Name>", "<qty>", "<show>", "<weight>", "<cost>", "<type>", "<description>"], ... ]
-            const rawCustomItems = parseJsonArray(blockData.customItems ?? frontmatter['DnD_customItems']);
+            const rawCustomItems = parseJsonArray(blockData.customItems);
 
             wrapper.createEl("h3", { text: "Equipment, Wealth & Items:", cls: "dnd-section-header" });
 
@@ -1078,8 +1093,8 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                 ];
             };
 
-            const wealthAdded = parseWealthTuple(blockData.wealthAdded ?? frontmatter['DnD_wealthAdded']);
-            const wealthSpent = parseWealthTuple(blockData.wealthSpent ?? frontmatter['DnD_wealthSpent']);
+            const wealthAdded = parseWealthTuple(blockData.wealthAdded);
+            const wealthSpent = parseWealthTuple(blockData.wealthSpent);
             const baseWealth = [0, grantedGold, 0, 0];
 
             const CURRENCIES = [
@@ -1108,7 +1123,6 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
 
                 const currCard = wealthGrid.createDiv({ cls: "dnd-wealth-cell" });
 
-                // Top Row: Currency Badge + Total Value
                 const topRow = currCard.createDiv({ cls: "dnd-wealth-top" });
                 topRow.createEl("span", { text: curr.name, cls: "dnd-level-badge dnd-wealth-badge" });
                 const totalValueEl = topRow.createEl("strong", {
@@ -1116,7 +1130,6 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                     cls: "dnd-wealth-total"
                 });
 
-                // Bottom Row: Amount Input + Add / Spend Buttons
                 const controlsRow = currCard.createDiv({ cls: "dnd-wealth-controls" });
                 const amtInput = controlsRow.createEl("input", {
                     type: "number",
@@ -1274,7 +1287,7 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                             String(rawStarter[item.arrayIndex][2] ?? "true")
                         ];
                         await this.updateCharacterFrontmatter(ctx.sourcePath, {
-                            "DnD_starterEquipment": JSON.stringify(rawStarter)
+                            [starterFmKey]: JSON.stringify(rawStarter)
                         });
                     } else if (item.sourceType === "rulebook" && Array.isArray(rawInvItems[item.arrayIndex])) {
                         rawInvItems[item.arrayIndex] = [
@@ -1283,7 +1296,7 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                             String(rawInvItems[item.arrayIndex][2] ?? "true")
                         ];
                         await this.updateCharacterFrontmatter(ctx.sourcePath, {
-                            "DnD_inventoryItems": JSON.stringify(rawInvItems)
+                            [invItemsFmKey]: JSON.stringify(rawInvItems)
                         });
                     } else if (item.sourceType === "custom" && Array.isArray(rawCustomItems[item.arrayIndex])) {
                         const existing = rawCustomItems[item.arrayIndex];
@@ -1297,7 +1310,7 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                             String(existing[6] ?? "")
                         ];
                         await this.updateCharacterFrontmatter(ctx.sourcePath, {
-                            "DnD_customItems": JSON.stringify(rawCustomItems)
+                            [customItemsFmKey]: JSON.stringify(rawCustomItems)
                         });
                     }
                 } finally {
@@ -1657,19 +1670,17 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                 return val;
             };
 
-            // 1. Resolve DnD_spellcasting_ability strictly from the code block variable
-            const DnD_spellcasting_ability = resolveValue(
-                blockData.DnD_spellcasting_ability ?? blockData.spellcastingAbility ?? blockData["DnD_spellcastingAbility"]
-            ) || "";
+            // 1. Resolve spellcastingAbility strictly from the code block variable
+            const spellcastingAbility = resolveValue(blockData.spellcastingAbility) || "";
 
             // --- HIDE-AND-SHOW LOGIC ---
             // If the character has no spellcasting ability, completely abort rendering.
-            if (!DnD_spellcasting_ability || String(DnD_spellcasting_ability).trim().startsWith("<")) {
+            if (!spellcastingAbility || String(spellcastingAbility).trim().startsWith("<")) {
                 el.empty();
                 return;
             }
 
-            const spellAbilityKey = String(DnD_spellcasting_ability).toLowerCase().trim();
+            const spellAbilityKey = String(spellcastingAbility).toLowerCase().trim();
             const abilityScore = Number(resolveValue(blockData[spellAbilityKey]) ?? frontmatter[`DnD_${spellAbilityKey}`]) || 10;
             const abilityMod = Math.floor((abilityScore - 10) / 2);
             const level = Number(resolveValue(blockData.level) ?? frontmatter["DnD_level"]) || 1;
@@ -2194,17 +2205,8 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
             ) || Math.ceil(1 + (level / 4));
 
             // 3. Render the 2-Column Skills Window
-            const skillsWindow = wrapper.createDiv({
-                cls: "dnd-skills-window",
-                // Reduced padding to match the screenshots
-                attr: {
-                    style: "width: 100%; border: 1px solid var(--dnd-ui-color-border-primary); background-color: var(--dnd-ui-color-bg-primary); color: var(--dnd-ui-color-text-primary); border-radius: 6px; padding: 10px 14px; margin: 10px 0; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); box-sizing: border-box;"
-                }
-            });
-
-            const skillsGrid = skillsWindow.createDiv({
-                cls: "dnd-skills-grid"
-            });
+            const skillsWindow = wrapper.createDiv({ cls: "dnd-skills-window" });
+            const skillsGrid = skillsWindow.createDiv({ cls: "dnd-skills-grid" });
 
             for (const skillDef of SKILLS_DEFINITION) {
                 const skillKey = normalizeSkillKey(skillDef.name);
@@ -2236,49 +2238,20 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                 const formattedTotal = totalMod >= 0 ? `+${totalMod}` : `${totalMod}`;
 
                 const row = skillsGrid.createDiv({
-                    cls: `dnd-skill-row ${rankTier !== "none" ? `is-${rankTier}` : ""}`,
-                    attr: {
-                        // Added position: relative so the absolute dot anchors perfectly inside this row's left padding
-                        style: `display: flex; justify-content: space-between; align-items: center; padding: 4px 8px; border-radius: 4px; background-color: transparent; position: relative;`
-                    }
+                    cls: `dnd-skill-row ${rankTier !== "none" ? `is-${rankTier}` : ""}`
                 });
 
-                const leftSide = row.createDiv({
-                    cls: "dnd-skill-left",
-                    attr: {
-                        // Restored gap: 12px since the absolute dot no longer takes up flexbox space!
-                        style: "display: flex; align-items: center; gap: 12px; min-width: 0;"
-                    }
-                });
+                const leftSide = row.createDiv({ cls: "dnd-skill-left" });
 
-                // --- NEW: Dynamic Indicator Dot ---
                 leftSide.createEl("span", {
                     cls: "dnd-skill-dot",
                     attr: { title: rankTier !== "none" ? rankTier.charAt(0).toUpperCase() + rankTier.slice(1) : "Not Proficient" }
                 });
 
-                leftSide.createEl("span", {
-                    text: skillDef.abbr,
-                    cls: "dnd-skill-abbr",
-                    attr: {
-                        style: "font-size: 0.78em; font-style: italic; font-weight: 500; color: var(--dnd-ui-color-text-muted); width: 32px; display: inline-block; flex-shrink: 0; letter-spacing: 0.5px;"
-                    }
-                });
+                leftSide.createEl("span", { text: skillDef.abbr, cls: "dnd-skill-abbr" });
+                leftSide.createEl("span", { text: skillDef.name, cls: "dnd-skill-name" });
 
-                leftSide.createEl("span", {
-                    text: skillDef.name,
-                    cls: "dnd-skill-name",
-                    attr: {
-                        style: "font-size: 0.95em; color: var(--dnd-ui-color-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"
-                    }
-                });
-
-                const rightSide = row.createDiv({
-                    cls: "dnd-skill-mod",
-                    attr: {
-                        style: "font-size: 0.95em; font-weight: 400; color: var(--dnd-ui-color-text-primary); margin-left: 12px; flex-shrink: 0;"
-                    }
-                });
+                const rightSide = row.createDiv({ cls: "dnd-skill-mod" });
                 rightSide.setText(formattedTotal);
             }
 
@@ -2529,63 +2502,16 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
             // 5. Render Individual Ability Cards
             for (const card of cardsToRender) {
                 const cardEl = gridEl.createDiv({
-                    cls: `dnd-ability-card ${card.isProficient ? "is-proficient" : ""}`,
-                    attr: {
-                        style: `display: flex; flex-direction: column; border-radius: 8px; overflow: hidden; border: 1px solid ${card.isProficient ? "var(--dnd-ui-color-border-active)" : "var(--dnd-ui-color-border-primary)"}; background-color: ${card.isProficient ? "var(--dnd-ui-color-bg-proficient)" : "var(--dnd-ui-color-bg-primary)"}; box-sizing: border-box;`
-                    }
+                    cls: `dnd-ability-card ${card.isProficient ? "is-proficient" : ""}`
                 });
 
-                // Top Header Bar: Handle (Left) + Underlined Score (Right)
-                const headerEl = cardEl.createDiv({
-                    cls: "dnd-ability-header",
-                    attr: {
-                        // FIX: Static secondary background prevents the header from blending into the proficient body
-                        style: `display: flex; justify-content: space-between; align-items: center; padding: 6px 12px; background-color: var(--dnd-ui-color-bg-secondary);`
-                    }
-                });
+                const headerEl = cardEl.createDiv({ cls: "dnd-ability-header" });
+                headerEl.createEl("span", { text: card.handle, cls: "dnd-ability-abbr" });
+                headerEl.createEl("span", { text: String(card.score), cls: "dnd-ability-score" });
 
-                headerEl.createEl("span", {
-                    text: card.handle,
-                    cls: "dnd-ability-abbr",
-                    attr: {
-                        // Muted text color for abbreviation
-                        style: "font-size: 0.85em; font-weight: 500; letter-spacing: 1px; text-transform: uppercase; color: var(--dnd-ui-color-text-muted);"
-                    }
-                });
-
-                headerEl.createEl("span", {
-                    text: String(card.score),
-                    cls: "dnd-ability-score",
-                    attr: {
-                        // Muted text color for score with clean bottom border instead of text-underline-offset
-                        style: "font-size: 0.9em; font-weight: 500; color: var(--dnd-ui-color-text-muted); border-bottom: 1px solid var(--dnd-ui-color-text-muted); padding-bottom: 1px; line-height: 1;"
-                    }
-                });
-
-                // Card Body: Large Underlined Modifier + Italic Saving Throw
-                const bodyEl = cardEl.createDiv({
-                    cls: "dnd-ability-body",
-                    attr: {
-                        style: "display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 14px 10px 10px 10px; gap: 10px; flex: 1;"
-                    }
-                });
-
-                bodyEl.createEl("div", {
-                    text: card.modStr,
-                    cls: "dnd-ability-mod",
-                    attr: {
-                        // Removed bold text and used border-bottom instead of text-underline-offset
-                        style: "font-size: 1.65em; font-weight: 400; line-height: 1.1; color: var(--dnd-ui-color-text-bright); border-bottom: 2px solid var(--dnd-ui-color-text-bright); padding-bottom: 4px;"
-                    }
-                });
-
-                bodyEl.createEl("div", {
-                    text: `Saving ${card.saveStr}`,
-                    cls: "dnd-ability-save",
-                    attr: {
-                        style: `font-size: 0.82em; font-style: italic; color: ${card.isProficient ? "var(--dnd-ui-color-text-sublabel)" : "var(--dnd-ui-color-text-muted)"};`
-                    }
-                });
+                const bodyEl = cardEl.createDiv({ cls: "dnd-ability-body" });
+                bodyEl.createEl("div", { text: card.modStr, cls: "dnd-ability-mod" });
+                bodyEl.createEl("div", { text: `Saving ${card.saveStr}`, cls: "dnd-ability-save" });
             }
 
             el.empty();
@@ -2844,71 +2770,21 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
 
             // Render Cards
             for (const c of cards) {
-                const cardEl = gridEl.createDiv({
-                    cls: "dnd-info-card",
-                    attr: {
-                        style: "display: flex; flex-direction: column; align-items: center; justify-content: flex-start; padding: 14px 12px; border-radius: 6px; background-color: var(--dnd-ui-color-bg-primary); color: var(--dnd-ui-color-text-primary); border: 1px solid var(--dnd-ui-color-border-primary); min-height: 92px; box-sizing: border-box; text-align: center;"
-                    }
-                });
-
-                cardEl.createDiv({
-                    text: c.label,
-                    cls: "dnd-info-card-label",
-                    attr: {
-                        style: "font-size: 0.8em; text-transform: uppercase; letter-spacing: 1px; color: var(--dnd-ui-color-text-secondary); margin-bottom: 8px; font-weight: 500;"
-                    }
-                });
-
-                cardEl.createDiv({
-                    text: c.value,
-                    cls: "dnd-info-card-value",
-                    attr: {
-                        style: "font-size: 1.35em; font-weight: 700; color: var(--dnd-ui-color-text-bright); line-height: 1.2;"
-                    }
-                });
+                const cardEl = gridEl.createDiv({ cls: "dnd-info-card" });
+                cardEl.createDiv({ text: c.label, cls: "dnd-info-card-label" });
+                cardEl.createDiv({ text: c.value, cls: "dnd-info-card-value" });
 
                 if (c.sublabel) {
-                    cardEl.createDiv({
-                        text: c.sublabel,
-                        cls: "dnd-info-card-sublabel",
-                        attr: {
-                            style: "font-size: 0.78em; color: var(--dnd-ui-color-text-sublabel); margin-top: 6px; line-height: 1.2;"
-                        }
-                    });
+                    cardEl.createDiv({ text: c.sublabel, cls: "dnd-info-card-sublabel" });
                 }
             }
 
-            // Render Languages Pill Badge in Character Mode (Matching bottom-left of Screenshot 2)
+            // Render Languages Pill Badge in Character Mode
             if (mode === "character" && languagesStr) {
-                const langRow = containerEl.createDiv({
-                    cls: "dnd-info-languages-row",
-                    attr: {
-                        style: "display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; margin-bottom: 10px;"
-                    }
-                });
-
-                const langBadge = langRow.createDiv({
-                    cls: "dnd-info-languages-badge",
-                    attr: {
-                        style: "display: inline-flex; align-items: center; gap: 8px; padding: 5px 10px; border-radius: 6px; background-color: var(--dnd-ui-color-bg-primary); border: 1px solid var(--dnd-ui-color-border-primary);"
-                    }
-                });
-
-                langBadge.createEl("span", {
-                    text: "LANGUAGES",
-                    cls: "dnd-info-languages-label",
-                    attr: {
-                        style: "font-size: 0.78em; text-transform: uppercase; letter-spacing: 0.8px; color: var(--dnd-ui-color-text-secondary); font-weight: 500;"
-                    }
-                });
-
-                langBadge.createEl("span", {
-                    text: languagesStr,
-                    cls: "dnd-info-languages-value",
-                    attr: {
-                        style: "font-size: 0.85em; font-weight: 700; color: var(--dnd-ui-color-text-bright);"
-                    }
-                });
+                const langRow = containerEl.createDiv({ cls: "dnd-info-languages-row" });
+                const langBadge = langRow.createDiv({ cls: "dnd-info-languages-badge" });
+                langBadge.createEl("span", { text: "LANGUAGES", cls: "dnd-info-languages-label" });
+                langBadge.createEl("span", { text: languagesStr, cls: "dnd-info-languages-value" });
             }
 
             el.empty();
@@ -4292,6 +4168,11 @@ class CharacterWizardModal extends Modal {
         injectYAML("DnD_starterEquipment", `'${JSON.stringify(compiledStarterEquipment)}'`);
         injectYAML("DnD_inventoryItems", `'[]'`);
         injectYAML("DnD_customItems", `'[]'`);
+        finalContent = finalContent.replace(
+            /^extraItems:.*$/m,
+            `starterEquipment: frontmatter.DnD_starterEquipment\ninventoryItems: frontmatter.DnD_inventoryItems\ncustomItems: frontmatter.DnD_customItems`
+        );
+        finalContent = finalContent.replace(/^DnD_spellcasting_ability:/m, "spellcastingAbility:");
 
         // Upgrade legacy gold frontmatter lines to 4-Currency Wealth arrays
         finalContent = finalContent.replace(/^dnd_gold_added:/m, "DnD_wealthAdded:");

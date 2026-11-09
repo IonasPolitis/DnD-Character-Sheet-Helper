@@ -124,7 +124,10 @@ A Widget that uses a certain array strcuture to display DnD spells on your Obsid
 A Sample of the Code Block looks like this:
 ````markdown
 ```dnd-spells
+DnD_spellcasting_ability: $string$
 spells: $array$
+preparedSpells: $array$
+spellSlots: $array$
 ```
 ````
 The `spells` variabel has this certain structure: `[ [["<Cantrip-1>", "<Cantrip-2>"],"0"], [["<Level-1-Spell>", "<Level-2-Spell>"],"1"] ]`.
@@ -263,7 +266,6 @@ Cantrips are on "Level 0" and the rest of the Spell Levels are as normal.
 ```json
 {
       "class": "<Class_Name>",
-      "subclassFile": "<Subclass_File_Name>",
       "hitDice": "<Hit_Dice>",
       "savingThroughProf": ["<List_of_Abilities>"],
       "skillsPool": [["<List_of_Skills>"], <Number_of_Skills_that_can_be_chosen> ],
@@ -289,7 +291,8 @@ Cantrips are on "Level 0" and the rest of the Spell Levels are as normal.
                   {
                         "name": "<Feature_Name>",
                         "description": "<Feature_Description>",
-                        "badge": "<Custom_Badge_Text_Inplace_of_Level>", // <optional>
+                        "badge": "<Custom_Badge_Text_Inplace_of_Level>", // <optional>,
+                        "grantedSubclases": "<Subclasses-Filename>", // <optional>,
                         "grantedFeats": ["<ability-score-improvement>", "<Feat_Name>", "<Feat_Router_Filename>"], // <optional>
                         "hide": true // <optional>
                   }
@@ -301,7 +304,9 @@ Sometimes DnD classes or backgrounds offer a choice of an item category (like an
 
 By adding a pipe character (|) to an item key in your class.json or backgrounds.json (e.g: "musical-instrument|": 1 or "artisans-tool|musical-instrument": 1), you tell the plugin to wait for the player's choice. The plugin will automatically scan the player's *class-chosen-items* or *background-chosen-items* variables in their note, find an item whose "type" matches the requirement, and seamlessly add it to their inventory.
 
-The *granted-feat* variables automatically grants the player a certain feat when that level is reached and can be viewd in the "Extra Feats" section.
+The *grantedSubclases* variable grants the player the Sublcasses that are included in the json file entered and are given to the player on the level it is placed at.
+
+The *granted-feat* variable automatically grants the player a certain feat when that level is reached and can be viewd in the "Extra Feats" section.
 
 The *bility-score-improvement* specifically will trigger the option on the Level up button to improve your ability scores as per the Player's Handbook.
 
