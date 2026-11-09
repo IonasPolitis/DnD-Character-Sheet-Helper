@@ -849,21 +849,311 @@
 }
 
 /* ==========================================
-   15. NATIVE DND-INVENTORY GRID
+   15. NATIVE DND-INVENTORY, WEALTH & BACKPACK
    ========================================== */
+
+/* A. Equipped Weapon & Armor Cards */
+.dnd-equip-cards-grid {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+@media (max-width: 550px) {
+    .dnd-equip-cards-grid {
+        flex-direction: column;
+    }
+}
+
+.dnd-features-window.dnd-equip-card {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 10px;
+    text-align: center;
+    margin: 0;
+    justify-content: center;
+    gap: 6px;
+}
+
+.dnd-equip-card-title {
+    font-size: 0.85em;
+    color: var(--dnd-ui-color-text-secondary);
+    letter-spacing: 1.5px;
+    font-weight: 600;
+}
+
+.dnd-equip-card-stat {
+    font-size: 1.6em;
+    font-weight: bold;
+    color: var(--dnd-ui-color-text-bright);
+}
+
+.dnd-equip-card-desc {
+    font-size: 0.9em;
+    color: var(--dnd-ui-color-text-sublabel);
+    line-height: 1.3;
+}
+
+.dnd-equip-card-desc * {
+    display: inline;
+    margin: 0;
+    padding: 0;
+}
+
+/* B. Unified 4-Currency Wealth Bar */
+.dnd-features-window.dnd-wealth-window {
+    padding: 0;
+    overflow: hidden;
+    margin: 10px 0;
+}
+
+.dnd-wealth-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 1px;
+    background-color: var(--dnd-ui-color-border-primary);
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.dnd-wealth-grid.is-2col {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.dnd-wealth-grid.is-1col {
+    grid-template-columns: minmax(0, 1fr);
+}
+
+@media (max-width: 680px) {
+    .dnd-wealth-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 380px) {
+    .dnd-wealth-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+/* Override Section 5 generic .dnd-features-window > div > div rule */
+.dnd-features-window.dnd-wealth-window > .dnd-wealth-grid > .dnd-wealth-cell {
+    background-color: var(--dnd-ui-color-bg-primary);
+    margin: 0;
+    padding: 12px 14px;
+    border-bottom: none;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 8px;
+    box-sizing: border-box;
+}
+
+.dnd-wealth-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.dnd-wealth-badge {
+    margin: 0;
+    font-size: 0.78em;
+    padding: 2px 7px;
+}
+
+.dnd-wealth-total {
+    font-size: 1.15em;
+    color: var(--dnd-ui-color-text-bright);
+}
+
+.dnd-wealth-controls {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    width: 100%;
+}
+
+.dnd-features-window input.dnd-wealth-input {
+    width: 44px;
+    flex-shrink: 0;
+    text-align: center;
+    background-color: var(--dnd-ui-color-bg-darker);
+    border: 1px solid var(--dnd-ui-color-border-primary);
+    color: var(--dnd-ui-color-text-bright);
+    border-radius: 4px;
+    padding: 3px 4px;
+    font-size: 0.9em;
+}
+
+.dnd-features-window button.dnd-wealth-btn {
+    flex: 1;
+    padding: 4px 6px;
+    font-size: 0.82em;
+    cursor: pointer;
+}
+
+/* C. Backpack Contents & 3-Column Inventory Grid */
+.dnd-backpack-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: 0 0 10px 0;
+    border-bottom: 1px solid var(--dnd-ui-color-border-primary);
+    padding-bottom: 8px;
+}
+
+.dnd-backpack-title {
+    color: var(--dnd-ui-color-text-primary);
+    margin: 0;
+    border: none;
+    padding: 0;
+}
+
+.dnd-backpack-weight {
+    font-size: 0.85em;
+    color: var(--dnd-ui-color-text-muted);
+    font-weight: normal;
+    letter-spacing: 0.5px;
+}
+
+.dnd-backpack-empty {
+    color: var(--dnd-ui-color-text-muted);
+    font-style: italic;
+    margin: 6px 0;
+    text-align: center;
+}
+
 .dnd-features-window .dnd-inventory-grid,
 .dnd-inventory-grid {
     display: grid;
-    grid-template-columns: 1fr 1fr; /* Default 2-column layout */
-    gap: 8px 20px; /* Replaces column-gap and row-gap to pass CSS lint */
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px 14px;
+    width: 100%;
+    box-sizing: border-box;
 }
 
-/* Collapse to a single column on mobile screens to prevent overflow */
+.dnd-features-window .dnd-inventory-grid.is-1col,
+.dnd-inventory-grid.is-1col {
+    grid-template-columns: minmax(0, 1fr);
+}
+
 @media (max-width: 650px) {
     .dnd-features-window .dnd-inventory-grid,
     .dnd-inventory-grid {
-        grid-template-columns: 1fr;
+        grid-template-columns: minmax(0, 1fr);
     }
+}
+
+/* Override Section 5 generic .dnd-features-window > div > div rule */
+.dnd-features-window > .dnd-inventory-grid > .dnd-inventory-row,
+.dnd-inventory-row {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: 4px 8px;
+    border-radius: 5px;
+    background-color: var(--dnd-ui-color-bg-secondary);
+    border: 1px solid var(--dnd-ui-color-border-primary);
+    box-sizing: border-box;
+    gap: 6px;
+    min-width: 0;
+    margin: 0;
+}
+
+.dnd-inventory-left {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    flex: 1;
+    overflow: hidden;
+}
+
+.dnd-inventory-qty-badge {
+    margin: 0 8px 0 0;
+    flex-shrink: 0;
+    padding: 1px 6px;
+    font-size: 0.8em;
+}
+
+.dnd-inventory-name {
+    color: var(--dnd-ui-color-text-bright);
+    margin-right: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 0.92em;
+}
+
+.dnd-inventory-stats {
+    color: var(--dnd-ui-color-text-muted);
+    font-size: 0.82em;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.dnd-inventory-actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+}
+
+.dnd-inventory-stepper {
+    display: none;
+    align-items: center;
+    gap: 3px;
+    margin-right: 2px;
+}
+
+.dnd-inventory-stepper.is-open {
+    display: flex;
+}
+
+.dnd-features-window button.dnd-inventory-step-btn {
+    width: 22px;
+    height: 22px;
+    padding: 0;
+    font-size: 0.95em;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    cursor: pointer;
+    touch-action: manipulation;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+.dnd-features-window button.dnd-inventory-icon-btn {
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: transparent;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    color: var(--dnd-ui-color-text-muted);
+    box-shadow: none;
+    cursor: pointer;
+}
+
+.dnd-features-window button.dnd-inventory-icon-btn:hover {
+    background-color: var(--dnd-ui-color-bg-hover);
+    border-color: var(--dnd-ui-color-border-active);
+    color: var(--dnd-ui-color-text-bright);
+    transform: none;
+}
+
+.dnd-features-window button.dnd-inventory-icon-btn.is-active {
+    background-color: var(--dnd-ui-color-bg-tertiary);
+    border-color: var(--dnd-ui-color-border-active);
+    color: var(--dnd-ui-color-text-bright);
 }
 
 /* ==========================================

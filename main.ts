@@ -1029,9 +1029,7 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
             const hasArmor = cleanArmor !== "" && cleanArmor.toLowerCase() !== "none" && !cleanArmor.startsWith("<");
 
             if (hasWeapon || hasArmor) {
-                const equipGrid = wrapper.createDiv({
-                    attr: { style: "display: flex; gap: 10px; margin-bottom: 10px;" }
-                });
+                const equipGrid = wrapper.createDiv({ cls: "dnd-equip-cards-grid" });
 
                 const renderSlot = async (
                     rawItemInput: string,
@@ -1053,32 +1051,13 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                         displayDesc = data.description || "";
                     }
 
-                    const card = equipGrid.createDiv({
-                        cls: "dnd-features-window",
-                        attr: { style: "flex: 1; display: flex; flex-direction: column; padding: 10px; text-align: center; margin: 0; justify-content: center; gap: 6px;" }
-                    });
-
-                    card.createDiv({
-                        text: displayName.toUpperCase(),
-                        attr: { style: "font-size: 0.85em; color: var(--dnd-ui-color-text-secondary); letter-spacing: 1.5px; font-weight: 600;" }
-                    });
-
-                    card.createDiv({
-                        text: displayStat,
-                        attr: { style: "font-size: 1.6em; font-weight: bold; color: var(--dnd-ui-color-text-bright);" }
-                    });
+                    const card = equipGrid.createDiv({ cls: "dnd-features-window dnd-equip-card" });
+                    card.createDiv({ text: displayName.toUpperCase(), cls: "dnd-equip-card-title" });
+                    card.createDiv({ text: displayStat, cls: "dnd-equip-card-stat" });
 
                     if (displayDesc) {
-                        const noteDiv = card.createDiv({
-                            attr: { style: "font-size: 0.9em; color: var(--dnd-ui-color-text-sublabel); line-height: 1.3;" }
-                        });
+                        const noteDiv = card.createDiv({ cls: "dnd-equip-card-desc" });
                         await this.renderDndMarkdown(displayDesc, noteDiv, ctx.sourcePath, renderChild);
-                        noteDiv.querySelectorAll('*').forEach((childNode: Element) => {
-                            const childEl = childNode as HTMLElement;
-                            childEl.style.display = "inline";
-                            childEl.style.margin = "0";
-                            childEl.style.padding = "0";
-                        });
                     }
                 };
 
@@ -1110,128 +1089,15 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                 { name: "Copper", abbr: "CP", idx: 3 }
             ];
 
-            const wealthGrid = wrapper.createDiv({
-                cls: "dnd-wealth-grid",
-                attr: {
-                    style: "display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin: 10px 0;"
-                }
-            });
-
-            const updateWealthGridCols = () => {
-                const w = wealthGrid.clientWidth;
-                if (w <= 0) return;
-                if (w < 380) {
-                    wealthGrid.style.gridTemplateColumns = "minmax(0, 1fr)";
-                } else if (w < 680) {
-                    wealthGrid.style.gridTemplateColumns = "repeat(2, minmax(0, 1fr))";
-                } else {
-                    wealthGrid.style.gridTemplateColumns = "repeat(4, minmax(0, 1fr))";
-                }
-            };
-            const wealthObserver = new ResizeObserver(() => updateWealthGridCols());
-            wealthObserver.observe(wealthGrid);
-            activeResizeObservers.push(wealthObserver);
-
-            for (const curr of CURRENCIES) {
-                let currentTotal = baseWealth[curr.idx] + wealthAdded[curr.idx] - wealthSpent[curr.idx];
-
-                const currCard = wealthGrid.createDiv({
-                    cls: "dnd-features-window",
-                    attr: {
-                        style: "margin: 0; padding: 10px 12px; display: flex; flex-direction: column; justify-content: space-between; gap: 8px;"
-                    }
-                });
-
-                // Top Row: Badge + Total Value
-                const topRow = currCard.createDiv({
-                    attr: { style: "display: flex; justify-content: space-between; align-items: center;" }
-                });
-                topRow.createEl("span", {
-                    text: curr.name,
-                    cls: "dnd-level-badge",
-                    attr: { style: "margin: 0; font-size: 0.78em; padding: 2px 7px;" }
-                });
-                const totalValueEl = topRow.createEl("strong", {
-                    text: `${currentTotal} ${curr.abbr}`,
-                    attr: { style: "font-size: 1.15em; color: var(--dnd-ui-color-text-bright);" }
-                });
-
-                // Bottom Row: Input + Add / Spend Buttons
-                const controlsRow = currCard.createDiv({
-                    attr: { style: "display: flex; align-items: center; gap: 6px; width: 100%;" }
-                });
-
-                const amtInput = controlsRow.createEl("input", {
-                    type: "number",
-                    value: "1",
-                    attr: {
-                        min: "1",
-                        style: "width: 44px; flex-shrink: 0; text-align: center; background: var(--dnd-ui-color-bg-darker); border: 1px solid var(--dnd-ui-color-border-primary); color: var(--dnd-ui-color-text-bright); border-radius: 4px; padding: 3px 4px; font-size: 0.9em;"
-                    }
-                });
-
-                const addBtn = controlsRow.createEl("button", {
-                    text: "Add",
-                    attr: { style: "flex: 1; padding: 4px 6px; font-size: 0.82em; cursor: pointer;" }
-                });
-                const spendBtn = controlsRow.createEl("button", {
-                    text: "Spend",
-                    attr: { style: "flex: 1; padding: 4px 6px; font-size: 0.82em; cursor: pointer;" }
-                });
-
-                addBtn.onclick = async () => {
-                    const amt = Math.max(0, Number(amtInput.value) || 0);
-                    if (amt <= 0) return;
-                    currentTotal += amt;
-                    totalValueEl.setText(`${currentTotal} ${curr.abbr}`);
-                    isUpdatingInventory = true;
-                    try {
-                        await this.updateWealthFrontmatter(ctx.sourcePath, 'added', curr.idx, amt);
-                    } finally {
-                        setTimeout(() => { isUpdatingInventory = false; }, 150);
-                    }
-                };
-
-                spendBtn.onclick = async () => {
-                    const amt = Math.max(0, Number(amtInput.value) || 0);
-                    if (amt <= 0) return;
-                    currentTotal -= amt;
-                    totalValueEl.setText(`${currentTotal} ${curr.abbr}`);
-                    isUpdatingInventory = true;
-                    try {
-                        await this.updateWealthFrontmatter(ctx.sourcePath, 'spent', curr.idx, amt);
-                    } finally {
-                        setTimeout(() => { isUpdatingInventory = false; }, 150);
-                    }
-                };
-            }
-
             // Single unified outer container for all 4 currencies
-            const wealthWindow = wrapper.createDiv({
-                cls: "dnd-features-window",
-                attr: {
-                    style: "padding: 0; overflow: hidden; margin: 10px 0;"
-                }
-            });
-
-            // 4-column grid using a 1px gap to draw clean dividers between currencies
-            const wealthGrid = wealthWindow.createDiv({
-                cls: "dnd-wealth-grid",
-                attr: {
-                    style: "display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px; background-color: var(--dnd-ui-color-border-primary); width: 100%; box-sizing: border-box;"
-                }
-            });
+            const wealthWindow = wrapper.createDiv({ cls: "dnd-features-window dnd-wealth-window" });
+            const wealthGrid = wealthWindow.createDiv({ cls: "dnd-wealth-grid" });
 
             const updateWealthGridCols = () => {
                 const w = wealthGrid.clientWidth;
                 if (w <= 0) return;
-                if (w < 380) {
-                    wealthGrid.style.gridTemplateColumns = "minmax(0, 1fr)";
-                } else if (w < 680) {
-                    wealthGrid.style.gridTemplateColumns = "repeat(2, minmax(0, 1fr))";
-                } else {
-                    wealthGrid.style.gridTemplateColumns = "repeat(4, minmax(0, 1fr))";
-                }
+                wealthGrid.classList.toggle("is-1col", w < 380);
+                wealthGrid.classList.toggle("is-2col", w >= 380 && w < 680);
             };
             const wealthObserver = new ResizeObserver(() => updateWealthGridCols());
             wealthObserver.observe(wealthGrid);
@@ -1240,49 +1106,27 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
             for (const curr of CURRENCIES) {
                 let currentTotal = baseWealth[curr.idx] + wealthAdded[curr.idx] - wealthSpent[curr.idx];
 
-                const currCard = wealthGrid.createDiv({
-                    cls: "dnd-wealth-cell",
-                    attr: {
-                        style: "background-color: var(--dnd-ui-color-bg-primary); margin: 0; padding: 12px 14px; display: flex; flex-direction: column; justify-content: space-between; gap: 8px; box-sizing: border-box;"
-                    }
-                });
+                const currCard = wealthGrid.createDiv({ cls: "dnd-wealth-cell" });
 
                 // Top Row: Currency Badge + Total Value
-                const topRow = currCard.createDiv({
-                    attr: { style: "display: flex; justify-content: space-between; align-items: center;" }
-                });
-                topRow.createEl("span", {
-                    text: curr.name,
-                    cls: "dnd-level-badge",
-                    attr: { style: "margin: 0; font-size: 0.78em; padding: 2px 7px;" }
-                });
+                const topRow = currCard.createDiv({ cls: "dnd-wealth-top" });
+                topRow.createEl("span", { text: curr.name, cls: "dnd-level-badge dnd-wealth-badge" });
                 const totalValueEl = topRow.createEl("strong", {
                     text: `${currentTotal} ${curr.abbr}`,
-                    attr: { style: "font-size: 1.15em; color: var(--dnd-ui-color-text-bright);" }
+                    cls: "dnd-wealth-total"
                 });
 
                 // Bottom Row: Amount Input + Add / Spend Buttons
-                const controlsRow = currCard.createDiv({
-                    attr: { style: "display: flex; align-items: center; gap: 6px; width: 100%;" }
-                });
-
+                const controlsRow = currCard.createDiv({ cls: "dnd-wealth-controls" });
                 const amtInput = controlsRow.createEl("input", {
                     type: "number",
                     value: "1",
-                    attr: {
-                        min: "1",
-                        style: "width: 44px; flex-shrink: 0; text-align: center; background: var(--dnd-ui-color-bg-darker); border: 1px solid var(--dnd-ui-color-border-primary); color: var(--dnd-ui-color-text-bright); border-radius: 4px; padding: 3px 4px; font-size: 0.9em;"
-                    }
+                    cls: "dnd-wealth-input",
+                    attr: { min: "1" }
                 });
 
-                const addBtn = controlsRow.createEl("button", {
-                    text: "Add",
-                    attr: { style: "flex: 1; padding: 4px 6px; font-size: 0.82em; cursor: pointer;" }
-                });
-                const spendBtn = controlsRow.createEl("button", {
-                    text: "Spend",
-                    attr: { style: "flex: 1; padding: 4px 6px; font-size: 0.82em; cursor: pointer;" }
-                });
+                const addBtn = controlsRow.createEl("button", { text: "Add", cls: "dnd-wealth-btn" });
+                const spendBtn = controlsRow.createEl("button", { text: "Spend", cls: "dnd-wealth-btn" });
 
                 addBtn.onclick = async () => {
                     const amt = Math.max(0, Number(amtInput.value) || 0);
@@ -1316,15 +1160,12 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
             // -----------------------------------------------------------
             const backpackWindow = wrapper.createDiv({ cls: "dnd-features-window" });
 
-            const backpackHeader = backpackWindow.createDiv({
-                cls: "dnd-class-header",
-                attr: { style: "display: flex; justify-content: space-between; align-items: center; margin: 0 0 10px 0; border-bottom: 1px solid var(--dnd-ui-color-border-primary); padding-bottom: 8px;" }
-            });
-            backpackHeader.createEl("h4", { text: "Backpack Contents", attr: { style: "color: var(--dnd-ui-color-text-primary); margin: 0; border: none; padding: 0;" } });
+            const backpackHeader = backpackWindow.createDiv({ cls: "dnd-class-header dnd-backpack-header" });
+            backpackHeader.createEl("h4", { text: "Backpack Contents", cls: "dnd-backpack-title" });
 
             const weightTracker = backpackHeader.createEl("span", {
                 text: "Weight: 0 lbs",
-                attr: { style: "font-size: 0.85em; color: var(--dnd-ui-color-text-muted); font-weight: normal; letter-spacing: 0.5px;" }
+                cls: "dnd-backpack-weight"
             });
 
             interface RenderableInventoryItem {
@@ -1467,57 +1308,38 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
             if (itemsToRender.length === 0) {
                 backpackWindow.createEl("p", {
                     text: "No visible items in backpack. Click the 🎒 Inventory button to manage or add items!",
-                    attr: { style: "color: var(--dnd-ui-color-text-muted); font-style: italic; margin: 6px 0; text-align: center;" }
+                    cls: "dnd-backpack-empty"
                 });
             } else {
-                const gridContainer = backpackWindow.createDiv({
-                    cls: "dnd-inventory-grid",
-                    attr: {
-                        style: "display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px 14px; width: 100%; box-sizing: border-box;"
-                    }
-                });
+                const gridContainer = backpackWindow.createDiv({ cls: "dnd-inventory-grid" });
 
                 const updateBackpackCols = () => {
                     const w = gridContainer.clientWidth;
                     if (w <= 0) return;
-                    // 1-column simple list on small screens & phones; 3 columns on standard screens
-                    if (w < 580) {
-                        gridContainer.style.gridTemplateColumns = "minmax(0, 1fr)";
-                    } else {
-                        gridContainer.style.gridTemplateColumns = "repeat(3, minmax(0, 1fr))";
-                    }
+                    gridContainer.classList.toggle("is-1col", w < 580);
                 };
                 const bpObserver = new ResizeObserver(() => updateBackpackCols());
                 bpObserver.observe(gridContainer);
                 activeResizeObservers.push(bpObserver);
 
                 for (const item of itemsToRender) {
-                    const itemRow = gridContainer.createDiv({
-                        attr: {
-                            style: "display: flex; flex-direction: row; align-items: center; justify-content: space-between; width: 100%; padding: 4px 8px; border-radius: 5px; background: var(--dnd-ui-color-bg-secondary); border: 1px solid var(--dnd-ui-color-border-primary); box-sizing: border-box; gap: 6px; min-width: 0;"
-                        }
-                    });
+                    const itemRow = gridContainer.createDiv({ cls: "dnd-inventory-row" });
 
                     // Left Group: [xQty] Badge + Name + Weight/Cost
-                    const leftGroup = itemRow.createDiv({
-                        attr: { style: "display: flex; align-items: center; min-width: 0; flex: 1; overflow: hidden;" }
-                    });
+                    const leftGroup = itemRow.createDiv({ cls: "dnd-inventory-left" });
 
                     const qtyBadge = leftGroup.createEl("span", {
                         text: `x${item.qty}`,
-                        cls: "dnd-level-badge",
-                        attr: { style: "margin: 0 8px 0 0; flex-shrink: 0; padding: 1px 6px; font-size: 0.8em;" }
+                        cls: "dnd-level-badge dnd-inventory-qty-badge"
                     });
 
                     const hasStats = item.unitWeight > 0 || item.unitCost > 0;
                     leftGroup.createEl("strong", {
                         text: item.displayName + (hasStats ? ": " : ""),
-                        attr: { style: "color: var(--dnd-ui-color-text-bright); margin-right: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 0.92em;" }
+                        cls: "dnd-inventory-name"
                     });
 
-                    const statsSpan = leftGroup.createEl("span", {
-                        attr: { style: "color: var(--dnd-ui-color-text-muted); font-size: 0.82em; white-space: nowrap; flex-shrink: 0;" }
-                    });
+                    const statsSpan = leftGroup.createEl("span", { cls: "dnd-inventory-stats" });
 
                     const updateStatsText = () => {
                         const parts: string[] = [];
@@ -1533,29 +1355,23 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                     updateStatsText();
 
                     // Right Group: Optional Stepper (- / +) + Info Vector Button + Edit Vector Button
-                    const rightActions = itemRow.createDiv({
-                        attr: { style: "display: flex; align-items: center; gap: 4px; flex-shrink: 0;" }
-                    });
+                    const rightActions = itemRow.createDiv({ cls: "dnd-inventory-actions" });
 
                     const isExpanded = expandedEditRows.has(item.rowKey);
                     const stepperGroup = rightActions.createDiv({
-                        attr: { style: `display: ${isExpanded ? "flex" : "none"}; align-items: center; gap: 3px; margin-right: 2px;` }
+                        cls: `dnd-inventory-stepper ${isExpanded ? "is-open" : ""}`
                     });
 
                     const minusBtn = stepperGroup.createEl("button", {
                         text: "−",
-                        attr: {
-                            title: "Decrease Quantity",
-                            style: "width: 22px; height: 22px; padding: 0; font-size: 0.95em; line-height: 1; display: flex; align-items: center; justify-content: center; border-radius: 4px; cursor: pointer; touch-action: manipulation; user-select: none;"
-                        }
+                        cls: "dnd-inventory-step-btn",
+                        attr: { title: "Decrease Quantity" }
                     });
 
                     const plusBtn = stepperGroup.createEl("button", {
                         text: "+",
-                        attr: {
-                            title: "Increase Quantity",
-                            style: "width: 22px; height: 22px; padding: 0; font-size: 0.95em; line-height: 1; display: flex; align-items: center; justify-content: center; border-radius: 4px; cursor: pointer; touch-action: manipulation; user-select: none;"
-                        }
+                        cls: "dnd-inventory-step-btn",
+                        attr: { title: "Increase Quantity" }
                     });
 
                     minusBtn.addEventListener("pointerdown", async (e: PointerEvent) => {
@@ -1584,14 +1400,10 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                     // 1. Info Button (Vector SVG) - ONLY for Native / Custom Rulebook items (not on-the-fly custom items)
                     if (item.sourceType !== "custom" && item.rulebookData) {
                         const infoBtn = rightActions.createEl("button", {
-                            attr: {
-                                title: "Item Details",
-                                style: "width: 24px; height: 24px; padding: 0; display: flex; align-items: center; justify-content: center; background: transparent; border: 1px solid transparent; border-radius: 4px; color: var(--dnd-ui-color-text-secondary); box-shadow: none; cursor: pointer;"
-                            }
+                            cls: "dnd-inventory-icon-btn",
+                            attr: { title: "Item Details" }
                         });
                         setSvgIcon(infoBtn, "info");
-                        infoBtn.onmouseenter = () => { infoBtn.style.background = "var(--dnd-ui-color-bg-hover)"; infoBtn.style.color = "var(--dnd-ui-color-text-bright)"; };
-                        infoBtn.onmouseleave = () => { infoBtn.style.background = "transparent"; infoBtn.style.color = "var(--dnd-ui-color-text-secondary)"; };
                         infoBtn.onclick = (e) => {
                             e.stopPropagation();
                             new ItemInfoModal(this.app, this, item.rulebookData, ctx.sourcePath).open();
@@ -1600,27 +1412,19 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
 
                     // 2. Edit Button (Vector SVG) - Toggles - / + stepper buttons
                     const editBtn = rightActions.createEl("button", {
-                        attr: {
-                            title: "Adjust Quantity",
-                            style: `width: 24px; height: 24px; padding: 0; display: flex; align-items: center; justify-content: center; background: ${isExpanded ? "var(--dnd-ui-color-bg-tertiary)" : "transparent"}; border: 1px solid ${isExpanded ? "var(--dnd-ui-color-border-active)" : "transparent"}; border-radius: 4px; color: ${isExpanded ? "var(--dnd-ui-color-text-bright)" : "var(--dnd-ui-color-text-muted)"}; box-shadow: none; cursor: pointer;`
-                        }
+                        cls: `dnd-inventory-icon-btn ${isExpanded ? "is-active" : ""}`,
+                        attr: { title: "Adjust Quantity" }
                     });
                     setSvgIcon(editBtn, "edit");
                     editBtn.onclick = (e) => {
                         e.stopPropagation();
-                        const nowHidden = stepperGroup.style.display !== "none";
-                        if (nowHidden) {
-                            stepperGroup.style.display = "none";
-                            expandedEditRows.delete(item.rowKey);
-                            editBtn.style.background = "transparent";
-                            editBtn.style.borderColor = "transparent";
-                            editBtn.style.color = "var(--dnd-ui-color-text-muted)";
-                        } else {
-                            stepperGroup.style.display = "flex";
+                        const nowOpen = !stepperGroup.classList.contains("is-open");
+                        stepperGroup.classList.toggle("is-open", nowOpen);
+                        editBtn.classList.toggle("is-active", nowOpen);
+                        if (nowOpen) {
                             expandedEditRows.add(item.rowKey);
-                            editBtn.style.background = "var(--dnd-ui-color-bg-tertiary)";
-                            editBtn.style.borderColor = "var(--dnd-ui-color-border-active)";
-                            editBtn.style.color = "var(--dnd-ui-color-text-bright)";
+                        } else {
+                            expandedEditRows.delete(item.rowKey);
                         }
                     };
                 }
