@@ -1206,6 +1206,111 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                 };
             }
 
+            // Single unified outer container for all 4 currencies
+            const wealthWindow = wrapper.createDiv({
+                cls: "dnd-features-window",
+                attr: {
+                    style: "padding: 0; overflow: hidden; margin: 10px 0;"
+                }
+            });
+
+            // 4-column grid using a 1px gap to draw clean dividers between currencies
+            const wealthGrid = wealthWindow.createDiv({
+                cls: "dnd-wealth-grid",
+                attr: {
+                    style: "display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px; background-color: var(--dnd-ui-color-border-primary); width: 100%; box-sizing: border-box;"
+                }
+            });
+
+            const updateWealthGridCols = () => {
+                const w = wealthGrid.clientWidth;
+                if (w <= 0) return;
+                if (w < 380) {
+                    wealthGrid.style.gridTemplateColumns = "minmax(0, 1fr)";
+                } else if (w < 680) {
+                    wealthGrid.style.gridTemplateColumns = "repeat(2, minmax(0, 1fr))";
+                } else {
+                    wealthGrid.style.gridTemplateColumns = "repeat(4, minmax(0, 1fr))";
+                }
+            };
+            const wealthObserver = new ResizeObserver(() => updateWealthGridCols());
+            wealthObserver.observe(wealthGrid);
+            activeResizeObservers.push(wealthObserver);
+
+            for (const curr of CURRENCIES) {
+                let currentTotal = baseWealth[curr.idx] + wealthAdded[curr.idx] - wealthSpent[curr.idx];
+
+                const currCard = wealthGrid.createDiv({
+                    cls: "dnd-wealth-cell",
+                    attr: {
+                        style: "background-color: var(--dnd-ui-color-bg-primary); margin: 0; padding: 12px 14px; display: flex; flex-direction: column; justify-content: space-between; gap: 8px; box-sizing: border-box;"
+                    }
+                });
+
+                // Top Row: Currency Badge + Total Value
+                const topRow = currCard.createDiv({
+                    attr: { style: "display: flex; justify-content: space-between; align-items: center;" }
+                });
+                topRow.createEl("span", {
+                    text: curr.name,
+                    cls: "dnd-level-badge",
+                    attr: { style: "margin: 0; font-size: 0.78em; padding: 2px 7px;" }
+                });
+                const totalValueEl = topRow.createEl("strong", {
+                    text: `${currentTotal} ${curr.abbr}`,
+                    attr: { style: "font-size: 1.15em; color: var(--dnd-ui-color-text-bright);" }
+                });
+
+                // Bottom Row: Amount Input + Add / Spend Buttons
+                const controlsRow = currCard.createDiv({
+                    attr: { style: "display: flex; align-items: center; gap: 6px; width: 100%;" }
+                });
+
+                const amtInput = controlsRow.createEl("input", {
+                    type: "number",
+                    value: "1",
+                    attr: {
+                        min: "1",
+                        style: "width: 44px; flex-shrink: 0; text-align: center; background: var(--dnd-ui-color-bg-darker); border: 1px solid var(--dnd-ui-color-border-primary); color: var(--dnd-ui-color-text-bright); border-radius: 4px; padding: 3px 4px; font-size: 0.9em;"
+                    }
+                });
+
+                const addBtn = controlsRow.createEl("button", {
+                    text: "Add",
+                    attr: { style: "flex: 1; padding: 4px 6px; font-size: 0.82em; cursor: pointer;" }
+                });
+                const spendBtn = controlsRow.createEl("button", {
+                    text: "Spend",
+                    attr: { style: "flex: 1; padding: 4px 6px; font-size: 0.82em; cursor: pointer;" }
+                });
+
+                addBtn.onclick = async () => {
+                    const amt = Math.max(0, Number(amtInput.value) || 0);
+                    if (amt <= 0) return;
+                    currentTotal += amt;
+                    totalValueEl.setText(`${currentTotal} ${curr.abbr}`);
+                    isUpdatingInventory = true;
+                    try {
+                        await this.updateWealthFrontmatter(ctx.sourcePath, 'added', curr.idx, amt);
+                    } finally {
+                        setTimeout(() => { isUpdatingInventory = false; }, 150);
+                    }
+                };
+
+                spendBtn.onclick = async () => {
+                    const amt = Math.max(0, Number(amtInput.value) || 0);
+                    if (amt <= 0) return;
+                    currentTotal -= amt;
+                    totalValueEl.setText(`${currentTotal} ${curr.abbr}`);
+                    isUpdatingInventory = true;
+                    try {
+                        await this.updateWealthFrontmatter(ctx.sourcePath, 'spent', curr.idx, amt);
+                    } finally {
+                        setTimeout(() => { isUpdatingInventory = false; }, 150);
+                    }
+                };
+            }
+
             // -----------------------------------------------------------
             // C. BACKPACK CONTENTS (3-Column Desktop / 1-Column Mobile)
             // -----------------------------------------------------------
@@ -3238,9 +3343,8 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                         cls: `dnd-slot-pip dnd-deathsave-fail ${isFailed ? "is-used" : ""}`,
                         attr: {
                             title: "Death Save Failure",
-                            style: `touch-action: manipulation; user-select: none; -webkit-user-select: none; cursor: pointer; border-color: var(--dnd-ui-color-accent-red); ${
-                                isFailed ? "background-color: var(--dnd-ui-color-accent-red);" : "background-color: transparent;"
-                            }`
+                            style: `touch-action: manipulation; user-select: none; -webkit-user-select: none; cursor: pointer; border-color: var(--dnd-ui-color-accent-red); ${isFailed ? "background-color: var(--dnd-ui-color-accent-red);" : "background-color: transparent;"
+                                }`
                         }
                     });
                     pip.addEventListener("pointerdown", (e: PointerEvent) => {
@@ -3265,9 +3369,8 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                         cls: `dnd-slot-pip dnd-deathsave-success ${isSuccess ? "is-used" : ""}`,
                         attr: {
                             title: "Death Save Success",
-                            style: `touch-action: manipulation; user-select: none; -webkit-user-select: none; cursor: pointer; border-color: var(--dnd-ui-color-accent-teal); ${
-                                isSuccess ? "background-color: var(--dnd-ui-color-accent-teal);" : "background-color: transparent;"
-                            }`
+                            style: `touch-action: manipulation; user-select: none; -webkit-user-select: none; cursor: pointer; border-color: var(--dnd-ui-color-accent-teal); ${isSuccess ? "background-color: var(--dnd-ui-color-accent-teal);" : "background-color: transparent;"
+                                }`
                         }
                     });
                     pip.addEventListener("pointerdown", (e: PointerEvent) => {
@@ -5453,11 +5556,10 @@ class InventoryModal extends Modal {
             const btn = this.tabsContainer.createEl("button", {
                 text: label,
                 attr: {
-                    style: `padding: 6px 14px; border-radius: 4px; font-size: 0.9em; cursor: pointer; box-shadow: none; ${
-                        isActive
+                    style: `padding: 6px 14px; border-radius: 4px; font-size: 0.9em; cursor: pointer; box-shadow: none; ${isActive
                             ? "background: var(--dnd-ui-color-bg-tertiary); color: var(--dnd-ui-color-text-bright); font-weight: bold; border: 1px solid var(--dnd-ui-color-border-active);"
                             : "background: transparent; color: var(--dnd-ui-color-text-muted); border: 1px solid transparent;"
-                    }`
+                        }`
                 }
             });
             btn.onclick = () => {
@@ -5575,9 +5677,8 @@ class InventoryModal extends Modal {
 
         const row = this.listContainer.createDiv({
             attr: {
-                style: `display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; border-radius: 6px; margin-bottom: 6px; background: var(--dnd-ui-color-bg-tertiary); border: 1px solid ${
-                    isShown ? "var(--dnd-ui-color-border-active)" : "var(--dnd-ui-color-border-primary)"
-                }; gap: 8px;`
+                style: `display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; border-radius: 6px; margin-bottom: 6px; background: var(--dnd-ui-color-bg-tertiary); border: 1px solid ${isShown ? "var(--dnd-ui-color-border-active)" : "var(--dnd-ui-color-border-primary)"
+                    }; gap: 8px;`
             }
         });
 
@@ -5728,9 +5829,8 @@ class InventoryModal extends Modal {
 
             const row = this.listContainer.createDiv({
                 attr: {
-                    style: `display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; border-radius: 6px; margin-bottom: 6px; background: var(--dnd-ui-color-bg-tertiary); border: 1px solid ${
-                        isShown ? "var(--dnd-ui-color-border-active)" : "var(--dnd-ui-color-border-primary)"
-                    }; gap: 8px;`
+                    style: `display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; border-radius: 6px; margin-bottom: 6px; background: var(--dnd-ui-color-bg-tertiary); border: 1px solid ${isShown ? "var(--dnd-ui-color-border-active)" : "var(--dnd-ui-color-border-primary)"
+                        }; gap: 8px;`
                 }
             });
 
