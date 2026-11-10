@@ -3073,6 +3073,8 @@ class CharacterWizardModal extends Modal {
     availableClasses: string[] = [];
     availableRaces: string[] = [];
     availableBackgrounds: string[] = [];
+    availableWeapons: { id: string; name: string; damage: string }[] = [];
+    availableArmors: { id: string; name: string; ac: string; category: string }[] = [];
 
     // Expanded storage for all our new choices
     wizardData: Record<string, any> = {
@@ -3080,12 +3082,7 @@ class CharacterWizardModal extends Modal {
         DnD_spellcasting_ability: "", background: "", classEquipment: "A", backgroundEquipment: "A",
         classChosenItems: "", backgroundChosenItems: "",
         weapon: "", weaponDamage: "", armor: "", armorAc: "",
-        languages: "", extraFeats: "", speed: 30, maxHealth: 0,
-        chosenSkills: [],
-        chosenBgSkills: [],
-        chosenAbilityBonuses: [],
-        classChoices: [], // <-- NEW: Stores the dynamic Class Choices [Router, Key, Level]
-        expertiseChoices: [],
+        isWeaponCustom: false, isArmorCustom: false,
     };
 
     constructor(app: App, plugin: DnDCharacterSheetHelperPlugin) {
@@ -3161,6 +3158,34 @@ class CharacterWizardModal extends Modal {
         this.availableClasses = await getRouterDisplayNames("classes.json", classesMap);
         this.availableRaces = await getRouterDisplayNames("races.json", racesMap);
         this.availableBackgrounds = await getObjectKeys("backgrounds.json", backgroundsMap);
+
+        // Populate Weapon & Armor pools from native + custom rulebook items.json
+        const itemLookupKeys = new Set<string>(Object.keys(itemsMap || {}));
+        const customItemsObj = await readCustomRouter("items.json");
+        if (customItemsObj && typeof customItemsObj === "object") {
+            Object.keys(customItemsObj).forEach(k => itemLookupKeys.add(k));
+        }
+
+        const weaponsMap = new Map<string, { id: string; name: string; damage: string }>();
+        const armorsMap = new Map<string, { id: string; name: string; ac: string; category: string }>();
+
+        for (const key of itemLookupKeys) {
+            const data = await getItemData(this.app, this.plugin.settings, key);
+            if (!data || !data.type) continue;
+
+            const typeLower = String(data.type).toLowerCase();
+            const displayName = String(data.name || key).trim();
+            const mapKey = displayName.toLowerCase();
+
+            if (typeLower.includes("weapon")) {
+                weaponsMap.set(mapKey, { id: key, name: displayName, damage: String(data.damage || "") });
+            } else if (typeLower.includes("armor")) {
+                armorsMap.set(mapKey, { id: key, name: displayName, ac: String(data.ac || "10"), category: String(data.category || "") });
+            }
+        }
+
+        this.availableWeapons = Array.from(weaponsMap.values()).sort((a, b) => a.name.localeCompare(b.name));
+        this.availableArmors = Array.from(armorsMap.values()).sort((a, b) => a.name.localeCompare(b.name));
     }
 
     // Main rendering engine for the Wizard
@@ -3797,36 +3822,155 @@ class CharacterWizardModal extends Modal {
             bgItemsInput.onchange = (e) => this.wizardData.backgroundChosenItems = (e.target as HTMLInputElement).value;
         }
 
-        // --- Weapon Section ---
+        // --- Equipped Items (Weapon & Armor with Custom Toggle) ---
         container.createEl("h4", { text: "Equipped Items", cls: "dnd-wizard-subhead" });
-        const weaponGrid = container.createDiv({ cls: "dnd-form-grid-2" });
 
-        const weaponNameDiv = weaponGrid.createDiv();
-        weaponNameDiv.createEl("label", { text: "Weapon Name: ", cls: "dnd-form-label-sm" });
-        const weaponInput = weaponNameDiv.createEl("input", { type: "text", value: this.wizardData.weapon || "", cls: "dnd-modal-form-input" });
-        weaponInput.placeholder = "Longsword";
-        weaponInput.onchange = (e) => this.wizardData.weapon = (e.target as HTMLInputElement).value;
+        const createModeToggle = (parentRow: HTMLElement, isCustom: boolean, onToggle: () => void) => {
+            const toggleWrap = parentRow.createDiv({
+                cls: "dnd-equip-toggle-wrapper",
+                attr: { title: "Switch between Rulebook Database and Custom Item" }
+            });
 
-        const weaponDmgDiv = weaponGrid.createDiv();
-        weaponDmgDiv.createEl("label", { text: "Weapon Damage: ", cls: "dnd-form-label-sm" });
-        const weaponDmgInput = weaponDmgDiv.createEl("input", { type: "text", value: this.wizardData.weaponDamage || "", cls: "dnd-modal-form-input" });
-        weaponDmgInput.placeholder = "1d8 Slashing";
-        weaponDmgInput.onchange = (e) => this.wizardData.weaponDamage = (e.target as HTMLInputElement).value;
+            toggleWrap.createEl("span", {
+                text: "Custom",
+                cls: `dnd-equip-toggle-label ${isCustom ? "is-active" : ""}`
+            });
 
-        // --- Armor Section ---
-        const armorGrid = container.createDiv({ cls: "dnd-form-grid-2" });
+            const switchTrack = toggleWrap.createDiv({
+                cls: `dnd-toggle-switch ${isCustom ? "is-active" : ""}`
+            });
+            switchTrack.createDiv({ cls: "dnd-toggle-knob" });
 
-        const armorNameDiv = armorGrid.createDiv();
-        armorNameDiv.createEl("label", { text: "Armor Name: ", cls: "dnd-form-label-sm" });
-        const armorInput = armorNameDiv.createEl("input", { type: "text", value: this.wizardData.armor || "", cls: "dnd-modal-form-input" });
-        armorInput.placeholder = "Chain Mail";
-        armorInput.onchange = (e) => this.wizardData.armor = (e.target as HTMLInputElement).value;
+            toggleWrap.onclick = () => onToggle();
+        };
 
-        const armorAcDiv = armorGrid.createDiv();
-        armorAcDiv.createEl("label", { text: "Armor AC: ", cls: "dnd-form-label-sm" });
-        const armorAcInput = armorAcDiv.createEl("input", { type: "number", value: this.wizardData.armorAc || "", cls: "dnd-modal-form-input" });
-        armorAcInput.placeholder = "16";
-        armorAcInput.onchange = (e) => this.wizardData.armorAc = Number((e.target as HTMLInputElement).value);
+        // 1. WEAPON SECTION
+        const weaponSection = container.createDiv({ cls: "dnd-form-group-lg" });
+        weaponSection.createEl("label", { text: "Weapon Name:", cls: "dnd-form-label-sub" });
+
+        const weaponRow = weaponSection.createDiv({ cls: "dnd-equip-row" });
+
+        if (!this.wizardData.isWeaponCustom) {
+            const weaponSelect = weaponRow.createEl("select", { cls: "dnd-equip-field" });
+            weaponSelect.createEl("option", { text: "-- Select a Weapon --", value: "" });
+            weaponSelect.createEl("option", { text: "None (Unarmed)", value: "None" });
+
+            this.availableWeapons.forEach(w => {
+                const dmgSuffix = w.damage ? ` (${w.damage})` : "";
+                weaponSelect.createEl("option", { text: `${w.name}${dmgSuffix}`, value: w.name });
+            });
+
+            weaponSelect.value = this.wizardData.weapon || "";
+            weaponSelect.onchange = (e) => {
+                this.wizardData.weapon = (e.target as HTMLSelectElement).value;
+                const matched = this.availableWeapons.find(w => w.name === this.wizardData.weapon);
+                if (matched) {
+                    this.wizardData.weaponDamage = matched.damage;
+                } else if (this.wizardData.weapon === "None" || this.wizardData.weapon === "") {
+                    this.wizardData.weaponDamage = "";
+                }
+            };
+        } else {
+            const weaponInput = weaponRow.createEl("input", {
+                type: "text",
+                value: this.wizardData.weapon === "None" ? "" : (this.wizardData.weapon || ""),
+                cls: "dnd-equip-field"
+            });
+            weaponInput.placeholder = "e.g., Sun Blade";
+            weaponInput.oninput = (e) => {
+                this.wizardData.weapon = (e.target as HTMLInputElement).value;
+            };
+        }
+
+        createModeToggle(weaponRow, Boolean(this.wizardData.isWeaponCustom), () => {
+            this.wizardData.isWeaponCustom = !this.wizardData.isWeaponCustom;
+            if (!this.wizardData.isWeaponCustom) {
+                const matched = this.availableWeapons.find(
+                    w => w.name.toLowerCase() === String(this.wizardData.weapon || "").toLowerCase()
+                );
+                this.wizardData.weapon = matched ? matched.name : "";
+                this.wizardData.weaponDamage = matched ? matched.damage : "";
+            }
+            this.renderStep();
+        });
+
+        if (this.wizardData.isWeaponCustom) {
+            const weaponSub = weaponSection.createDiv({ cls: "dnd-equip-custom-sub" });
+            weaponSub.createEl("label", { text: "Weapon Damage:", cls: "dnd-form-label-sm" });
+            const dmgInput = weaponSub.createEl("input", {
+                type: "text",
+                value: this.wizardData.weaponDamage || "",
+                cls: "dnd-equip-field"
+            });
+            dmgInput.placeholder = "e.g., 1d8 + 2 Radiant";
+            dmgInput.oninput = (e) => {
+                this.wizardData.weaponDamage = (e.target as HTMLInputElement).value;
+            };
+        }
+
+        // 2. ARMOR SECTION
+        const armorSection = container.createDiv({ cls: "dnd-form-group" });
+        armorSection.createEl("label", { text: "Armor Name:", cls: "dnd-form-label-sub" });
+
+        const armorRow = armorSection.createDiv({ cls: "dnd-equip-row" });
+
+        if (!this.wizardData.isArmorCustom) {
+            const armorSelect = armorRow.createEl("select", { cls: "dnd-equip-field" });
+            armorSelect.createEl("option", { text: "-- Select Armor --", value: "" });
+            armorSelect.createEl("option", { text: "None (Unarmored)", value: "None" });
+
+            this.availableArmors.forEach(a => {
+                const catLabel = a.category ? `, ${a.category}` : "";
+                armorSelect.createEl("option", { text: `${a.name} (AC ${a.ac}${catLabel})`, value: a.name });
+            });
+
+            armorSelect.value = this.wizardData.armor || "";
+            armorSelect.onchange = (e) => {
+                this.wizardData.armor = (e.target as HTMLSelectElement).value;
+                const matched = this.availableArmors.find(a => a.name === this.wizardData.armor);
+                if (matched) {
+                    this.wizardData.armorAc = Number(matched.ac) || 10;
+                } else if (this.wizardData.armor === "None" || this.wizardData.armor === "") {
+                    this.wizardData.armorAc = 10;
+                }
+            };
+        } else {
+            const armorInput = armorRow.createEl("input", {
+                type: "text",
+                value: this.wizardData.armor === "None" ? "" : (this.wizardData.armor || ""),
+                cls: "dnd-equip-field"
+            });
+            armorInput.placeholder = "e.g., Elven Chain";
+            armorInput.oninput = (e) => {
+                this.wizardData.armor = (e.target as HTMLInputElement).value;
+            };
+        }
+
+        createModeToggle(armorRow, Boolean(this.wizardData.isArmorCustom), () => {
+            this.wizardData.isArmorCustom = !this.wizardData.isArmorCustom;
+            if (!this.wizardData.isArmorCustom) {
+                const matched = this.availableArmors.find(
+                    a => a.name.toLowerCase() === String(this.wizardData.armor || "").toLowerCase()
+                );
+                this.wizardData.armor = matched ? matched.name : "";
+                this.wizardData.armorAc = matched ? (Number(matched.ac) || 10) : "";
+            }
+            this.renderStep();
+        });
+
+        if (this.wizardData.isArmorCustom) {
+            const armorSub = armorSection.createDiv({ cls: "dnd-equip-custom-sub" });
+            armorSub.createEl("label", { text: "Armor AC:", cls: "dnd-form-label-sm" });
+            const acInput = armorSub.createEl("input", {
+                type: "number",
+                value: String(this.wizardData.armorAc ?? ""),
+                cls: "dnd-equip-field"
+            });
+            acInput.placeholder = "e.g., 16";
+            acInput.oninput = (e) => {
+                this.wizardData.armorAc = (e.target as HTMLInputElement).value;
+            };
+        }
     }
 
     renderStepFive(container: HTMLElement) {
@@ -3909,31 +4053,41 @@ class CharacterWizardModal extends Modal {
         const dexMod = Math.floor((dexStats.final - 10) / 2);
         let armorAcBonus = dexMod;
         let isUnarmored = true;
-        const manualArmorAc = Number(this.wizardData.armorAc) || 0;
+        const parsedManualAc = parseInt(String(this.wizardData.armorAc));
 
-        if (this.wizardData.armor && this.wizardData.armor.toLowerCase() !== "none") {
-            const safeArmorName = this.wizardData.armor.toLowerCase().replace(/['"]/g, '').trim().replace(/\s+/g, '-');
-            const armorData = await getItemData(this.app, this.plugin.settings, safeArmorName);
+        if (!this.wizardData.isArmorCustom) {
+            if (this.wizardData.armor && this.wizardData.armor.toLowerCase() !== "none") {
+                const safeArmorName = this.wizardData.armor.toLowerCase().replace(/['"]/g, '').trim().replace(/\s+/g, '-');
+                const armorData = await getItemData(this.app, this.plugin.settings, safeArmorName);
 
-            if (armorData && armorData.ac && armorData.category) {
-                isUnarmored = false;
-                this.wizardData.armorAc = parseInt(armorData.ac);
-                const category = String(armorData.category).toLowerCase();
-                if (category.includes("light")) {
-                    armorAcBonus = dexMod;
-                } else if (category.includes("medium")) {
-                    armorAcBonus = Math.min(dexMod, 2);
-                } else if (category.includes("heavy")) {
-                    armorAcBonus = 0;
+                if (armorData && armorData.ac && armorData.category) {
+                    isUnarmored = false;
+                    this.wizardData.armorAc = parseInt(String(armorData.ac));
+                    const category = String(armorData.category).toLowerCase();
+                    if (category.includes("light")) {
+                        armorAcBonus = dexMod;
+                    } else if (category.includes("medium")) {
+                        armorAcBonus = Math.min(dexMod, 2);
+                    } else if (category.includes("heavy")) {
+                        armorAcBonus = 0;
+                    }
                 }
-            } else if (manualArmorAc > 10) {
+            }
+        } else {
+            const cleanCustomArmor = String(this.wizardData.armor || "").trim();
+            if (cleanCustomArmor && cleanCustomArmor.toLowerCase() !== "none") {
                 isUnarmored = false;
-                this.wizardData.armorAc = manualArmorAc;
+                this.wizardData.armorAc = !isNaN(parsedManualAc) ? parsedManualAc : 10;
+                armorAcBonus = 0;
+            } else if (!isNaN(parsedManualAc)) {
+                isUnarmored = false;
+                this.wizardData.armorAc = parsedManualAc;
+                armorAcBonus = 0;
             }
         }
 
         if (isUnarmored) {
-            this.wizardData.armorAc = manualArmorAc > 10 ? manualArmorAc : 10;
+            this.wizardData.armorAc = 10;
             if (unarmoredDefense) {
                 const secondaryStat = getStatDetails(unarmoredDefense);
                 armorAcBonus = dexMod + Math.floor((secondaryStat.final - 10) / 2);
