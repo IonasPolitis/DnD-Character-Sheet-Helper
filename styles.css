@@ -2034,3 +2034,212 @@
     border-top: 1px solid var(--dnd-ui-color-border-primary);
     padding-top: 12px;
 }
+
+/* ==========================================
+   19. WIZARD, LEVEL-UP, EQUIP & MANAGE MODALS
+   ========================================== */
+.modal.dnd-manage-modal {
+    width: 650px;
+    max-width: 90vw;
+}
+
+.dnd-manage-content {
+    min-height: 280px;
+    max-height: 400px;
+    overflow-y: auto;
+    padding: 5px;
+}
+
+.dnd-manage-tab-btn {
+    flex: 1;
+}
+
+.dnd-manage-section-title {
+    margin-top: 0;
+    color: var(--dnd-ui-color-text-bright);
+}
+
+.dnd-manage-scroll-list {
+    margin-bottom: 15px;
+    max-height: 140px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.dnd-manage-empty-box {
+    color: var(--dnd-ui-color-text-muted);
+    font-style: italic;
+    margin: 0;
+    text-align: center;
+    padding: 10px;
+}
+
+.dnd-form-group {
+    margin-bottom: 12px;
+}
+
+.dnd-form-group-lg {
+    margin-bottom: 18px;
+}
+
+.dnd-form-label {
+    display: block;
+    margin-bottom: 4px;
+}
+
+.dnd-form-label-sub {
+    display: block;
+    margin-bottom: 6px;
+    color: var(--dnd-ui-color-text-sublabel);
+}
+
+.dnd-form-label-sm {
+    display: block;
+    font-size: 0.9em;
+    margin-bottom: 4px;
+}
+
+.dnd-form-label-bold {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: bold;
+    color: var(--dnd-ui-color-text-secondary);
+}
+
+.dnd-form-hint {
+    display: block;
+    margin-top: 6px;
+    color: var(--dnd-ui-color-text-muted);
+}
+
+.dnd-form-hint-block {
+    display: block;
+    margin-bottom: 12px;
+    color: var(--dnd-ui-color-text-muted);
+}
+
+.dnd-form-note {
+    color: var(--dnd-ui-color-text-muted);
+    font-size: 0.9em;
+    font-style: italic;
+}
+
+.dnd-form-subpanel {
+    margin-bottom: 12px;
+    margin-left: 15px;
+    border-left: 2px solid var(--dnd-ui-color-border-active);
+    padding-left: 10px;
+}
+
+.dnd-form-card {
+    margin-bottom: 20px;
+    padding: 10px;
+    background-color: var(--dnd-ui-color-bg-tertiary);
+    border-radius: 6px;
+    border: 1px solid var(--dnd-ui-color-border-primary);
+}
+
+.dnd-form-card-active {
+    margin-bottom: 20px;
+    padding: 10px;
+    background-color: var(--dnd-ui-color-bg-tertiary);
+    border-radius: 6px;
+    border: 1px solid var(--dnd-ui-color-border-active);
+}
+
+.dnd-form-grid-name-lvl {
+    display: grid;
+    grid-template-columns: 3fr 1fr;
+    gap: 10px;
+    margin-bottom: 12px;
+}
+
+.dnd-form-grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 12px;
+}
+
+.dnd-form-grid-3 {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.dnd-form-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.dnd-form-slot-row {
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+}
+
+.dnd-form-slot-label {
+    flex: 0 0 90px;
+    color: var(--dnd-ui-color-text-sublabel);
+}
+
+.dnd-form-slot-label-sm {
+    flex: 0 0 65px;
+    color: var(--dnd-ui-color-text-sublabel);
+}
+
+.dnd-form-slot-select {
+    flex: 1;
+    min-width: 0;
+    text-overflow: ellipsis;
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+.dnd-form-divider-section {
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 1px solid var(--dnd-ui-color-border-primary);
+}
+
+.dnd-form-readonly-box {
+    padding: 8px 12px;
+    background-color: var(--dnd-ui-color-bg-darker);
+    border: 1px solid var(--dnd-ui-color-border-primary);
+    border-radius: 4px;
+    color: var(--dnd-ui-color-text-muted);
+}
+
+.dnd-wizard-nav {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 20px;
+}
+
+.dnd-wizard-subhead {
+    margin-top: 20px;
+    margin-bottom: 10px;
+    color: var(--dnd-ui-color-text-muted);
+}
+
+.dnd-levelup-intro {
+    color: var(--dnd-ui-color-text-bright);
+    font-weight: bold;
+}
+
+.dnd-asi-hidden {
+    display: none;
+}
+
+.dnd-flex-1 {
+    flex: 1;
+}
+
+.dnd-flex-2 {
+    flex: 2;
+}

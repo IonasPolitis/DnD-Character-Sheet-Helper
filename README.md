@@ -15,6 +15,20 @@ Everything will be placed in appropriate frontmatter variuables (file properties
 
 ## For creating a Character Sheet on your own, you may use one, or all of the code blocks below to assist you into managing your chracter:
 
+### DmD Healthbar:
+
+A Health-bar widget with integrated Hit Dice, Saving Throws, and the ability to add Temporary Hit Points.
+
+A Sample of the Code Block looks like this:
+````makrdown
+```dnd-health
+health: $num$
+currentHealth: $num$
+hitDice: $string$
+level: $num$
+```
+````
+
 ### DnD Information:
 
 There are two modes to this plugin, one of them shows information related to your character and anothe one on combat, with each one having different variables that you may need to fill in.
@@ -83,9 +97,15 @@ bonuses: $array$
 ````
 The `proficiencies` variable array structure looks like this: `[ ["<Skill>", "<class/background/extra>"] ]`, to distinguish to the rest of the plugin the origins of that proficiency. The `bonuses` variable holds bonuses that items may grant and the structure is as follows: `[["<Item-Name>","<Skill>>","<Value-to-Add>"]]`
 
-### DnD Controlls:
+### DnD Controls:
 
-This is an array of buttons that control various parts of the character sheet, mainly changing frontmatter (file properties) values that then correspond to changes in the character sheet. The buttons are: Level Up, Equip Items, Manage Character, and Spellbook (which will only appear if the `DnD_spellcasting-ability` frontmatter variable is populated).
+This is an array of buttons that control various parts of the character sheet, mainly changing frontmatter (file properties) values that then correspond to changes in the character sheet. The buttons are: Level Up, Equip Items, Inventory, Manage Character, and Spellbook (which will only appear if the `DnD_spellcastingAbility` frontmatter variable is populated).
+
+A Sample of the Code Block looks like this:
+````markdown
+```dnd-controls
+align: right/center/right-up/right-down // <optional>
+```
 
 
 ### DnD Character Features:
@@ -97,12 +117,13 @@ A Sample of the Code Block looks like this:
 ```dnd-features
 level: $num$
 class: $array$
-class-levels: $array$
+classLevels: $array$
 subclass: $array$
+classChoices: $array$
 race: $string$
-race-lineage: $string$
+raceLineage: $string$
 background: $array$
-extra-feats: $array$
+extraFeats: $array$
 hide: $array$
 ```
 ````
@@ -130,7 +151,7 @@ preparedSpells: $array$
 spellSlots: $array$
 ```
 ````
-The `spells` variabel has this certain structure: `[ [["<Cantrip-1>", "<Cantrip-2>"],"0"], [["<Level-1-Spell>", "<Level-2-Spell>"],"1"] ]`.
+The *spells* and *preparedSpells* variabel has this certain structure: `[ [["<Cantrip-1>", "<Cantrip-2>"],"0"], [["<Level-1-Spell>", "<Level-2-Spell>"],"1"] ]`, while *spellSlots* follows this strcuture: `[ ["<Max-Slots>", "<Used-Slots>"], ... ]`
 
 ### DnD Character Inventory:
 
@@ -140,18 +161,20 @@ A Sample of the Code Block looks like this:
 ````markdown
 ```dnd-inventory
 weapon: $string$
-weapon_damage: $string$
+weaponDamage: $string$
 armor: $string$
-armor_ac: $string$
+armorAc: $string$
 class: $string$
-class-equipment: $string$
-class-chosen-items: $array$ <optional>
+classEquipment: $string$
+classChosenItems: $array$ <optional>
 background: $string$
-background-equipment: $string$
-background-chosen-items: $array$ <optional>
+backgroundEquipment: $string$
+backgroundChosenItems: $array$ <optional>
 starterEquipment: $array$
 inventoryItems: $array$
 customItems: $array$
+wealthAdded:
+wealthSpent:
 ```
 ````
 Weapons and Amor related varibales are optional and when not set that section will not be made visible.
@@ -293,8 +316,10 @@ Cantrips are on "Level 0" and the rest of the Spell Levels are as normal.
                   {
                         "name": "<Feature_Name>",
                         "description": "<Feature_Description>",
-                        "badge": "<Custom_Badge_Text_Inplace_of_Level>", // <optional>,
-                        "grantedSubclases": "<Subclasses-Filename>", // <optional>,
+                        "badge": "<Custom_Badge_Text_Inplace_of_Level>", // <optional>
+                        "classChoices": ["<Choice-Router-Filename>"], // <optional>
+                        "grantedExpertise": [["<Skills-Pool>"], <num>], // <optional>
+                        "grantedSubclasses": "<Subclasses-Filename>", // <optional>
                         "grantedFeats": ["<ability-score-improvement>", "<Feat_Name>", "<Feat_Router_Filename>"], // <optional>
                         "hide": true // <optional>
                   }

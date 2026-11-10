@@ -3188,9 +3188,7 @@ class CharacterWizardModal extends Modal {
             this.renderStepFive(stepContainer); // Finalization Step
         }
 
-        const navContainer = contentEl.createDiv({
-            attr: { style: "display: flex; justify-content: space-between; margin-top: 20px;" }
-        });
+        const navContainer = contentEl.createDiv({ cls: "dnd-wizard-nav" });
 
         const backBtn = navContainer.createEl("button", { text: "Back" });
         backBtn.disabled = this.currentStep === 1;
@@ -3220,34 +3218,31 @@ class CharacterWizardModal extends Modal {
         container.createEl("h3", { text: "Core Details", cls: "dnd-class-header" });
 
         // Character Name & Level Inputs
-        const grid = container.createDiv({ attr: { style: "display: grid; grid-template-columns: 3fr 1fr; gap: 10px; margin-bottom: 12px;" } });
+        const grid = container.createDiv({ cls: "dnd-form-grid-name-lvl" });
 
         const nameDiv = grid.createDiv();
-        nameDiv.createEl("label", { text: "Character Name: ", attr: { style: "display: block; margin-bottom: 4px;" } });
-        const nameInput = nameDiv.createEl("input", { type: "text", value: this.wizardData.name });
-        nameInput.style.width = "100%";
+        nameDiv.createEl("label", { text: "Character Name: ", cls: "dnd-form-label" });
+        const nameInput = nameDiv.createEl("input", { type: "text", value: this.wizardData.name, cls: "dnd-modal-form-input" });
         nameInput.placeholder = "e.g., Din";
         nameInput.onchange = (e) => this.wizardData.name = (e.target as HTMLInputElement).value;
 
         const levelDiv = grid.createDiv();
-        levelDiv.createEl("label", { text: "Level: ", attr: { style: "display: block; margin-bottom: 4px;" } });
-        const levelInput = levelDiv.createEl("input", { type: "number", value: String(this.wizardData.level) });
-        levelInput.min = "1"; levelInput.max = "20"; levelInput.style.width = "100%";
+        levelDiv.createEl("label", { text: "Level: ", cls: "dnd-form-label" });
+        const levelInput = levelDiv.createEl("input", { type: "number", value: String(this.wizardData.level), cls: "dnd-modal-form-input" });
+        levelInput.min = "1"; levelInput.max = "20";
         levelInput.onchange = async (e) => {
             this.wizardData.level = Number((e.target as HTMLInputElement).value) || 1;
             await this.renderStep();
         };
 
         // --- RACE SECTION ---
-        const raceDiv = container.createDiv({ attr: { style: "margin-bottom: 12px;" } });
-        raceDiv.createEl("label", { text: "Race: ", attr: { style: "display: block; margin-bottom: 4px;" } });
-        const raceSelect = raceDiv.createEl("select");
-        raceSelect.style.width = "100%";
+        const raceDiv = container.createDiv({ cls: "dnd-form-group" });
+        raceDiv.createEl("label", { text: "Race: ", cls: "dnd-form-label" });
+        const raceSelect = raceDiv.createEl("select", { cls: "dnd-modal-form-input" });
         raceSelect.createEl("option", { text: "-- Select a Race --", value: "" });
         this.availableRaces.forEach(r => raceSelect.createEl("option", { text: r, value: r }));
         raceSelect.value = this.wizardData.race;
 
-        // Re-render the step if Race changes to fetch Lineages dynamically!
         raceSelect.onchange = async (e) => {
             this.wizardData.race = (e.target as HTMLSelectElement).value;
             this.wizardData.raceLineage = "";
@@ -3258,13 +3253,11 @@ class CharacterWizardModal extends Modal {
         if (this.wizardData.race) {
             const raceData = await getRaceData(this.app, this.plugin.settings, this.wizardData.race);
             if (raceData && raceData.traits) {
-                // Extract unique lineages from the traits
                 const lineages = new Set(raceData.traits.filter((t: any) => t.lineage).map((t: any) => t.lineage));
                 if (lineages.size > 0) {
-                    const linDiv = container.createDiv({ attr: { style: "margin-bottom: 12px; margin-left: 15px; border-left: 2px solid var(--dnd-ui-color-border-active); padding-left: 10px;" } });
-                    linDiv.createEl("label", { text: "Race Lineage: ", attr: { style: "display: block; margin-bottom: 4px; color: var(--dnd-ui-color-text-sublabel);" } });
-                    const linSelect = linDiv.createEl("select");
-                    linSelect.style.width = "100%";
+                    const linDiv = container.createDiv({ cls: "dnd-form-subpanel" });
+                    linDiv.createEl("label", { text: "Race Lineage: ", cls: "dnd-form-label-sub" });
+                    const linSelect = linDiv.createEl("select", { cls: "dnd-modal-form-input" });
                     linSelect.createEl("option", { text: "-- Select a Lineage --", value: "" });
                     Array.from(lineages).forEach((l: any) => linSelect.createEl("option", { text: l, value: l }));
                     linSelect.value = this.wizardData.raceLineage || "";
@@ -3274,14 +3267,11 @@ class CharacterWizardModal extends Modal {
         }
 
         // --- CLASS SECTION ---
-        const classDiv = container.createDiv({ attr: { style: "margin-bottom: 12px;" } });
-        classDiv.createEl("label", { text: "Class: ", attr: { style: "display: block; margin-bottom: 4px;" } });
-        const classSelect = classDiv.createEl("select");
-        classSelect.style.width = "100%";
+        const classDiv = container.createDiv({ cls: "dnd-form-group" });
+        classDiv.createEl("label", { text: "Class: ", cls: "dnd-form-label" });
+        const classSelect = classDiv.createEl("select", { cls: "dnd-modal-form-input" });
         classSelect.createEl("option", { text: "-- Select a Class --", value: "" });
         this.availableClasses.forEach(c => classSelect.createEl("option", { text: c, value: c }));
-
-        // FIX: Bound to dndClass instead of class
         classSelect.value = this.wizardData.dndClass;
 
         classSelect.onchange = async (e) => {
@@ -3290,7 +3280,7 @@ class CharacterWizardModal extends Modal {
             await this.renderStep();
         };
 
-        // Conditional Subclass (Only shows if the class grants a subclass at or before the chosen starting level)
+        // Conditional Subclass
         if (this.wizardData.dndClass) {
             const classData = await getClassData(this.app, this.plugin.settings, this.wizardData.dndClass);
             const grantedSubclassFile = this.plugin.findGrantedSubclass(classData, Number(this.wizardData.level) || 1);
@@ -3300,10 +3290,9 @@ class CharacterWizardModal extends Modal {
                 if (allSubclasses && typeof allSubclasses === "object") {
                     const subclassNames = Object.keys(allSubclasses);
                     if (subclassNames.length > 0) {
-                        const subDiv = container.createDiv({ attr: { style: "margin-bottom: 12px; margin-left: 15px; border-left: 2px solid var(--dnd-ui-color-border-active); padding-left: 10px;" } });
-                        subDiv.createEl("label", { text: "Subclass: ", attr: { style: "display: block; margin-bottom: 4px; color: var(--dnd-ui-color-text-sublabel);" } });
-                        const subSelect = subDiv.createEl("select");
-                        subSelect.style.width = "100%";
+                        const subDiv = container.createDiv({ cls: "dnd-form-subpanel" });
+                        subDiv.createEl("label", { text: "Subclass: ", cls: "dnd-form-label-sub" });
+                        const subSelect = subDiv.createEl("select", { cls: "dnd-modal-form-input" });
                         subSelect.createEl("option", { text: "-- Select a Subclass --", value: "" });
                         subclassNames.forEach(s => subSelect.createEl("option", { text: s, value: s }));
                         subSelect.value = this.wizardData.subclass || "";
@@ -3315,16 +3304,14 @@ class CharacterWizardModal extends Modal {
             }
         }
 
-        // --- BACKGROUND SECTION (Moved from Step 3) ---
-        const bgDiv = container.createDiv({ attr: { style: "margin-bottom: 12px;" } });
-        bgDiv.createEl("label", { text: "Background: ", attr: { style: "display: block; margin-bottom: 4px;" } });
-        const bgSelect = bgDiv.createEl("select");
-        bgSelect.style.width = "100%";
+        // --- BACKGROUND SECTION ---
+        const bgDiv = container.createDiv({ cls: "dnd-form-group" });
+        bgDiv.createEl("label", { text: "Background: ", cls: "dnd-form-label" });
+        const bgSelect = bgDiv.createEl("select", { cls: "dnd-modal-form-input" });
         bgSelect.createEl("option", { text: "-- Select a Background --", value: "" });
         this.availableBackgrounds.forEach(b => bgSelect.createEl("option", { text: b, value: b }));
         bgSelect.value = this.wizardData.background || "";
 
-        // Triggers a re-render so Step 3 can later know what background is active
         bgSelect.onchange = async (e) => {
             this.wizardData.background = (e.target as HTMLSelectElement).value;
             await this.renderStep();
@@ -3345,7 +3332,7 @@ class CharacterWizardModal extends Modal {
         }
 
         // 1. Base Stats Grid
-        const statsGrid = container.createDiv({ attr: { style: "display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px;" } });
+        const statsGrid = container.createDiv({ cls: "dnd-form-grid-3" });
         const stats = ["Strength", "Dexterity", "Constitution", "Intelligence", "Wisdom", "Charisma"];
 
         stats.forEach(stat => {
@@ -3353,31 +3340,28 @@ class CharacterWizardModal extends Modal {
             if (this.wizardData[statKey] === undefined) this.wizardData[statKey] = 10;
 
             const statDiv = statsGrid.createDiv();
-            statDiv.createEl("label", { text: `${stat}:`, attr: { style: "display: block; font-size: 0.9em; margin-bottom: 4px;" } });
+            statDiv.createEl("label", { text: `${stat}:`, cls: "dnd-form-label-sm" });
 
-            const statInput = statDiv.createEl("input", { type: "number", value: String(this.wizardData[statKey]) });
-            statInput.style.width = "100%";
+            const statInput = statDiv.createEl("input", { type: "number", value: String(this.wizardData[statKey]), cls: "dnd-modal-form-input" });
             statInput.onchange = (e) => {
                 this.wizardData[statKey] = Number((e.target as HTMLInputElement).value);
                 if (statKey === "constitution") this.renderStep();
             };
         });
 
-        // 2. Health & Speed Controls (Moved UP above the skills)
-        const vitalsGrid = container.createDiv({ attr: { style: "display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px;" } });
+        // 2. Health & Speed Controls
+        const vitalsGrid = container.createDiv({ cls: "dnd-form-grid-2" });
 
         const speedDiv = vitalsGrid.createDiv();
-        speedDiv.createEl("label", { text: "Speed (ft):", attr: { style: "display: block; font-size: 0.9em; margin-bottom: 4px;" } });
-        const speedInput = speedDiv.createEl("input", { type: "number", value: String(this.wizardData.speed) });
-        speedInput.style.width = "100%";
+        speedDiv.createEl("label", { text: "Speed (ft):", cls: "dnd-form-label-sm" });
+        const speedInput = speedDiv.createEl("input", { type: "number", value: String(this.wizardData.speed), cls: "dnd-modal-form-input" });
         speedInput.onchange = (e) => this.wizardData.speed = Number((e.target as HTMLInputElement).value);
 
         const hpDiv = vitalsGrid.createDiv();
-        hpDiv.createEl("label", { text: "Max Health:", attr: { style: "display: block; font-size: 0.9em; margin-bottom: 4px;" } });
-        const hpWrapper = hpDiv.createDiv({ attr: { style: "display: flex; gap: 5px;" } });
+        hpDiv.createEl("label", { text: "Max Health:", cls: "dnd-form-label-sm" });
+        const hpWrapper = hpDiv.createDiv({ cls: "dnd-modal-add-bar" });
 
-        const hpInput = hpWrapper.createEl("input", { type: "number", value: String(this.wizardData.maxHealth) });
-        hpInput.style.width = "100%";
+        const hpInput = hpWrapper.createEl("input", { type: "number", value: String(this.wizardData.maxHealth), cls: "dnd-modal-form-input" });
         hpInput.onchange = (e) => this.wizardData.maxHealth = Number((e.target as HTMLInputElement).value);
 
         const autoHpBtn = hpWrapper.createEl("button", { text: "Auto (Lvl 1)", attr: { title: "Max Hit Die + CON Modifier" } });
@@ -3388,7 +3372,6 @@ class CharacterWizardModal extends Modal {
                 if (!isNaN(parsedHitDie)) hitDieMax = parsedHitDie;
             }
 
-            // Safely tally base CON + Background CON bonuses!
             let totalCon = this.wizardData.constitution || 10;
             if (this.wizardData.chosenAbilityBonuses) {
                 totalCon += this.wizardData.chosenAbilityBonuses.filter((b: string) => b.toLowerCase() === "constitution").length;
@@ -3402,10 +3385,9 @@ class CharacterWizardModal extends Modal {
         // 3. Spellcasting Dropdown
         if (this.wizardData.dndClass) {
             if (classData && classData.spellcastingAbilities && Array.isArray(classData.spellcastingAbilities)) {
-                const spellDiv = container.createDiv();
-                spellDiv.createEl("label", { text: "Primary Spellcasting Ability: ", attr: { style: "display: block; margin-bottom: 4px; color: var(--dnd-ui-color-text-sublabel);" } });
-                const spellSelect = spellDiv.createEl("select");
-                spellSelect.style.width = "100%";
+                const spellDiv = container.createDiv({ cls: "dnd-form-group" });
+                spellDiv.createEl("label", { text: "Primary Spellcasting Ability: ", cls: "dnd-form-label-sub" });
+                const spellSelect = spellDiv.createEl("select", { cls: "dnd-modal-form-input" });
                 spellSelect.createEl("option", { text: "-- Select Ability --", value: "" });
 
                 classData.spellcastingAbilities.forEach((ability: string) => spellSelect.createEl("option", { text: ability, value: ability }));
@@ -3428,19 +3410,17 @@ class CharacterWizardModal extends Modal {
                 const numChoices = sp[1] as number;
 
                 if (availableSkills.length > 0 && numChoices > 0) {
-                    // KEEPS the top border (the "long line") as requested!
-                    const skillsDiv = container.createDiv({ attr: { style: "margin-top: 15px; padding-top: 15px; border-top: 1px solid var(--dnd-ui-color-border-primary);" } });
-                    skillsDiv.createEl("label", { text: `Class Skill Proficiencies (Choose ${numChoices}):`, attr: { style: "display: block; margin-bottom: 8px; color: var(--dnd-ui-color-text-sublabel);" } });
+                    const skillsDiv = container.createDiv({ cls: "dnd-form-divider-section" });
+                    skillsDiv.createEl("label", { text: `Class Skill Proficiencies (Choose ${numChoices}):`, cls: "dnd-form-label-sub" });
 
                     if (!this.wizardData.chosenSkills || this.wizardData.chosenSkills.length !== numChoices) {
                         this.wizardData.chosenSkills = new Array(numChoices).fill("");
                     }
 
-                    const skillGrid = skillsDiv.createDiv({ attr: { style: "display: grid; grid-template-columns: 1fr 1fr; gap: 10px;" } });
+                    const skillGrid = skillsDiv.createDiv({ cls: "dnd-form-grid-2" });
 
                     for (let i = 0; i < numChoices; i++) {
-                        const skillSelect = skillGrid.createEl("select");
-                        skillSelect.style.width = "100%";
+                        const skillSelect = skillGrid.createEl("select", { cls: "dnd-modal-form-input" });
                         skillSelect.createEl("option", { text: `-- Select Skill ${i + 1} --`, value: "" });
 
                         availableSkills.forEach((skill: string) => {
@@ -3457,21 +3437,19 @@ class CharacterWizardModal extends Modal {
             }
         }
 
-        // 5. Background Ability Score Bonuses (Moved DOWN)
+        // 5. Background Ability Score Bonuses
         if (bgData && bgData.abilityBonusPool && Array.isArray(bgData.abilityBonusPool)) {
-            // FIX: Removed border-bottom and padding-bottom so no stray short lines appear! 
-            const bonusDiv = container.createDiv({ attr: { style: "margin-top: 15px;" } });
-            bonusDiv.createEl("label", { text: "Background Ability Bonuses (+3 total):", attr: { style: "display: block; font-size: 0.9em; margin-bottom: 8px; color: var(--dnd-ui-color-text-sublabel);" } });
+            const bonusDiv = container.createDiv({ cls: "dnd-form-group" });
+            bonusDiv.createEl("label", { text: "Background Ability Bonuses (+3 total):", cls: "dnd-form-label-sub" });
 
             if (!this.wizardData.chosenAbilityBonuses || this.wizardData.chosenAbilityBonuses.length !== 3) {
                 this.wizardData.chosenAbilityBonuses = ["", "", ""];
             }
 
-            const bonusGrid = bonusDiv.createDiv({ attr: { style: "display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;" } });
+            const bonusGrid = bonusDiv.createDiv({ cls: "dnd-form-grid-3" });
 
             for (let i = 0; i < 3; i++) {
-                const bonusSelect = bonusGrid.createEl("select");
-                bonusSelect.style.width = "100%";
+                const bonusSelect = bonusGrid.createEl("select", { cls: "dnd-modal-form-input" });
                 bonusSelect.createEl("option", { text: `-- +1 Bonus --`, value: "" });
 
                 bgData.abilityBonusPool.forEach((ability: string) => {
@@ -3482,13 +3460,12 @@ class CharacterWizardModal extends Modal {
                 bonusSelect.value = this.wizardData.chosenAbilityBonuses[i] || "";
                 bonusSelect.onchange = (e) => {
                     this.wizardData.chosenAbilityBonuses[i] = (e.target as HTMLSelectElement).value;
-                    // Re-render so HP updates if CON gets a bonus!
                     if ((e.target as HTMLSelectElement).value.toLowerCase() === "constitution" || this.wizardData.chosenAbilityBonuses.includes("constitution")) {
                         this.renderStep();
                     }
                 };
             }
-            bonusDiv.createEl("small", { text: "Tip: Assign +1 to three different stats, or +2 to one and +1 to another.", attr: { style: "display: block; margin-top: 6px; color: var(--dnd-ui-color-text-muted);" } });
+            bonusDiv.createEl("small", { text: "Tip: Assign +1 to three different stats, or +2 to one and +1 to another.", cls: "dnd-form-hint" });
         }
 
         // 6. Background Skills Pool (Dynamic Dropdowns)
@@ -3497,19 +3474,17 @@ class CharacterWizardModal extends Modal {
             const numBgChoices = bgData.skillsPool[1] as number;
 
             if (availableBgSkills.length > 0 && numBgChoices > 0) {
-                // FIX: Uses margin-top without borders, grouping it nicely below the Background Bonuses!
-                const bgSkillsDiv = container.createDiv({ attr: { style: "margin-top: 15px;" } });
-                bgSkillsDiv.createEl("label", { text: `Background Skill Proficiencies (Choose ${numBgChoices}):`, attr: { style: "display: block; margin-bottom: 8px; color: var(--dnd-ui-color-text-sublabel);" } });
+                const bgSkillsDiv = container.createDiv({ cls: "dnd-form-group" });
+                bgSkillsDiv.createEl("label", { text: `Background Skill Proficiencies (Choose ${numBgChoices}):`, cls: "dnd-form-label-sub" });
 
                 if (!this.wizardData.chosenBgSkills || this.wizardData.chosenBgSkills.length !== numBgChoices) {
                     this.wizardData.chosenBgSkills = new Array(numBgChoices).fill("");
                 }
 
-                const bgSkillGrid = bgSkillsDiv.createDiv({ attr: { style: "display: grid; grid-template-columns: 1fr 1fr; gap: 10px;" } });
+                const bgSkillGrid = bgSkillsDiv.createDiv({ cls: "dnd-form-grid-2" });
 
                 for (let i = 0; i < numBgChoices; i++) {
-                    const skillSelect = bgSkillGrid.createEl("select");
-                    skillSelect.style.width = "100%";
+                    const skillSelect = bgSkillGrid.createEl("select", { cls: "dnd-modal-form-input" });
                     skillSelect.createEl("option", { text: `-- Select Skill ${i + 1} --`, value: "" });
 
                     availableBgSkills.forEach((skill: string) => {
@@ -3527,25 +3502,23 @@ class CharacterWizardModal extends Modal {
 
         // 7. Automatic Background Skills (Read-Only Display)
         if (bgData && bgData.skills && Array.isArray(bgData.skills) && bgData.skills.length > 0) {
-            const autoBgSkillsDiv = container.createDiv({ attr: { style: "margin-top: 15px;" } });
-            autoBgSkillsDiv.createEl("label", { text: `Background Granted Skills:`, attr: { style: "display: block; margin-bottom: 8px; color: var(--dnd-ui-color-text-sublabel);" } });
+            const autoBgSkillsDiv = container.createDiv({ cls: "dnd-form-group" });
+            autoBgSkillsDiv.createEl("label", { text: `Background Granted Skills:`, cls: "dnd-form-label-sub" });
 
-            // Format array into a clean Title Case string
             const autoSkillsText = bgData.skills.map((skill: string) => {
                 return skill.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
             }).join(', ');
 
-            // Display them in a visually distinct, read-only box
             autoBgSkillsDiv.createEl("div", {
                 text: autoSkillsText,
-                attr: { style: "padding: 8px 12px; background: var(--dnd-ui-color-bg-darker); border: 1px solid var(--dnd-ui-color-border-primary); border-radius: 4px; color: var(--dnd-ui-color-text-muted);" }
+                cls: "dnd-form-readonly-box"
             });
         }
     }
 
     async renderStepThree(container: HTMLElement) {
         container.createEl("h3", { text: "Class Options", cls: "dnd-class-header" });
-        container.createEl("p", { text: "Select your specialized class features.", attr: { style: "color: var(--dnd-ui-color-text-muted); margin-bottom: 15px;" } });
+        container.createEl("p", { text: "Select your specialized class features.", cls: "dnd-form-hint-block" });
 
         let hasChoices = false;
 
@@ -3590,35 +3563,31 @@ class CharacterWizardModal extends Modal {
                         if (feature.classChoices && Array.isArray(feature.classChoices)) {
                             hasChoices = true;
 
-                            // Use a traditional for-loop to track the exact index of the choice
                             for (let choiceIndex = 0; choiceIndex < feature.classChoices.length; choiceIndex++) {
                                 const routerName = feature.classChoices[choiceIndex];
                                 const routerData = await getClassChoiceData(this.app, this.plugin.settings, routerName);
 
                                 if (routerData) {
-                                    // Build a clean UI Card for the choice
-                                    const choiceDiv = container.createDiv({ attr: { style: "margin-bottom: 12px; padding: 10px; background: var(--dnd-ui-color-bg-tertiary); border-radius: 6px; border: 1px solid var(--dnd-ui-color-border-primary);" } });
+                                    const choiceDiv = container.createDiv({ cls: "dnd-form-card" });
 
                                     const displayName = routerName.split(/[-_]/).map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-                                    choiceDiv.createEl("label", { text: `Level ${targetLevel}: ${feature.name} (${displayName} ${choiceIndex + 1})`, attr: { style: "display: block; margin-bottom: 8px; font-weight: bold; color: var(--dnd-ui-color-text-secondary);" } });
+                                    choiceDiv.createEl("label", {
+                                        text: `Level ${targetLevel}: ${feature.name} (${displayName} ${choiceIndex + 1})`,
+                                        cls: "dnd-form-label-bold"
+                                    });
 
-                                    const selectEl = choiceDiv.createEl("select");
-                                    selectEl.style.width = "100%";
+                                    const selectEl = choiceDiv.createEl("select", { cls: "dnd-modal-form-input" });
                                     selectEl.createEl("option", { text: `-- Select Option --`, value: "" });
 
                                     Object.entries(routerData).forEach(([key, val]) => {
                                         selectEl.createEl("option", { text: val as string, value: key });
                                     });
 
-                                    // Restore previous selection using Level + Router + Choice Index!
                                     const existingChoice = this.wizardData.classChoices.find((c: any) => c[0] === routerName && c[2] === targetLevel && c[3] === choiceIndex);
                                     if (existingChoice) selectEl.value = existingChoice[1];
 
-                                    // Save securely in internal memory as [Router File, Chosen Key, Level, Index]
                                     selectEl.onchange = (e) => {
                                         const selectedVal = (e.target as HTMLSelectElement).value;
-
-                                        // Remove old choice for this specific slot
                                         this.wizardData.classChoices = this.wizardData.classChoices.filter((c: any) => !(c[0] === routerName && c[2] === targetLevel && c[3] === choiceIndex));
 
                                         if (selectedVal) {
@@ -3629,37 +3598,43 @@ class CharacterWizardModal extends Modal {
                             }
                         }
 
-                        // --- NEW: EXPERTISE ENGINE (grantedExpertise) ---
+                        // --- EXPERTISE ENGINE (grantedExpertise) ---
                         if (feature.grantedExpertise && Array.isArray(feature.grantedExpertise) && feature.grantedExpertise.length === 2) {
                             hasChoices = true;
                             const expPool = feature.grantedExpertise[0] as string[];
                             const grantedExpertiseCount = feature.grantedExpertise[1] as number;
 
                             if (grantedExpertiseCount > 0) {
-                                const expDiv = container.createDiv({ attr: { style: "margin-bottom: 20px; padding: 10px; background: var(--dnd-ui-color-bg-tertiary); border-radius: 6px; border: 1px solid var(--dnd-ui-color-border-primary);" } });
-                                expDiv.createEl("label", { text: `Level ${targetLevel}: ${feature.name} (${grantedExpertiseCount} Choices)`, attr: { style: "display: block; margin-bottom: 8px; font-weight: bold; color: var(--dnd-ui-color-text-secondary);" } });
-                                expDiv.createEl("small", { text: "Select skills you are already proficient in to gain Expertise.", attr: { style: "display: block; margin-bottom: 12px; color: var(--dnd-ui-color-text-muted);" } });
+                                const expDiv = container.createDiv({ cls: "dnd-form-card" });
+                                expDiv.createEl("label", {
+                                    text: `Level ${targetLevel}: ${feature.name} (${grantedExpertiseCount} Choices)`,
+                                    cls: "dnd-form-label-bold"
+                                });
+                                expDiv.createEl("small", {
+                                    text: "Select skills you are already proficient in to gain Expertise.",
+                                    cls: "dnd-form-hint-block"
+                                });
 
-                                // Strictly filter available proficiencies based on the explicitly provided JSON pool
                                 let filteredProficiencies = availableProficiencies;
                                 if (expPool.length > 0) {
                                     filteredProficiencies = availableProficiencies.filter(skill => expPool.map(s => String(s).toLowerCase()).includes(String(skill).toLowerCase()));
                                 }
 
-                                // Ensure our data array is ready for the total choices provided by the JSON
                                 if (!this.wizardData.expertiseChoices || this.wizardData.expertiseChoices.length !== grantedExpertiseCount) {
                                     this.wizardData.expertiseChoices = Array(grantedExpertiseCount).fill(["", targetLevel]);
                                 }
 
-                                // UX Improvement: Warn the user if they skipped selecting skills in Step 2!
                                 if (filteredProficiencies.length === 0) {
-                                    expDiv.createEl("p", { text: "You have no eligible skill proficiencies to gain Expertise in. Please go back to Step 2 and select your class/background skills first!", attr: { style: "color: var(--dnd-ui-color-accent-red); font-style: italic; font-size: 0.9em;" } });
+                                    expDiv.createEl("p", {
+                                        text: "You have no eligible skill proficiencies to gain Expertise in. Please go back to Step 2 and select your class/background skills first!",
+                                        cls: "dnd-error-text dnd-form-note"
+                                    });
                                 } else {
                                     for (let e = 0; e < grantedExpertiseCount; e++) {
-                                        const selectDiv = expDiv.createDiv({ attr: { style: "margin-bottom: 8px; display: flex; align-items: center;" } });
-                                        selectDiv.createEl("small", { text: `Choice ${e + 1}:`, attr: { style: "flex: 0 0 65px; color: var(--dnd-ui-color-text-sublabel);" } });
+                                        const selectDiv = expDiv.createDiv({ cls: "dnd-form-slot-row" });
+                                        selectDiv.createEl("small", { text: `Choice ${e + 1}:`, cls: "dnd-form-slot-label-sm" });
 
-                                        const selectEl = selectDiv.createEl("select", { attr: { style: "flex: 1;" } });
+                                        const selectEl = selectDiv.createEl("select", { cls: "dnd-flex-1" });
                                         selectEl.createEl("option", { text: `-- Select Expertise --`, value: "" });
 
                                         filteredProficiencies.forEach(skill => {
@@ -3683,7 +3658,10 @@ class CharacterWizardModal extends Modal {
         }
 
         if (!hasChoices) {
-            container.createEl("p", { text: "No additional class choices available for this level.", attr: { style: "font-style: italic; color: var(--dnd-ui-color-text-sublabel);" } });
+            container.createEl("p", {
+                text: "No additional class choices available for this level.",
+                cls: "dnd-form-note"
+            });
         }
     }
 
@@ -3692,18 +3670,18 @@ class CharacterWizardModal extends Modal {
         container.createEl("h3", { text: "Equipment & Feats", cls: "dnd-class-header" });
 
         // Languages & Feats Grid
-        const extraGrid = container.createDiv({ attr: { style: "display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px;" } });
+        const extraGrid = container.createDiv({ cls: "dnd-form-grid-2" });
 
         const langDiv = extraGrid.createDiv();
-        langDiv.createEl("label", { text: "Languages: ", attr: { style: "display: block; font-size: 0.9em; margin-bottom: 4px;" } });
-        const langInput = langDiv.createEl("input", { type: "text", value: this.wizardData.languages });
-        langInput.style.width = "100%"; langInput.placeholder = "Common, Elvish...";
+        langDiv.createEl("label", { text: "Languages: ", cls: "dnd-form-label-sm" });
+        const langInput = langDiv.createEl("input", { type: "text", value: this.wizardData.languages, cls: "dnd-modal-form-input" });
+        langInput.placeholder = "Common, Elvish...";
         langInput.onchange = (e) => this.wizardData.languages = (e.target as HTMLInputElement).value;
 
         const featDiv = extraGrid.createDiv();
-        featDiv.createEl("label", { text: "Extra Feats: ", attr: { style: "display: block; font-size: 0.9em; margin-bottom: 4px;" } });
-        const featInput = featDiv.createEl("input", { type: "text", value: this.wizardData.extraFeats });
-        featInput.style.width = "100%"; featInput.placeholder = "Tough, Alert...";
+        featDiv.createEl("label", { text: "Extra Feats: ", cls: "dnd-form-label-sm" });
+        const featInput = featDiv.createEl("input", { type: "text", value: this.wizardData.extraFeats, cls: "dnd-modal-form-input" });
+        featInput.placeholder = "Tough, Alert...";
         featInput.onchange = (e) => this.wizardData.extraFeats = (e.target as HTMLInputElement).value;
 
         // HELPER: Checks for flexible choices and generates a dynamic placeholder
@@ -3748,33 +3726,28 @@ class CharacterWizardModal extends Modal {
             }
         }
 
-        const classEqDiv = container.createDiv({ attr: { style: "margin-bottom: 12px;" } });
-        classEqDiv.createEl("label", { text: "Class Starting Equipment Choice: ", attr: { style: "display: block; margin-bottom: 4px;" } });
-        const classEqSelect = classEqDiv.createEl("select");
-        classEqSelect.style.width = "100%";
+        const classEqDiv = container.createDiv({ cls: "dnd-form-group" });
+        classEqDiv.createEl("label", { text: "Class Starting Equipment Choice: ", cls: "dnd-form-label" });
+        const classEqSelect = classEqDiv.createEl("select", { cls: "dnd-modal-form-input" });
 
-        // Dynamically build the dropdown options
         classEqOptions.forEach(opt => {
             classEqSelect.createEl("option", { text: `Choice ${opt}`, value: opt });
         });
 
-        // Ensure the current value is valid; if not, default to the first available choice
         if (!classEqOptions.includes(this.wizardData.classEquipment)) {
             this.wizardData.classEquipment = classEqOptions[0];
         }
         classEqSelect.value = this.wizardData.classEquipment;
 
-        // Re-render when changing A/B/C so the flexible input box can appear/disappear dynamically
         classEqSelect.onchange = async (e) => {
             this.wizardData.classEquipment = (e.target as HTMLSelectElement).value;
             await this.renderStep();
         };
 
         if (showClassItems) {
-            const classItemsDiv = container.createDiv({ attr: { style: "margin-bottom: 12px; margin-left: 15px; border-left: 2px solid var(--dnd-ui-color-border-active); padding-left: 10px;" } });
-            classItemsDiv.createEl("label", { text: "Class Chosen Items (Required): ", attr: { style: "display: block; margin-bottom: 4px; color: var(--dnd-ui-color-text-sublabel);" } });
-            const classItemsInput = classItemsDiv.createEl("input", { type: "text", value: this.wizardData.classChosenItems || "" });
-            classItemsInput.style.width = "100%";
+            const classItemsDiv = container.createDiv({ cls: "dnd-form-subpanel" });
+            classItemsDiv.createEl("label", { text: "Class Chosen Items (Required): ", cls: "dnd-form-label-sub" });
+            const classItemsInput = classItemsDiv.createEl("input", { type: "text", value: this.wizardData.classChosenItems || "", cls: "dnd-modal-form-input" });
             classItemsInput.placeholder = classPlaceholder;
             classItemsInput.onchange = (e) => this.wizardData.classChosenItems = (e.target as HTMLInputElement).value;
         }
@@ -3787,7 +3760,6 @@ class CharacterWizardModal extends Modal {
         if (this.wizardData.background) {
             const bgData = await getBackgroundData(this.app, this.plugin.settings, this.wizardData.background);
             if (bgData?.startingEquipment) {
-                // Dynamically fetch A, B, C, etc. directly from the JSON
                 bgEqOptions = Object.keys(bgData.startingEquipment).sort();
 
                 const eqChoice = this.wizardData.backgroundEquipment || bgEqOptions[0];
@@ -3799,17 +3771,14 @@ class CharacterWizardModal extends Modal {
             }
         }
 
-        const bgEqDiv = container.createDiv({ attr: { style: "margin-bottom: 12px;" } });
-        bgEqDiv.createEl("label", { text: "Background Starting Equipment Choice: ", attr: { style: "display: block; margin-bottom: 4px;" } });
-        const bgEqSelect = bgEqDiv.createEl("select");
-        bgEqSelect.style.width = "100%";
+        const bgEqDiv = container.createDiv({ cls: "dnd-form-group" });
+        bgEqDiv.createEl("label", { text: "Background Starting Equipment Choice: ", cls: "dnd-form-label" });
+        const bgEqSelect = bgEqDiv.createEl("select", { cls: "dnd-modal-form-input" });
 
-        // Dynamically build the dropdown options
         bgEqOptions.forEach(opt => {
             bgEqSelect.createEl("option", { text: `Choice ${opt}`, value: opt });
         });
 
-        // Ensure the current value is valid; if not, default to the first available choice
         if (!bgEqOptions.includes(this.wizardData.backgroundEquipment)) {
             this.wizardData.backgroundEquipment = bgEqOptions[0];
         }
@@ -3821,43 +3790,42 @@ class CharacterWizardModal extends Modal {
         };
 
         if (showBgItems) {
-            const bgItemsDiv = container.createDiv({ attr: { style: "margin-bottom: 12px; margin-left: 15px; border-left: 2px solid var(--dnd-ui-color-border-active); padding-left: 10px;" } });
-            bgItemsDiv.createEl("label", { text: "Background Chosen Items (Required): ", attr: { style: "display: block; margin-bottom: 4px; color: var(--dnd-ui-color-text-sublabel);" } });
-            const bgItemsInput = bgItemsDiv.createEl("input", { type: "text", value: this.wizardData.backgroundChosenItems || "" });
-            bgItemsInput.style.width = "100%";
+            const bgItemsDiv = container.createDiv({ cls: "dnd-form-subpanel" });
+            bgItemsDiv.createEl("label", { text: "Background Chosen Items (Required): ", cls: "dnd-form-label-sub" });
+            const bgItemsInput = bgItemsDiv.createEl("input", { type: "text", value: this.wizardData.backgroundChosenItems || "", cls: "dnd-modal-form-input" });
             bgItemsInput.placeholder = bgPlaceholder;
             bgItemsInput.onchange = (e) => this.wizardData.backgroundChosenItems = (e.target as HTMLInputElement).value;
         }
 
         // --- Weapon Section ---
-        container.createEl("h4", { text: "Equipped Items", attr: { style: "margin-top: 20px; margin-bottom: 10px; color: var(--dnd-ui-color-text-muted);" } });
-        const weaponGrid = container.createDiv({ attr: { style: "display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px;" } });
+        container.createEl("h4", { text: "Equipped Items", cls: "dnd-wizard-subhead" });
+        const weaponGrid = container.createDiv({ cls: "dnd-form-grid-2" });
 
         const weaponNameDiv = weaponGrid.createDiv();
-        weaponNameDiv.createEl("label", { text: "Weapon Name: ", attr: { style: "display: block; font-size: 0.9em; margin-bottom: 4px;" } });
-        const weaponInput = weaponNameDiv.createEl("input", { type: "text", value: this.wizardData.weapon || "" });
-        weaponInput.style.width = "100%"; weaponInput.placeholder = "Longsword";
+        weaponNameDiv.createEl("label", { text: "Weapon Name: ", cls: "dnd-form-label-sm" });
+        const weaponInput = weaponNameDiv.createEl("input", { type: "text", value: this.wizardData.weapon || "", cls: "dnd-modal-form-input" });
+        weaponInput.placeholder = "Longsword";
         weaponInput.onchange = (e) => this.wizardData.weapon = (e.target as HTMLInputElement).value;
 
         const weaponDmgDiv = weaponGrid.createDiv();
-        weaponDmgDiv.createEl("label", { text: "Weapon Damage: ", attr: { style: "display: block; font-size: 0.9em; margin-bottom: 4px;" } });
-        const weaponDmgInput = weaponDmgDiv.createEl("input", { type: "text", value: this.wizardData.weaponDamage || "" });
-        weaponDmgInput.style.width = "100%"; weaponDmgInput.placeholder = "1d8 Slashing";
+        weaponDmgDiv.createEl("label", { text: "Weapon Damage: ", cls: "dnd-form-label-sm" });
+        const weaponDmgInput = weaponDmgDiv.createEl("input", { type: "text", value: this.wizardData.weaponDamage || "", cls: "dnd-modal-form-input" });
+        weaponDmgInput.placeholder = "1d8 Slashing";
         weaponDmgInput.onchange = (e) => this.wizardData.weaponDamage = (e.target as HTMLInputElement).value;
 
         // --- Armor Section ---
-        const armorGrid = container.createDiv({ attr: { style: "display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px;" } });
+        const armorGrid = container.createDiv({ cls: "dnd-form-grid-2" });
 
         const armorNameDiv = armorGrid.createDiv();
-        armorNameDiv.createEl("label", { text: "Armor Name: ", attr: { style: "display: block; font-size: 0.9em; margin-bottom: 4px;" } });
-        const armorInput = armorNameDiv.createEl("input", { type: "text", value: this.wizardData.armor || "" });
-        armorInput.style.width = "100%"; armorInput.placeholder = "Chain Mail";
+        armorNameDiv.createEl("label", { text: "Armor Name: ", cls: "dnd-form-label-sm" });
+        const armorInput = armorNameDiv.createEl("input", { type: "text", value: this.wizardData.armor || "", cls: "dnd-modal-form-input" });
+        armorInput.placeholder = "Chain Mail";
         armorInput.onchange = (e) => this.wizardData.armor = (e.target as HTMLInputElement).value;
 
         const armorAcDiv = armorGrid.createDiv();
-        armorAcDiv.createEl("label", { text: "Armor AC: ", attr: { style: "display: block; font-size: 0.9em; margin-bottom: 4px;" } });
-        const armorAcInput = armorAcDiv.createEl("input", { type: "number", value: this.wizardData.armorAc || "" });
-        armorAcInput.style.width = "100%"; armorAcInput.placeholder = "16";
+        armorAcDiv.createEl("label", { text: "Armor AC: ", cls: "dnd-form-label-sm" });
+        const armorAcInput = armorAcDiv.createEl("input", { type: "number", value: this.wizardData.armorAc || "", cls: "dnd-modal-form-input" });
+        armorAcInput.placeholder = "16";
         armorAcInput.onchange = (e) => this.wizardData.armorAc = Number((e.target as HTMLInputElement).value);
     }
 
@@ -4559,9 +4527,7 @@ class EquipItemsModal extends Modal {
         this.formContainer = contentEl.createDiv();
         this.renderForm();
 
-        const btnDiv = contentEl.createDiv({
-            attr: { style: "display: flex; justify-content: flex-end; gap: 10px; border-top: 1px solid var(--dnd-ui-color-border-primary); padding-top: 15px; margin-top: 20px;" }
-        });
+        const btnDiv = contentEl.createDiv({ cls: "dnd-modal-footer" });
         const cancelBtn = btnDiv.createEl("button", { text: "Cancel" });
         cancelBtn.onclick = () => this.close();
 
@@ -4651,11 +4617,8 @@ class EquipItemsModal extends Modal {
         // ==========================================
         // 1. WEAPON SECTION
         // ==========================================
-        const weaponSection = this.formContainer.createDiv({ attr: { style: "margin-bottom: 18px;" } });
-        weaponSection.createEl("label", {
-            text: "Weapon Name:",
-            attr: { style: "display: block; margin-bottom: 6px; color: var(--dnd-ui-color-text-sublabel);" }
-        });
+        const weaponSection = this.formContainer.createDiv({ cls: "dnd-form-group-lg" });
+        weaponSection.createEl("label", { text: "Weapon Name:", cls: "dnd-form-label-sub" });
 
         const weaponRow = weaponSection.createDiv({ cls: "dnd-equip-row" });
 
@@ -4704,10 +4667,7 @@ class EquipItemsModal extends Modal {
 
         if (this.isWeaponCustom) {
             const weaponSub = weaponSection.createDiv({ cls: "dnd-equip-custom-sub" });
-            weaponSub.createEl("label", {
-                text: "Weapon Damage:",
-                attr: { style: "display: block; margin-bottom: 4px; font-size: 0.9em; color: var(--dnd-ui-color-text-sublabel);" }
-            });
+            weaponSub.createEl("label", { text: "Weapon Damage:", cls: "dnd-form-label-sm" });
             const dmgInput = weaponSub.createEl("input", {
                 type: "text",
                 value: this.weaponDamage,
@@ -4723,11 +4683,8 @@ class EquipItemsModal extends Modal {
         // ==========================================
         // 2. ARMOR SECTION
         // ==========================================
-        const armorSection = this.formContainer.createDiv({ attr: { style: "margin-bottom: 10px;" } });
-        armorSection.createEl("label", {
-            text: "Armor Name:",
-            attr: { style: "display: block; margin-bottom: 6px; color: var(--dnd-ui-color-text-sublabel);" }
-        });
+        const armorSection = this.formContainer.createDiv({ cls: "dnd-form-group" });
+        armorSection.createEl("label", { text: "Armor Name:", cls: "dnd-form-label-sub" });
 
         const armorRow = armorSection.createDiv({ cls: "dnd-equip-row" });
 
@@ -4776,10 +4733,7 @@ class EquipItemsModal extends Modal {
 
         if (this.isArmorCustom) {
             const armorSub = armorSection.createDiv({ cls: "dnd-equip-custom-sub" });
-            armorSub.createEl("label", {
-                text: "Armor AC:",
-                attr: { style: "display: block; margin-bottom: 4px; font-size: 0.9em; color: var(--dnd-ui-color-text-sublabel);" }
-            });
+            armorSub.createEl("label", { text: "Armor AC:", cls: "dnd-form-label-sm" });
             const acInput = armorSub.createEl("input", {
                 type: "number",
                 value: this.armorAc,
@@ -5548,11 +5502,8 @@ class ManageCharacterModal extends Modal {
     async onOpen() {
         const { contentEl } = this;
 
-        // Modal Dimension Lock to prevent jittering when switching tabs
-        this.modalEl.style.width = "650px";
-        this.modalEl.style.maxWidth = "90vw";
-
-        contentEl.createEl("h3", { text: "Manage Character", cls: "dnd-section-header", attr: { style: "margin-bottom: 10px;" } });
+        this.modalEl.addClass("dnd-manage-modal", "dnd-spellbook-modal");
+        contentEl.createEl("h3", { text: "Manage Character", cls: "dnd-section-header dnd-modal-header" });
 
         // --- FETCH ALL DATA ONCE ---
         const fileCache = this.app.metadataCache.getCache(this.sourcePath);
@@ -5616,10 +5567,13 @@ class ManageCharacterModal extends Modal {
         await this.fetchAvailableFeatures(frontmatter);
 
         // --- BUILD TAB HEADER ---
-        const tabHeader = contentEl.createDiv({ attr: { style: "display: flex; gap: 5px; flex-wrap: wrap; border-bottom: 1px solid var(--dnd-ui-color-border-primary); margin-bottom: 15px; padding-bottom: 5px;" } });
+        const tabHeader = contentEl.createDiv({ cls: "dnd-modal-tabs" });
 
         const createTabBtn = (id: typeof this.activeTab, label: string, icon: string) => {
-            const btn = tabHeader.createEl("button", { text: `${icon} ${label}`, attr: { style: "flex: 1; background: transparent; box-shadow: none; border-radius: 4px; color: var(--dnd-ui-color-text-muted);" } });
+            const btn = tabHeader.createEl("button", {
+                text: `${icon} ${label}`,
+                cls: "dnd-modal-tab-btn dnd-manage-tab-btn"
+            });
             btn.onclick = () => {
                 this.activeTab = id;
                 this.renderTabs(tabHeader);
@@ -5628,7 +5582,6 @@ class ManageCharacterModal extends Modal {
             return btn;
         };
 
-        // Rendered in the exact order requested
         createTabBtn("stats", "Ability Scores", "🖋️");
         createTabBtn("attack", "Attack Ability", "🎯");
         createTabBtn("ac", "Armor Class Mod", "🛡️");
@@ -5636,14 +5589,11 @@ class ManageCharacterModal extends Modal {
         createTabBtn("items", "Items", "🎒");
         createTabBtn("features", "Hide Features", "📜");
 
-
         // --- FIXED CONTENT CONTAINER ---
-        this.contentContainer = contentEl.createDiv({
-            attr: { style: "min-height: 280px; max-height: 400px; overflow-y: auto; padding: 5px;" }
-        });
+        this.contentContainer = contentEl.createDiv({ cls: "dnd-manage-content" });
 
         // --- FOOTER BUTTONS ---
-        const btnDiv = contentEl.createDiv({ attr: { style: "display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; border-top: 1px solid var(--dnd-ui-color-border-primary); padding-top: 15px;" } });
+        const btnDiv = contentEl.createDiv({ cls: "dnd-modal-footer" });
         const cancelBtn = btnDiv.createEl("button", { text: "Cancel" });
         cancelBtn.onclick = () => this.close();
 
@@ -5653,7 +5603,6 @@ class ManageCharacterModal extends Modal {
             await this.saveAllChanges();
         };
 
-        // Initial Render
         this.renderTabs(tabHeader);
         this.renderContent();
     }
@@ -5793,17 +5742,7 @@ class ManageCharacterModal extends Modal {
         const tabs = ["stats", "attack", "ac", "skills", "items", "features"];
 
         buttons.forEach((btn, index) => {
-            if (tabs[index] === this.activeTab) {
-                btn.style.background = "var(--dnd-ui-color-bg-tertiary)";
-                btn.style.color = "var(--dnd-ui-color-text-bright)";
-                btn.style.fontWeight = "bold";
-                btn.style.border = "1px solid var(--dnd-ui-color-border-active)";
-            } else {
-                btn.style.background = "transparent";
-                btn.style.color = "var(--dnd-ui-color-text-muted)";
-                btn.style.fontWeight = "normal";
-                btn.style.border = "1px solid transparent";
-            }
+            btn.classList.toggle("is-active", tabs[index] === this.activeTab);
         });
     }
 
@@ -5811,69 +5750,81 @@ class ManageCharacterModal extends Modal {
         this.contentContainer.empty();
 
         if (this.activeTab === "stats") {
-            this.contentContainer.createEl("h4", { text: "Base Ability Scores", attr: { style: "margin-top: 0; color: var(--dnd-ui-color-text-bright);" } });
-            const statsGrid = this.contentContainer.createDiv({ attr: { style: "display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px;" } });
+            this.contentContainer.createEl("h4", { text: "Base Ability Scores", cls: "dnd-manage-section-title" });
+            const statsGrid = this.contentContainer.createDiv({ cls: "dnd-form-grid-3" });
 
             const statsList = ["strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"];
             statsList.forEach(stat => {
                 const statDiv = statsGrid.createDiv();
                 const displayStat = stat.charAt(0).toUpperCase() + stat.slice(1);
-                statDiv.createEl("label", { text: displayStat, attr: { style: "display: block; margin-bottom: 4px; color: var(--dnd-ui-color-text-sublabel);" } });
+                statDiv.createEl("label", { text: displayStat, cls: "dnd-form-label-sub" });
 
-                const statInput = statDiv.createEl("input", { type: "number", value: String(this.currentStats[stat]) });
-                statInput.style.width = "100%";
+                const statInput = statDiv.createEl("input", {
+                    type: "number",
+                    value: String(this.currentStats[stat]),
+                    cls: "dnd-modal-form-input"
+                });
                 statInput.oninput = (e) => this.currentStats[stat] = Number((e.target as HTMLInputElement).value);
             });
         }
 
         else if (this.activeTab === "attack") {
-            this.contentContainer.createEl("h4", { text: "Attack Roll Formula", attr: { style: "margin-top: 0; color: var(--dnd-ui-color-text-bright);" } });
+            this.contentContainer.createEl("h4", { text: "Attack Roll Formula", cls: "dnd-manage-section-title" });
 
-            const statDiv = this.contentContainer.createDiv({ attr: { style: "margin-bottom: 12px;" } });
-            statDiv.createEl("label", { text: "Base Attack Ability:", attr: { style: "display: block; margin-bottom: 4px; color: var(--dnd-ui-color-text-sublabel);" } });
-            const selectEl = statDiv.createEl("select", { attr: { style: "width: 100%;" } });
+            const statDiv = this.contentContainer.createDiv({ cls: "dnd-form-group" });
+            statDiv.createEl("label", { text: "Base Attack Ability:", cls: "dnd-form-label-sub" });
+            const selectEl = statDiv.createEl("select", { cls: "dnd-modal-form-input" });
             const stats = ["strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"];
             stats.forEach(stat => selectEl.createEl("option", { text: stat.charAt(0).toUpperCase() + stat.slice(1), value: stat }));
             selectEl.value = this.currentAttackStat;
             selectEl.onchange = (e) => this.currentAttackStat = (e.target as HTMLSelectElement).value;
 
-            const profDiv = this.contentContainer.createDiv({ attr: { style: "display: flex; align-items: center; gap: 10px; margin-bottom: 12px;" } });
+            const profDiv = this.contentContainer.createDiv({ cls: "dnd-form-row" });
             const profToggle = profDiv.createEl("input", { type: "checkbox" });
             profToggle.checked = this.addAttackProficiency;
             profToggle.onchange = (e) => this.addAttackProficiency = (e.target as HTMLInputElement).checked;
-            profDiv.createEl("label", { text: "Add Proficiency Bonus", attr: { style: "color: var(--dnd-ui-color-text-primary);" } });
+            profDiv.createEl("label", { text: "Add Proficiency Bonus" });
 
-            const modDiv = this.contentContainer.createDiv({ attr: { style: "margin-bottom: 12px;" } });
-            modDiv.createEl("label", { text: "Extra Modifier (Magic Weapons, Buffs):", attr: { style: "display: block; margin-bottom: 4px; color: var(--dnd-ui-color-text-sublabel);" } });
-            const modInput = modDiv.createEl("input", { type: "number", value: String(this.extraAttackMod), attr: { style: "width: 100%;" } });
+            const modDiv = this.contentContainer.createDiv({ cls: "dnd-form-group" });
+            modDiv.createEl("label", { text: "Extra Modifier (Magic Weapons, Buffs):", cls: "dnd-form-label-sub" });
+            const modInput = modDiv.createEl("input", {
+                type: "number",
+                value: String(this.extraAttackMod),
+                cls: "dnd-modal-form-input"
+            });
             modInput.oninput = (e) => this.extraAttackMod = Number((e.target as HTMLInputElement).value);
         }
 
         else if (this.activeTab === "ac") {
-            this.contentContainer.createEl("h4", { text: "Armor Class Adjustments", attr: { style: "margin-top: 0; color: var(--dnd-ui-color-text-bright);" } });
+            this.contentContainer.createEl("h4", { text: "Armor Class Adjustments", cls: "dnd-manage-section-title" });
 
-            const inputDiv = this.contentContainer.createDiv({ attr: { style: "margin-bottom: 15px;" } });
-            inputDiv.createEl("label", { text: "Miscellaneous AC Modifier (Shields, Buffs):", attr: { style: "display: block; margin-bottom: 4px; color: var(--dnd-ui-color-text-sublabel);" } });
-            const inputEl = inputDiv.createEl("input", { type: "number", value: String(this.currentAcMod), attr: { style: "width: 100%;" } });
+            const inputDiv = this.contentContainer.createDiv({ cls: "dnd-form-group" });
+            inputDiv.createEl("label", { text: "Miscellaneous AC Modifier (Shields, Buffs):", cls: "dnd-form-label-sub" });
+            const inputEl = inputDiv.createEl("input", {
+                type: "number",
+                value: String(this.currentAcMod),
+                cls: "dnd-modal-form-input"
+            });
             inputEl.oninput = (e) => this.currentAcMod = Number((e.target as HTMLInputElement).value);
 
-            this.contentContainer.createEl("p", { text: "Note: Your Base AC and Dexterity limits are automatically calculated based on your equipped armor and ability scores.", attr: { style: "color: var(--dnd-ui-color-text-muted); font-size: 0.9em; font-style: italic;" } });
+            this.contentContainer.createEl("p", {
+                text: "Note: Your Base AC and Dexterity limits are automatically calculated based on your equipped armor and ability scores.",
+                cls: "dnd-form-note"
+            });
         }
 
         else if (this.activeTab === "skills") {
-            this.contentContainer.createEl("h4", { text: "Additional Skill Proficiencies", attr: { style: "margin-top: 0; color: var(--dnd-ui-color-text-bright);" } });
+            this.contentContainer.createEl("h4", { text: "Additional Skill Proficiencies", cls: "dnd-manage-section-title" });
 
-            const listDiv = this.contentContainer.createDiv({ attr: { style: "margin-bottom: 15px; max-height: 140px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;" } });
+            const listDiv = this.contentContainer.createDiv({ cls: "dnd-manage-scroll-list" });
             if (this.currentExtraSkills.length === 0) {
-                listDiv.createEl("p", { text: "No extra skills added.", attr: { style: "color: var(--dnd-ui-color-text-muted); font-style: italic; margin: 0; text-align: center; padding: 10px;" } });
+                listDiv.createEl("p", { text: "No extra skills added.", cls: "dnd-manage-empty-box" });
             } else {
                 this.currentExtraSkills.forEach((skill, index) => {
-                    const row = listDiv.createDiv({ attr: { style: "display: flex; justify-content: space-between; align-items: center; background: var(--dnd-ui-color-bg-tertiary); padding: 6px 10px; border-radius: 6px; border: 1px solid var(--dnd-ui-color-border-primary);" } });
-                    row.createEl("span", { text: skill.replace(/\b\w/g, c => c.toUpperCase()), attr: { style: "color: var(--dnd-ui-color-text-bright); font-weight: 500;" } });
+                    const row = listDiv.createDiv({ cls: "dnd-modal-list-row" });
+                    row.createEl("span", { text: skill.replace(/\b\w/g, c => c.toUpperCase()), cls: "dnd-modal-row-name" });
 
-                    const delBtn = row.createEl("button", { text: "✕", attr: { style: "width: 26px; height: 26px; padding: 0; display: flex; align-items: center; justify-content: center; background: transparent; box-shadow: none; color: var(--dnd-ui-color-text-muted);" } });
-                    delBtn.onmouseenter = () => { delBtn.style.background = "var(--dnd-ui-color-accent-red)"; delBtn.style.color = "white"; };
-                    delBtn.onmouseleave = () => { delBtn.style.background = "transparent"; delBtn.style.color = "var(--dnd-ui-color-text-muted)"; };
+                    const delBtn = row.createEl("button", { text: "✕", cls: "dnd-modal-del-btn" });
                     delBtn.onclick = () => {
                         this.currentExtraSkills.splice(index, 1);
                         this.renderContent();
@@ -5881,8 +5832,8 @@ class ManageCharacterModal extends Modal {
                 });
             }
 
-            const addDiv = this.contentContainer.createDiv({ attr: { style: "display: flex; gap: 10px;" } });
-            const selectEl = addDiv.createEl("select", { attr: { style: "flex: 1;" } });
+            const addDiv = this.contentContainer.createDiv({ cls: "dnd-modal-add-bar" });
+            const selectEl = addDiv.createEl("select", { cls: "dnd-modal-add-select" });
             selectEl.createEl("option", { text: "-- Select Skill to Add --", value: "" });
 
             this.allSkills.forEach(s => {
@@ -5899,26 +5850,24 @@ class ManageCharacterModal extends Modal {
                 }
             };
         }
-        else if (this.activeTab === "items") {
-            this.contentContainer.createEl("h4", { text: "Skill Bonuses (Magic Items & Gear)", attr: { style: "margin-top: 0; color: var(--dnd-ui-color-text-bright);" } });
 
-            // A. Display existing bonuses
-            const listDiv = this.contentContainer.createDiv({ attr: { style: "margin-bottom: 15px; max-height: 140px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;" } });
+        else if (this.activeTab === "items") {
+            this.contentContainer.createEl("h4", { text: "Skill Bonuses (Magic Items & Gear)", cls: "dnd-manage-section-title" });
+
+            const listDiv = this.contentContainer.createDiv({ cls: "dnd-manage-scroll-list" });
             if (this.currentSkillBonuses.length === 0) {
-                listDiv.createEl("p", { text: "No item bonuses added.", attr: { style: "color: var(--dnd-ui-color-text-muted); font-style: italic; margin: 0; text-align: center; padding: 10px;" } });
+                listDiv.createEl("p", { text: "No item bonuses added.", cls: "dnd-manage-empty-box" });
             } else {
                 this.currentSkillBonuses.forEach((bonus, index) => {
-                    const row = listDiv.createDiv({ attr: { style: "display: flex; justify-content: space-between; align-items: center; background: var(--dnd-ui-color-bg-tertiary); padding: 6px 10px; border-radius: 6px; border: 1px solid var(--dnd-ui-color-border-primary);" } });
+                    const row = listDiv.createDiv({ cls: "dnd-modal-list-row" });
 
                     const name = bonus[0];
                     const skill = bonus[1].replace(/\b\w/g, c => c.toUpperCase());
                     const val = Number(bonus[2]) > 0 ? `+${bonus[2]}` : `${bonus[2]}`;
 
-                    row.createEl("span", { text: `${name}: ${val} to ${skill}`, attr: { style: "color: var(--dnd-ui-color-text-bright); font-weight: 500;" } });
+                    row.createEl("span", { text: `${name}: ${val} to ${skill}`, cls: "dnd-modal-row-name" });
 
-                    const delBtn = row.createEl("button", { text: "✕", attr: { style: "width: 26px; height: 26px; padding: 0; display: flex; align-items: center; justify-content: center; background: transparent; box-shadow: none; color: var(--dnd-ui-color-text-muted);" } });
-                    delBtn.onmouseenter = () => { delBtn.style.background = "var(--dnd-ui-color-accent-red)"; delBtn.style.color = "white"; };
-                    delBtn.onmouseleave = () => { delBtn.style.background = "transparent"; delBtn.style.color = "var(--dnd-ui-color-text-muted)"; };
+                    const delBtn = row.createEl("button", { text: "✕", cls: "dnd-modal-del-btn" });
                     delBtn.onclick = () => {
                         this.currentSkillBonuses.splice(index, 1);
                         this.renderContent();
@@ -5926,16 +5875,22 @@ class ManageCharacterModal extends Modal {
                 });
             }
 
-            // B. Add new bonus form
-            const addDiv = this.contentContainer.createDiv({ attr: { style: "display: flex; gap: 10px; align-items: center;" } });
+            const addDiv = this.contentContainer.createDiv({ cls: "dnd-modal-add-bar" });
+            const nameInput = addDiv.createEl("input", {
+                type: "text",
+                cls: "dnd-flex-2",
+                attr: { placeholder: "Item Name (e.g. Cloak)" }
+            });
 
-            const nameInput = addDiv.createEl("input", { type: "text", attr: { style: "flex: 2;", placeholder: "Item Name (e.g. Cloak)" } });
-
-            const selectEl = addDiv.createEl("select", { attr: { style: "flex: 2;" } });
+            const selectEl = addDiv.createEl("select", { cls: "dnd-flex-2" });
             selectEl.createEl("option", { text: "-- Skill --", value: "" });
             this.allSkills.forEach(s => selectEl.createEl("option", { text: s, value: s.toLowerCase() }));
 
-            const valInput = addDiv.createEl("input", { type: "number", attr: { style: "flex: 1;", placeholder: "+ Val" } });
+            const valInput = addDiv.createEl("input", {
+                type: "number",
+                cls: "dnd-flex-1",
+                attr: { placeholder: "+ Val" }
+            });
 
             const addBtn = addDiv.createEl("button", { text: "Add" });
             addBtn.onclick = () => {
@@ -5945,20 +5900,23 @@ class ManageCharacterModal extends Modal {
                 }
             };
         }
-        else if (this.activeTab === "features") {
-            this.contentContainer.createEl("h4", { text: "Hidden Character Features", attr: { style: "margin-top: 0; color: var(--dnd-ui-color-text-bright);" } });
 
-            const listDiv = this.contentContainer.createDiv({ attr: { style: "margin-bottom: 15px; max-height: 140px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;" } });
+        else if (this.activeTab === "features") {
+            this.contentContainer.createEl("h4", { text: "Hidden Character Features", cls: "dnd-manage-section-title" });
+
+            const listDiv = this.contentContainer.createDiv({ cls: "dnd-manage-scroll-list" });
             if (this.currentHiddenFeatures.length === 0) {
-                listDiv.createEl("p", { text: "No features are currently hidden.", attr: { style: "color: var(--dnd-ui-color-text-muted); font-style: italic; margin: 0; text-align: center; padding: 10px;" } });
+                listDiv.createEl("p", { text: "No features are currently hidden.", cls: "dnd-manage-empty-box" });
             } else {
                 this.currentHiddenFeatures.forEach((featName, index) => {
-                    const row = listDiv.createDiv({ attr: { style: "display: flex; justify-content: space-between; align-items: center; background: var(--dnd-ui-color-bg-tertiary); padding: 6px 10px; border-radius: 6px; border: 1px solid var(--dnd-ui-color-border-primary);" } });
-                    row.createEl("span", { text: featName, attr: { style: "color: var(--dnd-ui-color-text-bright); font-weight: 500;" } });
+                    const row = listDiv.createDiv({ cls: "dnd-modal-list-row" });
+                    row.createEl("span", { text: featName, cls: "dnd-modal-row-name" });
 
-                    const delBtn = row.createEl("button", { text: "✕", attr: { title: "Unhide Feature", style: "width: 26px; height: 26px; padding: 0; display: flex; align-items: center; justify-content: center; background: transparent; box-shadow: none; color: var(--dnd-ui-color-text-muted);" } });
-                    delBtn.onmouseenter = () => { delBtn.style.background = "var(--dnd-ui-color-accent-red)"; delBtn.style.color = "white"; };
-                    delBtn.onmouseleave = () => { delBtn.style.background = "transparent"; delBtn.style.color = "var(--dnd-ui-color-text-muted)"; };
+                    const delBtn = row.createEl("button", {
+                        text: "✕",
+                        cls: "dnd-modal-del-btn",
+                        attr: { title: "Unhide Feature" }
+                    });
                     delBtn.onclick = () => {
                         this.currentHiddenFeatures.splice(index, 1);
                         this.renderContent();
@@ -5966,8 +5924,8 @@ class ManageCharacterModal extends Modal {
                 });
             }
 
-            const addDiv = this.contentContainer.createDiv({ attr: { style: "display: flex; gap: 10px;" } });
-            const selectEl = addDiv.createEl("select", { attr: { style: "flex: 1;" } });
+            const addDiv = this.contentContainer.createDiv({ cls: "dnd-modal-add-bar" });
+            const selectEl = addDiv.createEl("select", { cls: "dnd-modal-add-select" });
             selectEl.createEl("option", { text: "-- Select Feature to Hide --", value: "" });
 
             const hiddenLowerSet = new Set(this.currentHiddenFeatures.map(f => f.toLowerCase().trim()));
@@ -6183,19 +6141,22 @@ class LevelUpModal extends Modal {
         // --- Build UI ---
         contentEl.createEl("p", {
             text: `Advancing from Level ${this.currentLevel} to Level ${this.newLevel}.`,
-            attr: { style: "color: var(--dnd-ui-color-text-bright); font-weight: bold;" }
+            cls: "dnd-levelup-intro"
         });
 
         // A. Hit Points Section
-        const hpDiv = contentEl.createDiv({ attr: { style: "margin-bottom: 20px; padding: 10px; background: var(--dnd-ui-color-bg-tertiary); border-radius: 6px;" } });
+        const hpDiv = contentEl.createDiv({ cls: "dnd-form-card" });
         hpDiv.createEl("label", {
             text: `New Max HP (Hit Die: d${this.hitDie}, CON: ${this.conMod > 0 ? '+' : ''}${this.conMod}):`,
-            attr: { style: "display: block; margin-bottom: 8px; color: var(--dnd-ui-color-text-sublabel);" }
+            cls: "dnd-form-label-sub"
         });
 
-        const hpInputContainer = hpDiv.createDiv({ attr: { style: "display: flex; gap: 10px; align-items: center;" } });
-        const hpInput = hpInputContainer.createEl("input", { type: "number", value: String(this.newMaxHealth) });
-        hpInput.style.flex = "1";
+        const hpInputContainer = hpDiv.createDiv({ cls: "dnd-modal-add-bar" });
+        const hpInput = hpInputContainer.createEl("input", {
+            type: "number",
+            value: String(this.newMaxHealth),
+            cls: "dnd-flex-1"
+        });
 
         const averageHpGain = Math.ceil(this.hitDie / 2) + 1 + this.conMod;
         const avgBtn = hpInputContainer.createEl("button", { text: `Take Average (+${averageHpGain})` });
@@ -6208,7 +6169,7 @@ class LevelUpModal extends Modal {
             this.newMaxHealth = Number((e.target as HTMLInputElement).value);
         });
 
-        // B. Dynamic Subclass Section (Driven by "grantedSubclasses" in Class JSON at this.newLevel)
+        // B. Dynamic Subclass Section
         const targetLevel = this.newLevel.toString();
         let newlyGrantedSubclassFile: string | null = null;
         let grantedSubclassFeatureName = "Subclass";
@@ -6225,14 +6186,13 @@ class LevelUpModal extends Modal {
         }
 
         if (newlyGrantedSubclassFile) {
-            const subDiv = contentEl.createDiv({ attr: { style: "margin-bottom: 20px; padding: 10px; background: var(--dnd-ui-color-bg-tertiary); border-radius: 6px; border: 1px solid var(--dnd-ui-color-border-active);" } });
+            const subDiv = contentEl.createDiv({ cls: "dnd-form-card-active" });
             subDiv.createEl("label", {
                 text: `Level ${this.newLevel} ${grantedSubclassFeatureName} (Select Subclass):`,
-                attr: { style: "display: block; margin-bottom: 8px; font-weight: bold; color: var(--dnd-ui-color-text-secondary);" }
+                cls: "dnd-form-label-bold"
             });
 
-            const subSelect = subDiv.createEl("select");
-            subSelect.style.width = "100%";
+            const subSelect = subDiv.createEl("select", { cls: "dnd-modal-form-input" });
             subSelect.createEl("option", { text: "-- Select a Subclass --", value: "" });
 
             const allSubclasses = await getSubclassData(this.app, this.plugin.settings, newlyGrantedSubclassFile);
@@ -6247,12 +6207,12 @@ class LevelUpModal extends Modal {
             };
         }
 
-        // C. Container for Dynamic Class/Subclass Milestones (Choices, Expertise, ASI/Feats)
+        // C. Container for Dynamic Class/Subclass Milestones
         this.milestonesContainer = contentEl.createDiv();
         await this.renderDynamicMilestones(classData, frontmatter);
 
         // D. Finalization Buttons
-        const btnDiv = contentEl.createDiv({ attr: { style: "display: flex; justify-content: flex-end; gap: 10px;" } });
+        const btnDiv = contentEl.createDiv({ cls: "dnd-modal-footer" });
         const cancelBtn = btnDiv.createEl("button", { text: "Cancel" });
         cancelBtn.onclick = () => this.close();
 
@@ -6324,18 +6284,18 @@ class LevelUpModal extends Modal {
             const routerData = await getClassChoiceData(this.app, this.plugin.settings, routerName);
 
             if (routerData) {
-                const routerDiv = this.milestonesContainer.createDiv({ attr: { style: "margin-bottom: 20px; padding: 10px; background: var(--dnd-ui-color-bg-tertiary); border-radius: 6px; border: 1px solid var(--dnd-ui-color-border-primary);" } });
+                const routerDiv = this.milestonesContainer.createDiv({ cls: "dnd-form-card" });
                 const displayName = routerName.split(/[-_]/).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
 
-                routerDiv.createEl("label", { text: `Manage ${displayName} (${slotCount} Slots)`, attr: { style: "display: block; margin-bottom: 8px; font-weight: bold; color: var(--dnd-ui-color-text-secondary);" } });
-                routerDiv.createEl("small", { text: "Review your choices. If you wish to swap an old choice, select a new one.", attr: { style: "display: block; margin-bottom: 12px; color: var(--dnd-ui-color-text-muted);" } });
+                routerDiv.createEl("label", { text: `Manage ${displayName} (${slotCount} Slots)`, cls: "dnd-form-label-bold" });
+                routerDiv.createEl("small", { text: "Review your choices. If you wish to swap an old choice, select a new one.", cls: "dnd-form-hint-block" });
 
                 const pastChoicesForRouter = existingChoices.filter((c) =>
                     c.router === routerName || (c.router === null && routerData[c.key])
                 );
 
                 for (let slotIndex = 0; slotIndex < slotCount; slotIndex++) {
-                    const selectDiv = routerDiv.createDiv({ attr: { style: "margin-bottom: 8px; display: flex; align-items: center;" } });
+                    const selectDiv = routerDiv.createDiv({ cls: "dnd-form-slot-row" });
 
                     let assignedKey = "";
                     let originalLevel = this.newLevel;
@@ -6346,9 +6306,9 @@ class LevelUpModal extends Modal {
                         originalLevel = pastChoice.level;
                     }
 
-                    selectDiv.createEl("small", { text: `Lvl ${originalLevel} Slot:`, attr: { style: "flex: 0 0 90px; color: var(--dnd-ui-color-text-sublabel);" } });
+                    selectDiv.createEl("small", { text: `Lvl ${originalLevel} Slot:`, cls: "dnd-form-slot-label" });
 
-                    const selectEl = selectDiv.createEl("select", { attr: { style: "flex: 1; min-width: 0; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;" } });
+                    const selectEl = selectDiv.createEl("select", { cls: "dnd-form-slot-select" });
                     selectEl.createEl("option", { text: `-- Select Option --`, value: "" });
 
                     Object.entries(routerData).forEach(([key, val]) => {
@@ -6369,9 +6329,9 @@ class LevelUpModal extends Modal {
 
         // 2. Additive Expertise UI
         if (this.newGrantedExpertiseCount > 0) {
-            const expDiv = this.milestonesContainer.createDiv({ attr: { style: "margin-bottom: 20px; padding: 10px; background: var(--dnd-ui-color-bg-tertiary); border-radius: 6px; border: 1px solid var(--dnd-ui-color-border-primary);" } });
-            expDiv.createEl("label", { text: `New Expertise Granted (${this.newGrantedExpertiseCount} Choices)`, attr: { style: "display: block; margin-bottom: 8px; font-weight: bold; color: var(--dnd-ui-color-text-secondary);" } });
-            expDiv.createEl("small", { text: "Select from your known proficiencies to gain Expertise.", attr: { style: "display: block; margin-bottom: 12px; color: var(--dnd-ui-color-text-muted);" } });
+            const expDiv = this.milestonesContainer.createDiv({ cls: "dnd-form-card" });
+            expDiv.createEl("label", { text: `New Expertise Granted (${this.newGrantedExpertiseCount} Choices)`, cls: "dnd-form-label-bold" });
+            expDiv.createEl("small", { text: "Select from your known proficiencies to gain Expertise.", cls: "dnd-form-hint-block" });
 
             let existingProfsRaw = frontmatter["DnD_skillProficiencies"] || [];
             if (typeof existingProfsRaw === 'string') try { existingProfsRaw = JSON.parse(existingProfsRaw); } catch { existingProfsRaw = []; }
@@ -6394,13 +6354,16 @@ class LevelUpModal extends Modal {
             this.newExpertiseChoices = Array(this.newGrantedExpertiseCount).fill("");
 
             if (knownSkills.length === 0) {
-                expDiv.createEl("p", { text: "You have no eligible skill proficiencies available to gain Expertise in.", attr: { style: "color: var(--dnd-ui-color-accent-red); font-style: italic; font-size: 0.9em;" } });
+                expDiv.createEl("p", {
+                    text: "You have no eligible skill proficiencies available to gain Expertise in.",
+                    cls: "dnd-error-text dnd-form-note"
+                });
             } else {
                 for (let i = 0; i < this.newGrantedExpertiseCount; i++) {
-                    const selectDiv = expDiv.createDiv({ attr: { style: "margin-bottom: 8px; display: flex; align-items: center;" } });
+                    const selectDiv = expDiv.createDiv({ cls: "dnd-form-slot-row" });
 
-                    selectDiv.createEl("small", { text: `Choice ${i + 1}:`, attr: { style: "flex: 0 0 65px; color: var(--dnd-ui-color-text-sublabel);" } });
-                    const selectEl = selectDiv.createEl("select", { attr: { style: "flex: 1;" } });
+                    selectDiv.createEl("small", { text: `Choice ${i + 1}:`, cls: "dnd-form-slot-label-sm" });
+                    const selectEl = selectDiv.createEl("select", { cls: "dnd-flex-1" });
                     selectEl.createEl("option", { text: `-- Select Expertise --`, value: "" });
 
                     knownSkills.forEach((skill: string) => {
@@ -6422,19 +6385,21 @@ class LevelUpModal extends Modal {
                 this.availableFeats = loadedGeneralFeats;
             }
 
-            const asiDiv = this.milestonesContainer.createDiv({ attr: { style: "margin-bottom: 20px; padding: 10px; background: var(--dnd-ui-color-bg-tertiary); border-radius: 6px; border: 1px solid var(--dnd-ui-color-border-active);" } });
+            const asiDiv = this.milestonesContainer.createDiv({ cls: "dnd-form-card-active" });
+            asiDiv.createEl("label", {
+                text: `Level ${this.newLevel} Milestone: Ability Score Improvement or Feat`,
+                cls: "dnd-form-label-bold"
+            });
 
-            asiDiv.createEl("label", { text: `Level ${this.newLevel} Milestone: Ability Score Improvement or Feat`, attr: { style: "display: block; margin-bottom: 8px; color: var(--dnd-ui-color-text-secondary); font-weight: bold;" } });
-
-            const choiceSelect = asiDiv.createEl("select", { attr: { style: "width: 100%; margin-bottom: 10px;" } });
+            const choiceSelect = asiDiv.createEl("select", { cls: "dnd-modal-form-input dnd-form-group" });
             choiceSelect.createEl("option", { text: "Ability Score Improvement (+2 / +1 & +1)", value: "asi" });
             choiceSelect.createEl("option", { text: "Take a General Feat", value: "feat" });
 
             this.asiChoice = "asi";
 
-            const asiContainer = asiDiv.createDiv({ attr: { style: `display: grid; grid-template-columns: 1fr 1fr; gap: 10px;` } });
-            const statSelect1 = asiContainer.createEl("select", { attr: { style: "width: 100%;" } });
-            const statSelect2 = asiContainer.createEl("select", { attr: { style: "width: 100%;" } });
+            const asiContainer = asiDiv.createDiv({ cls: "dnd-form-grid-2" });
+            const statSelect1 = asiContainer.createEl("select", { cls: "dnd-modal-form-input" });
+            const statSelect2 = asiContainer.createEl("select", { cls: "dnd-modal-form-input" });
             statSelect1.createEl("option", { text: "-- +1 Stat --", value: "" });
             statSelect2.createEl("option", { text: "-- +1 Stat --", value: "" });
 
@@ -6446,8 +6411,8 @@ class LevelUpModal extends Modal {
             statSelect1.onchange = (e) => this.asiStat1 = (e.target as HTMLSelectElement).value;
             statSelect2.onchange = (e) => this.asiStat2 = (e.target as HTMLSelectElement).value;
 
-            const featContainer = asiDiv.createDiv({ attr: { style: `display: none;` } });
-            const featSelect = featContainer.createEl("select", { attr: { style: "width: 100%;" } });
+            const featContainer = asiDiv.createDiv({ cls: "dnd-asi-hidden" });
+            const featSelect = featContainer.createEl("select", { cls: "dnd-modal-form-input" });
             featSelect.createEl("option", { text: "-- Select a Feat --", value: "" });
             Object.entries(this.availableFeats).forEach(([key, name]) => {
                 featSelect.createEl("option", { text: name as string, value: key });
@@ -6456,17 +6421,20 @@ class LevelUpModal extends Modal {
 
             choiceSelect.onchange = (e) => {
                 this.asiChoice = (e.target as HTMLSelectElement).value as "asi" | "feat";
-                asiContainer.style.display = this.asiChoice === "asi" ? "grid" : "none";
-                featContainer.style.display = this.asiChoice === "feat" ? "block" : "none";
+                asiContainer.classList.toggle("dnd-asi-hidden", this.asiChoice !== "asi");
+                featContainer.classList.toggle("dnd-asi-hidden", this.asiChoice !== "feat");
             };
 
-            asiDiv.createEl("small", { text: "Tip: If you boost Constitution, manually adjust your Max HP above to retroactively include +1 HP per level!", attr: { style: "display: block; margin-top: 8px; color: var(--dnd-ui-color-text-muted);" } });
+            asiDiv.createEl("small", {
+                text: "Tip: If you boost Constitution, manually adjust your Max HP above to retroactively include +1 HP per level!",
+                cls: "dnd-form-hint"
+            });
         }
 
         if (this.classChoicesState.length > 0 || this.newGrantedExpertiseCount > 0) {
             this.milestonesContainer.createEl("p", {
                 text: "Note: Please consult the rulebook regarding swapping choices. Generally, you may only replace one existing choice when you gain a level in a class.",
-                attr: { style: "color: var(--dnd-ui-color-text-muted); font-size: 0.85em; font-style: italic; margin-bottom: 15px;" }
+                cls: "dnd-form-note"
             });
         }
     }
