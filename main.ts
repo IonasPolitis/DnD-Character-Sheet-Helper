@@ -88,6 +88,7 @@ interface CharacterSheetVariables {
 export default class DnDCharacterSheetHelperPlugin extends Plugin {
     settings: DnDPluginSettings;
 
+    private touchGuardWindows = new WeakSet<Window>();
     async onload() {
         // --- INITIALIZE PLUGIN & STANDALONE THEME ENGINE ---
         await this.loadSettings();
@@ -249,7 +250,57 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
             }
         });
 
+        // Main Obsidian window
+        this.registerTouchGuard(window);
 
+        // Also support desktop pop-out windows
+        this.registerEvent(
+            this.app.workspace.on("window-open", (_workspaceWindow, win) => {
+                this.registerTouchGuard(win);
+            })
+        );
+
+        // Keep the rest of your existing onload() code here.
+
+    }
+
+    private registerTouchGuard(win: Window) {
+        // Don't register duplicate listeners
+        if (this.touchGuardWindows.has(win)) return;
+        this.touchGuardWindows.add(win);
+
+        this.registerDomEvent(
+            win,
+            "pointerup",
+            (event: PointerEvent) => {
+                // Only apply to finger touches
+                if (event.pointerType !== "touch") return;
+
+                const node = event.target as Node | null;
+
+                const el = node?.nodeType === 1
+                    ? node as Element
+                    : node?.parentElement;
+
+                if (!el) return;
+
+                // Must be in Reading view
+                const isReadingView = el.closest(
+                    ".markdown-reading-view"
+                );
+
+                // Must belong to a note with this CSS class
+                const isCharacterSheet = el.closest(
+                    ".markdown-preview-view.character-sheet"
+                );
+
+                if (!isReadingView || !isCharacterSheet) return;
+
+                // Prevent Obsidian from counting this as a tap
+                event.preventDefault();
+            },
+            { capture: true }
+        );
     }
 
     // Helper functions for Obsidian to read/write settings

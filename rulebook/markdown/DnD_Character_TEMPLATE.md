@@ -52,7 +52,6 @@ DnD_wealthSpent:
 DnD_hideFeature:
 cssclasses:
   - character-sheet
-  - disable-double-tap-edit
 obsidianUIMode: preview
 ---
 ## Board
