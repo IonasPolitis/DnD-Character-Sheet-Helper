@@ -15,7 +15,7 @@ Everything will be placed in appropriate frontmatter variuables (file properties
 
 ## For creating a Character Sheet on your own, you may use one, or all of the code blocks below to assist you into managing your chracter:
 
-### DmD Healthbar:
+### DnD Healthbar:
 
 A Health-bar widget with integrated Hit Dice, Saving Throws, and the ability to add Temporary Hit Points.
 
@@ -106,6 +106,7 @@ A Sample of the Code Block looks like this:
 ```dnd-controls
 align: right/center/right-up/right-down // <optional>
 ```
+````
 
 
 ### DnD Character Features:
@@ -127,13 +128,13 @@ extraFeats: $array$
 hide: $array$
 ```
 ````
-Any of the variables (except for *level*) can be omitted and only the variables with a value will be used and displayed.
+Any of the variables (except for *level*) can be omitted and only the variables with a value will be used and displayed. Sections with no features to display (such as *Subclass* before your class unlocks one) will automatically hide themselves.
 
-The variable *class-levels* is used when you have multiple classes on your character and the plugin needs to know how many levels does each class have. *The order of the levels should be the same as the class order*.
+The variable *classLevels* is used when you have multiple classes on your character and the plugin needs to know how many levels each class has. *The order of the levels should be the same as the class order*.
 
-Write down a Feature's name as in on the screen inside the variable *hide* to hide it from view.
+The variable *classChoices* stores class-specific feature selections (such as Warlock Eldritch Invocations, Fighter Fighting Styles, or Sorcerer Metamagic) using the structure: `[ ["<Choice-Filename>", "<Level-Gained>"], ... ]`.
 
-The rest of the variables should be self-explanatory.
+Write down a Feature's name as it appears on the screen inside the variable *hide* (or manage it via the **Manage Character** button) to hide it from view.
 
 > [!TIP]
 > Sometimes a class feature may have you select one of many options permenantly. Those specific features have duplicates with each one being one of the options you might choose. You can use the *hide* variable to hide the options you did not choose.
@@ -183,6 +184,9 @@ The Gold section is always visible and will have as base rate the gold provided 
 
 The Backpack section is also always visible and wil be automatically populated with the items given to your character from their class and background. If given the choice between items from your class or background you will have to use the *class-chosen-items* and *background-chosen-items*. You can get more information on each item by hovering your cursor over it.
 
+*starterEquipment*/*inventoryItems* structure: `[ ["<item-filename>", "<quantity>", "<show: true/false>"], ... ]`
+*customItems* structure: `[ ["<Name>", "<quantity>", "<show: true/false>", "<weight>", "<cost>", "<type>", "<description>"], ... ]`
+
 > [!TIP]
 > The aforementioned variables are used to select an Artisan's Tool, a Musical Instrument, or a Gaming Set depeding on what's provided by the class or background. For more information on your choices always look through the actual DnD Player's Handbook.
 
@@ -192,7 +196,7 @@ A way to add Custom Rules to your Character Sheet.
 
 A Sample of the Code Block looks like this:
 ````markdown
-```dnd-inventory
+```dnd-rules
 rules: $array$
 ```
 ````

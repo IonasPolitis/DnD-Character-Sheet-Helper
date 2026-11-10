@@ -52,6 +52,7 @@ DnD_wealthSpent:
 DnD_hideFeature:
 cssclasses:
   - character-sheet
+  - disable-double-tap-edit
 obsidianUIMode: preview
 ---
 ## Board
@@ -121,6 +122,8 @@ armorAc: frontmatter.DnD_armorAc
 starterEquipment: frontmatter.DnD_starterEquipment
 inventoryItems: frontmatter.DnD_inventoryItems
 customItems: frontmatter.DnD_customItems
+wealthAdded: frontmatter.DnD_wealthAdded
+wealthSpent: frontmatter.DnD_wealthSpent
 ```
 
 ```dnd-spells

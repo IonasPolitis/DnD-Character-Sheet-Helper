@@ -312,12 +312,12 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
     }
 
     // --- Helper: Safely Update 4-Currency Wealth Frontmatter ([PP, GP, SP, CP]) ---
-    async updateWealthFrontmatter(filePath: string, type: 'added' | 'spent', currencyIndex: number, amount: number) {
-        if (amount <= 0 || currencyIndex < 0 || currencyIndex > 3) return;
+    async updateWealthFrontmatter(filePath: string, targetKey: string, currencyIndex: number, amount: number) {
+        if (!targetKey || amount <= 0 || currencyIndex < 0 || currencyIndex > 3) return;
         const file = this.app.vault.getAbstractFileByPath(filePath);
         if (file instanceof TFile) {
             await this.app.fileManager.processFrontMatter(file, (frontmatter: Record<string, any>) => {
-                const key = type === 'added' ? 'DnD_wealthAdded' : 'DnD_wealthSpent';
+                const key = targetKey;
                 let rawArr = frontmatter[key];
                 let parsedArr = ["0", "0", "0", "0"];
 
@@ -1026,6 +1026,8 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
             const starterFmKey = getTargetFmKey(blockData.starterEquipment, "DnD_starterEquipment");
             const invItemsFmKey = getTargetFmKey(blockData.inventoryItems, "DnD_inventoryItems");
             const customItemsFmKey = getTargetFmKey(blockData.customItems, "DnD_customItems");
+            const wealthAddedFmKey = getTargetFmKey(blockData.wealthAdded, "DnD_wealthAdded");
+            const wealthSpentFmKey = getTargetFmKey(blockData.wealthSpent, "DnD_wealthSpent");
 
             // Structure: [ ["<item-id>", "<qty>", "<show: true/false>"], ... ]
             const rawStarter = parseJsonArray(blockData.starterEquipment);
@@ -1148,7 +1150,7 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                     totalValueEl.setText(`${currentTotal} ${curr.abbr}`);
                     isUpdatingInventory = true;
                     try {
-                        await this.updateWealthFrontmatter(ctx.sourcePath, 'added', curr.idx, amt);
+                        await this.updateWealthFrontmatter(ctx.sourcePath, wealthAddedFmKey, curr.idx, amt);
                     } finally {
                         setTimeout(() => { isUpdatingInventory = false; }, 150);
                     }
@@ -1161,7 +1163,7 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                     totalValueEl.setText(`${currentTotal} ${curr.abbr}`);
                     isUpdatingInventory = true;
                     try {
-                        await this.updateWealthFrontmatter(ctx.sourcePath, 'spent', curr.idx, amt);
+                        await this.updateWealthFrontmatter(ctx.sourcePath, wealthSpentFmKey, curr.idx, amt);
                     } finally {
                         setTimeout(() => { isUpdatingInventory = false; }, 150);
                     }
@@ -4236,7 +4238,7 @@ class CharacterWizardModal extends Modal {
         injectYAML("DnD_customItems", `'[]'`);
         finalContent = finalContent.replace(
             /^extraItems:.*$/m,
-            `starterEquipment: frontmatter.DnD_starterEquipment\ninventoryItems: frontmatter.DnD_inventoryItems\ncustomItems: frontmatter.DnD_customItems`
+            `starterEquipment: frontmatter.DnD_starterEquipment\ninventoryItems: frontmatter.DnD_inventoryItems\ncustomItems: frontmatter.DnD_customItems\nwealthAdded: frontmatter.DnD_wealthAdded\nwealthSpent: frontmatter.DnD_wealthSpent`
         );
         finalContent = finalContent.replace(/^DnD_spellcasting_ability:/m, "spellcastingAbility:");
 

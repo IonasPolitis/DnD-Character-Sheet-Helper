@@ -2243,3 +2243,23 @@
 .dnd-flex-2 {
     flex: 2;
 }
+
+/* ==========================================
+   DISABLE DOUBLE-TAP TO EDIT (SCOPED)
+   ========================================== */
+.disable-double-tap-edit .markdown-rendered,
+.disable-double-tap-edit .cm-editor {
+    /* Prevents double-tap from triggering default zoom or text selection behaviors that misfire as edit switches */
+    touch-action: pan-x pan-y;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+/* Allow text selection inside inputs, textareas, or interactive widgets if needed */
+.disable-double-tap-edit input,
+.disable-double-tap-edit textarea,
+.disable-double-tap-edit select,
+.disable-double-tap-edit button {
+    -webkit-user-select: text;
+    user-select: text;
+}
