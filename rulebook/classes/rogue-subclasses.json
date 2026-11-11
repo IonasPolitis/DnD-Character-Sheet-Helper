@@ -22,7 +22,7 @@
                   {
                         "name": "Spell Thief",
                         "description": "You gain the ability to magically steal the knowledge of how to cast a spell from another spellcaster.\n\tImmediately after a creature casts a spell that targets you or includes you in its area of effect, you can take a Reaction to force the creature to make an Intelligence saving throw. The DC equals your spell save DC. On a failed save, you negate the spell's effect against you, and you steal the knowledge of the spell if it is at least level 1 and of a level you can cast (it doesn't need to be a Wizard spell). For the next 8 hours, you have the spell prepared. The creature can't cast it until the 8 hours have passed.\n\tOnce you steal a spell with this feature, you can't use this feature again until you finish a Long Rest.",
-                        "uses": 1
+                        "uses": [1, "long"]
                   }
             ]
       },
@@ -57,7 +57,7 @@
                   {
                         "name": "Psionic Power",
                         "description": "- **Psi-Bolstered Knack**: If you fail an ability check using a skill or tool with which you have proficiency, you can roll one Psionic Energy Die and add the number rolled to the check, potentially turning failure into success. The die is expended only if the roll then succeeds.\n - **Psychic Whispers**: You can establish telepathic communication between yourself and others. As a Magic action, choose one or more creatures you can see, up to a number of creatures equal to your Proficiency Bonus, and then roll one Psionic Energy Die. For a number of hours equal to the number rolled, the chosen creatures can speak telepathically with you. and you can speak telepathically with them. To send or receive a message (no action required), you ,, nd the other creature must be within 1 mile of each other. A creature can end the telepathic connection at any time (no action required).\n\tThe first time you use this power after each Long Rest, you don't expend the Psionic Energy Die. All other times you use the power, you expend the die.",
-                        "uses": "proficiencyBonus * 2"
+                        "uses": ["proficiencyBonus * 2", "long"]
                   },
                   {
                         "name": "Psychic Blades",
@@ -74,14 +74,14 @@
                   {
                         "name": "Psychic Veil",
                         "description": "You can weave a veil of psychic static to mask your-self. As a Magic action, you gain the Invisible condition for 1 hour or until you dismiss this effect (no action required). This invisibility ends early immediately after you deal damage to a creature or you force a creature to make a saving throw.\n\tOnce you use this feature, you can't do so again until you finish a Long Rest unless you expend a Psionic Energy Die (no action required) to restore your use of it.",
-                        "uses": 1
+                        "uses": [1, "long"]
                   }
             ],
             "17": [
                   {
                         "name": "Rend Mind",
                         "description": "You can sweep your Psychic Blades through a creature's mind. When you use your Psychic Blades to deal Sneak Attack damage to a creature, you can force that target to make a Wisdom saving throw (DC 8 plus your Dexterity modifier and Proficiency Bonus). If the save fails, the target has the Stunned condition for 1 minute. The Stunned target repeats the save at the end of each of its turns, ending the effect on itself on a success.\n\tOnce you use this feature, you can't do so again until you finish a Long Rest unless you expend three Psionic Energy Dice (no action required) to restore your use of it.",
-                        "uses": 1
+                        "uses": [1, "long"]
                   }
             ]
       },

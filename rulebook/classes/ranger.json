@@ -48,7 +48,7 @@
             {
                 "name": "Favored Enemy",
                 "description": "You always have the Hunter's Mark spell prepared. You can cast it twice without expending a spell slot, and you regain all expended uses of this ability when you finish a Long Rest.",
-                "uses": 2
+                "uses": [2, "long"]
             }
         ],
         "2": [
@@ -96,7 +96,7 @@
             {
                 "name": "Tireless",
                 "description": "Primal forces now help fuel you on your journeys, granting you the following benefits:\n - **Temporary Hit Poinfs**: As a Magic action, you can give yourself a number of Temporary Hit Points equal to ld8 plus your Wisdom modifier (minimum of 1). You can use this action a number of times equal to your Wisdom modifier (minimum of once), and you regain all expended uses when you finish a Long Rest.\n - **Decrease Exhaustion**: Whenever you finish a Short Rest, your Exhaustion level, if any, decreases by 1.",
-                "uses": "(wisdom - 10) / 2"
+                "uses": ["(wisdom - 10) / 2", "long"]
             }
         ],
         "12": [
@@ -120,7 +120,7 @@
             {
                 "name": "Nature's Veil",
                 "description": "You invoke spirits of nature to magically hide your-self. As a Bonus Action, you can give yourself the Invisible condition until the end of your next turn.\n\tYou can use this feature a number of times equal to your Wisdom modifier (minimum of once), and you regain all expended uses when you finish a Long Rest.",
-                "uses": "(wisdom - 10) / 2"
+                "uses": ["(wisdom - 10) / 2", "long"]
             }
         ],
         "16": [

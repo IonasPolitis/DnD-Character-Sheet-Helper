@@ -36,14 +36,14 @@
                   {
                         "name": "Fey Reinforcements",
                         "description": "You can cast Summon Fey without a Material component. You can also cast it once without a spell slot, and you regain the ability to cast it in this way when you finish a Long Rest.\n\tWhenever you start casting the spell, you can modify it so that it doesn't require Concentration. If you do so, the spell's duration becomes 1 minute for that casting.",
-                        "uses": 1
+                        "uses": [1, "long"]
                   }
             ],
             "15": [
                   {
                         "name": "Misty Wanderer",
                         "description": "You can cast Misty Step without expending a spell slot. You can do so a number of times equal to your Wisdom modifier (minimum of once), and you regain all expended uses when you finish a Long Rest.\n\tIn addition, whenever you cast Misty Step, you can bring along one willing creature you can see within 5 feet of yourself. That creature teleports to an unoccupied space of your choice within 5 feet of your destination space.",
-                        "uses": "(wisdom - 10) / 2"
+                        "uses": ["(wisdom - 10) / 2", "long"]
                   }
             ]
 
@@ -53,7 +53,7 @@
                   {
                         "name": "Dread Ambusher",
                         "description": "You have mastered the art of creating fearsome ambushes, granting you the following benefits.\n - **Ambusher's Leap**: At the start of your first turn of each combat, your Speed increases by 10 feet until the end of that turn.\n - **Dreadful Strike**: When you attack a creature and hit it with a weapon, you can deal an extra 2d6 Psychic damage. You can use this benefit only once per turn, you can use it a number of times equal to your Wisdom modifier {minimum of once), and you regain all expended uses when you finish a Long Rest.\n - **Initiative Bonus**: When you roll Initiative, you can add your Wisdom modifier to the roll.",
-                        "uses": "(wisdom - 10) / 2"
+                        "uses": ["(wisdom - 10) / 2", "long"]
                   },
                   {
                         "name": "Gloom Stalker Spells",

@@ -28,7 +28,7 @@
                   {
                         "name": "Beguiling Magic",
                         "description": "immediately after you cast an Enchantment or Illusion spell using a spell slot, you can cause a creature you can see within 60 feet of yourself to make a Wisdom saving throw against your spell save DC. On a failed save, the target has the Charmed or Frightened condition (your choice) for 1 minute. The target repeats the save at the end of each of its turns, ending the effect on itself on a success.\n  Once you use this benefit, you can't use it again until you finish a Long Rest. You can also restore your use of it by expending one use of your Bardic Inspiration (no action required).",
-                        "uses": 1
+                        "uses": [1, "long"]
                   },
                   {
                         "name": "Mantle of Inspiearion",
@@ -39,14 +39,14 @@
                   {
                         "name": "Mantle of Majestry",
                         "description": "You always have the Command spell prepared.\n  As a Bonus Action, you cast Command without expending a spell slot, and you take on an unearthly appearance for 1 minute or until your Concentration ends. During this time, you can cast Command as a Bonus Action without expending a spell slot. Any creature Charmed by you automaticaily fails its saving throw against the Command you cast with this feature.\n  Once you use this feature, you can't use it again until you finish a Long Rest. You can a lso res tore your use of it by expending a level 3+ s pell slot (no action required).",
-                        "uses": 1
+                        "uses": [1, "long"]
                   }
             ],
             "14": [
                   {
                         "name": "Unbreakable Majesty",
                         "description": "As a Bonus Action, you can assume a magically majestic presence for 1 minute or until you have the Incapacitated condition. For the duration, whenever any creature hits you with an attack roll for the first time on a turn, the attacker must succeed on a Charisma saving throw against your spell save DC, or the attack misses instead, as the creature recoils from your majesty. Once you assume this majestic presence, you can't do so again until you finish a Short or Long Rest.",
-                        "uses": 1
+                        "uses": [1, "short"]
                   }
             ]
       },

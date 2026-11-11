@@ -10,7 +10,7 @@
                   {
                         "name": "Natural Recovery",
                         "description": "You can cast one of the level 1 + spells that you have prepared from your Circle Spells feature without expending a spell slot, and you must finish a Long Rest before you do so again.\n In addition, when you finish a Short Rest, you can choose expended spell slots to recover. The spell slots can have a combined level that is equal to or less than half your Druid level (round up), and none of them can be level 6+ . For example, if you're a level 6 Druid, you can recover up to three levels' worth of spell slots. Once you recover spell slots with this feature, you can't do so again until you finish a Long Rest.",
-                        "uses": 1
+                        "uses": [1, "long"]
                   }
             ],
             "10": [
@@ -46,7 +46,7 @@
                   {
                         "name": "Moonlight Step",
                         "description": "As a Bonus Action, you teleport up to 30 feet to an unoccupied space you can see, and you have Advantage on the next attack roll you make before the end of this turn.\n\tYou can use this feature a number of times equal to your Wisdom modifier (minimum of once), and you regain all expended uses when you finish a Long Rest. You can also regain uses by expending a level 2+ spell slot for each use you want to restore (no action required).",
-                        "uses": "(wisdom - 10) / 2"
+                        "uses": ["(wisdom - 10) / 2", "long"]
                   }
             ],
             "14": [
@@ -91,7 +91,7 @@
                   {
                         "name": "Star Map",
                         "description": "You've created a star chart as part of your heavenly studies, and while holding it you have the Guidance and Guiding Bolt spells prepared, and you can cast Guiding Bolt without expending a spell slot. You can cast it in that way a number of times equal to your Wisdom modifier (minimum of once), and you regain all expended uses when you finish a Long Rest.",
-                        "uses": "(wisdom - 10) / 2"
+                        "uses": ["(wisdom - 10) / 2", "long"]
                   },
                   {
                         "name": "Starry Form",
@@ -102,7 +102,7 @@
                   {
                         "name": "Cosmic Omen",
                         "description": "Whenever you finish a Long Rest, you can consult your Star Map for omens and roll a die. Until you finish your next Long Rest, you gain access to a special Reaction based on whether you rolled an even or an odd number on the die:\n - **Weal** (Even): Whenever a creature you can see within 30 feet of you is about to make a D20 Test, you can take a Reaction to roll ld6 and add the number rolled to the total.\n - **Woe** (Odd): Whenever a creature you can see within 30 feet of you is about to make a D20 Test, you can take a Reaction to roll ld6 and subtract the number rolled from the total.\nYou can use this Reaction a number of times equal to your Wisdom modifier (minimum of once), and you regain all expended uses when you finish a Long Rest.",
-                        "uses": "(wisdom - 10) / 2"
+                        "uses": ["(wisdom - 10) / 2", "long"]
                   }
             ],
             "10": [

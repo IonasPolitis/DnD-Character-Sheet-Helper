@@ -49,7 +49,7 @@
             {
                 "name": "Arcane Recovery",
                 "description": "You can regain some of your magical energy by studying your spellbook. When you finish a Short Rest, you can choose expended spell slots to recover. The spell slots can have a combined level equal to no more than half your Wizard level (round up), and none of the slots can be level 6 or higher. For exam-ple, if you're a level 4 Wizard, you can recover up to two levels' worth of spell slots, regaining either one level 2 spell slot or two level 1 spell slots.\n\tOnce you use this feature, you can't do so again until you finish a Long Rest.",
-                "uses": 1
+                "uses": [1, "long"]
             }
         ],
         "3": [
@@ -130,7 +130,7 @@
             {
                 "name": "Signature Spells",
                 "description": "Choose two level 3 spells in your spellbook as your signature spells. You always have these spells pre-pared, and you can cast each of them once at level 3 without expending a spell slot. When you do so, you can't cast them in this way again until you finish a Short or Long Rest. To cast either spell at a higher level, you must expend a spell slot.",
-                "uses": 2
+                "uses": [2, "short"]
             }
         ]
     }

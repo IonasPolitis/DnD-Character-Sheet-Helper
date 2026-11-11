@@ -22,7 +22,7 @@
                   {
                         "name": "Intimidating Presence",
                         "description": "As a Bonus Action, you can strike terror into others with your menacing presence and primal power. When you do so, each creature of your choice in a 30-foot Emanation originating from you must make a Wisdom saving throw (DC 8 plus your Strength modifier and Proficiency Bonus). On a failed save, a creature has the Frightened condition for 1 minute. At the end of each of the Frightened creature's turns, the creature repeats the save, ending the effect on itself on a success.\n\tOnce you use this feature, you can't use it again until you finish a Long Rest unless you expend a use of your Rage (no action required) to restore your use of it.",
-                        "uses": 1
+                        "uses": [1, "long"]
                   }
             ]
       },
@@ -87,7 +87,7 @@
                   {
                         "name": "Warrior of the Gods",
                         "description": "You have a pool of four dl2s that you can spend to heal yourself. As a Bonus Action, you can expend dice from the pool, roll them, and regain a number of Hit Points equal to the roll's total.\n\tYour pool regains all expended dice when you finish a Long Rest.\nThe pool's maximum number of dice increases by one when you reach Barbarian levels 6 (5 dice), 12 (6 dice), and 17 (7 dice).",
-                        "uses": 4
+                        "uses": [4, "long"]
                   }
             ],
             "6": [
@@ -100,14 +100,14 @@
                   {
                         "name": "Zealous Presence",
                         "description": "As a Bonus Action, you unleash a battle cry infused with divine energy. Up to ten other creatures of your choice within 60 feet of you gain Advantage on attack rolls and saving throws until the start of your next turn.\n\tOnce you use this feature, you can't use it again until you finish a Long Rest unless you expend a use of your Rage (no action required} to restore your use of it.",
-                        "uses": 1
+                        "uses": [1, "long"]
                   }
             ],
             "14": [
                   {
                         "name": "Rage of the Gods",
                         "description": "When you activate your Rage, you can assume the form of a divine warrior. This form lasts for 1 minute or until you drop to O Hit Points. Once you use this feature, you can't do so again until you finish a Long Rest.\n\tWhile in this form, you gain the benefit **Flight**. You have a Fly Speed equal to your Speed and can hover.",
-                        "uses": 1
+                        "uses": [1, "long"]
                   }
             ]
       }

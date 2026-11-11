@@ -37,7 +37,7 @@
             {
                 "name": "Second Wind",
                 "description": "As a Bonus Action, you can use it to regain Hit Points equal to 1d10 plus your Fighter level.\n\tYou regain one expended use when you finish a Short Rest, and you regain all expended uses when you finish a Long Rest.",
-                "uses": 2
+                "uses": [2, "long"]
             },
             {
                 "name": "Fighting Styles",
@@ -49,7 +49,7 @@
             {
                 "name": "Action Surge",
                 "description": "You can push yourself beyond your normal limits for a moment. On your turn, you can take one additional action, except the Magic action.\n\tOnce you use this feature, you can't do so again until you finish a Short or Long Rest. Starting at level 17, you can use it twice before a rest but only once on a turn.",
-                "uses": "1 + (level - 2) / 15"
+                "uses": ["1 + (level - 2) / 15", "short"]
             },
             {
                 "name": "Tactical Mind",
@@ -153,7 +153,7 @@
             {
                 "name": "Indomitable",
                 "description": "If you fail a saving throw, you can re roll it with a bonus equal to your Fighter level. You must use the new roll, and you can't use this feature again until you finish a Long Rest.\n\tYou can use this feature twice before a Long Reststarting at level 13 and three times at level 17.",
-                "uses": "1 + (level - 9) / 4"
+                "uses": ["1 + (level - 9) / 4", "long"]
             },
             {
                 "name": "Tactical Master",

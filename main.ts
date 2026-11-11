@@ -87,6 +87,7 @@ interface CharacterSheetVariables {
 
 export default class DnDCharacterSheetHelperPlugin extends Plugin {
     settings: DnDPluginSettings;
+    featureRestTypes: Map<string, "short" | "long"> = new Map();
 
     private touchGuardWindows = new WeakSet<Window>();
     async onload() {
@@ -166,50 +167,6 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
         this.registerEvent(this.app.vault.on('modify', (file) => refreshIfCustomRulebookFile(file.path)));
         this.registerEvent(this.app.vault.on('create', (file) => refreshIfCustomRulebookFile(file.path)));
         this.registerEvent(this.app.vault.on('delete', (file) => refreshIfCustomRulebookFile(file.path)));
-
-        // Automatically reset expended spell slots and feature uses when Long Rest is clicked
-        this.registerDomEvent(document, 'click', async (evt: MouseEvent) => {
-            const target = evt.target as HTMLElement;
-            const btn = target?.closest('button');
-            if (btn && (btn.textContent?.includes('Long Rest') || btn.getAttribute('value') === 'long-rest')) {
-                const activeFile = this.app.workspace.getActiveFile();
-                if (activeFile) {
-                    await this.app.fileManager.processFrontMatter(activeFile, (fm: Record<string, any>) => {
-                        const slotKey = fm["DnD_spellSlots"] !== undefined ? "DnD_spellSlots" : (fm["DnD_spellsSlots"] !== undefined ? "DnD_spellsSlots" : null);
-                        if (slotKey) {
-                            let rawSlots = fm[slotKey];
-                            if (typeof rawSlots === "string" && rawSlots.trim().startsWith("[")) {
-                                try { rawSlots = JSON.parse(rawSlots.trim()); } catch { rawSlots = null; }
-                            }
-
-                            if (Array.isArray(rawSlots)) {
-                                const resetSlots = rawSlots.map((pair: any) => {
-                                    if (Array.isArray(pair) && pair.length >= 2) {
-                                        return [String(pair[0]), "0"];
-                                    }
-                                    return ["0", "0"];
-                                });
-                                fm[slotKey] = JSON.stringify(resetSlots);
-                            }
-                        }
-
-                        if (fm["DnD_featureUses"] !== undefined) {
-                            let rawFeatureUses = fm["DnD_featureUses"];
-                            if (typeof rawFeatureUses === "string" && rawFeatureUses.trim().startsWith("[")) {
-                                try { rawFeatureUses = JSON.parse(rawFeatureUses.trim()); } catch { rawFeatureUses = null; }
-                            }
-
-                            if (Array.isArray(rawFeatureUses)) {
-                                const resetFeatureUses = rawFeatureUses
-                                    .filter((tuple: any) => Array.isArray(tuple) && tuple.length >= 2 && tuple[0])
-                                    .map((tuple: any) => [String(tuple[0]), String(tuple[1]), "0"]);
-                                fm["DnD_featureUses"] = JSON.stringify(resetFeatureUses);
-                            }
-                        }
-                    });
-                }
-            }
-        });
 
         this.addCommand({
             id: 'csh-launch-character-wizard',
@@ -713,6 +670,9 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
             // cross-references `classLevels[index]` when multi-classing or falls back to `level`), so `"uses": "level"`
             // in a class JSON automatically uses that specific class's level!
             const evaluateFeatureUses = (rawUses: any, contextClassLevel?: number, contextClassIndex?: number): number => {
+                if (Array.isArray(rawUses)) {
+                    rawUses = rawUses[0];
+                }
                 if (rawUses === undefined || rawUses === null || rawUses === "") return 0;
                 if (typeof rawUses === "number") return Math.max(0, Math.floor(rawUses));
 
@@ -839,10 +799,15 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                 contextClassIndex?: number
             ) => {
                 if (!featureObj || featureObj.uses === undefined || featureObj.uses === null || featureObj.uses === "") return;
-                const maxUses = evaluateFeatureUses(featureObj.uses, contextClassLevel, contextClassIndex);
+                const usesFormula = Array.isArray(featureObj.uses) ? featureObj.uses[0] : featureObj.uses;
+                const restType: "short" | "long" = (Array.isArray(featureObj.uses) && String(featureObj.uses[1] || "").toLowerCase().trim() === "short")
+                    ? "short"
+                    : "long";
+                const maxUses = evaluateFeatureUses(usesFormula, contextClassLevel, contextClassIndex);
                 if (maxUses <= 0 || !featureObj.name) return;
 
                 const cleanFeatureName = String(featureObj.name).trim();
+                this.featureRestTypes.set(cleanFeatureName.toLowerCase(), restType);
                 let stateEntry = featureUsesState.find(
                     e => e.name.toLowerCase() === cleanFeatureName.toLowerCase()
                 );
@@ -3347,9 +3312,11 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                 cls: "dnd-health-rest-btn",
                 attr: { value: "short-rest" }
             });
-            shortRestBtn.onclick = () => {
+            shortRestBtn.onclick = async () => {
+                await this.resetCharacterRestState(ctx.sourcePath, "short");
+                renderContent();
                 window.dispatchEvent(new Event("short-rest"));
-                new Notice("Short Rest taken!");
+                new Notice("Short Rest taken! Short Rest feature uses restored.");
             };
 
             const longRestBtn = bottomBar.createEl("button", {
@@ -3364,12 +3331,12 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                 deathSaveLeft = [false, false, false];
                 deathSaveRight = [false, false, false];
 
-                await this.updateCharacterFrontmatter(ctx.sourcePath, {
+                await this.resetCharacterRestState(ctx.sourcePath, "long", {
                     [targetCurrentHpKey]: maxHealth
                 });
                 renderContent();
                 window.dispatchEvent(new Event("long-rest"));
-                new Notice("Long Rest completed! HP, Hit Dice, and Spell Slots restored.");
+                new Notice("Long Rest completed! HP, Hit Dice, Spell Slots, and Feature Uses restored.");
             };
 
             const deathSavesBtn = bottomBar.createEl("button", {
@@ -3392,6 +3359,174 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                 if (file.path === ctx.sourcePath) renderContent();
             })
         );
+    }
+
+    // --- Helper: Ensure feature rest types ("short" | "long") are known for a character file ---
+    async populateFeatureRestTypesForFile(sourcePath: string) {
+        const fileCache = this.app.metadataCache.getCache(sourcePath);
+        const frontmatter: Record<string, any> = fileCache?.frontmatter || {};
+        const fetchOptions = { ...this.settings };
+
+        const registerFeatureRest = (featureObj: any) => {
+            if (!featureObj || !featureObj.name || featureObj.uses === undefined || featureObj.uses === null || featureObj.uses === "") return;
+            const cleanName = String(featureObj.name).trim().toLowerCase();
+            const restType: "short" | "long" = (Array.isArray(featureObj.uses) && String(featureObj.uses[1] || "").toLowerCase().trim() === "short")
+                ? "short"
+                : "long";
+            this.featureRestTypes.set(cleanName, restType);
+        };
+
+        // 1. Classes & Subclasses
+        const rawClass = frontmatter["DnD_class"];
+        const classArray = rawClass ? (Array.isArray(rawClass) ? rawClass : [rawClass]) : [];
+        const rawSubclass = frontmatter["DnD_subclass"] ?? frontmatter["DnD_Subclass"];
+        const subclassArray = rawSubclass ? (Array.isArray(rawSubclass) ? rawSubclass : [rawSubclass]) : [];
+        const extraFeatIds: string[] = [];
+
+        for (let i = 0; i < classArray.length; i++) {
+            const className = String(classArray[i] || "").trim();
+            if (!className || className.startsWith("<")) continue;
+            const classData = await getClassData(this.app, fetchOptions, className);
+            if (classData && classData.features) {
+                for (const lvlKey of Object.keys(classData.features)) {
+                    const feats = classData.features[lvlKey];
+                    if (Array.isArray(feats)) {
+                        for (const f of feats) {
+                            registerFeatureRest(f);
+                            if (Array.isArray(f.grantedFeats)) extraFeatIds.push(...f.grantedFeats);
+                        }
+                    }
+                }
+                const subName = String(subclassArray[i] || "").trim();
+                const grantedSubFile = this.findGrantedSubclass(classData, 20);
+                if (subName && !subName.startsWith("<") && grantedSubFile) {
+                    const subData = await getSubclassData(this.app, fetchOptions, grantedSubFile, subName);
+                    if (subData && typeof subData === "object") {
+                        for (const lvlKey of Object.keys(subData)) {
+                            const subFeats = subData[lvlKey];
+                            if (Array.isArray(subFeats)) {
+                                for (const sf of subFeats) {
+                                    registerFeatureRest(sf);
+                                    if (Array.isArray(sf.grantedFeats)) extraFeatIds.push(...sf.grantedFeats);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // 2. Class Choices (Invocations, etc.)
+        let classChoicesRaw = frontmatter["DnD_classChoices"];
+        if (typeof classChoicesRaw === "string" && classChoicesRaw.trim().startsWith("[")) {
+            try { classChoicesRaw = JSON.parse(classChoicesRaw.trim()); } catch { classChoicesRaw = []; }
+        }
+        if (Array.isArray(classChoicesRaw)) {
+            for (const choiceTuple of classChoicesRaw) {
+                let choiceKey = "";
+                if (Array.isArray(choiceTuple)) {
+                    if (choiceTuple.length === 3) choiceKey = choiceTuple[1];
+                    else if (choiceTuple.length === 2) choiceKey = choiceTuple[0];
+                }
+                if (choiceKey) {
+                    const choiceData = await getClassChoiceData(this.app, fetchOptions, String(choiceKey));
+                    if (choiceData) registerFeatureRest(choiceData);
+                }
+            }
+        }
+
+        // 3. Race Traits
+        const rawRace = frontmatter["DnD_race"];
+        const raceName = Array.isArray(rawRace) ? rawRace[0] : rawRace;
+        if (raceName && typeof raceName === "string" && !raceName.trim().startsWith("<")) {
+            const raceData = await getRaceData(this.app, fetchOptions, raceName.trim());
+            if (raceData && Array.isArray(raceData.traits)) {
+                for (const t of raceData.traits) registerFeatureRest(t);
+            }
+        }
+
+        // 4. Background Feat
+        const rawBg = frontmatter["DnD_background"];
+        const bgName = Array.isArray(rawBg) ? rawBg[0] : rawBg;
+        if (bgName && typeof bgName === "string" && !bgName.trim().startsWith("<")) {
+            const bgData = await getBackgroundData(this.app, fetchOptions, bgName.trim());
+            if (bgData && bgData.feat) {
+                const bgFeat = await getExtraFeat(this.app, fetchOptions, String(bgData.feat));
+                if (bgFeat) registerFeatureRest(bgFeat);
+            }
+        }
+
+        // 5. Extra Feats
+        const rawExtraFeats = frontmatter["DnD_extraFeats"];
+        if (Array.isArray(rawExtraFeats)) {
+            extraFeatIds.push(...rawExtraFeats.map(String));
+        } else if (typeof rawExtraFeats === "string" && rawExtraFeats.trim()) {
+            extraFeatIds.push(rawExtraFeats.trim());
+        }
+        for (const featId of new Set(extraFeatIds)) {
+            if (!featId || featId.startsWith("<") || featId === "ability-score-improvement") continue;
+            const featData = await getExtraFeat(this.app, fetchOptions, featId);
+            if (featData) registerFeatureRest(featData);
+        }
+    }
+
+    // --- Helper: Reset Short Rest or Long Rest state in frontmatter ---
+    async resetCharacterRestState(sourcePath: string, restType: "short" | "long", extraUpdates: Record<string, any> = {}) {
+        await this.populateFeatureRestTypesForFile(sourcePath);
+
+        let targetFile = this.app.vault.getAbstractFileByPath(sourcePath);
+        if (!(targetFile instanceof TFile)) {
+            targetFile = this.app.workspace.getActiveFile();
+        }
+        if (!(targetFile instanceof TFile)) return;
+
+        await this.app.fileManager.processFrontMatter(targetFile, (fm: Record<string, any>) => {
+            for (const [k, v] of Object.entries(extraUpdates)) {
+                fm[k] = v;
+            }
+
+            if (restType === "long") {
+                const slotKey = fm["DnD_spellSlots"] !== undefined ? "DnD_spellSlots" : (fm["DnD_spellsSlots"] !== undefined ? "DnD_spellsSlots" : null);
+                if (slotKey) {
+                    let rawSlots = fm[slotKey];
+                    if (typeof rawSlots === "string" && rawSlots.trim().startsWith("[")) {
+                        try { rawSlots = JSON.parse(rawSlots.trim()); } catch { rawSlots = null; }
+                    }
+                    if (Array.isArray(rawSlots)) {
+                        const resetSlots = rawSlots.map((pair: any) => {
+                            if (Array.isArray(pair) && pair.length >= 2) {
+                                return [String(pair[0]), "0"];
+                            }
+                            return ["0", "0"];
+                        });
+                        fm[slotKey] = JSON.stringify(resetSlots);
+                    }
+                }
+            }
+
+            if (fm["DnD_featureUses"] !== undefined) {
+                let rawFeatureUses = fm["DnD_featureUses"];
+                if (typeof rawFeatureUses === "string" && rawFeatureUses.trim().startsWith("[")) {
+                    try { rawFeatureUses = JSON.parse(rawFeatureUses.trim()); } catch { rawFeatureUses = null; }
+                }
+
+                if (Array.isArray(rawFeatureUses)) {
+                    const updatedFeatureUses = rawFeatureUses
+                        .filter((tuple: any) => Array.isArray(tuple) && tuple.length >= 2 && tuple[0])
+                        .map((tuple: any) => {
+                            const fName = String(tuple[0]).trim();
+                            const fMax = String(tuple[1]);
+                            const fUsed = String(tuple[2] ?? "0");
+                            const featRest = this.featureRestTypes.get(fName.toLowerCase()) || "long";
+                            if (restType === "long" || (restType === "short" && featRest === "short")) {
+                                return [fName, fMax, "0"];
+                            }
+                            return [fName, fMax, fUsed];
+                        });
+                    fm["DnD_featureUses"] = JSON.stringify(updatedFeatureUses);
+                }
+            }
+        });
     }
 }
 
