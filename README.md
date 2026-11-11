@@ -125,16 +125,19 @@ race: $string$
 raceLineage: $string$
 background: $array$
 extraFeats: $array$
+featureUses: $array$
 hide: $array$
 ```
 ````
-Any of the variables (except for *level*) can be omitted and only the variables with a value will be used and displayed. Sections with no features to display (such as *Subclass* before your class unlocks one) will automatically hide themselves.
+Any of the variables (except for `level`) can be omitted and only the variables with a value will be used and displayed. Sections with no features to display (such as `subclass` before your class unlocks one) will automatically hide themselves.
 
-The variable *classLevels* is used when you have multiple classes on your character and the plugin needs to know how many levels each class has. *The order of the levels should be the same as the class order*.
+The variable `classLevels` is used when you have multiple classes on your character and the plugin needs to know how many levels each class has. *The order of the levels should be the same as the class order*.
 
-The variable *classChoices* stores class-specific feature selections (such as Warlock Eldritch Invocations, Fighter Fighting Styles, or Sorcerer Metamagic) using the structure: `[ ["<Choice-Filename>", "<Level-Gained>"], ... ]`.
+The variable `classChoices` stores class-specific feature selections (such as Warlock Eldritch Invocations, Fighter Fighting Styles, or Sorcerer Metamagic) using the structure: `[ ["<Choice-Filename>", "<Level-Gained>"], ... ]`.
 
-Write down a Feature's name as it appears on the screen inside the variable *hide* (or manage it via the **Manage Character** button) to hide it from view.
+Write down a Feature's name as it appears on the screen inside the variable `hide` (or manage it via the **Manage Character** button) to hide it from view.
+
+The variable `featureUses` savesthe state of the checkboxes on each Class or Subclass Feature, Race Trait and Feat of the character wit this structure: `[ [ "<Feature's-Name>", "<Available-Uses>", "<Expended-Uses>"], ... ]`
 
 > [!TIP]
 > Sometimes a class feature may have you select one of many options permenantly. Those specific features have duplicates with each one being one of the options you might choose. You can use the *hide* variable to hide the options you did not choose.
@@ -301,8 +304,8 @@ Cantrips are on "Level 0" and the rest of the Spell Levels are as normal.
       "startingEquipment": {
             "A": {
                   "items": {
-                  "<Item_File_Name>": 0,
-                  "<Item_File_Name>": 0,
+                  "<Item-File-Name>": 0,
+                  "<Item-File-Name>": 0,
                   "musical-instrument|": 0, // <optional_DnD_item_type>
                   "artisans-tool|musical-instrument": 0, // <optional_DnD_multiple_items_w/_type>
                   "<item_type|>" : 0 // <optional_homebrew_item_type>
@@ -325,6 +328,7 @@ Cantrips are on "Level 0" and the rest of the Spell Levels are as normal.
                         "grantedExpertise": [["<Skills-Pool>"], <num>], // <optional>
                         "grantedSubclasses": "<Subclasses-Filename>", // <optional>
                         "grantedFeats": ["<ability-score-improvement>", "<Feat_Name>", "<Feat_Router_Filename>"], // <optional>
+                        "uses": ["<Number-of-Uses>", "<short/long>" ], // <optional>
                         "hide": true // <optional>
                   }
             ]
@@ -333,13 +337,15 @@ Cantrips are on "Level 0" and the rest of the Spell Levels are as normal.
 ```
 Sometimes DnD classes or backgrounds offer a choice of an item category (like any Musical Instrument or Artisan's Tool) rather than a specific item. To handle this you can use items' Type instead of a single item's filename
 
-By adding a pipe character (|) to an item key in your class.json or backgrounds.json (e.g: "musical-instrument|": 1 or "artisans-tool|musical-instrument": 1), you tell the plugin to wait for the player's choice. The plugin will automatically scan the player's *class-chosen-items* or *background-chosen-items* variables in their note, find an item whose "type" matches the requirement, and seamlessly add it to their inventory.
+By adding a pipe character (|) to an item key in your class.json or backgrounds.json (e.g: "musical-instrument|": 1 or "artisans-tool|musical-instrument": 1), you tell the plugin to wait for the player's choice. The plugin will automatically scan the player's `class-chosen-items` or `background-chosen-items` variables in their note, find an item whose "type" matches the requirement, and seamlessly add it to their inventory.
 
-The *grantedSubclases* variable grants the player the Sublcasses that are included in the json file entered and are given to the player on the level it is placed at.
+The `grantedSubclases` variable grants the player the Sublcasses that are included in the json file entered and are given to the player on the level it is placed at.
 
-The *granted-feat* variable automatically grants the player a certain feat when that level is reached and can be viewd in the "Extra Feats" section.
+The `granted-feat` variable automatically grants the player a certain feat when that level is reached and can be viewd in the "Extra Feats" section.
 
-The *bility-score-improvement* specifically will trigger the option on the Level up button to improve your ability scores as per the Player's Handbook.
+The `bility-score-improvement` specifically will trigger the option on the Level up button to improve your ability scores as per the Player's Handbook.
+
+The `uses` variable sets how many uses this feature has, and when used checkboxes will appear at the top right of that feature's line acording to the value it was set. For the amount of uses it accepts single numbers and in string it accepts math (+, -,, *, /) and will also automatically imput the value of a core DnD ability.
 
 - $class-subclasses.json:
 ```json
@@ -359,9 +365,12 @@ The *bility-score-improvement* specifically will trigger the option on the Level
 ```json
 {
 	"name": "<Feat_Name>",
-	"description": "<Feat_Description>"
+	"description": "<Feat_Description>",
+      "uses": ["<Number-of-Uses>", "<short/long>" ] // <optional>
 }
 ```
+
+The `uses` variable sets how many uses this feature has, and when used checkboxes will appear at the top right of that feature's line acording to the value it was set. For the amount of uses it accepts single numbers and in string it accepts math (+, -,, *, /) and will also automatically imput the value of a core DnD ability.
 
 - race.json:
 ```json
@@ -370,12 +379,15 @@ The *bility-score-improvement* specifically will trigger the option on the Level
             {
                   "name": "<Trait_Name>",
                   "description": "<Trait_Description>",
-                  "lineage": "Lineage_Name" // <optional>
+                  "lineage": "Lineage_Name", // <optional>
+                  "uses": ["<Number-of-Uses>", "<short/long>" ] // <optional>
             }
       ]
 }
 ```
-The *lineage* variable in the race.json is a Flag, making it so that this trait will appear if that and the *race-lineage* variable in the code block have the same value, while also swapping out the "Trait" badge for a "Lineage" badge.
+The `lineage` variable in the race.json is a Flag, making it so that this trait will appear if that and the *race-lineage* variable in the code block have the same value, while also swapping out the "Trait" badge for a "Lineage" badge.
+
+The `uses` variable sets how many uses this feature has, and when used checkboxes will appear at the top right of that feature's line acording to the value it was set. For the amount of uses it accepts single numbers and in string it accepts math (+, -,, *, /) and will also automatically imput the value of a core DnD ability.
 
 - item.json:
 ```json

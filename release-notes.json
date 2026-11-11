@@ -1,3 +1,3 @@
 {
-      "notes": "Version 2.0.5! Changes where made to how the plugin handles Subcalsses, and the DnD-Inventory code block has been rewroked with proper Platinum/Gold/Silver/Copper Pieces tracker, editable quanity of items on the character sheet and an expanded inventory managmnet system toggled by a new \"Inventory\" button in the DnD-Controlls code block. I have also updated the character-sheet cssclass so that when active, on mobile it doesn't trogger the Edit Mode whenever you double tap on screen, which can very easily happen as you use the Health-bar."
+      "notes": "Version 2.0.6. Fixed various bugs and added Usage Checkboxes in the dnd-features block for Class Features, Race Traits and Feats, tracked by the variable `featureUses` and added functionality for them to be reset from the Short/Long Rest buttons in dnd-health when using frontmatter."
 }
