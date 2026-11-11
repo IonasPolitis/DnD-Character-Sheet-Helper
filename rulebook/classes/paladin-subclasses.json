@@ -21,7 +21,8 @@
             "20": [
                   {
                         "name": "Holy Nimbus",
-                        "description": "As a Bonus Action, you can imbue your Aura of Protection with holy power, granting the benefits below for 10 minutes or until you end them (no action required). Once you use this feature, you can't use it again until you finish a Long Rest. You can also restore your use of it by expending a level 5 spell slot (no action required).\n - **Holy Ward**: You have Advantage on any saving throw you are forced to make by a Fiend or an Undead.\n - **Radiant Damage**: Whenever an enemy starts its turn in the aura, that creature takes Radiant damage equal to your Charisma modifier plus your Proficiency Bonus.\n - **Sunlight**: The aura is filled with Bright Light that is sunlight."
+                        "description": "As a Bonus Action, you can imbue your Aura of Protection with holy power, granting the benefits below for 10 minutes or until you end them (no action required). Once you use this feature, you can't use it again until you finish a Long Rest. You can also restore your use of it by expending a level 5 spell slot (no action required).\n - **Holy Ward**: You have Advantage on any saving throw you are forced to make by a Fiend or an Undead.\n - **Radiant Damage**: Whenever an enemy starts its turn in the aura, that creature takes Radiant damage equal to your Charisma modifier plus your Proficiency Bonus.\n - **Sunlight**: The aura is filled with Bright Light that is sunlight.",
+                        "uses": 1
                   }
             ]
       },
@@ -49,13 +50,15 @@
             "15": [
                   {
                         "name": "Glorious Defense",
-                        "description": "You can turn defense into a sudden strike. When you or another creature you can see within 10 feet of you is hit by an attack roll, you can take a Reaction to grant a bonus to the target's AC against that attack, potentially causing it to miss. The bonus equals your Charisma modifier (minimum of +1). If the attack misses, you can make one attack with a weapon against the attacker as part of this Reaction if the attacker is within your weapon's range.\n\tYou can use this feature a number of times equal to your Charisma modifier (minimum of once), and you regain all expended uses when you finish a Long Rest."
+                        "description": "You can turn defense into a sudden strike. When you or another creature you can see within 10 feet of you is hit by an attack roll, you can take a Reaction to grant a bonus to the target's AC against that attack, potentially causing it to miss. The bonus equals your Charisma modifier (minimum of +1). If the attack misses, you can make one attack with a weapon against the attacker as part of this Reaction if the attacker is within your weapon's range.\n\tYou can use this feature a number of times equal to your Charisma modifier (minimum of once), and you regain all expended uses when you finish a Long Rest.",
+                        "uses": "(charisma - 10) / 2"
                   }
             ],
             "20": [
                   {
                         "name": "Living Legend",
-                        "description": "You can empower yourself with the legends -whether true or exaggerated- of your great deeds. As a Bonus Ac tion, you gain the benefits below for 10 minutes. Once you use this feature, you can't use it again until you finish a Long Rest. You can also restore your use of it by expending a level 5 spell slot (no action required).\n - **Charismatic**: You are blessed with an otherworldly presence and have Advantage on all Charisma checks.\n - **Saving Throw Reroll**: If you fail a saving throw, you can take a Reaction to reroll it. You must use this new roll.\n - **Unerring Strike**: Once on each of your turns when you make an attack roll with a weapon and miss, you can cause that attack to hit instead."
+                        "description": "You can empower yourself with the legends -whether true or exaggerated- of your great deeds. As a Bonus Ac tion, you gain the benefits below for 10 minutes. Once you use this feature, you can't use it again until you finish a Long Rest. You can also restore your use of it by expending a level 5 spell slot (no action required).\n - **Charismatic**: You are blessed with an otherworldly presence and have Advantage on all Charisma checks.\n - **Saving Throw Reroll**: If you fail a saving throw, you can take a Reaction to reroll it. You must use this new roll.\n - **Unerring Strike**: Once on each of your turns when you make an attack roll with a weapon and miss, you can cause that attack to hit instead.",
+                        "uses": 1
                   }
             ]
       },
@@ -79,13 +82,15 @@
             "15": [
                   {
                         "name": "Undying Sentinel",
-                        "description": "When you are reduced to 0 Hit Points and not killed outright, you can drop to 1 Hit Point instead, and you regain a number of Hit Points equal to three times your Paladin level. Once you use this feature, you can't do so again until you finish a Long Rest.\n\tAdditionally, you can't be aged magically, and you cease visibly aging."
+                        "description": "When you are reduced to 0 Hit Points and not killed outright, you can drop to 1 Hit Point instead, and you regain a number of Hit Points equal to three times your Paladin level. Once you use this feature, you can't do so again until you finish a Long Rest.\n\tAdditionally, you can't be aged magically, and you cease visibly aging.",
+                        "uses": 1
                   }
             ],
             "20": [
                   {
                         "name": "Elder Champion",
-                        "description": "As a Bonus Action, you can imbue your Aura of Protection with primal power, granting the benefits below for 1 minute or until you end them (no action required}. Once you use this feature, you can't use it again until you finish a Long Rest. You can also restore your use of it by expending a level 5 spell slot (no action required)\n - **Diminish Defiance**:  Enemies in the aura have Disadvantage on saving throws against your spells and Channel Divinity options\n - **Regeneration**:  At the start of each of your turns, you regain 10 Hit Points\n - **Swift Spells**:  Whenever you cast a spell that has a casting time of an action, you can cast it using a Bonus Action instead"
+                        "description": "As a Bonus Action, you can imbue your Aura of Protection with primal power, granting the benefits below for 1 minute or until you end them (no action required}. Once you use this feature, you can't use it again until you finish a Long Rest. You can also restore your use of it by expending a level 5 spell slot (no action required)\n - **Diminish Defiance**:  Enemies in the aura have Disadvantage on saving throws against your spells and Channel Divinity options\n - **Regeneration**:  At the start of each of your turns, you regain 10 Hit Points\n - **Swift Spells**:  Whenever you cast a spell that has a casting time of an action, you can cast it using a Bonus Action instead",
+                        "uses": 1
                   }
             ]
       },
@@ -115,7 +120,8 @@
             "20": [
                   {
                         "name": "Avenging Angel",
-                        "description": "As a Bonus Action, you gain the benefits below for 10 minutes or until you end them (no action required). Once you use this feature, you can't use it again until you finish a Long Rest. You can also restore your use of it by expending a level 5 spell slot (no action required).\n - **Flight**: You sprout spectral wings on your back, have a Fly Speed of 60 feet, and can hover.\n - **Frighful Aura**: Whenever an enemy starts its turn in your Aura of Protection, that creature must succeed on a Wisdom saving throw or have the Frightened condition for 1 minute or until it takes any da mage. Attack rolls against the Frightened creature have Advantage."
+                        "description": "As a Bonus Action, you gain the benefits below for 10 minutes or until you end them (no action required). Once you use this feature, you can't use it again until you finish a Long Rest. You can also restore your use of it by expending a level 5 spell slot (no action required).\n - **Flight**: You sprout spectral wings on your back, have a Fly Speed of 60 feet, and can hover.\n - **Frighful Aura**: Whenever an enemy starts its turn in your Aura of Protection, that creature must succeed on a Wisdom saving throw or have the Frightened condition for 1 minute or until it takes any da mage. Attack rolls against the Frightened creature have Advantage.",
+                        "uses": 1
                   }
             ]
       }

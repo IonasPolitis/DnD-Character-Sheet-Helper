@@ -1,5 +1,6 @@
 {
       "name": "Gift of the Depths",
       "description": "You can breathe underwater, and you gain a Swim Speed equal to your Speed.\n\tYou can also cast Water Breathing once without expending a spell slot. You regain the ability to cast it in this way again when you finish a Long Rest.",
-      "badge": "Invocation"
+      "badge": "Invocation",
+      "uses": 1
 }

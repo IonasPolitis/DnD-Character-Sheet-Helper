@@ -732,6 +732,20 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                         return parsedLevel;
                     }
 
+                    const modMatch = cleanIdent.match(/^(strength|dexterity|constitution|intelligence|wisdom|charisma|str|dex|con|int|wis|cha)(?:_?modifier|_?mod)$/i);
+                    if (modMatch) {
+                        const statAbbrMap: Record<string, string> = {
+                            str: "strength", dex: "dexterity", con: "constitution",
+                            int: "intelligence", wis: "wisdom", cha: "charisma"
+                        };
+                        const baseStat = statAbbrMap[modMatch[1].toLowerCase()] || modMatch[1].toLowerCase();
+                        const rawStat = (blockData && (blockData[baseStat] ?? blockData[`DnD_${baseStat}`]) !== undefined)
+                            ? resolveValue(blockData[baseStat] ?? blockData[`DnD_${baseStat}`])
+                            : (frontmatter[`DnD_${baseStat}`] ?? frontmatter[baseStat]);
+                        const score = Number(rawStat) || 10;
+                        return Math.max(1, Math.floor((score - 10) / 2));
+                    }
+
                     // 1. Check dnd-features code block variables first
                     if (blockData && blockData[cleanIdent] !== undefined) {
                         const resolved = resolveValue(blockData[cleanIdent]);
@@ -814,7 +828,7 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
 
                 const result = parseExpr();
                 if (!isFinite(result) || isNaN(result)) return 0;
-                return Math.max(0, Math.floor(result));
+                return Math.max(1, Math.floor(result));
             };
 
             // Helper: Render interactive Uses pips on the top-right of a feature/feat title bar

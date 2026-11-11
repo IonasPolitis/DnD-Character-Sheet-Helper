@@ -11,7 +11,8 @@
             {
                   "name": "Gnomish Lineage",
                   "description": "You know the Minor Illusion cantrip. You also always have the Speak with Animals spell prepared and you can cast it without a spell slot a number of times equal to your Proficiency Bonus, and you regain all expended uses when you finish a Long Rest.",
-                  "lineage": "Forest Gnome"
+                  "lineage": "Forest Gnome",
+                  "uses": "proficiencyBonus"
             },
             {
                   "name": "Gnomish Lineage",
