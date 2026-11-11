@@ -1,6 +1,7 @@
 ---
 DnD_id:
 DnD_level:
+DnD_hitDice:
 DnD_proficiencyBonus:
 DnD_race:
 DnD_raceLineage:
@@ -133,7 +134,7 @@ spellSlots: frontmatter.DnD_spellSlots
 ```
 
 ```dnd-features
-level: frontmatter.level
+level: frontmatter.DnD_level
 class: frontmatter.DnD_class
 classLevels: frontmatter.DnD_classLevels
 subclass: frontmatter.DnD_Subclass
