@@ -56,7 +56,7 @@
         "3": [
             {
                 "name": "Sorcerer Subclass",
-                "grantedSubclases": "sorcerer-subclasses",
+                "grantedSubclasses": "sorcerer-subclasses",
                 "hide": true
             }
         ],

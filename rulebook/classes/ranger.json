@@ -59,7 +59,7 @@
         "3": [
             {
                 "name": "Ranger Subclass",
-                "grantedSubclases": "ranger-subclasses",
+                "grantedSubclasses": "ranger-subclasses",
                 "hide": true
             }
         ],

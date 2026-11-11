@@ -54,7 +54,7 @@
         "3": [
             {
                 "name": "Wizard Subclass",
-                "grantedSubclases": "wizard-subclasses",
+                "grantedSubclasses": "wizard-subclasses",
                 "hide": true
             }
         ],

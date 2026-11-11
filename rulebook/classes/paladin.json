@@ -59,7 +59,7 @@
         "3": [
             {
                 "name": "Paladin Subclass",
-                "grantedSubclases": "paladin-subclasses",
+                "grantedSubclasses": "paladin-subclasses",
                 "hide": true
             }
         ],

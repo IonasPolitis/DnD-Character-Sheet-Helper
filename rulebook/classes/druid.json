@@ -73,7 +73,7 @@
         "3": [
             {
                 "name": "Druid Subclass",
-                "grantedSubclases": "druid-subclasses",
+                "grantedSubclasses": "druid-subclasses",
                 "hide": true
             }
         ],

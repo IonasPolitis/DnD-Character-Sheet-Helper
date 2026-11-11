@@ -39,7 +39,7 @@
         "3": [
             {
                 "name": "Bard Subclass",
-                "grantedSubclases": "bard-subclasses",
+                "grantedSubclasses": "bard-subclasses",
                 "hide": true
             }
         ],

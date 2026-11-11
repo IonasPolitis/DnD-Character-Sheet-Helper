@@ -63,7 +63,7 @@
         "3": [
             {
                 "name": "Fighter Subclass",
-                "grantedSubclases": "fighter-subclasses",
+                "grantedSubclasses": "fighter-subclasses",
                 "hide": true
             },
             {
