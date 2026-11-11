@@ -69,7 +69,7 @@ mode: character
 race: frontmatter.DnD_race
 raceLineage: frontmatter.DnD_raceLineage
 class: frontmatter.DnD_class
-subclass: frontmatter.DnD_Subclass
+subclass: frontmatter.DnD_subclass
 background: frontmatter.DnD_background
 backgroundFeat: frontmatter.DnD_backgroundFeat
 level: frontmatter.level
