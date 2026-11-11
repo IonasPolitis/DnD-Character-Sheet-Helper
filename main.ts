@@ -3171,10 +3171,14 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
 
                 // 4. Speed
                 const rawSpeed = resolveValue(blockData.speed ?? frontmatter["DnD_speed"]);
-                let speedDisplay = "30 feet";
+                const rawSpeedMod = parseNumericMod(
+                    blockData.speedMod ?? blockData.DnD_speed_mod ?? blockData.DnD_speedMod ?? frontmatter["DnD_speedMod"],
+                    0
+                );
+                let speedDisplay = `${30 + rawSpeedMod} feet`;
                 if (rawSpeed !== undefined && rawSpeed !== null && String(rawSpeed).trim() !== "") {
                     const sTrim = String(rawSpeed).trim();
-                    speedDisplay = !isNaN(Number(sTrim)) ? `${sTrim} feet` : sTrim;
+                    speedDisplay = !isNaN(Number(sTrim)) ? `${Number(sTrim) + rawSpeedMod} feet` : sTrim;
                 }
                 const speedSublabel = formatTextValue(blockData.speedSublabel ?? frontmatter["DnD_speedSublabel"], "");
 
@@ -4766,6 +4770,8 @@ class CharacterWizardModal extends Modal {
         let attackStat = "strength";
         let spellcastingData: any = null;
         let pactMagicData: any = null;
+        let initialSpeedMod = 0;
+        const wizardLvlNum = Number(this.wizardData.level) || 1;
 
         if (this.wizardData.dndClass) {
             const classData = await getClassData(this.app, this.plugin.settings, this.wizardData.dndClass);
@@ -4788,6 +4794,34 @@ class CharacterWizardModal extends Modal {
                 // Extract Spellcasting Engine Data
                 if (classData.spellcasting) spellcastingData = classData.spellcasting;
                 if (classData.pactMagic) pactMagicData = classData.pactMagic;
+
+                // Check Class & Subclass Features for speedMod up to wizardLvlNum
+                let subclassData: any = null;
+                const grantedSubclassFile = this.plugin.findGrantedSubclass(classData, wizardLvlNum);
+                if (grantedSubclassFile && this.wizardData.subclass) {
+                    const subName = Array.isArray(this.wizardData.subclass) ? this.wizardData.subclass[0] : this.wizardData.subclass;
+                    if (subName) {
+                        subclassData = await getSubclassData(this.app, this.plugin.settings, grantedSubclassFile, subName);
+                    }
+                }
+                for (let lvl = 1; lvl <= wizardLvlNum; lvl++) {
+                    const lvlFeatures = classData.features?.[lvl.toString()];
+                    if (Array.isArray(lvlFeatures)) {
+                        for (const feat of lvlFeatures) {
+                            if (feat && feat.speedMod !== undefined && !isNaN(Number(feat.speedMod))) {
+                                initialSpeedMod = Number(feat.speedMod);
+                            }
+                        }
+                    }
+                    const subFeatures = subclassData?.[lvl.toString()];
+                    if (Array.isArray(subFeatures)) {
+                        for (const feat of subFeatures) {
+                            if (feat && feat.speedMod !== undefined && !isNaN(Number(feat.speedMod))) {
+                                initialSpeedMod = Number(feat.speedMod);
+                            }
+                        }
+                    }
+                }
             }
         }
 
@@ -4795,6 +4829,21 @@ class CharacterWizardModal extends Modal {
             bgDataStore = await getBackgroundData(this.app, this.plugin.settings, this.wizardData.background);
             if (bgDataStore && bgDataStore.feat) {
                 bgFeat = bgDataStore.feat.split('-').map((word: string) => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+                const bgFeatData = await getExtraFeat(this.app, this.plugin.settings, bgDataStore.feat);
+                if (bgFeatData && bgFeatData.speedMod !== undefined && !isNaN(Number(bgFeatData.speedMod))) {
+                    initialSpeedMod = Number(bgFeatData.speedMod);
+                }
+            }
+        }
+
+        const wizardExtraFeats = Array.isArray(this.wizardData.extraFeats)
+            ? this.wizardData.extraFeats
+            : (this.wizardData.extraFeats ? [this.wizardData.extraFeats] : []);
+        for (const fKey of wizardExtraFeats) {
+            if (!fKey) continue;
+            const fData = await getExtraFeat(this.app, this.plugin.settings, String(fKey));
+            if (fData && fData.speedMod !== undefined && !isNaN(Number(fData.speedMod))) {
+                initialSpeedMod = Number(fData.speedMod);
             }
         }
 
@@ -5117,6 +5166,7 @@ class CharacterWizardModal extends Modal {
         injectYAML("DnD_currentHealth", DnD_current_health);
         injectYAML("DnD_hitDice", DnD_hit_dice);
         injectYAML("DnD_speed", this.wizardData.speed);
+        injectYAML("DnD_speedMod", initialSpeedMod);
         injectYAML("DnD_strength", strStats.final);
         injectYAML("DnD_dexterity", dexStats.final);
         injectYAML("DnD_constitution", conStats.final);
@@ -6439,13 +6489,16 @@ class ManageCharacterModal extends Modal {
     sourcePath: string;
 
     // Tab Navigation State
-    activeTab: "stats" | "attack" | "ac" | "skills" | "items" | "features" = "stats";
+    activeTab: "stats" | "attack" | "ac" | "speed" | "skills" | "items" | "features" = "stats";
 
     // --- Unified Data State ---
     // 1. Stats State
     currentStats: Record<string, number> = { strength: 10, dexterity: 10, constitution: 10, intelligence: 10, wisdom: 10, charisma: 10 };
     // 2. AC State
     currentAcMod: number = 0;
+    // 2b. Speed State
+    currentSpeed: number = 30;
+    currentSpeedMod: number = 0;
     // 3. Attack State
     currentAttackStat: string = "strength";
     addAttackProficiency: boolean = true;
@@ -6489,6 +6542,12 @@ class ManageCharacterModal extends Modal {
 
         // Fetch AC
         this.currentAcMod = Number(frontmatter["DnD_armorAcMod"]) || 0;
+
+        // Fetch Speed
+        this.currentSpeed = frontmatter["DnD_speed"] !== undefined && frontmatter["DnD_speed"] !== "" && !isNaN(Number(frontmatter["DnD_speed"]))
+            ? Number(frontmatter["DnD_speed"])
+            : 30;
+        this.currentSpeedMod = Number(frontmatter["DnD_speedMod"]) || 0;
 
         // Fetch Attack
         this.extraAttackMod = Number(frontmatter["DnD_attackRollMod"]) || 0;
@@ -6559,6 +6618,7 @@ class ManageCharacterModal extends Modal {
         createTabBtn("stats", "Ability Scores", "🖋️");
         createTabBtn("attack", "Attack Ability", "🎯");
         createTabBtn("ac", "Armor Class Mod", "🛡️");
+        createTabBtn("speed", "Speed", "🏃");
         createTabBtn("skills", "Skills", "🔨");
         createTabBtn("items", "Items", "🎒");
         createTabBtn("features", "Hide Features", "📜");
@@ -6713,7 +6773,7 @@ class ManageCharacterModal extends Modal {
 
     renderTabs(tabHeader: HTMLElement) {
         const buttons = tabHeader.querySelectorAll("button");
-        const tabs = ["stats", "attack", "ac", "skills", "items", "features"];
+        const tabs = ["stats", "attack", "ac", "speed", "skills", "items", "features"];
 
         buttons.forEach((btn, index) => {
             btn.classList.toggle("is-active", tabs[index] === this.activeTab);
@@ -6783,6 +6843,33 @@ class ManageCharacterModal extends Modal {
 
             this.contentContainer.createEl("p", {
                 text: "Note: Your Base AC and Dexterity limits are automatically calculated based on your equipped armor and ability scores.",
+                cls: "dnd-form-note"
+            });
+        }
+
+        else if (this.activeTab === "speed") {
+            this.contentContainer.createEl("h4", { text: "Speed Adjustments", cls: "dnd-manage-section-title" });
+
+            const baseSpeedDiv = this.contentContainer.createDiv({ cls: "dnd-form-group" });
+            baseSpeedDiv.createEl("label", { text: "Base Speed (ft.):", cls: "dnd-form-label-sub" });
+            const baseSpeedInput = baseSpeedDiv.createEl("input", {
+                type: "number",
+                value: String(this.currentSpeed),
+                cls: "dnd-modal-form-input"
+            });
+            baseSpeedInput.oninput = (e) => this.currentSpeed = Number((e.target as HTMLInputElement).value);
+
+            const speedModDiv = this.contentContainer.createDiv({ cls: "dnd-form-group" });
+            speedModDiv.createEl("label", { text: "Speed Modifier (Unarmored Movement, Feats, Buffs):", cls: "dnd-form-label-sub" });
+            const speedModInput = speedModDiv.createEl("input", {
+                type: "number",
+                value: String(this.currentSpeedMod),
+                cls: "dnd-modal-form-input"
+            });
+            speedModInput.oninput = (e) => this.currentSpeedMod = Number((e.target as HTMLInputElement).value);
+
+            this.contentContainer.createEl("p", {
+                text: "Note: Your total displayed Speed on the combat info bar equals Base Speed + Speed Modifier.",
                 cls: "dnd-form-note"
             });
         }
@@ -6986,6 +7073,8 @@ class ManageCharacterModal extends Modal {
 
         updates["DnD_armorAcBonus"] = armorAcBonus;
         updates["DnD_armorAcMod"] = this.currentAcMod;
+        updates["DnD_speed"] = this.currentSpeed;
+        updates["DnD_speedMod"] = this.currentSpeedMod;
         updates["DnD_attackRollMod"] = this.extraAttackMod;
         updates["DnD_attackStat"] = this.currentAttackStat;
         updates["DnD_attackProficiency"] = this.addAttackProficiency;
@@ -7492,6 +7581,29 @@ class LevelUpModal extends Modal {
                         updates[slotKey] = JSON.stringify(updatedSlots);
                     }
                 }
+
+                // Check newly unlocked Class & Subclass Features at this.newLevel for speedMod
+                const newLvlFeatures = classData.features?.[this.newLevel.toString()];
+                if (Array.isArray(newLvlFeatures)) {
+                    for (const feat of newLvlFeatures) {
+                        if (feat && feat.speedMod !== undefined && !isNaN(Number(feat.speedMod))) {
+                            updates["DnD_speedMod"] = Number(feat.speedMod);
+                        }
+                    }
+                }
+
+                const grantedSubclassFile = this.plugin.findGrantedSubclass(classData, this.newLevel);
+                if (grantedSubclassFile && this.currentSubclass) {
+                    const subclassData = await getSubclassData(this.app, this.plugin.settings, grantedSubclassFile, this.currentSubclass);
+                    const subLvlFeatures = subclassData?.[this.newLevel.toString()];
+                    if (Array.isArray(subLvlFeatures)) {
+                        for (const feat of subLvlFeatures) {
+                            if (feat && feat.speedMod !== undefined && !isNaN(Number(feat.speedMod))) {
+                                updates["DnD_speedMod"] = Number(feat.speedMod);
+                            }
+                        }
+                    }
+                }
             }
         }
 
@@ -7534,6 +7646,11 @@ class LevelUpModal extends Modal {
                     existingFeats = existingFeats ? [existingFeats] : [];
                 }
                 updates["DnD_extraFeats"] = [...existingFeats, this.chosenFeat];
+
+                const chosenFeatData = await getExtraFeat(this.app, this.plugin.settings, this.chosenFeat);
+                if (chosenFeatData && chosenFeatData.speedMod !== undefined && !isNaN(Number(chosenFeatData.speedMod))) {
+                    updates["DnD_speedMod"] = Number(chosenFeatData.speedMod);
+                }
             }
         }
 

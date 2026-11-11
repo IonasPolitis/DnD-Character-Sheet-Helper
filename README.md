@@ -58,6 +58,7 @@ armorAcMod: $num$
 attackStat: $string$
 attackRollMod: $num$
 speed: $num$
+speedMod: $num$
 speedSublabel: $string$
 ```
 ````
@@ -331,6 +332,7 @@ Cantrips are on "Level 0" and the rest of the Spell Levels are as normal.
                         "grantedSubclasses": "<Subclasses-Filename>", // <optional>
                         "grantedFeats": ["<ability-score-improvement>", "<Feat_Name>", "<Feat_Router_Filename>"], // <optional>
                         "uses": ["<Number-of-Uses>", "<short/long>" ], // <optional>
+                        "speedMod": <num>, // <optional>
                         "hide": true // <optional>
                   }
             ]
@@ -353,6 +355,8 @@ The `scalingDice` array stores level-scaling dice for a class (such as a Monk's 
 
 To give a class a custom **Unarmored Defense** AC calculation, include a hidden feature named `"Unarmored Defense"` (`"hide": true`) at the level it is unlocked with its `"description"` set to the AC formula (for example, `"10+dexterity+wisdom"` for Monk or `"10+dexterity+constitution"` for Barbarian).
 
+The `speedMod` variable on a class/subclass feature or feat sets `DnD_speedMod` when that level or feat is gained, adding to the character's base `speed` in `dnd-info` (`mode: combat`).
+
 - $class-subclasses.json:
 ```json
 {
@@ -372,7 +376,8 @@ To give a class a custom **Unarmored Defense** AC calculation, include a hidden 
 {
 	"name": "<Feat_Name>",
 	"description": "<Feat_Description>",
-      "uses": ["<Number-of-Uses>", "<short/long>" ] // <optional>
+      "uses": ["<Number-of-Uses>", "<short/long>" ], // <optional>
+      "speedMod": <num> // <optional>
 }
 ```
 

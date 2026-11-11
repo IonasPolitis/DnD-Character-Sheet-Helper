@@ -27,6 +27,7 @@ DnD_skillBonuses:
 DnD_maxHealth:
 DnD_currentHealth:
 DnD_speed:
+DnD_speedMod:
 DnD_speedSublabel: 
 DnD_attackStat:
 DnD_attackProficiency:
@@ -96,6 +97,7 @@ armorAcMod: frontmatter.DnD_armorAcMod
 attackStat: frontmatter.DnD_attackStat
 attackRollMod: frontmatter.DnD_attackRollMod
 speed: frontmatter.DnD_speed
+speedMod: frontmatter.DnD_speedMod
 speedSublabel: frontmatter.DnD_speedSublabel
 ```
  ---
