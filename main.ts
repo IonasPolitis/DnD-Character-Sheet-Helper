@@ -1758,6 +1758,11 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                 const show = entry.length >= 3 ? String(entry[2]).toLowerCase() !== "false" : true;
                 if (!show) continue;
 
+                const unitWeight = Number(entry[3]) || 0;
+                const unitCost = Number(entry[4]) || 0;
+                const customType = String(entry[5] ?? "Custom").trim() || "Custom";
+                const customDesc = String(entry[6] ?? "").trim();
+
                 itemsToRender.push({
                     rowKey: `custom_${i}_${customName}`,
                     sourceType: "custom",
@@ -1766,9 +1771,15 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                     displayName: customName,
                     qty,
                     show,
-                    unitWeight: Number(entry[3]) || 0,
-                    unitCost: Number(entry[4]) || 0,
-                    rulebookData: null
+                    unitWeight,
+                    unitCost,
+                    rulebookData: {
+                        name: customName,
+                        type: customType,
+                        weight: unitWeight,
+                        cost: unitCost,
+                        description: customDesc
+                    }
                 });
             }
 
@@ -1910,8 +1921,8 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                         await saveItemQuantity(item, item.qty);
                     });
 
-                    // 1. Info Button (Vector SVG) - ONLY for Native / Custom Rulebook items (not on-the-fly custom items)
-                    if (item.sourceType !== "custom" && item.rulebookData) {
+                    // 1. Info Button (Vector SVG) - For Rulebook items and Custom items with a description
+                    if (item.rulebookData && (item.sourceType !== "custom" || Boolean(item.rulebookData.description))) {
                         const infoBtn = rightActions.createEl("button", {
                             cls: "dnd-inventory-icon-btn",
                             attr: { title: "Item Details" }
@@ -5953,6 +5964,7 @@ class InventoryModal extends Modal {
     inventoryItems: [string, string, string][] = [];
     // [name, qty, show, weight, cost, type, description]
     customItems: [string, string, string, string, string, string, string][] = [];
+    editingCustomIndex: number | null = null;
 
     // Cached rulebook metadata for weight/preview calculations
     itemDataCache: Record<string, any> = {};
@@ -6302,17 +6314,45 @@ class InventoryModal extends Modal {
     }
 
     renderCustomTab() {
+        if (this.editingCustomIndex !== null && (this.editingCustomIndex < 0 || this.editingCustomIndex >= this.customItems.length)) {
+            this.editingCustomIndex = null;
+        }
+
+        const isEditing = this.editingCustomIndex !== null;
+        const activeTuple = isEditing ? this.customItems[this.editingCustomIndex!] : null;
+
         this.previewContainer.empty();
-        this.previewContainer.createEl("h4", {
-            text: "✨ Create Custom Item",
+
+        const headerRow = this.previewContainer.createDiv({ cls: "dnd-modal-preview-header" });
+        headerRow.createEl("h4", {
+            text: isEditing ? "✏️ Edit Custom Item" : "✨ Create Custom Item",
             cls: "dnd-modal-preview-title"
         });
+
+        if (isEditing) {
+            const newBtn = headerRow.createEl("button", {
+                text: "+ New Item",
+                cls: "dnd-modal-tab-btn"
+            });
+            newBtn.onclick = () => {
+                this.editingCustomIndex = null;
+                this.renderCustomTab();
+            };
+        }
 
         const formDiv = this.previewContainer.createDiv({ cls: "dnd-modal-form" });
 
         const nameInput = formDiv.createEl("input", {
             type: "text",
+            value: activeTuple ? activeTuple[0] : "",
             placeholder: "Item Name (e.g., Mystery Key)",
+            cls: "dnd-modal-form-input"
+        });
+
+        const typeInput = formDiv.createEl("input", {
+            type: "text",
+            value: activeTuple ? (activeTuple[5] || "Custom") : "",
+            placeholder: "Type (e.g., Gear, Wondrous Item, Key)",
             cls: "dnd-modal-form-input"
         });
 
@@ -6320,44 +6360,103 @@ class InventoryModal extends Modal {
 
         const qtyInput = rowGrid.createEl("input", {
             type: "number",
-            value: "1",
+            value: activeTuple ? String(Number(activeTuple[1]) || 0) : "1",
             placeholder: "Qty",
             cls: "dnd-modal-form-input",
             attr: { min: "0", title: "Quantity" }
         });
         const weightInput = rowGrid.createEl("input", {
             type: "number",
+            value: activeTuple ? String(Number(activeTuple[3]) || 0) : "",
             placeholder: "Weight (lbs)",
             cls: "dnd-modal-form-input",
-            attr: { min: "0", step: "0.1" }
+            attr: { min: "0", step: "0.1", title: "Weight (lbs)" }
         });
         const costInput = rowGrid.createEl("input", {
             type: "number",
+            value: activeTuple ? String(Number(activeTuple[4]) || 0) : "",
             placeholder: "Cost (GP)",
             cls: "dnd-modal-form-input",
-            attr: { min: "0", step: "0.1" }
+            attr: { min: "0", step: "0.1", title: "Cost (GP)" }
         });
 
-        const createBtn = formDiv.createEl("button", {
-            text: "Add Custom Item",
-            cls: "mod-cta"
+        const descInput = formDiv.createEl("textarea", {
+            placeholder: "Item Description (supports Markdown)...",
+            cls: "dnd-modal-form-input dnd-modal-form-textarea"
         });
+        descInput.value = activeTuple ? (activeTuple[6] || "") : "";
 
-        createBtn.onclick = () => {
-            const cleanName = nameInput.value.trim();
-            if (!cleanName) {
-                new Notice("Please enter a name for the custom item.");
-                return;
-            }
-            const qty = String(Math.max(0, Number(qtyInput.value) || 0));
-            const weight = String(Math.max(0, Number(weightInput.value) || 0));
-            const cost = String(Math.max(0, Number(costInput.value) || 0));
+        if (isEditing && activeTuple) {
+            const previewWrap = this.previewContainer.createDiv({ cls: "dnd-modal-preview-desc" });
+            const renderLiveDesc = async (mdText: string) => {
+                previewWrap.empty();
+                if (mdText.trim()) {
+                    previewWrap.createEl("div", { text: "DESCRIPTION PREVIEW", cls: "dnd-modal-section-label" });
+                    const bodyDiv = previewWrap.createDiv();
+                    await this.plugin.renderDndMarkdown(mdText, bodyDiv, this.sourcePath, this.renderChild);
+                }
+            };
+            void renderLiveDesc(activeTuple[6] || "");
 
-            this.customItems.push([cleanName, qty, "true", weight, cost, "Custom", ""]);
-            this.renderTracker();
-            this.renderCustomTab();
-        };
+            const syncEdits = () => {
+                const cleanName = nameInput.value.trim();
+                if (cleanName) activeTuple[0] = cleanName;
+                activeTuple[1] = String(Math.max(0, Number(qtyInput.value) || 0));
+                activeTuple[3] = String(Math.max(0, Number(weightInput.value) || 0));
+                activeTuple[4] = String(Math.max(0, Number(costInput.value) || 0));
+                activeTuple[5] = typeInput.value.trim() || "Custom";
+                activeTuple[6] = descInput.value;
+                this.renderTracker();
+                this.renderCustomListOnly();
+            };
 
+            nameInput.oninput = () => syncEdits();
+            typeInput.oninput = () => syncEdits();
+            qtyInput.oninput = () => syncEdits();
+            weightInput.oninput = () => syncEdits();
+            costInput.oninput = () => syncEdits();
+            descInput.oninput = () => {
+                syncEdits();
+                void renderLiveDesc(descInput.value);
+            };
+
+            const doneBtn = formDiv.createEl("button", {
+                text: "Done Editing",
+                cls: "mod-cta"
+            });
+            doneBtn.onclick = () => {
+                syncEdits();
+                this.editingCustomIndex = null;
+                this.renderCustomTab();
+            };
+        } else {
+            const createBtn = formDiv.createEl("button", {
+                text: "Add Custom Item",
+                cls: "mod-cta"
+            });
+
+            createBtn.onclick = () => {
+                const cleanName = nameInput.value.trim();
+                if (!cleanName) {
+                    new Notice("Please enter a name for the custom item.");
+                    return;
+                }
+                const qty = String(Math.max(0, Number(qtyInput.value) || 0));
+                const weight = String(Math.max(0, Number(weightInput.value) || 0));
+                const cost = String(Math.max(0, Number(costInput.value) || 0));
+                const cleanType = typeInput.value.trim() || "Custom";
+                const desc = descInput.value.trim();
+
+                this.customItems.push([cleanName, qty, "true", weight, cost, cleanType, desc]);
+                this.renderTracker();
+                this.renderCustomTab();
+            };
+        }
+
+        this.renderCustomListOnly();
+    }
+
+    private renderCustomListOnly() {
         this.listContainer.empty();
         this.listContainer.createEl("div", {
             text: "ON-THE-FLY CUSTOM ITEMS",
@@ -6375,19 +6474,21 @@ class InventoryModal extends Modal {
         this.customItems.forEach((tuple, idx) => {
             const [cName, qtyStr, showStr, weightStr, costStr] = tuple;
             const isShown = showStr.toLowerCase() !== "false";
+            const isSelected = this.editingCustomIndex === idx;
 
             const row = this.listContainer.createDiv({
-                cls: `dnd-modal-list-row ${isShown ? "is-active" : ""}`.trim()
+                cls: `dnd-modal-list-row ${isShown ? "is-active" : ""} ${isSelected ? "is-selected" : ""}`.trim()
             });
 
-            const leftGroup = row.createDiv({ cls: "dnd-modal-row-left" });
+            const leftGroup = row.createDiv({ cls: "dnd-modal-row-left is-clickable" });
 
             const showCheckbox = leftGroup.createEl("input", {
                 type: "checkbox",
                 attr: { title: "Show on Character Sheet" }
             });
             showCheckbox.checked = isShown;
-            showCheckbox.onclick = () => {
+            showCheckbox.onclick = (e) => {
+                e.stopPropagation();
                 tuple[2] = showCheckbox.checked ? "true" : "false";
                 row.classList.toggle("is-active", showCheckbox.checked);
                 this.renderTracker();
@@ -6405,6 +6506,11 @@ class InventoryModal extends Modal {
                 });
             }
 
+            leftGroup.onclick = () => {
+                this.editingCustomIndex = idx;
+                this.renderCustomTab();
+            };
+
             const rightGroup = row.createDiv({ cls: "dnd-modal-row-right" });
 
             const qInput = rightGroup.createEl("input", {
@@ -6416,6 +6522,9 @@ class InventoryModal extends Modal {
             qInput.oninput = () => {
                 tuple[1] = String(Math.max(0, Number(qInput.value) || 0));
                 this.renderTracker();
+                if (this.editingCustomIndex === idx) {
+                    this.renderCustomTab();
+                }
             };
 
             const delBtn = rightGroup.createEl("button", {
@@ -6425,6 +6534,11 @@ class InventoryModal extends Modal {
             });
             delBtn.onclick = () => {
                 this.customItems.splice(idx, 1);
+                if (this.editingCustomIndex === idx) {
+                    this.editingCustomIndex = null;
+                } else if (this.editingCustomIndex !== null && this.editingCustomIndex > idx) {
+                    this.editingCustomIndex -= 1;
+                }
                 this.renderTracker();
                 this.renderCustomTab();
             };

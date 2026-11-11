@@ -1899,6 +1899,12 @@
     border-color: var(--dnd-ui-color-border-active);
 }
 
+.dnd-modal-list-row.is-selected {
+    background-color: var(--dnd-ui-color-bg-hover);
+    border-color: var(--dnd-ui-color-border-active);
+    box-shadow: 0 0 0 1px var(--dnd-ui-color-border-active);
+}
+
 .dnd-modal-row-left {
     display: flex;
     align-items: center;
@@ -2032,6 +2038,26 @@
 
 .dnd-modal-form-input {
     width: 100%;
+}
+
+.modal.dnd-spellbook-modal textarea.dnd-modal-form-textarea {
+    width: 100%;
+    min-height: 90px;
+    resize: vertical;
+    padding: 6px 8px;
+    font-family: inherit;
+    font-size: 0.9em;
+    line-height: 1.4;
+    box-sizing: border-box;
+    background-color: var(--dnd-ui-color-bg-tertiary);
+    border: 1px solid var(--dnd-ui-color-border-primary);
+    color: var(--dnd-ui-color-text-bright);
+    border-radius: 4px;
+}
+
+.modal.dnd-spellbook-modal textarea.dnd-modal-form-textarea:focus {
+    border-color: var(--dnd-ui-color-border-active);
+    outline: none;
 }
 
 .dnd-modal-form-grid-3 {
