@@ -1,5 +1,5 @@
 import { App, Plugin, PluginSettingTab, Setting, MarkdownPostProcessorContext, parseYaml, MarkdownRenderChild, MarkdownRenderer, TFile, Modal, Notice, MarkdownView, normalizePath, Platform } from 'obsidian';
-import { getClassData, getSubclassData, getBackgroundData, getRaceData, getExtraFeat, getItemData, getRuleData, getSpellData, getSpellsPoolData, getClassChoiceData, getFeatMapData, readCustomJson } from './data';
+import { getClassData, getSubclassData, getBackgroundData, getRaceData, getExtraFeat, getItemData, getRuleData, getSpellData, getSpellsPoolData, getClassChoiceData, getFeatMapData } from './data';
 import { MarkdownNotes, classesMap, racesMap, backgroundsMap, itemsMap } from './registry';
 import { THEMES } from './themes';
 
@@ -372,13 +372,11 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
     }
 
     // --- Helper: Safely Render Markdown and Fix Spacing ---
-    async renderDndMarkdown(text: any, container: HTMLElement, sourcePath: string, component: MarkdownRenderChild) {
-        if (text === undefined || text === null) return;
-        const rawText = Array.isArray(text) ? text.join('\n') : String(text);
-        if (!rawText.trim()) return;
+    async renderDndMarkdown(text: string, container: HTMLElement, sourcePath: string, component: MarkdownRenderChild) {
+        if (!text) return;
 
         // 1. Trim trailing newlines AND intercept tab characters!
-        const cleanText = rawText.trim().replace(/\t/g, '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;');
+        const cleanText = text.trim().replace(/\t/g, '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;');
 
         // 2. Render the markdown securely
         await MarkdownRenderer.render(this.app, cleanText, container, sourcePath, component);
@@ -479,95 +477,25 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
         });
     }
 
-    // --- Helper: Extract features dictionary from a class or subclass object ---
-    getFeaturesMap(container: any): Record<string, any> | null {
-        if (!container || typeof container !== 'object' || Array.isArray(container)) return null;
-        if (container.features && typeof container.features === 'object' && !Array.isArray(container.features)) {
-            return container.features;
-        }
-        if (container.Features && typeof container.Features === 'object' && !Array.isArray(container.Features)) {
-            return container.Features;
-        }
-        return container;
-    }
-
-    // --- Helper: Safely retrieve an array of feature objects for a given level ---
-    getLevelFeaturesList(container: any, levelNum: number): any[] {
-        const map = this.getFeaturesMap(container);
-        if (!map) return [];
-
-        const lvlStr = String(levelNum);
-        let raw = map[lvlStr]
-            ?? map[`Level ${lvlStr}`]
-            ?? map[`Lvl ${lvlStr}`]
-            ?? map[`level ${lvlStr}`]
-            ?? map[`lvl ${lvlStr}`];
-
-        if (raw === undefined) {
-            const matchedKey = Object.keys(map).find(k => {
-                const cleaned = k.trim().toLowerCase().replace(/^(?:level|lvl)\s*/i, '');
-                return cleaned === lvlStr;
-            });
-            if (matchedKey) raw = map[matchedKey];
-        }
-
-        if (!raw) return [];
-        if (Array.isArray(raw)) return raw.filter(f => f && typeof f === 'object');
-        if (typeof raw === 'object') return [raw];
-        return [];
-    }
-
-    // --- Helper: Extract granted feats from a feature object (supports array or string, camelCase or kebab-case) ---
-    extractGrantedFeats(feature: any): string[] {
-        if (!feature || typeof feature !== 'object') return [];
-        const raw = feature.grantedFeats ?? feature.grantedFeat ?? feature['granted-feats'] ?? feature['granted-feat'];
-        if (!raw) return [];
-        if (Array.isArray(raw)) return raw.map(f => String(f ?? '').trim()).filter(Boolean);
-        if (typeof raw === 'string' && raw.trim()) return [raw.trim()];
-        return [];
-    }
-
-    // --- Helper: Extract race traits array from a race JSON object ---
-    extractRaceTraits(raceData: any): any[] {
-        if (!raceData || typeof raceData !== 'object') return [];
-        const raw = raceData.traits ?? raceData.Traits ?? raceData.features ?? raceData.Features;
-        if (!raw) return [];
-        if (Array.isArray(raw)) return raw.filter(t => t && typeof t === 'object');
-        if (typeof raw === 'object') {
-            const values: any[] = [];
-            for (const v of Object.values(raw)) {
-                if (Array.isArray(v)) {
-                    v.forEach(item => { if (item && typeof item === 'object') values.push(item); });
-                } else if (v && typeof v === 'object') {
-                    values.push(v);
-                }
-            }
-            return values;
-        }
-        return [];
-    }
-
     // --- Helper: Discover if a class grants a subclass at or before maxLevel ---
     findGrantedSubclass(classData: any, maxLevel: number): string | null {
         if (!classData) return null;
-        for (let lvl = 1; lvl <= maxLevel; lvl++) {
-            const levelFeatures = this.getLevelFeaturesList(classData, lvl);
-            for (const feature of levelFeatures) {
-                const granted = feature.grantedSubclasses
-                    ?? feature.grantedSubclass
-                    ?? feature['granted-subclasses']
-                    ?? feature['granted-subclass']
-                    ?? feature.granted_subclasses
-                    ?? feature.subclasses;
-                if (granted && typeof granted === "string") {
-                    return granted.trim().replace(/\.json$/i, '');
+        if (classData.features) {
+            for (let lvl = 1; lvl <= maxLevel; lvl++) {
+                const levelFeatures = classData.features[lvl.toString()];
+                if (Array.isArray(levelFeatures)) {
+                    for (const feature of levelFeatures) {
+                        const granted = feature.grantedSubclasses ?? feature.grantedSubclass;
+                        if (granted && typeof granted === "string") {
+                            return granted.trim().replace(/\.json$/i, '');
+                        }
+                    }
                 }
             }
         }
-        // Support "subclassFile" / "grantedSubclasses" at the root of the class JSON (README standard & Custom Rulebook)
-        const rootSubFile = classData.subclassFile ?? classData.grantedSubclasses ?? classData.grantedSubclass ?? classData.subclasses;
-        if (rootSubFile && typeof rootSubFile === "string") {
-            return rootSubFile.trim().replace(/\.json$/i, '');
+        // Support "subclassFile" at the root of the class JSON (README standard & Custom Rulebook)
+        if (classData.subclassFile && typeof classData.subclassFile === "string") {
+            return classData.subclassFile.trim().replace(/\.json$/i, '');
         }
         return null;
     }
@@ -819,29 +747,24 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                 ?? frontmatter['DnD_proficiencyBonus']
                 ?? frontmatter['proficiency_bonus'];
             const rawClass = resolveValue(blockData.class) ?? frontmatter['DnD_class'];
-            const rawSubclass = resolveValue(blockData.subclass) ?? frontmatter['DnD_subclass'];
+            const rawSubclass = resolveValue(blockData.subclass) ?? frontmatter['DnD_subclass'] ?? frontmatter['DnD_Subclass'];
             const classLevels = resolveValue(blockData['classLevels']) ?? frontmatter['DnD_classLevels'];
             const rawRace = resolveValue(blockData.race) ?? frontmatter['DnD_race'];
             const rawRaceLineage = resolveValue(blockData['raceLineage']) ?? frontmatter['DnD_raceLineage'];
             const rawBackground = resolveValue(blockData.background) ?? frontmatter['DnD_background'];
-            const rawBackgroundFeat = resolveValue(blockData.backgroundFeat ?? blockData['background-feat'] ?? blockData['background_feat'])
-                ?? frontmatter['DnD_backgroundFeat']
-                ?? frontmatter['DnD_background_feat'];
             const extraFeats = resolveValue(blockData['extraFeats']) ?? frontmatter['DnD_extraFeats'];
 
             const dndClass = hasValidValue(rawClass) ? rawClass : null;
             const subclass = hasValidValue(rawSubclass) ? rawSubclass : null;
-            // Races and backgrounds, like classes, may arrive as Obsidian lists (["Orc"]). Unwrap to the first valid
-            // string so custom entries resolve cleanly in data.ts.
+            // Races, like classes, arrive as Obsidian lists (["Orc"]). Unwrap to the first valid
+            // string so custom races (not in the bundled racesMap) resolve correctly in data.ts.
             const race = hasValidValue(rawRace)
                 ? (Array.isArray(rawRace) ? String(rawRace.find(hasValidValue)).trim() : String(rawRace).trim())
                 : null;
             const raceLineage = hasValidValue(rawRaceLineage)
                 ? (Array.isArray(rawRaceLineage) ? String(rawRaceLineage.find(hasValidValue)).trim() : String(rawRaceLineage).trim())
                 : null;
-            const background = hasValidValue(rawBackground)
-                ? (Array.isArray(rawBackground) ? String(rawBackground.find(hasValidValue)).trim() : String(rawBackground).trim())
-                : null;
+            const background = hasValidValue(rawBackground) ? rawBackground : null;
 
             let classChoicesRaw = resolveValue(blockData['classChoices']) ?? frontmatter['DnD_classChoices'];
             if (typeof classChoicesRaw === 'string' && classChoicesRaw.trim().startsWith('[')) {
@@ -850,13 +773,10 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
             const classChoicesArray = Array.isArray(classChoicesRaw) ? classChoicesRaw : [];
             const hideRaw = resolveValue(blockData.hide) ?? frontmatter['DnD_hideFeature'];
             const edition = resolveValue(blockData.edition);
-            const cleanEdition = hasValidValue(edition)
-                ? String(Array.isArray(edition) ? edition.find(hasValidValue) : edition).trim()
-                : undefined;
 
             const fetchOptions = {
                 ...this.settings,
-                edition: cleanEdition || undefined
+                edition: edition ? String(edition) : undefined
             };
 
             // Normalize the 'hide' variable into a clean array of lowercased strings
@@ -872,11 +792,10 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
             }
 
             // 5. Validate Multiclassing Levels & Ensure Numbers
-            const rawLevelScalar = Array.isArray(level) ? level.find(hasValidValue) : level;
-            const parsedLevel = Math.max(1, Number(rawLevelScalar) || 1);
+            const parsedLevel = Number(level) || 0;
             const parsedProficiencyBonus = (hasValidValue(rawProficiencyBonus) && !isNaN(Number(rawProficiencyBonus)))
                 ? Number(rawProficiencyBonus)
-                : Math.ceil(1 + (parsedLevel / 4));
+                : Math.ceil(1 + ((parsedLevel || 1) / 4));
 
             // 5.5. Parse featureUses array ([ ["<Feature/Feat-Name>", "UsesAvailable", "UsesUsed"], ... ])
             const rawFeatureUsesProp = blockData.featureUses ?? blockData['feature-uses'];
@@ -1162,23 +1081,19 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                 for (let index = 0; index < classArray.length; index++) {
                     const className = classArray[index];
                     const currentClassLevel = (classArray.length > 1 && Array.isArray(classLevels) && classLevels.length > index)
-                        ? Math.max(1, Number(classLevels[index]) || 1)
-                        : parsedLevel;
+                        ? Number(classLevels[index])
+                        : Number(level);
 
                     const classData = await getClassData(this.app, fetchOptions, className);
-                    const classFeaturesMap = this.getFeaturesMap(classData);
 
-                    if (classData && classFeaturesMap) {
+                    if (classData && classData.features) {
                         const grantedSubclassFile = this.findGrantedSubclass(classData, currentClassLevel);
                         let subclassData: any = null;
 
                         if (grantedSubclassFile && subclassArray[index]) {
                             subclassData = await getSubclassData(this.app, fetchOptions, grantedSubclassFile, subclassArray[index]);
                             if (subclassData) {
-                                const subMap = this.getFeaturesMap(subclassData) || subclassData;
-                                const levelKeys = Object.keys(subMap)
-                                    .map(k => parseInt(k.replace(/\D/g, ''), 10))
-                                    .filter(n => !isNaN(n) && n > 0);
+                                const levelKeys = Object.keys(subclassData).map(Number).filter(n => !isNaN(n));
                                 const subclassStartLevel = levelKeys.length > 0 ? Math.min(...levelKeys) : 1;
                                 if (currentClassLevel >= subclassStartLevel) {
                                     hasActiveSubclass = true;
@@ -1187,21 +1102,23 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                         }
 
                         for (let i = 1; i <= currentClassLevel; i++) {
-                            const levelFeatures = this.getLevelFeaturesList(classData, i);
-                            for (const feature of levelFeatures) {
-                                const granted = this.extractGrantedFeats(feature);
-                                if (granted.length > 0) {
-                                    finalExtraFeats.push(...granted);
-                                }
+                            const levelFeatures = classData.features[i.toString()];
+                            if (levelFeatures) {
+                                levelFeatures.forEach((feature: any) => {
+                                    if (feature.grantedFeats && Array.isArray(feature.grantedFeats)) {
+                                        finalExtraFeats.push(...feature.grantedFeats);
+                                    }
+                                });
                             }
 
                             if (subclassData) {
-                                const subLevelFeatures = this.getLevelFeaturesList(subclassData, i);
-                                for (const feature of subLevelFeatures) {
-                                    const granted = this.extractGrantedFeats(feature);
-                                    if (granted.length > 0) {
-                                        finalExtraFeats.push(...granted);
-                                    }
+                                const subLevelFeatures = subclassData[i.toString()];
+                                if (subLevelFeatures) {
+                                    subLevelFeatures.forEach((feature: any) => {
+                                        if (feature.grantedFeats && Array.isArray(feature.grantedFeats)) {
+                                            finalExtraFeats.push(...feature.grantedFeats);
+                                        }
+                                    });
                                 }
                             }
                         }
@@ -1229,7 +1146,7 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                 if (sectionName === "Class" && classArray.length === 0) continue;
                 if (sectionName === "Subclass" && (!subclass || this.settings.combineClassSubclass || !hasActiveSubclass)) continue;
                 if (sectionName === "Race" && !race) continue;
-                if (sectionName === "Background" && !background && !hasValidValue(rawBackgroundFeat)) continue;
+                if (sectionName === "Background" && !background) continue;
                 if (sectionName === "Extra Feats" && finalExtraFeats.length === 0) continue;
 
                 let sectionTitle = `${sectionName} Features:`;
@@ -1248,34 +1165,32 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                     for (let index = 0; index < classArray.length; index++) {
                         const className = classArray[index];
                         const currentClassLevel = (classArray.length > 1 && Array.isArray(classLevels) && classLevels.length > index)
-                            ? Math.max(1, Number(classLevels[index]) || 1)
-                            : parsedLevel;
+                            ? Number(classLevels[index])
+                            : Number(level);
 
                         const classData = await getClassData(this.app, fetchOptions, className);
-                        if (!classData || !this.getFeaturesMap(classData)) continue;
+                        if (!classData || !classData.features) continue;
 
                         if (classArray.length > 1) {
                             sectionDiv.createEl("h4", { text: `${className} Features (Level ${currentClassLevel})`, cls: "dnd-class-header" });
                         }
 
                         for (let i = 1; i <= currentClassLevel; i++) {
-                            const levelFeatures = this.getLevelFeaturesList(classData, i);
+                            const levelFeatures = classData.features[i.toString()];
 
-                            if (levelFeatures.length > 0) {
+                            if (levelFeatures && levelFeatures.length > 0) {
                                 for (const feature of levelFeatures) {
-                                    const featName = feature.name ?? feature.Name ?? "";
-                                    const featDesc = feature.description ?? feature.Description ?? "";
-                                    if (feature.hide === true || (featName && hiddenFeatures.includes(String(featName).toLowerCase()))) continue;
+                                    if (feature.hide === true || (feature.name && hiddenFeatures.includes(feature.name.toLowerCase()))) continue;
 
                                     const featureBlock = sectionDiv.createDiv({ cls: "dnd-feature-block" });
                                     const titleContainer = featureBlock.createDiv({ cls: "dnd-feature-title" });
 
                                     titleContainer.createEl("span", { text: feature.badge ? feature.badge : `Lvl ${i}`, cls: "dnd-level-badge" });
-                                    titleContainer.createEl("span", { text: String(featName), cls: "dnd-feature-name" });
+                                    titleContainer.createEl("span", { text: feature.name, cls: "dnd-feature-name" });
                                     renderFeatureUses(titleContainer, feature, currentClassLevel, index);
 
                                     const descDiv = featureBlock.createDiv({ cls: "dnd-feature-desc" });
-                                    await this.renderDndMarkdown(featDesc, descDiv, ctx.sourcePath, renderChild);
+                                    await this.renderDndMarkdown(feature.description, descDiv, ctx.sourcePath, renderChild);
                                 }
                             }
 
@@ -1294,20 +1209,19 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
 
                                 if (Number(choiceLevel) === i && choiceKey) {
                                     const featureData = await getClassChoiceData(this.app, fetchOptions, choiceKey);
-                                    const choiceName = featureData ? (featureData.name ?? featureData.Name) : "";
-                                    if (featureData && choiceName) {
-                                        if (featureData.hide === true || hiddenFeatures.includes(String(choiceName).toLowerCase())) continue;
+                                    if (featureData && featureData.name) {
+                                        if (featureData.hide === true || (featureData.name && hiddenFeatures.includes(featureData.name.toLowerCase()))) continue;
 
                                         const featureBlock = sectionDiv.createDiv({ cls: "dnd-feature-block" });
                                         const titleContainer = featureBlock.createDiv({ cls: "dnd-feature-title" });
 
                                         const badgeText = featureData.badge || "Choice";
                                         titleContainer.createEl("span", { text: badgeText, cls: "dnd-level-badge dnd-badge-combined" });
-                                        titleContainer.createEl("span", { text: String(choiceName), cls: "dnd-feature-name" });
+                                        titleContainer.createEl("span", { text: featureData.name, cls: "dnd-feature-name" });
                                         renderFeatureUses(titleContainer, featureData, currentClassLevel, index);
 
                                         const descDiv = featureBlock.createDiv({ cls: "dnd-feature-desc" });
-                                        await this.renderDndMarkdown(featureData.description ?? featureData.Description ?? "", descDiv, ctx.sourcePath, renderChild);
+                                        await this.renderDndMarkdown(featureData.description, descDiv, ctx.sourcePath, renderChild);
                                     }
                                 }
                             }
@@ -1316,23 +1230,21 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                             if (this.settings.combineClassSubclass && subclassArray[index] && grantedSubclassFile) {
                                 const subclassName = subclassArray[index];
                                 const subclassData = await getSubclassData(this.app, fetchOptions, grantedSubclassFile, subclassName);
-                                const subLevelFeatures = subclassData ? this.getLevelFeaturesList(subclassData, i) : [];
+                                const subLevelFeatures = subclassData ? subclassData[i.toString()] : null;
 
-                                if (subLevelFeatures.length > 0) {
+                                if (subLevelFeatures && subLevelFeatures.length > 0) {
                                     for (const feature of subLevelFeatures) {
-                                        const featName = feature.name ?? feature.Name ?? "";
-                                        const featDesc = feature.description ?? feature.Description ?? "";
-                                        if (feature.hide === true || (featName && hiddenFeatures.includes(String(featName).toLowerCase()))) continue;
+                                        if (feature.hide === true || (feature.name && hiddenFeatures.includes(feature.name.toLowerCase()))) continue;
 
                                         const featureBlock = sectionDiv.createDiv({ cls: "dnd-feature-block" });
                                         const titleContainer = featureBlock.createDiv({ cls: "dnd-feature-title" });
 
                                         titleContainer.createEl("span", { text: feature.badge ? feature.badge : `Lvl ${i}`, cls: "dnd-level-badge dnd-badge-combined" });
-                                        titleContainer.createEl("span", { text: String(featName), cls: "dnd-feature-name" });
+                                        titleContainer.createEl("span", { text: feature.name, cls: "dnd-feature-name" });
                                         renderFeatureUses(titleContainer, feature, currentClassLevel, index);
 
                                         const descDiv = featureBlock.createDiv({ cls: "dnd-feature-desc" });
-                                        await this.renderDndMarkdown(featDesc, descDiv, ctx.sourcePath, renderChild);
+                                        await this.renderDndMarkdown(feature.description, descDiv, ctx.sourcePath, renderChild);
                                     }
                                 }
                             }
@@ -1345,8 +1257,8 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                     for (let index = 0; index < classArray.length; index++) {
                         const className = classArray[index];
                         const currentClassLevel = (classArray.length > 1 && Array.isArray(classLevels) && classLevels.length > index)
-                            ? Math.max(1, Number(classLevels[index]) || 1)
-                            : parsedLevel;
+                            ? Number(classLevels[index])
+                            : Number(level);
                         const subclassName = subclassArray[index];
 
                         const classData = await getClassData(this.app, fetchOptions, className);
@@ -1361,22 +1273,20 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                             }
 
                             for (let i = 1; i <= currentClassLevel; i++) {
-                                const subLevelFeatures = this.getLevelFeaturesList(subclassData, i);
-                                if (subLevelFeatures.length > 0) {
+                                const subLevelFeatures = subclassData[i.toString()];
+                                if (subLevelFeatures && subLevelFeatures.length > 0) {
                                     for (const feature of subLevelFeatures) {
-                                        const featName = feature.name ?? feature.Name ?? "";
-                                        const featDesc = feature.description ?? feature.Description ?? "";
-                                        if (feature.hide === true || (featName && hiddenFeatures.includes(String(featName).toLowerCase()))) continue;
+                                        if (feature.hide === true || (feature.name && hiddenFeatures.includes(feature.name.toLowerCase()))) continue;
 
                                         const featureBlock = sectionDiv.createDiv({ cls: "dnd-feature-block" });
                                         const titleContainer = featureBlock.createDiv({ cls: "dnd-feature-title" });
 
                                         titleContainer.createEl("span", { text: feature.badge ? feature.badge : `Lvl ${i}`, cls: "dnd-level-badge" });
-                                        titleContainer.createEl("span", { text: String(featName), cls: "dnd-feature-name" });
+                                        titleContainer.createEl("span", { text: feature.name, cls: "dnd-feature-name" });
                                         renderFeatureUses(titleContainer, feature, currentClassLevel, index);
 
                                         const descDiv = featureBlock.createDiv({ cls: "dnd-feature-desc" });
-                                        await this.renderDndMarkdown(featDesc, descDiv, ctx.sourcePath, renderChild);
+                                        await this.renderDndMarkdown(feature.description, descDiv, ctx.sourcePath, renderChild);
                                     }
                                 }
                             }
@@ -1387,16 +1297,13 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                 // Render Race Section
                 else if (sectionName === "Race") {
                     const raceData = await getRaceData(this.app, fetchOptions, race);
-                    const raceTraits = this.extractRaceTraits(raceData);
 
-                    if (raceTraits.length > 0) {
-                        for (const trait of raceTraits) {
-                            const traitName = trait.name ?? trait.Name ?? "";
-                            const traitDesc = trait.description ?? trait.Description ?? "";
-                            if (trait.hide === true || (traitName && hiddenFeatures.includes(String(traitName).toLowerCase()))) continue;
+                    if (raceData && raceData.traits) {
+                        for (const trait of raceData.traits) {
+                            if (trait.hide === true || (trait.name && hiddenFeatures.includes(trait.name.toLowerCase()))) continue;
 
                             if (trait.lineage) {
-                                if (!raceLineage || String(trait.lineage).toLowerCase() !== String(raceLineage).toLowerCase()) {
+                                if (!raceLineage || trait.lineage.toLowerCase() !== String(raceLineage).toLowerCase()) {
                                     continue;
                                 }
                             }
@@ -1408,48 +1315,30 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                             const badgeClass = trait.lineage ? "dnd-level-badge dnd-badge-combined" : "dnd-level-badge";
 
                             titleContainer.createEl("span", { text: trait.badge ? trait.badge : defaultBadge, cls: badgeClass });
-                            titleContainer.createEl("span", { text: String(traitName), cls: "dnd-feature-name" });
+                            titleContainer.createEl("span", { text: trait.name, cls: "dnd-feature-name" });
                             renderFeatureUses(titleContainer, trait);
 
                             const descDiv = featureBlock.createDiv({ cls: "dnd-feature-desc" });
-                            await this.renderDndMarkdown(traitDesc, descDiv, ctx.sourcePath, renderChild);
+                            await this.renderDndMarkdown(trait.description, descDiv, ctx.sourcePath, renderChild);
                         }
                     }
                 }
 
                 // Render Background Section
                 else if (sectionName === "Background") {
-                    const bgData = background ? await getBackgroundData(this.app, fetchOptions, background) : null;
-                    const rawBgFeatKey = bgData
-                        ? (bgData.feat ?? bgData.Feat ?? bgData.originFeat ?? bgData.backgroundFeat ?? bgData.feats)
-                        : null;
-                    const fallbackBgFeatKey = hasValidValue(rawBackgroundFeat)
-                        ? (Array.isArray(rawBackgroundFeat) ? String(rawBackgroundFeat.find(hasValidValue)).trim() : String(rawBackgroundFeat).trim())
-                        : null;
-                    const targetBgFeat = rawBgFeatKey ?? fallbackBgFeatKey;
+                    const bgData = await getBackgroundData(this.app, fetchOptions, background);
+                    const featData = bgData && bgData.feat ? await getExtraFeat(this.app, fetchOptions, bgData.feat) : null;
 
-                    let featData = targetBgFeat ? await getExtraFeat(this.app, fetchOptions, targetBgFeat) : null;
-
-                    if (!featData && bgData && (bgData.featDescription || bgData.description)) {
-                        featData = {
-                            name: (typeof targetBgFeat === 'string' && targetBgFeat) ? targetBgFeat : (bgData.name || String(background)),
-                            description: bgData.featDescription ?? bgData.description
-                        };
-                    }
-
-                    const bgFeatName = featData ? (featData.name ?? featData.Name ?? (typeof targetBgFeat === 'string' ? targetBgFeat : "Origin Feat")) : "";
-                    const bgFeatDesc = featData ? (featData.description ?? featData.Description ?? "") : "";
-
-                    if (featData && featData.hide !== true && (!bgFeatName || !hiddenFeatures.includes(String(bgFeatName).toLowerCase()))) {
+                    if (featData && featData.hide !== true && (!featData.name || !hiddenFeatures.includes(featData.name.toLowerCase()))) {
                         const featureBlock = sectionDiv.createDiv({ cls: "dnd-feature-block" });
                         const titleContainer = featureBlock.createDiv({ cls: "dnd-feature-title" });
 
-                        titleContainer.createEl("span", { text: featData.badge ? featData.badge : "Origin Feat", cls: "dnd-level-badge" });
-                        titleContainer.createEl("span", { text: String(bgFeatName), cls: "dnd-feature-name" });
+                        titleContainer.createEl("span", { text: "Origin Feat", cls: "dnd-level-badge" });
+                        titleContainer.createEl("span", { text: featData.name, cls: "dnd-feature-name" });
                         renderFeatureUses(titleContainer, featData);
 
                         const descDiv = featureBlock.createDiv({ cls: "dnd-feature-desc" });
-                        await this.renderDndMarkdown(bgFeatDesc, descDiv, ctx.sourcePath, renderChild);
+                        await this.renderDndMarkdown(featData.description, descDiv, ctx.sourcePath, renderChild);
                     }
                 }
 
@@ -1460,20 +1349,18 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                         const featData = await getExtraFeat(this.app, fetchOptions, safeFeatId);
 
                         if (featData) {
-                            const extraFeatName = featData.name ?? featData.Name ?? safeFeatId;
-                            const extraFeatDesc = featData.description ?? featData.Description ?? "";
-                            if (featData.hide === true || (extraFeatName && hiddenFeatures.includes(String(extraFeatName).toLowerCase()))) continue;
+                            if (featData.hide === true || (featData.name && hiddenFeatures.includes(featData.name.toLowerCase()))) continue;
 
                             const featureBlock = sectionDiv.createDiv({ cls: "dnd-feature-block" });
                             const titleContainer = featureBlock.createDiv({ cls: "dnd-feature-title" });
 
                             const badgeText = featData.badge ? featData.badge : (featData.category ? featData.category : "Feat");
                             titleContainer.createEl("span", { text: badgeText, cls: "dnd-level-badge" });
-                            titleContainer.createEl("span", { text: String(extraFeatName), cls: "dnd-feature-name" });
+                            titleContainer.createEl("span", { text: featData.name, cls: "dnd-feature-name" });
                             renderFeatureUses(titleContainer, featData);
 
                             const descDiv = featureBlock.createDiv({ cls: "dnd-feature-desc" });
-                            await this.renderDndMarkdown(extraFeatDesc, descDiv, ctx.sourcePath, renderChild);
+                            await this.renderDndMarkdown(featData.description, descDiv, ctx.sourcePath, renderChild);
                         }
                     }
                 }
@@ -3710,7 +3597,7 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
         // 1. Classes & Subclasses
         const rawClass = frontmatter["DnD_class"];
         const classArray = rawClass ? (Array.isArray(rawClass) ? rawClass : [rawClass]) : [];
-        const rawSubclass = frontmatter["DnD_subclass"];
+        const rawSubclass = frontmatter["DnD_subclass"] ?? frontmatter["DnD_Subclass"];
         const subclassArray = rawSubclass ? (Array.isArray(rawSubclass) ? rawSubclass : [rawSubclass]) : [];
         const extraFeatIds: string[] = [];
 
@@ -3915,7 +3802,15 @@ class CharacterWizardModal extends Modal {
         const readCustomRouter = async (fileName: string): Promise<Record<string, any> | null> => {
             if (!basePath) return null;
             const customPath = normalizePath(`${basePath}/${fileName}`);
-            return await readCustomJson(this.app, customPath);
+            try {
+                if (await this.app.vault.adapter.exists(customPath)) {
+                    const content = await this.app.vault.adapter.read(customPath);
+                    return JSON.parse(content);
+                }
+            } catch (e) {
+                console.error(`Wizard Error: Could not read custom file at ${customPath}`, e);
+            }
+            return null;
         };
 
         // For Router Files ({ "<filename>": "<Display Name>" } like classes.json & races.json)
@@ -3928,9 +3823,7 @@ class CharacterWizardModal extends Modal {
             const displayNames = new Set<string>();
             for (const [k, v] of Object.entries(merged)) {
                 if (typeof v === "string") {
-                    const keyLooksLikeDisplay = k !== k.toLowerCase() || k.includes(' ');
-                    const valLooksLikeSlug = v === v.toLowerCase() && !v.includes(' ');
-                    displayNames.add((keyLooksLikeDisplay && valLooksLikeSlug) ? k.trim() : v.trim());
+                    displayNames.add(v.trim());
                 } else if (typeof k === "string") {
                     displayNames.add(k.trim());
                 }
@@ -4102,9 +3995,8 @@ class CharacterWizardModal extends Modal {
         // Conditional Race Lineage
         if (this.wizardData.race) {
             const raceData = await getRaceData(this.app, this.plugin.settings, this.wizardData.race);
-            const wizardRaceTraits = this.plugin.extractRaceTraits(raceData);
-            if (wizardRaceTraits.length > 0) {
-                const lineages = new Set(wizardRaceTraits.filter((t: any) => t.lineage).map((t: any) => t.lineage));
+            if (raceData && raceData.traits) {
+                const lineages = new Set(raceData.traits.filter((t: any) => t.lineage).map((t: any) => t.lineage));
                 if (lineages.size > 0) {
                     const linDiv = container.createDiv({ cls: "dnd-form-subpanel" });
                     linDiv.createEl("label", { text: "Race Lineage: ", cls: "dnd-form-label-sub" });
@@ -5669,9 +5561,12 @@ class EquipItemsModal extends Modal {
         if (basePath) {
             const customItemsPath = normalizePath(`${basePath}/items.json`);
             try {
-                const parsed = await readCustomJson(this.app, customItemsPath);
-                if (parsed && typeof parsed === "object") {
-                    Object.keys(parsed).forEach(k => itemLookupKeys.add(k));
+                if (await this.app.vault.adapter.exists(customItemsPath)) {
+                    const content = await this.app.vault.adapter.read(customItemsPath);
+                    const parsed = JSON.parse(content);
+                    if (parsed && typeof parsed === "object") {
+                        Object.keys(parsed).forEach(k => itemLookupKeys.add(k));
+                    }
                 }
             } catch (e) {
                 console.error(`EquipItemsModal: Could not read custom items.json at ${customItemsPath}`, e);
@@ -6176,7 +6071,10 @@ class InventoryModal extends Modal {
         if (basePath) {
             const customPath = normalizePath(`${basePath}/items.json`);
             try {
-                customMap = await readCustomJson(this.app, customPath);
+                if (await this.app.vault.adapter.exists(customPath)) {
+                    const content = await this.app.vault.adapter.read(customPath);
+                    customMap = JSON.parse(content);
+                }
             } catch (e) {
                 console.error(`InventoryModal: Failed to read custom items.json at ${customPath}`, e);
             }
@@ -6888,7 +6786,7 @@ class ManageCharacterModal extends Modal {
                 : level;
 
             const classData = await getClassData(this.app, this.plugin.settings, className);
-            if (!classData || !this.plugin.getFeaturesMap(classData)) continue;
+            if (!classData || !classData.features) continue;
 
             let subclassData: any = null;
             let hasActiveSubclass = false;
@@ -6901,10 +6799,15 @@ class ManageCharacterModal extends Modal {
             }
 
             for (let i = 1; i <= currentClassLevel; i++) {
-                for (const feature of this.plugin.getLevelFeaturesList(classData, i)) {
-                    finalExtraFeats.push(...this.plugin.extractGrantedFeats(feature));
-                    if (feature.hide !== true && feature.name) {
-                        discovered.add(String(feature.name).trim());
+                const levelFeatures = classData.features[i.toString()];
+                if (Array.isArray(levelFeatures)) {
+                    for (const feature of levelFeatures) {
+                        if (feature.grantedFeats && Array.isArray(feature.grantedFeats)) {
+                            finalExtraFeats.push(...feature.grantedFeats);
+                        }
+                        if (feature.hide !== true && feature.name) {
+                            discovered.add(String(feature.name).trim());
+                        }
                     }
                 }
 
@@ -6926,10 +6829,15 @@ class ManageCharacterModal extends Modal {
 
                 // Subclass Features at this level
                 if (hasActiveSubclass && subclassData) {
-                    for (const feature of this.plugin.getLevelFeaturesList(subclassData, i)) {
-                        finalExtraFeats.push(...this.plugin.extractGrantedFeats(feature));
-                        if (feature.hide !== true && feature.name) {
-                            discovered.add(String(feature.name).trim());
+                    const subLevelFeatures = subclassData[i.toString()];
+                    if (Array.isArray(subLevelFeatures)) {
+                        for (const feature of subLevelFeatures) {
+                            if (feature.grantedFeats && Array.isArray(feature.grantedFeats)) {
+                                finalExtraFeats.push(...feature.grantedFeats);
+                            }
+                            if (feature.hide !== true && feature.name) {
+                                discovered.add(String(feature.name).trim());
+                            }
                         }
                     }
                 }
@@ -6939,20 +6847,21 @@ class ManageCharacterModal extends Modal {
         // 2. Race Traits
         if (race) {
             const raceData = await getRaceData(this.app, this.plugin.settings, race);
-            for (const trait of this.plugin.extractRaceTraits(raceData)) {
-                if (trait.hide === true || !trait.name) continue;
-                if (trait.lineage) {
-                    if (!raceLineage || String(trait.lineage).toLowerCase() !== String(raceLineage).toLowerCase()) continue;
+            if (raceData && Array.isArray(raceData.traits)) {
+                for (const trait of raceData.traits) {
+                    if (trait.hide === true || !trait.name) continue;
+                    if (trait.lineage) {
+                        if (!raceLineage || trait.lineage.toLowerCase() !== String(raceLineage).toLowerCase()) continue;
+                    }
+                    discovered.add(String(trait.name).trim());
                 }
-                discovered.add(String(trait.name).trim());
             }
         }
 
         // 3. Background Feat
         if (background) {
             const bgData = await getBackgroundData(this.app, this.plugin.settings, background);
-            const bgFeatKey = bgData ? (bgData.feat ?? bgData.Feat ?? bgData.originFeat ?? bgData.backgroundFeat) : null;
-            const featData = bgFeatKey ? await getExtraFeat(this.app, this.plugin.settings, bgFeatKey) : null;
+            const featData = bgData && bgData.feat ? await getExtraFeat(this.app, this.plugin.settings, bgData.feat) : null;
             if (featData && featData.hide !== true && featData.name) {
                 discovered.add(String(featData.name).trim());
             }
@@ -7394,12 +7303,14 @@ class LevelUpModal extends Modal {
         const conScore = Number(frontmatter["DnD_constitution"]) || 10;
         this.conMod = Math.floor((conScore - 10) / 2);
 
-        // Fetch primary class and existing subclass safely
+        // Fetch primary class and existing subclass safely (supporting both DnD_subclass and DnD_Subclass)
         const classVal = frontmatter["DnD_class"];
         this.dndClass = (Array.isArray(classVal) ? classVal[0] : classVal) || "";
 
-        this.subclassFmKey = frontmatter["DnD_subclass"] 
-        const subclassVal = this.subclassFmKey;
+        this.subclassFmKey = frontmatter["DnD_subclass"] !== undefined
+            ? "DnD_subclass"
+            : (frontmatter["DnD_Subclass"] !== undefined ? "DnD_Subclass" : "DnD_subclass");
+        const subclassVal = frontmatter["DnD_subclass"] ?? frontmatter["DnD_Subclass"];
         this.currentSubclass = (Array.isArray(subclassVal) ? subclassVal[0] : subclassVal) || "";
 
         const statsList = ["strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"];
