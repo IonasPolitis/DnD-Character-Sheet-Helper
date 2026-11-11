@@ -67,13 +67,13 @@ level: frontmatter.DnD_level
 <font size=5>Info:</font>
 ```dnd-info
 mode: character
+level: frontmatter.DnD_level
 race: frontmatter.DnD_race
 raceLineage: frontmatter.DnD_raceLineage
 class: frontmatter.DnD_class
 subclass: frontmatter.DnD_subclass
 background: frontmatter.DnD_background
 backgroundFeat: frontmatter.DnD_backgroundFeat
-level: frontmatter.level
 languages: frontmatter.DnD_languages
 ```
 
