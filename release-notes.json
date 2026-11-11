@@ -1,3 +1,3 @@
 {
-      "notes": "Version 2.0.7. Fixed various bugs and added Usage Checkboxes in the dnd-features block for Class Features, Race Traits and Feats, tracked by the variable `featureUses` and added functionality for them to be reset from the Short/Long Rest buttons in dnd-health when using frontmatter."
+      "notes": "Version 2.0.8. Added the 'Unarmed Strike' weapon with extra functionality to change depending on the Martial Arts Die of the Monk, and 'Unarmored Defense' armor with the custom AC functionality by adding an extra 'Unarmored Defense' feature with the formula as its description (spports abilities by typing their name) adn the 'hide: true' option. Also added a speed Modifier option to the Classes's Features, Race Traits and Feats that automatically add a modifier to the character's speed as well as the ability to change both speed and the modifiervia the 'Manage Character' Modal"
 }
