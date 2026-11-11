@@ -595,8 +595,14 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
 
             const dndClass = hasValidValue(rawClass) ? rawClass : null;
             const subclass = hasValidValue(rawSubclass) ? rawSubclass : null;
-            const race = hasValidValue(rawRace) ? rawRace : null;
-            const raceLineage = hasValidValue(rawRaceLineage) ? rawRaceLineage : null;
+            // Races, like classes, arrive as Obsidian lists (["Orc"]). Unwrap to the first valid
+            // string so custom races (not in the bundled racesMap) resolve correctly in data.ts.
+            const race = hasValidValue(rawRace)
+                ? (Array.isArray(rawRace) ? String(rawRace.find(hasValidValue)).trim() : String(rawRace).trim())
+                : null;
+            const raceLineage = hasValidValue(rawRaceLineage)
+                ? (Array.isArray(rawRaceLineage) ? String(rawRaceLineage.find(hasValidValue)).trim() : String(rawRaceLineage).trim())
+                : null;
             const background = hasValidValue(rawBackground) ? rawBackground : null;
 
             let classChoicesRaw = resolveValue(blockData['classChoices']) ?? frontmatter['DnD_classChoices'];

@@ -21,8 +21,12 @@ import {
 import { App, normalizePath } from 'obsidian';
 
 // --- Helper: Slugify a string for resilient key/filename matching ---
-function toSlug(val: string): string {
-    return val.trim().toLowerCase().replace(/['"]/g, '').replace(/\s+/g, '-').replace(/\.json$/i, '');
+// Accepts raw frontmatter values too: Obsidian list properties arrive as arrays (e.g. ["Orc"]),
+// so we unwrap the first entry instead of crashing on `.trim()` of a non-string.
+function toSlug(val: any): string {
+    const raw = Array.isArray(val) ? val[0] : val;
+    if (typeof raw !== 'string') return '';
+    return raw.trim().toLowerCase().replace(/['"]/g, '').replace(/\s+/g, '-').replace(/\.json$/i, '');
 }
 
 // --- Helper: Case-Insensitive & Slug-Aware Dictionary Lookup ---
@@ -229,8 +233,11 @@ export async function getBackgroundData(app: App, settings: FetchSettings, backg
 }
 
 // --- Logic for Fetching Race Traits ---
-export async function getRaceData(app: App, settings: FetchSettings, raceName: string) {
-    if (!raceName) return null;
+export async function getRaceData(app: App, settings: FetchSettings, raceInput: any) {
+    // Normalize Obsidian list properties (["Orc"]) into a single clean string, same as classes
+    const rawRace = Array.isArray(raceInput) ? raceInput.find(r => typeof r === 'string' && r.trim()) : raceInput;
+    if (typeof rawRace !== 'string' || !rawRace.trim()) return null;
+    const raceName = rawRace.trim();
 
     const fetchNative = () => {
         if (settings.edition && pastEditionsRegistry[settings.edition]) {
