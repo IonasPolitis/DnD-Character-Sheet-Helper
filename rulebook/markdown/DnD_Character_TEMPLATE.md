@@ -52,6 +52,7 @@ DnD_spellSlots:
 DnD_wealthAdded:
 DnD_wealthSpent:
 DnD_hideFeature:
+DnD_featureUses:
 cssclasses:
   - character-sheet
 obsidianUIMode: preview
