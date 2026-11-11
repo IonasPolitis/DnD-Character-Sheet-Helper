@@ -1,7 +1,7 @@
 {
 	"id": "dnd-character-sheet-helper-beta",
 	"name": "DnD Character Sheet Helper - Beta",
-	"version": "2.0.6c",
+	"version": "2.0.7a",
 	"minAppVersion": "1.13.7",
 	"description": "Renders D&D 5.5e widgets for a complete Character Sheet right inside your note, saving everything on frontammter, and has an easy creation wizard to create your sheet immediately.",
 	"author": "Ionas Politis",

@@ -1,0 +1,8 @@
+{
+      "name": "Unarmed Strike",
+      "type": "weapon",
+      "description": "Melee Attack",
+      "weight": 0,
+      "damage": "1d6 Bludgeoning",
+      "cost": 0
+}

@@ -37,6 +37,38 @@
     "9",
     "9"
   ],
+  "scalingDice": [
+    "1d6",
+    "1d6",
+    "1d6",
+    "1d6",
+    "1d8",
+    "1d8",
+    "1d8",
+    "1d8",
+    "1d8",
+    "1d8",
+    "1d10",
+    "1d10",
+    "1d10",
+    "1d10",
+    "1d10",
+    "1d10",
+    "1d12",
+    "1d12",
+    "1d12",
+    "1d12",
+    "1d12",
+    "1d12",
+    "1d12",
+    "1d12",
+    "1d12",
+    "1d12",
+    "1d12",
+    "1d12",
+    "1d12",
+    "1d12"
+  ],
   "skillsPool": [
     [
       "acrobatics",
@@ -68,6 +100,15 @@
       {
         "name": "Bonus Unarmed Strike",
         "description": "You can make an Unarmed Strike as a Bonus Action."
+      },
+      {
+        "name": "Unarmored Defense",
+        "description": "While you aren't wearing armor or wielding a Shield, your base Armor Class equals 10 plus your Dexterity and Wisdom modifiers."
+      },
+      {
+        "name": "Unarmored Defense",
+        "description": "10+dexterity+wisdom",
+        "hide": true
       }
     ],
     "2": [

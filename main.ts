@@ -500,6 +500,189 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
         return null;
     }
 
+    // --- Helper: Scan Class Features (Lvl 1..currentLevel) for Hidden "Unarmored Defense" Formula ---
+    async resolveUnarmoredDefense(
+        classInput: any,
+        classLevelsInput: any,
+        totalLevel: number,
+        statsRecord: Record<string, number>,
+        fetchOptions?: any
+    ): Promise<{ baseAc: number; acBonus: number; totalAc: number; formula: string }> {
+        const options = fetchOptions || this.settings;
+        const parsedTotalLevel = Math.max(1, Number(totalLevel) || 1);
+        const dexScore = Number(statsRecord.dexterity) || 10;
+        const dexMod = Math.floor((dexScore - 10) / 2);
+
+        const classArray = Array.isArray(classInput)
+            ? classInput.map(c => String(c || "").trim()).filter(Boolean)
+            : (classInput ? [String(classInput).trim()].filter(Boolean) : []);
+
+        const statAbbrMap: Record<string, string> = {
+            str: "strength", strength: "strength",
+            dex: "dexterity", dexterity: "dexterity",
+            con: "constitution", constitution: "constitution",
+            int: "intelligence", intelligence: "intelligence",
+            wis: "wisdom", wisdom: "wisdom",
+            cha: "charisma", charisma: "charisma"
+        };
+
+        let foundFormula = "";
+
+        for (let idx = 0; idx < classArray.length; idx++) {
+            const className = classArray[idx];
+            const currentClassLevel = (classArray.length > 1 && Array.isArray(classLevelsInput) && classLevelsInput.length > idx)
+                ? (Number(classLevelsInput[idx]) || 1)
+                : parsedTotalLevel;
+
+            const classData = await getClassData(this.app, options, className);
+            if (!classData) continue;
+
+            if (classData.features) {
+                for (let lvl = 1; lvl <= currentClassLevel; lvl++) {
+                    const levelFeatures = classData.features[lvl.toString()];
+                    if (Array.isArray(levelFeatures)) {
+                        for (const feature of levelFeatures) {
+                            if (
+                                feature &&
+                                feature.hide === true &&
+                                String(feature.name || "").trim().toLowerCase() === "unarmored defense" &&
+                                feature.description
+                            ) {
+                                foundFormula = String(feature.description).trim();
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Legacy fallback if a custom class JSON used root "unarmoredDefense": "wisdom"
+            if (!foundFormula && classData.unarmoredDefense) {
+                const legacyStat = String(classData.unarmoredDefense).trim().toLowerCase();
+                if (statAbbrMap[legacyStat]) {
+                    foundFormula = `10+dexterity+${statAbbrMap[legacyStat]}`;
+                }
+            }
+
+            if (foundFormula) break;
+        }
+
+        if (!foundFormula) {
+            return {
+                baseAc: 10,
+                acBonus: dexMod,
+                totalAc: 10 + dexMod,
+                formula: "10+dexterity"
+            };
+        }
+
+        // Parse formula tokens (e.g. "10+dexterity+wisdom" or "10+dexterity+constitution")
+        let baseAc = 0;
+        let hasNumericBase = false;
+        let acBonus = 0;
+
+        const parts = foundFormula.split(/([+\-])/).map(t => t.trim()).filter(Boolean);
+        let sign = 1;
+        for (const part of parts) {
+            if (part === "+") {
+                sign = 1;
+                continue;
+            }
+            if (part === "-") {
+                sign = -1;
+                continue;
+            }
+            const num = Number(part);
+            if (!isNaN(num)) {
+                baseAc += sign * num;
+                hasNumericBase = true;
+            } else {
+                const cleanKey = part.toLowerCase().replace(/(?:_?modifier|_?mod)$/i, "").trim();
+                const fullStat = statAbbrMap[cleanKey];
+                if (fullStat) {
+                    const score = Number(statsRecord[fullStat]) || 10;
+                    const mod = Math.floor((score - 10) / 2);
+                    acBonus += sign * mod;
+                }
+            }
+            sign = 1;
+        }
+
+        if (!hasNumericBase) baseAc = 10;
+
+        return {
+            baseAc,
+            acBonus,
+            totalAc: baseAc + acBonus,
+            formula: foundFormula
+        };
+    }
+
+    // --- Helper: Calculate Dynamic Damage for "Unarmed Strike" using class scalingDice & Ability Modifiers ---
+    async resolveUnarmedStrikeDamage(
+        classInput: any,
+        classLevelsInput: any,
+        totalLevel: number,
+        statsRecord: Record<string, number>,
+        attackStat?: string,
+        fetchOptions?: any
+    ): Promise<string> {
+        const options = fetchOptions || this.settings;
+        const parsedTotalLevel = Math.max(1, Number(totalLevel) || 1);
+
+        const classArray = Array.isArray(classInput)
+            ? classInput.map(c => String(c || "").trim()).filter(Boolean)
+            : (classInput ? [String(classInput).trim()].filter(Boolean) : []);
+
+        let scalingDie = "";
+
+        for (let idx = 0; idx < classArray.length; idx++) {
+            const className = classArray[idx];
+            const currentClassLevel = (classArray.length > 1 && Array.isArray(classLevelsInput) && classLevelsInput.length > idx)
+                ? Math.max(1, Number(classLevelsInput[idx]) || 1)
+                : parsedTotalLevel;
+
+            const classData = await getClassData(this.app, options, className);
+            if (classData && Array.isArray(classData.scalingDice) && classData.scalingDice.length > 0) {
+                const dieIdx = Math.min(currentClassLevel - 1, classData.scalingDice.length - 1);
+                const candidateDie = String(classData.scalingDice[Math.max(0, dieIdx)] || "").trim();
+                if (candidateDie) {
+                    scalingDie = candidateDie;
+                    break;
+                }
+            }
+        }
+
+        const strMod = Math.floor(((Number(statsRecord.strength) || 10) - 10) / 2);
+        const dexMod = Math.floor(((Number(statsRecord.dexterity) || 10) - 10) / 2);
+
+        const cleanAtkStat = String(attackStat || "").trim().toLowerCase();
+        let chosenMod = strMod;
+
+        if (scalingDie) {
+            // Classes with scalingDice (e.g. Monk Martial Arts) use the higher of STR or DEX by default,
+            // or a custom attackStat if explicitly set to another ability (e.g. Wisdom)
+            if (cleanAtkStat && cleanAtkStat !== "strength" && cleanAtkStat !== "dexterity" && statsRecord[cleanAtkStat] !== undefined) {
+                chosenMod = Math.floor(((Number(statsRecord[cleanAtkStat]) || 10) - 10) / 2);
+            } else {
+                chosenMod = Math.max(strMod, dexMod);
+            }
+        } else {
+            if (cleanAtkStat && statsRecord[cleanAtkStat] !== undefined) {
+                chosenMod = Math.floor(((Number(statsRecord[cleanAtkStat]) || 10) - 10) / 2);
+            } else {
+                chosenMod = strMod;
+            }
+        }
+
+        const basePart = scalingDie || "1";
+        if (chosenMod > 0) {
+            return `${basePart} + ${chosenMod} Bludgeoning`;
+        } else if (chosenMod < 0) {
+            return `${basePart} - ${Math.abs(chosenMod)} Bludgeoning`;
+        }
+        return `${basePart} Bludgeoning`;
+    }
+
     async processDnDFeaturesBlock(source: string, el: HTMLElement, ctx: MarkdownPostProcessorContext) {
         // 1. Create a Render Child to manage the lifecycle and reactivity
         const renderChild = new MarkdownRenderChild(el);
@@ -1266,8 +1449,10 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                 return String(val).toLowerCase().replace(/['"]/g, '').trim().replace(/\s+/g, '-');
             };
 
-            // 1. Resolve Core Variables strictly from the code block (supports "frontmatter.<key>")
-            const dndClass = resolveValue(blockData.class);
+            // 1. Resolve Core Variables strictly from the code block (with frontmatter fallbacks for dynamic Monk/Class calculations)
+            const dndClass = resolveValue(blockData.class) ?? frontmatter["DnD_class"];
+            const classLevels = resolveValue(blockData.classLevels ?? blockData['class-levels']) ?? frontmatter["DnD_classLevels"];
+            const level = Number(resolveValue(blockData.level) ?? frontmatter["DnD_level"] ?? frontmatter["level"]) || 1;
             const background = resolveValue(blockData.background);
             const classEq = resolveValue(blockData.classEquipment ?? blockData['class-equipment']);
             const bgEq = resolveValue(blockData.backgroundEquipment ?? blockData['background-equipment']);
@@ -1276,6 +1461,16 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
             const armorSlot = resolveValue(blockData.armor);
             const armorAc = resolveValue(blockData.armorAc ?? blockData['armor_ac']);
             const edition = resolveValue(blockData.edition);
+
+            const statsRecord: Record<string, number> = {
+                strength: Number(resolveValue(blockData.strength) ?? frontmatter["DnD_strength"]) || 10,
+                dexterity: Number(resolveValue(blockData.dexterity) ?? frontmatter["DnD_dexterity"]) || 10,
+                constitution: Number(resolveValue(blockData.constitution) ?? frontmatter["DnD_constitution"]) || 10,
+                intelligence: Number(resolveValue(blockData.intelligence) ?? frontmatter["DnD_intelligence"]) || 10,
+                wisdom: Number(resolveValue(blockData.wisdom) ?? frontmatter["DnD_wisdom"]) || 10,
+                charisma: Number(resolveValue(blockData.charisma) ?? frontmatter["DnD_charisma"]) || 10
+            };
+            const attackStat = String(resolveValue(blockData.attackStat) ?? frontmatter["DnD_attackStat"] ?? "strength");
 
             const fetchOptions = {
                 ...this.settings,
@@ -1361,6 +1556,14 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                         displayName = data.name || rawItemInput;
                         displayStat = manualStat ? String(manualStat) : (expectedType === "Weapon" ? (data.damage || "-") : (data.ac || "-"));
                         displayDesc = data.description || "";
+                    }
+
+                    // Dynamic calculation for "Unarmed Strike" (scalingDice + ability modifier) and "Unarmored Defense" (10 + class modifiers)
+                    if (expectedType === "Weapon" && (safeName === "unarmed-strike" || safeName === "unarmed-strikes")) {
+                        displayStat = await this.resolveUnarmedStrikeDamage(dndClass, classLevels, level, statsRecord, attackStat, fetchOptions);
+                    } else if (expectedType === "Armor" && safeName === "unarmored-defense") {
+                        const unarmoredCalc = await this.resolveUnarmoredDefense(dndClass, classLevels, level, statsRecord, fetchOptions);
+                        displayStat = String(unarmoredCalc.totalAc);
                     }
 
                     const card = equipGrid.createDiv({ cls: "dnd-features-window dnd-equip-card" });
@@ -4611,7 +4814,29 @@ class CharacterWizardModal extends Modal {
         const wisStats = getStatDetails("wisdom");
         const chaStats = getStatDetails("charisma");
 
-        // --- Dynamic AC Modifier Calculation ---
+        // --- Dynamic AC & Unarmed Strike Calculation ---
+        const wizardStatsRecord: Record<string, number> = {
+            strength: strStats.final,
+            dexterity: dexStats.final,
+            constitution: conStats.final,
+            intelligence: intStats.final,
+            wisdom: wisStats.final,
+            charisma: chaStats.final
+        };
+
+        // If "Unarmed Strike" was chosen as the weapon, compute its dynamic scaling damage
+        const safeWizardWeapon = String(this.wizardData.weapon || "").toLowerCase().replace(/['"]/g, '').trim().replace(/\s+/g, '-');
+        if (!this.wizardData.isWeaponCustom && (safeWizardWeapon === "unarmed-strike" || safeWizardWeapon === "unarmed-strikes")) {
+            this.wizardData.weaponDamage = await this.plugin.resolveUnarmedStrikeDamage(
+                this.wizardData.dndClass,
+                null,
+                Number(this.wizardData.level) || 1,
+                wizardStatsRecord,
+                attackStat,
+                this.plugin.settings
+            );
+        }
+
         const dexMod = Math.floor((dexStats.final - 10) / 2);
         let armorAcBonus = dexMod;
         let isUnarmored = true;
@@ -4623,15 +4848,17 @@ class CharacterWizardModal extends Modal {
                 const armorData = await getItemData(this.app, this.plugin.settings, safeArmorName);
 
                 if (armorData && armorData.ac && armorData.category) {
-                    isUnarmored = false;
-                    this.wizardData.armorAc = parseInt(String(armorData.ac));
                     const category = String(armorData.category).toLowerCase();
-                    if (category.includes("light")) {
-                        armorAcBonus = dexMod;
-                    } else if (category.includes("medium")) {
-                        armorAcBonus = Math.min(dexMod, 2);
-                    } else if (category.includes("heavy")) {
-                        armorAcBonus = 0;
+                    if (!category.includes("unarmored") && safeArmorName !== "unarmored-defense") {
+                        isUnarmored = false;
+                        this.wizardData.armorAc = parseInt(String(armorData.ac));
+                        if (category.includes("light")) {
+                            armorAcBonus = dexMod;
+                        } else if (category.includes("medium")) {
+                            armorAcBonus = Math.min(dexMod, 2);
+                        } else if (category.includes("heavy")) {
+                            armorAcBonus = 0;
+                        }
                     }
                 }
             }
@@ -4649,11 +4876,15 @@ class CharacterWizardModal extends Modal {
         }
 
         if (isUnarmored) {
-            this.wizardData.armorAc = 10;
-            if (unarmoredDefense) {
-                const secondaryStat = getStatDetails(unarmoredDefense);
-                armorAcBonus = dexMod + Math.floor((secondaryStat.final - 10) / 2);
-            }
+            const unarmoredCalc = await this.plugin.resolveUnarmoredDefense(
+                this.wizardData.dndClass,
+                null,
+                Number(this.wizardData.level) || 1,
+                wizardStatsRecord,
+                this.plugin.settings
+            );
+            this.wizardData.armorAc = unarmoredCalc.baseAc;
+            armorAcBonus = unarmoredCalc.acBonus;
         }
 
         this.wizardData.armorAcBonus = armorAcBonus;
@@ -5478,6 +5709,21 @@ class EquipItemsModal extends Modal {
 
     async equipItems() {
         const updates: Record<string, any> = {};
+        const fileCache = this.app.metadataCache.getCache(this.sourcePath);
+        const frontmatter = fileCache?.frontmatter || {};
+
+        const statsRecord: Record<string, number> = {
+            strength: Number(frontmatter["DnD_strength"]) || 10,
+            dexterity: Number(frontmatter["DnD_dexterity"]) || 10,
+            constitution: Number(frontmatter["DnD_constitution"]) || 10,
+            intelligence: Number(frontmatter["DnD_intelligence"]) || 10,
+            wisdom: Number(frontmatter["DnD_wisdom"]) || 10,
+            charisma: Number(frontmatter["DnD_charisma"]) || 10
+        };
+        const level = Number(frontmatter["DnD_level"]) || 1;
+        const dndClass = frontmatter["DnD_class"];
+        const classLevels = frontmatter["DnD_classLevels"];
+        const attackStat = String(frontmatter["DnD_attackStat"] || "strength");
 
         // 1. Process Weapon Update
         const weaponChanged = this.weaponName !== this.originalWeapon || (this.isWeaponCustom && this.weaponDamage !== this.originalWeaponDamage);
@@ -5490,7 +5736,18 @@ class EquipItemsModal extends Modal {
                     const safeWeaponName = this.weaponName.toLowerCase().replace(/['"]/g, '').trim().replace(/\s+/g, '-');
                     const weaponData = await getItemData(this.app, this.plugin.settings, safeWeaponName);
                     updates["DnD_weapon"] = weaponData?.name || this.weaponName;
-                    updates["DnD_weaponDamage"] = weaponData?.damage || "";
+                    if (safeWeaponName === "unarmed-strike" || safeWeaponName === "unarmed-strikes") {
+                        updates["DnD_weaponDamage"] = await this.plugin.resolveUnarmedStrikeDamage(
+                            dndClass,
+                            classLevels,
+                            level,
+                            statsRecord,
+                            attackStat,
+                            this.plugin.settings
+                        );
+                    } else {
+                        updates["DnD_weaponDamage"] = weaponData?.damage || "";
+                    }
                 }
             } else {
                 const cleanCustomWeapon = this.weaponName.trim();
@@ -5502,28 +5759,14 @@ class EquipItemsModal extends Modal {
         // 2. Process Armor Update
         const armorChanged = this.armorName !== this.originalArmor || (this.isArmorCustom && this.armorAc !== this.originalArmorAc);
         if (armorChanged) {
-            const fileCache = this.app.metadataCache.getCache(this.sourcePath);
-            const frontmatter = fileCache?.frontmatter || {};
-            const currentDex = Number(frontmatter["DnD_dexterity"]) || 10;
-            const dexMod = Math.floor((currentDex - 10) / 2);
-
-            let unarmoredStat = frontmatter["DnD_unarmoredDefense"] ? String(frontmatter["DnD_unarmoredDefense"]).toLowerCase().trim() : "";
-            if (!unarmoredStat && frontmatter["DnD_class"]) {
-                const primaryClass = Array.isArray(frontmatter["DnD_class"]) ? frontmatter["DnD_class"][0] : frontmatter["DnD_class"];
-                const classData = await getClassData(this.app, this.plugin.settings, primaryClass);
-                if (classData?.unarmoredDefense) {
-                    unarmoredStat = String(classData.unarmoredDefense).toLowerCase().trim();
-                    updates["DnD_unarmoredDefense"] = unarmoredStat;
-                }
-            }
-
-            const getUnarmoredBonus = () => {
-                if (unarmoredStat) {
-                    const secondaryScore = Number(frontmatter[`DnD_${unarmoredStat}`]) || 10;
-                    return dexMod + Math.floor((secondaryScore - 10) / 2);
-                }
-                return dexMod;
-            };
+            const dexMod = Math.floor((statsRecord.dexterity - 10) / 2);
+            const unarmoredCalc = await this.plugin.resolveUnarmoredDefense(
+                dndClass,
+                classLevels,
+                level,
+                statsRecord,
+                this.plugin.settings
+            );
 
             if (!this.isArmorCustom) {
                 const safeArmorName = this.armorName.toLowerCase().replace(/['"]/g, '').trim().replace(/\s+/g, '-');
@@ -5532,21 +5775,27 @@ class EquipItemsModal extends Modal {
                     : null;
 
                 if (armorData && armorData.ac && armorData.category) {
-                    const baseAc = parseInt(String(armorData.ac));
                     const category = String(armorData.category).toLowerCase();
-                    let armorAcBonus = dexMod;
+                    if (category.includes("unarmored") || safeArmorName === "unarmored-defense") {
+                        updates["DnD_armor"] = armorData.name || "Unarmored Defense";
+                        updates["DnD_armorAc"] = unarmoredCalc.baseAc;
+                        updates["DnD_armorAcBonus"] = unarmoredCalc.acBonus;
+                    } else {
+                        const baseAc = parseInt(String(armorData.ac));
+                        let armorAcBonus = dexMod;
 
-                    if (category.includes("light")) armorAcBonus = dexMod;
-                    else if (category.includes("medium")) armorAcBonus = Math.min(dexMod, 2);
-                    else if (category.includes("heavy")) armorAcBonus = 0;
+                        if (category.includes("light")) armorAcBonus = dexMod;
+                        else if (category.includes("medium")) armorAcBonus = Math.min(dexMod, 2);
+                        else if (category.includes("heavy")) armorAcBonus = 0;
 
-                    updates["DnD_armor"] = armorData.name;
-                    updates["DnD_armorAc"] = baseAc;
-                    updates["DnD_armorAcBonus"] = armorAcBonus;
+                        updates["DnD_armor"] = armorData.name;
+                        updates["DnD_armorAc"] = baseAc;
+                        updates["DnD_armorAcBonus"] = armorAcBonus;
+                    }
                 } else {
                     updates["DnD_armor"] = "None";
-                    updates["DnD_armorAc"] = 10;
-                    updates["DnD_armorAcBonus"] = getUnarmoredBonus();
+                    updates["DnD_armorAc"] = unarmoredCalc.baseAc;
+                    updates["DnD_armorAcBonus"] = unarmoredCalc.acBonus;
                 }
             } else {
                 const cleanCustomArmor = this.armorName.trim();
@@ -5554,8 +5803,8 @@ class EquipItemsModal extends Modal {
 
                 if (!cleanCustomArmor || cleanCustomArmor.toLowerCase() === "none") {
                     updates["DnD_armor"] = "None";
-                    updates["DnD_armorAc"] = !isNaN(parsedCustomAc) ? parsedCustomAc : 10;
-                    updates["DnD_armorAcBonus"] = !isNaN(parsedCustomAc) ? 0 : getUnarmoredBonus();
+                    updates["DnD_armorAc"] = !isNaN(parsedCustomAc) ? parsedCustomAc : unarmoredCalc.baseAc;
+                    updates["DnD_armorAcBonus"] = !isNaN(parsedCustomAc) ? 0 : unarmoredCalc.acBonus;
                 } else {
                     updates["DnD_armor"] = cleanCustomArmor;
                     updates["DnD_armorAc"] = !isNaN(parsedCustomAc) ? parsedCustomAc : 10;
@@ -6683,8 +6932,25 @@ class ManageCharacterModal extends Modal {
         // 1. Process Stats Update
         Object.entries(this.currentStats).forEach(([stat, value]) => updates[`DnD_${stat}`] = value);
 
-        // 2. Process Dynamic Armor AC Bonus (based on new Dex & Unarmored Defense!)
-        const currentArmor = frontmatter["DnD_armor"] || "";
+        // 2. Process Dynamic Armor AC Bonus & Unarmed Strike Damage (based on new Stats & Unarmored Defense!)
+        const currentArmor = String(frontmatter["DnD_armor"] || "");
+        const currentWeapon = String(frontmatter["DnD_weapon"] || "");
+        const level = Number(frontmatter["DnD_level"]) || 1;
+        const dndClass = frontmatter["DnD_class"];
+        const classLevels = frontmatter["DnD_classLevels"];
+
+        const safeWeaponName = currentWeapon.toLowerCase().replace(/['"]/g, '').trim().replace(/\s+/g, '-');
+        if (safeWeaponName === "unarmed-strike" || safeWeaponName === "unarmed-strikes") {
+            updates["DnD_weaponDamage"] = await this.plugin.resolveUnarmedStrikeDamage(
+                dndClass,
+                classLevels,
+                level,
+                this.currentStats,
+                this.currentAttackStat,
+                this.plugin.settings
+            );
+        }
+
         const newDexMod = Math.floor((this.currentStats.dexterity - 10) / 2);
         let armorAcBonus = newDexMod;
         let isUnarmored = true;
@@ -6694,29 +6960,28 @@ class ManageCharacterModal extends Modal {
             const armorData = await getItemData(this.app, this.plugin.settings, safeArmorName);
 
             if (armorData && armorData.category) {
-                isUnarmored = false;
                 const category = String(armorData.category).toLowerCase();
-                if (category.includes("light")) armorAcBonus = newDexMod;
-                else if (category.includes("medium")) armorAcBonus = Math.min(newDexMod, 2);
-                else if (category.includes("heavy")) armorAcBonus = 0;
+                if (!category.includes("unarmored") && safeArmorName !== "unarmored-defense") {
+                    isUnarmored = false;
+                    if (category.includes("light")) armorAcBonus = newDexMod;
+                    else if (category.includes("medium")) armorAcBonus = Math.min(newDexMod, 2);
+                    else if (category.includes("heavy")) armorAcBonus = 0;
+                }
             } else if (Number(frontmatter["DnD_armorAc"]) > 10) {
                 isUnarmored = false;
             }
         }
 
         if (isUnarmored) {
-            let unarmoredStat = frontmatter["DnD_unarmoredDefense"] ? String(frontmatter["DnD_unarmoredDefense"]).toLowerCase().trim() : "";
-            if (!unarmoredStat && frontmatter["DnD_class"]) {
-                const primaryClass = Array.isArray(frontmatter["DnD_class"]) ? frontmatter["DnD_class"][0] : frontmatter["DnD_class"];
-                const classData = await getClassData(this.app, this.plugin.settings, primaryClass);
-                if (classData?.unarmoredDefense) {
-                    unarmoredStat = String(classData.unarmoredDefense).toLowerCase().trim();
-                    updates["DnD_unarmoredDefense"] = unarmoredStat;
-                }
-            }
-            if (unarmoredStat && this.currentStats[unarmoredStat] !== undefined) {
-                armorAcBonus = newDexMod + Math.floor((this.currentStats[unarmoredStat] - 10) / 2);
-            }
+            const unarmoredCalc = await this.plugin.resolveUnarmoredDefense(
+                dndClass,
+                classLevels,
+                level,
+                this.currentStats,
+                this.plugin.settings
+            );
+            updates["DnD_armorAc"] = unarmoredCalc.baseAc;
+            armorAcBonus = unarmoredCalc.acBonus;
         }
 
         updates["DnD_armorAcBonus"] = armorAcBonus;
@@ -7255,42 +7520,13 @@ class LevelUpModal extends Modal {
 
         if (finalExpertise.length > 0) updates["DnD_skillExpertise"] = JSON.stringify(finalExpertise);
 
-        // --- Handle ASI / Feats & Recalculate AC Bonus if Stats Changed ---
+        // --- Handle ASI / Feats & Recalculate Unarmed Strike / AC Bonus on Level Up ---
         if (this.isAsiLevel) {
             if (this.asiChoice === "asi") {
                 if (this.asiStat1) this.currentStats[this.asiStat1] += 1;
                 if (this.asiStat2) this.currentStats[this.asiStat2] += 1;
 
                 Object.keys(this.currentStats).forEach(s => updates[`DnD_${s}`] = this.currentStats[s]);
-
-                // Recalculate AC Bonus in case Dexterity or Unarmored Defense stat increased
-                const currentArmor = frontmatter["DnD_armor"] || "";
-                const newDexMod = Math.floor((this.currentStats.dexterity - 10) / 2);
-                let armorAcBonus = newDexMod;
-                let isUnarmored = true;
-
-                if (currentArmor && currentArmor.toLowerCase() !== "none") {
-                    const safeArmorName = currentArmor.toLowerCase().replace(/['"]/g, '').trim().replace(/\s+/g, '-');
-                    const armorData = await getItemData(this.app, this.plugin.settings, safeArmorName);
-
-                    if (armorData && armorData.category) {
-                        isUnarmored = false;
-                        const category = String(armorData.category).toLowerCase();
-                        if (category.includes("light")) armorAcBonus = newDexMod;
-                        else if (category.includes("medium")) armorAcBonus = Math.min(newDexMod, 2);
-                        else if (category.includes("heavy")) armorAcBonus = 0;
-                    } else if (Number(frontmatter["DnD_armorAc"]) > 10) {
-                        isUnarmored = false;
-                    }
-                }
-
-                if (isUnarmored) {
-                    const unarmoredStat = frontmatter["DnD_unarmoredDefense"] ? String(frontmatter["DnD_unarmoredDefense"]).toLowerCase().trim() : "";
-                    if (unarmoredStat && this.currentStats[unarmoredStat] !== undefined) {
-                        armorAcBonus = newDexMod + Math.floor((this.currentStats[unarmoredStat] - 10) / 2);
-                    }
-                }
-                updates["DnD_armorAcBonus"] = armorAcBonus;
             }
             else if (this.asiChoice === "feat" && this.chosenFeat) {
                 let existingFeats = frontmatter["DnD_extraFeats"];
@@ -7300,6 +7536,56 @@ class LevelUpModal extends Modal {
                 updates["DnD_extraFeats"] = [...existingFeats, this.chosenFeat];
             }
         }
+
+        // Always recalculate Unarmed Strike damage (in case scalingDice increased at this level or ASI boosted STR/DEX)
+        const currentWeapon = String(frontmatter["DnD_weapon"] || "");
+        const safeWeaponName = currentWeapon.toLowerCase().replace(/['"]/g, '').trim().replace(/\s+/g, '-');
+        if (safeWeaponName === "unarmed-strike" || safeWeaponName === "unarmed-strikes") {
+            updates["DnD_weaponDamage"] = await this.plugin.resolveUnarmedStrikeDamage(
+                frontmatter["DnD_class"] || this.dndClass,
+                frontmatter["DnD_classLevels"],
+                this.newLevel,
+                this.currentStats,
+                String(frontmatter["DnD_attackStat"] || "strength"),
+                this.plugin.settings
+            );
+        }
+
+        // Recalculate AC Bonus in case Dexterity/Unarmored Defense stat increased or Unarmored Defense was unlocked
+        const currentArmor = String(frontmatter["DnD_armor"] || "");
+        const newDexMod = Math.floor((this.currentStats.dexterity - 10) / 2);
+        let armorAcBonus = newDexMod;
+        let isUnarmored = true;
+
+        if (currentArmor && currentArmor.toLowerCase() !== "none") {
+            const safeArmorName = currentArmor.toLowerCase().replace(/['"]/g, '').trim().replace(/\s+/g, '-');
+            const armorData = await getItemData(this.app, this.plugin.settings, safeArmorName);
+
+            if (armorData && armorData.category) {
+                const category = String(armorData.category).toLowerCase();
+                if (!category.includes("unarmored") && safeArmorName !== "unarmored-defense") {
+                    isUnarmored = false;
+                    if (category.includes("light")) armorAcBonus = newDexMod;
+                    else if (category.includes("medium")) armorAcBonus = Math.min(newDexMod, 2);
+                    else if (category.includes("heavy")) armorAcBonus = 0;
+                }
+            } else if (Number(frontmatter["DnD_armorAc"]) > 10) {
+                isUnarmored = false;
+            }
+        }
+
+        if (isUnarmored) {
+            const unarmoredCalc = await this.plugin.resolveUnarmoredDefense(
+                frontmatter["DnD_class"] || this.dndClass,
+                frontmatter["DnD_classLevels"],
+                this.newLevel,
+                this.currentStats,
+                this.plugin.settings
+            );
+            updates["DnD_armorAc"] = unarmoredCalc.baseAc;
+            armorAcBonus = unarmoredCalc.acBonus;
+        }
+        updates["DnD_armorAcBonus"] = armorAcBonus;
 
         // 1. Thread-safe Frontmatter Update
         await this.plugin.updateCharacterFrontmatter(this.sourcePath, updates);

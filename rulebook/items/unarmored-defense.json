@@ -1,0 +1,9 @@
+{
+      "name": "Unarmored Defense",
+      "type": "armor",
+      "description": "10 + Unarmored Defense Modifiers",
+      "weight": 0,
+      "ac": "10",
+      "category": "unarmored",
+      "cost": 0
+}

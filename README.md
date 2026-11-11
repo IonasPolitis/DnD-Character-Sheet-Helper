@@ -300,6 +300,8 @@ Cantrips are on "Level 0" and the rest of the Spell Levels are as normal.
       "class": "<Class_Name>",
       "hitDice": "<Hit_Dice>",
       "savingThroughProf": ["<List_of_Abilities>"],
+      "proficiencyBonus": ["<Level_1_Bonus>", "..."], // <optional>
+      "scalingDice": ["<Level_1_Die>", "..."], // <optional>
       "skillsPool": [["<List_of_Skills>"], <Number_of_Skills_that_can_be_chosen> ],
       "startingEquipment": {
             "A": {
@@ -346,6 +348,10 @@ The `granted-feat` variable automatically grants the player a certain feat when 
 The `bility-score-improvement` specifically will trigger the option on the Level up button to improve your ability scores as per the Player's Handbook.
 
 The `uses` variable sets how many uses this feature has, and when used checkboxes will appear at the top right of that feature's line acording to the value it was set. For the amount of uses it accepts single numbers and in string it accepts math (+, -,, *, /) and will also automatically imput the value of a core DnD ability.
+
+The `scalingDice` array stores level-scaling dice for a class (such as a Monk's Martial Arts die) and is used when the **Unarmed Strike** weapon is equipped.
+
+To give a class a custom **Unarmored Defense** AC calculation, include a hidden feature named `"Unarmored Defense"` (`"hide": true`) at the level it is unlocked with its `"description"` set to the AC formula (for example, `"10+dexterity+wisdom"` for Monk or `"10+dexterity+constitution"` for Barbarian).
 
 - $class-subclasses.json:
 ```json
