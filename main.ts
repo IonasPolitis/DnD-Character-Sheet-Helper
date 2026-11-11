@@ -3136,7 +3136,16 @@ class CharacterWizardModal extends Modal {
         classChosenItems: "", backgroundChosenItems: "",
         weapon: "", weaponDamage: "", armor: "", armorAc: "",
         isWeaponCustom: false, isArmorCustom: false,
+        languages: "", extraFeats: "", speed: 30, maxHealth: 0,
+        chosenSkills: [],
+        chosenBgSkills: [],
+        chosenAbilityBonuses: [],
+        classChoices: [], // Stores the dynamic Class Choices [Router, Key, Level, ChoiceIndex]
+        expertiseChoices: [],
     };
+
+    // Incremented on every renderStep() call so stale (slower) async renders are discarded
+    private renderToken = 0;
 
     constructor(app: App, plugin: DnDCharacterSheetHelperPlugin) {
         super(app);
@@ -3244,14 +3253,19 @@ class CharacterWizardModal extends Modal {
     // Main rendering engine for the Wizard
     async renderStep() {
         const { contentEl } = this;
-        contentEl.empty();
+        const token = ++this.renderToken;
 
-        contentEl.createEl("h2", {
+        // Build the whole step in a DETACHED container first. The step renderers await
+        // rulebook lookups (race/class/subclass data), so emptying contentEl up front would
+        // leave the modal blank/collapsed during those awaits — causing the flicker.
+        const buildEl = document.createElement("div");
+
+        buildEl.createEl("h2", {
             text: `Character Creation Wizard (Step ${this.currentStep} of ${this.totalSteps})`,
             cls: "dnd-section-header"
         });
 
-        const stepContainer = contentEl.createDiv({ cls: "dnd-features-window" });
+        const stepContainer = buildEl.createDiv({ cls: "dnd-features-window" });
 
         // We MUST await all steps now so dynamic lineages and subclasses can fetch data before rendering
         if (this.currentStep === 1) {
@@ -3266,7 +3280,10 @@ class CharacterWizardModal extends Modal {
             this.renderStepFive(stepContainer); // Finalization Step
         }
 
-        const navContainer = contentEl.createDiv({ cls: "dnd-wizard-nav" });
+        // A newer renderStep() started while we were awaiting — drop this outdated render
+        if (token !== this.renderToken) return;
+
+        const navContainer = buildEl.createDiv({ cls: "dnd-wizard-nav" });
 
         const backBtn = navContainer.createEl("button", { text: "Back" });
         backBtn.disabled = this.currentStep === 1;
@@ -3287,9 +3304,20 @@ class CharacterWizardModal extends Modal {
                 this.currentStep++;
                 this.renderStep();
             } else {
-                await this.finishWizard();
+                nextBtn.disabled = true;
+                try {
+                    await this.finishWizard();
+                } catch (error) {
+                    console.error("Character Wizard: Failed to generate character sheet:", error);
+                    new Notice("Error: Could not generate the character sheet. Check the console for details.");
+                    nextBtn.disabled = false;
+                }
             }
         };
+
+        // Swap the fully-built step in synchronously (no paint in between = no flicker)
+        contentEl.empty();
+        while (buildEl.firstChild) contentEl.appendChild(buildEl.firstChild);
     }
 
     async renderStepOne(container: HTMLElement) {

@@ -2207,8 +2207,17 @@
     border-top: 1px solid var(--dnd-ui-color-border-primary);
 }
 
-.dnd-form-readonly-box {
+/* The extra "div.dnd-features-window > div > div" selector matches the specificity of the
+   generic ".dnd-features-window>div>div:last-child" utility rule (which strips the
+   bottom border + padding) and wins because it is declared later in the file. */
+.dnd-form-readonly-box,
+.dnd-features-window>div>div.dnd-form-readonly-box {
+    display: block;
+    width: fit-content;
+    max-width: 100%;
+    box-sizing: border-box;
     padding: 8px 12px;
+    margin-bottom: 0;
     background-color: var(--dnd-ui-color-bg-darker);
     border: 1px solid var(--dnd-ui-color-border-primary);
     border-radius: 4px;
