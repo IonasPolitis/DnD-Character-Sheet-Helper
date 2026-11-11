@@ -77,9 +77,23 @@
 .dnd-feature-title {
     display: flex;
     align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
     margin-bottom: 4px;
     color: var(--dnd-ui-color-text-bright);
     font-weight: bold;
+}
+
+.dnd-feature-uses-tracker {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.dnd-feature-uses-tracker .dnd-spell-slots-pips {
+    flex-wrap: wrap;
+    justify-content: flex-end;
 }
 
 .dnd-level-badge {

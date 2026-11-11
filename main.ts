@@ -167,7 +167,7 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
         this.registerEvent(this.app.vault.on('create', (file) => refreshIfCustomRulebookFile(file.path)));
         this.registerEvent(this.app.vault.on('delete', (file) => refreshIfCustomRulebookFile(file.path)));
 
-        // Automatically reset expended spell slots (index 1 -> "0") in the 9-element array when Long Rest is clicked
+        // Automatically reset expended spell slots and feature uses when Long Rest is clicked
         this.registerDomEvent(document, 'click', async (evt: MouseEvent) => {
             const target = evt.target as HTMLElement;
             const btn = target?.closest('button');
@@ -176,21 +176,35 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                 if (activeFile) {
                     await this.app.fileManager.processFrontMatter(activeFile, (fm: Record<string, any>) => {
                         const slotKey = fm["DnD_spellSlots"] !== undefined ? "DnD_spellSlots" : (fm["DnD_spellsSlots"] !== undefined ? "DnD_spellsSlots" : null);
-                        if (!slotKey) return;
+                        if (slotKey) {
+                            let rawSlots = fm[slotKey];
+                            if (typeof rawSlots === "string" && rawSlots.trim().startsWith("[")) {
+                                try { rawSlots = JSON.parse(rawSlots.trim()); } catch { rawSlots = null; }
+                            }
 
-                        let rawSlots = fm[slotKey];
-                        if (typeof rawSlots === "string" && rawSlots.trim().startsWith("[")) {
-                            try { rawSlots = JSON.parse(rawSlots.trim()); } catch { rawSlots = null; }
+                            if (Array.isArray(rawSlots)) {
+                                const resetSlots = rawSlots.map((pair: any) => {
+                                    if (Array.isArray(pair) && pair.length >= 2) {
+                                        return [String(pair[0]), "0"];
+                                    }
+                                    return ["0", "0"];
+                                });
+                                fm[slotKey] = JSON.stringify(resetSlots);
+                            }
                         }
 
-                        if (Array.isArray(rawSlots)) {
-                            const resetSlots = rawSlots.map((pair: any) => {
-                                if (Array.isArray(pair) && pair.length >= 2) {
-                                    return [String(pair[0]), "0"];
-                                }
-                                return ["0", "0"];
-                            });
-                            fm[slotKey] = JSON.stringify(resetSlots);
+                        if (fm["DnD_featureUses"] !== undefined) {
+                            let rawFeatureUses = fm["DnD_featureUses"];
+                            if (typeof rawFeatureUses === "string" && rawFeatureUses.trim().startsWith("[")) {
+                                try { rawFeatureUses = JSON.parse(rawFeatureUses.trim()); } catch { rawFeatureUses = null; }
+                            }
+
+                            if (Array.isArray(rawFeatureUses)) {
+                                const resetFeatureUses = rawFeatureUses
+                                    .filter((tuple: any) => Array.isArray(tuple) && tuple.length >= 2 && tuple[0])
+                                    .map((tuple: any) => [String(tuple[0]), String(tuple[1]), "0"]);
+                                fm["DnD_featureUses"] = JSON.stringify(resetFeatureUses);
+                            }
                         }
                     });
                 }
@@ -534,6 +548,8 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
         const renderChild = new MarkdownRenderChild(el);
         ctx.addChild(renderChild);
 
+        let isUpdatingFeatureUses = false;
+
         // 2. Wrap our entire rendering logic into a reusable function
         const renderContent = async () => {
             // Create a temporary wrapper to prevent UI flickering while awaiting data
@@ -561,11 +577,13 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                     if (trimmed.startsWith('frontmatter.')) {
                         const propName = trimmed.replace('frontmatter.', '').trim();
                         if (frontmatter[propName] !== undefined) return frontmatter[propName];
-                        // Fallback for legacy template keys (level <-> DnD_level, DnD_Subclass <-> DnD_subclass)
+                        // Fallback for legacy template keys (level <-> DnD_level, DnD_Subclass <-> DnD_subclass, proficiencyBonus <-> DnD_proficiencyBonus)
                         if (propName === 'level') return frontmatter['DnD_level'];
                         if (propName === 'DnD_level') return frontmatter['level'];
                         if (propName === 'DnD_Subclass') return frontmatter['DnD_subclass'];
                         if (propName === 'DnD_subclass') return frontmatter['DnD_Subclass'];
+                        if (propName === 'proficiencyBonus' || propName === 'proficiency_bonus') return frontmatter['DnD_proficiencyBonus'];
+                        if (propName === 'DnD_proficiencyBonus') return frontmatter['proficiency_bonus'] ?? frontmatter['proficiencyBonus'];
                         return undefined;
                     }
                 }
@@ -585,6 +603,9 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
 
             // 4. Resolve all core variables
             const level = resolveValue(blockData.level) ?? frontmatter['DnD_level'] ?? frontmatter['level'] ?? 1;
+            const rawProficiencyBonus = resolveValue(blockData.proficiencyBonus ?? blockData['proficiency_bonus'])
+                ?? frontmatter['DnD_proficiencyBonus']
+                ?? frontmatter['proficiency_bonus'];
             const rawClass = resolveValue(blockData.class) ?? frontmatter['DnD_class'];
             const rawSubclass = resolveValue(blockData.subclass) ?? frontmatter['DnD_subclass'] ?? frontmatter['DnD_Subclass'];
             const classLevels = resolveValue(blockData['classLevels']) ?? frontmatter['DnD_classLevels'];
@@ -632,6 +653,233 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
 
             // 5. Validate Multiclassing Levels & Ensure Numbers
             const parsedLevel = Number(level) || 0;
+            const parsedProficiencyBonus = (hasValidValue(rawProficiencyBonus) && !isNaN(Number(rawProficiencyBonus)))
+                ? Number(rawProficiencyBonus)
+                : Math.ceil(1 + ((parsedLevel || 1) / 4));
+
+            // 5.5. Parse featureUses array ([ ["<Feature/Feat-Name>", "UsesAvailable", "UsesUsed"], ... ])
+            const rawFeatureUsesProp = blockData.featureUses ?? blockData['feature-uses'];
+            let targetFeatureUsesFmKey = "DnD_featureUses";
+            if (typeof rawFeatureUsesProp === "string") {
+                const trimmedProp = rawFeatureUsesProp.trim().replace(/^\{\{\s*|\s*\}\}$/g, '');
+                if (trimmedProp.startsWith("frontmatter.")) {
+                    targetFeatureUsesFmKey = trimmedProp.replace("frontmatter.", "").trim() || "DnD_featureUses";
+                }
+            }
+
+            let featureUsesRaw = resolveValue(rawFeatureUsesProp) ?? frontmatter[targetFeatureUsesFmKey];
+            if (typeof featureUsesRaw === "string" && featureUsesRaw.trim().startsWith("[")) {
+                try { featureUsesRaw = JSON.parse(featureUsesRaw.trim()); } catch { featureUsesRaw = []; }
+            }
+
+            const featureUsesState: { name: string; max: number; used: number }[] = [];
+            if (Array.isArray(featureUsesRaw)) {
+                for (const item of featureUsesRaw) {
+                    const tuple = resolveValue(item);
+                    if (Array.isArray(tuple) && tuple.length >= 3 && tuple[0]) {
+                        const fName = String(tuple[0]).trim();
+                        const fMax = Math.max(0, Number(String(tuple[1]).replace(/[^0-9.-]/g, "")) || 0);
+                        const fUsed = Math.max(0, Number(String(tuple[2]).replace(/[^0-9.-]/g, "")) || 0);
+                        if (fName) {
+                            featureUsesState.push({
+                                name: fName,
+                                max: fMax,
+                                used: fMax > 0 ? Math.min(fMax, fUsed) : fUsed
+                            });
+                        }
+                    }
+                }
+            }
+
+            let featureUsesNeedsSync = false;
+            const saveFeatureUsesToFrontmatter = async () => {
+                const serialized: [string, string, string][] = featureUsesState.map(entry => [
+                    String(entry.name),
+                    String(entry.max),
+                    String(entry.used)
+                ]);
+                isUpdatingFeatureUses = true;
+                try {
+                    await this.updateCharacterFrontmatter(ctx.sourcePath, {
+                        [targetFeatureUsesFmKey]: JSON.stringify(serialized)
+                    });
+                } finally {
+                    setTimeout(() => { isUpdatingFeatureUses = false; }, 150);
+                }
+            };
+
+            // Helper: Evaluate a feature's "uses" formula (supports blockData vars, frontmatter vars, and +, -, *, /)
+            // When evaluating inside a Class or Subclass feature, `contextClassLevel` is passed (which already
+            // cross-references `classLevels[index]` when multi-classing or falls back to `level`), so `"uses": "level"`
+            // in a class JSON automatically uses that specific class's level!
+            const evaluateFeatureUses = (rawUses: any, contextClassLevel?: number, contextClassIndex?: number): number => {
+                if (rawUses === undefined || rawUses === null || rawUses === "") return 0;
+                if (typeof rawUses === "number") return Math.max(0, Math.floor(rawUses));
+
+                const exprStr = String(rawUses).trim();
+                if (!exprStr) return 0;
+
+                const resolveVariable = (ident: string): number => {
+                    const cleanIdent = ident.trim();
+                    if (cleanIdent === "proficiencyBonus" || cleanIdent === "proficiency_bonus" || cleanIdent === "DnD_proficiencyBonus") {
+                        return parsedProficiencyBonus;
+                    }
+                    if (cleanIdent === "level" || cleanIdent === "DnD_level" || cleanIdent === "classLevels" || cleanIdent === "classLevel" || cleanIdent === "DnD_classLevels") {
+                        if (contextClassLevel !== undefined) return Number(contextClassLevel) || 0;
+                        if (Array.isArray(classLevels) && contextClassIndex !== undefined && classLevels.length > contextClassIndex) {
+                            return Number(classLevels[contextClassIndex]) || 0;
+                        }
+                        return parsedLevel;
+                    }
+
+                    // 1. Check dnd-features code block variables first
+                    if (blockData && blockData[cleanIdent] !== undefined) {
+                        const resolved = resolveValue(blockData[cleanIdent]);
+                        if (Array.isArray(resolved)) {
+                            const picked = (contextClassIndex !== undefined && resolved.length > contextClassIndex)
+                                ? resolved[contextClassIndex]
+                                : resolved[0];
+                            return Number(picked) || 0;
+                        }
+                        return Number(resolved) || 0;
+                    }
+
+                    // 2. Fallback to frontmatter variables (exact name or prefixed with DnD_)
+                    const fmCandidate = frontmatter[cleanIdent] !== undefined
+                        ? frontmatter[cleanIdent]
+                        : frontmatter[`DnD_${cleanIdent}`];
+                    if (fmCandidate !== undefined) {
+                        if (Array.isArray(fmCandidate)) {
+                            const picked = (contextClassIndex !== undefined && fmCandidate.length > contextClassIndex)
+                                ? fmCandidate[contextClassIndex]
+                                : fmCandidate[0];
+                            return Number(picked) || 0;
+                        }
+                        return Number(fmCandidate) || 0;
+                    }
+
+                    return 0;
+                };
+
+                // Substitute all variable identifiers (supporting optional "frontmatter." prefix) with numeric values
+                const numericExpr = exprStr.replace(/(?:frontmatter\.)?[a-zA-Z_][a-zA-Z0-9_]*/g, (match) => {
+                    const varName = match.startsWith("frontmatter.") ? match.slice("frontmatter.".length) : match;
+                    return String(resolveVariable(varName));
+                });
+
+                // Tokenize numbers, +, -, *, /, (, )
+                const tokens = numericExpr.match(/(\d+(?:\.\d+)?|\.\d+|[+\-*/()])/g);
+                if (!tokens || tokens.length === 0) return 0;
+
+                let pos = 0;
+                const parseExpr = (): number => {
+                    let val = parseTerm();
+                    while (pos < tokens.length && (tokens[pos] === "+" || tokens[pos] === "-")) {
+                        const op = tokens[pos++];
+                        const right = parseTerm();
+                        val = op === "+" ? val + right : val - right;
+                    }
+                    return val;
+                };
+                const parseTerm = (): number => {
+                    let val = parseFactor();
+                    while (pos < tokens.length && (tokens[pos] === "*" || tokens[pos] === "/")) {
+                        const op = tokens[pos++];
+                        const right = parseFactor();
+                        val = op === "*" ? val * right : (right !== 0 ? val / right : 0);
+                    }
+                    return val;
+                };
+                const parseFactor = (): number => {
+                    if (pos >= tokens.length) return 0;
+                    const tok = tokens[pos];
+                    if (tok === "+") {
+                        pos++;
+                        return parseFactor();
+                    }
+                    if (tok === "-") {
+                        pos++;
+                        return -parseFactor();
+                    }
+                    if (tok === "(") {
+                        pos++;
+                        const val = parseExpr();
+                        if (pos < tokens.length && tokens[pos] === ")") pos++;
+                        return val;
+                    }
+                    pos++;
+                    const num = Number(tok);
+                    return isNaN(num) ? 0 : num;
+                };
+
+                const result = parseExpr();
+                if (!isFinite(result) || isNaN(result)) return 0;
+                return Math.max(0, Math.floor(result));
+            };
+
+            // Helper: Render interactive Uses pips on the top-right of a feature/feat title bar
+            const renderFeatureUses = (
+                titleContainer: HTMLElement,
+                featureObj: any,
+                contextClassLevel?: number,
+                contextClassIndex?: number
+            ) => {
+                if (!featureObj || featureObj.uses === undefined || featureObj.uses === null || featureObj.uses === "") return;
+                const maxUses = evaluateFeatureUses(featureObj.uses, contextClassLevel, contextClassIndex);
+                if (maxUses <= 0 || !featureObj.name) return;
+
+                const cleanFeatureName = String(featureObj.name).trim();
+                let stateEntry = featureUsesState.find(
+                    e => e.name.toLowerCase() === cleanFeatureName.toLowerCase()
+                );
+                if (!stateEntry) {
+                    stateEntry = { name: cleanFeatureName, max: maxUses, used: 0 };
+                    featureUsesState.push(stateEntry);
+                    featureUsesNeedsSync = true;
+                } else {
+                    const clampedUsed = Math.min(maxUses, Math.max(0, stateEntry.used));
+                    if (stateEntry.max !== maxUses || stateEntry.used !== clampedUsed) {
+                        stateEntry.max = maxUses;
+                        stateEntry.used = clampedUsed;
+                        featureUsesNeedsSync = true;
+                    }
+                }
+
+                const usesTracker = titleContainer.createDiv({ cls: "dnd-feature-uses-tracker" });
+                usesTracker.createEl("span", {
+                    text: "Uses:",
+                    cls: "dnd-spell-slots-label"
+                });
+
+                const pipsContainer = usesTracker.createDiv({ cls: "dnd-spell-slots-pips" });
+                const pipStates: boolean[] = Array.from({ length: maxUses }, (_, idx) => idx < stateEntry!.used);
+
+                const applyPipVisual = (pipEl: HTMLElement, active: boolean) => {
+                    pipEl.classList.toggle("is-used", active);
+                    pipEl.setAttribute("title", active ? "Tap to restore use" : "Tap to expend use");
+                };
+
+                for (let uIdx = 0; uIdx < maxUses; uIdx++) {
+                    const pip = pipsContainer.createDiv({
+                        cls: `dnd-slot-pip ${pipStates[uIdx] ? "is-used" : ""}`
+                    });
+                    applyPipVisual(pip, pipStates[uIdx]);
+
+                    pip.addEventListener("pointerdown", async (e: PointerEvent) => {
+                        if (e.button !== 0 && e.pointerType === "mouse") return;
+                        e.preventDefault();
+                        e.stopPropagation();
+
+                        pipStates[uIdx] = !pipStates[uIdx];
+                        applyPipVisual(pip, pipStates[uIdx]);
+
+                        const newUsedCount = pipStates.filter(Boolean).length;
+                        stateEntry!.used = newUsedCount;
+
+                        await saveFeatureUsesToFrontmatter();
+                    });
+                }
+            };
 
             if (Array.isArray(dndClass) && dndClass.length > 1) {
                 if (!Array.isArray(classLevels) || classLevels.length !== dndClass.length) {
@@ -777,6 +1025,7 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
 
                                     titleContainer.createEl("span", { text: feature.badge ? feature.badge : `Lvl ${i}`, cls: "dnd-level-badge" });
                                     titleContainer.createEl("span", { text: feature.name, cls: "dnd-feature-name" });
+                                    renderFeatureUses(titleContainer, feature, currentClassLevel, index);
 
                                     const descDiv = featureBlock.createDiv({ cls: "dnd-feature-desc" });
                                     await this.renderDndMarkdown(feature.description, descDiv, ctx.sourcePath, renderChild);
@@ -807,6 +1056,7 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                                         const badgeText = featureData.badge || "Choice";
                                         titleContainer.createEl("span", { text: badgeText, cls: "dnd-level-badge dnd-badge-combined" });
                                         titleContainer.createEl("span", { text: featureData.name, cls: "dnd-feature-name" });
+                                        renderFeatureUses(titleContainer, featureData, currentClassLevel, index);
 
                                         const descDiv = featureBlock.createDiv({ cls: "dnd-feature-desc" });
                                         await this.renderDndMarkdown(featureData.description, descDiv, ctx.sourcePath, renderChild);
@@ -829,6 +1079,7 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
 
                                         titleContainer.createEl("span", { text: feature.badge ? feature.badge : `Lvl ${i}`, cls: "dnd-level-badge dnd-badge-combined" });
                                         titleContainer.createEl("span", { text: feature.name, cls: "dnd-feature-name" });
+                                        renderFeatureUses(titleContainer, feature, currentClassLevel, index);
 
                                         const descDiv = featureBlock.createDiv({ cls: "dnd-feature-desc" });
                                         await this.renderDndMarkdown(feature.description, descDiv, ctx.sourcePath, renderChild);
@@ -870,6 +1121,7 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
 
                                         titleContainer.createEl("span", { text: feature.badge ? feature.badge : `Lvl ${i}`, cls: "dnd-level-badge" });
                                         titleContainer.createEl("span", { text: feature.name, cls: "dnd-feature-name" });
+                                        renderFeatureUses(titleContainer, feature, currentClassLevel, index);
 
                                         const descDiv = featureBlock.createDiv({ cls: "dnd-feature-desc" });
                                         await this.renderDndMarkdown(feature.description, descDiv, ctx.sourcePath, renderChild);
@@ -902,6 +1154,7 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
 
                             titleContainer.createEl("span", { text: trait.badge ? trait.badge : defaultBadge, cls: badgeClass });
                             titleContainer.createEl("span", { text: trait.name, cls: "dnd-feature-name" });
+                            renderFeatureUses(titleContainer, trait);
 
                             const descDiv = featureBlock.createDiv({ cls: "dnd-feature-desc" });
                             await this.renderDndMarkdown(trait.description, descDiv, ctx.sourcePath, renderChild);
@@ -920,6 +1173,7 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
 
                         titleContainer.createEl("span", { text: "Origin Feat", cls: "dnd-level-badge" });
                         titleContainer.createEl("span", { text: featData.name, cls: "dnd-feature-name" });
+                        renderFeatureUses(titleContainer, featData);
 
                         const descDiv = featureBlock.createDiv({ cls: "dnd-feature-desc" });
                         await this.renderDndMarkdown(featData.description, descDiv, ctx.sourcePath, renderChild);
@@ -941,6 +1195,7 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                             const badgeText = featData.badge ? featData.badge : (featData.category ? featData.category : "Feat");
                             titleContainer.createEl("span", { text: badgeText, cls: "dnd-level-badge" });
                             titleContainer.createEl("span", { text: featData.name, cls: "dnd-feature-name" });
+                            renderFeatureUses(titleContainer, featData);
 
                             const descDiv = featureBlock.createDiv({ cls: "dnd-feature-desc" });
                             await this.renderDndMarkdown(featData.description, descDiv, ctx.sourcePath, renderChild);
@@ -956,6 +1211,10 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
             }
             el.empty();
             el.appendChild(wrapper);
+
+            if (featureUsesNeedsSync) {
+                saveFeatureUsesToFrontmatter();
+            }
         };
 
         // 3. Initial Render
@@ -964,7 +1223,7 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
         // 4. Register Event Listener for Frontmatter Changes
         renderChild.registerEvent(
             this.app.metadataCache.on('changed', (file) => {
-                if (file.path === ctx.sourcePath) {
+                if (file.path === ctx.sourcePath && !isUpdatingFeatureUses) {
                     renderContent();
                 }
             })
@@ -4458,6 +4717,7 @@ class CharacterWizardModal extends Modal {
         injectListYAML("DnD_extraFeats", this.wizardData.extraFeats);
         injectListYAML("DnD_classChosenItems", this.wizardData.classChosenItems);
         injectListYAML("DnD_backgroundChosenItems", this.wizardData.backgroundChosenItems);
+        injectYAML("DnD_featureUses", `'[]'`);
         injectYAML("DnD_hideFeature", `'[]'`);
 
         // --- Equipment & Combat Formula variables ---

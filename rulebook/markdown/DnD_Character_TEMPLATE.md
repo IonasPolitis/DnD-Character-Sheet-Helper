@@ -13,6 +13,7 @@ DnD_classProficiencies:
 DnD_classChosenItems:
 DnD_classChoices:
 DnD_spellcastingAbility:
+DnD_featureUses:
 DnD_languages:
 DnD_background:
 DnD_backgroundFeat:
@@ -135,6 +136,7 @@ spellSlots: frontmatter.DnD_spellSlots
 
 ```dnd-features
 level: frontmatter.DnD_level
+proficiencyBonus: frontmatter.DnD_proficiencyBonus
 class: frontmatter.DnD_class
 classLevels: frontmatter.DnD_classLevels
 subclass: frontmatter.DnD_Subclass
@@ -143,6 +145,7 @@ race: frontmatter.DnD_race
 raceLineage: frontmatter.DnD_raceLineage
 background: frontmatter.DnD_background
 extraFeats: frontmatter.DnD_extraFeats
+featureUses: frontmatter.DnD_featureUses
 hide: frontmatter.DnD_hideFeature
 ```
 
