@@ -3132,6 +3132,7 @@ class CharacterWizardModal extends Modal {
     availableClasses: string[] = [];
     availableRaces: string[] = [];
     availableBackgrounds: string[] = [];
+    availableItems: { id: string; name: string; type: string }[] = [];
     availableWeapons: { id: string; name: string; damage: string }[] = [];
     availableArmors: { id: string; name: string; ac: string; category: string }[] = [];
 
@@ -3139,7 +3140,7 @@ class CharacterWizardModal extends Modal {
     wizardData: Record<string, any> = {
         name: "", level: 1, race: "", raceLineage: "", dndClass: "", subclass: "",
         DnD_spellcasting_ability: "", background: "", classEquipment: "A", backgroundEquipment: "A",
-        classChosenItems: "", backgroundChosenItems: "",
+        classChosenItems: [] as string[], backgroundChosenItems: [] as string[],
         weapon: "", weaponDamage: "", armor: "", armorAc: "",
         isWeaponCustom: false, isArmorCustom: false,
         languages: "", extraFeats: "", speed: 30, maxHealth: 0,
@@ -3234,6 +3235,7 @@ class CharacterWizardModal extends Modal {
             Object.keys(customItemsObj).forEach(k => itemLookupKeys.add(k));
         }
 
+        const allItemsMap = new Map<string, { id: string; name: string; type: string }>();
         const weaponsMap = new Map<string, { id: string; name: string; damage: string }>();
         const armorsMap = new Map<string, { id: string; name: string; ac: string; category: string }>();
 
@@ -3241,9 +3243,11 @@ class CharacterWizardModal extends Modal {
             const data = await getItemData(this.app, this.plugin.settings, key);
             if (!data || !data.type) continue;
 
-            const typeLower = String(data.type).toLowerCase();
+            const typeLower = String(data.type).toLowerCase().trim().replace(/['"]/g, '').replace(/\s+/g, '-');
             const displayName = String(data.name || key).trim();
             const mapKey = displayName.toLowerCase();
+
+            allItemsMap.set(mapKey, { id: key, name: displayName, type: typeLower });
 
             if (typeLower.includes("weapon")) {
                 weaponsMap.set(mapKey, { id: key, name: displayName, damage: String(data.damage || "") });
@@ -3252,6 +3256,7 @@ class CharacterWizardModal extends Modal {
             }
         }
 
+        this.availableItems = Array.from(allItemsMap.values()).sort((a, b) => a.name.localeCompare(b.name));
         this.availableWeapons = Array.from(weaponsMap.values()).sort((a, b) => a.name.localeCompare(b.name));
         this.availableArmors = Array.from(armorsMap.values()).sort((a, b) => a.name.localeCompare(b.name));
     }
@@ -3470,27 +3475,35 @@ class CharacterWizardModal extends Modal {
         speedInput.onchange = (e) => this.wizardData.speed = Number((e.target as HTMLInputElement).value);
 
         const hpDiv = vitalsGrid.createDiv();
-        hpDiv.createEl("label", { text: "Max Health:", cls: "dnd-form-label-sm" });
+        let hitDieMax = 8;
+        const rawWizardHd = classData?.HitDice || classData?.hitDice || classData?.hit_dice || classData?.hitDie || classData?.hit_die;
+        if (rawWizardHd) {
+            const parsedHitDie = parseInt(String(rawWizardHd).replace(/\D/g, ''));
+            if (!isNaN(parsedHitDie) && parsedHitDie > 0) hitDieMax = parsedHitDie;
+        }
+        const wizardLevel = Math.max(1, Number(this.wizardData.level) || 1);
+
+        hpDiv.createEl("label", { text: `Max Health (Hit Die: d${hitDieMax}):`, cls: "dnd-form-label-sm" });
         const hpWrapper = hpDiv.createDiv({ cls: "dnd-modal-add-bar" });
 
         const hpInput = hpWrapper.createEl("input", { type: "number", value: String(this.wizardData.maxHealth), cls: "dnd-modal-form-input" });
         hpInput.onchange = (e) => this.wizardData.maxHealth = Number((e.target as HTMLInputElement).value);
 
-        const autoHpBtn = hpWrapper.createEl("button", { text: "Auto (Lvl 1)", attr: { title: "Max Hit Die + CON Modifier" } });
+        const autoBtnLabel = wizardLevel > 1 ? `Auto (Lvl ${wizardLevel})` : "Auto (Lvl 1)";
+        const autoBtnTitle = wizardLevel > 1
+            ? `Lvl 1 Max (d${hitDieMax} + CON) + Lvl 2–${wizardLevel} Average`
+            : `Max Hit Die (d${hitDieMax}) + CON Modifier`;
+        const autoHpBtn = hpWrapper.createEl("button", { text: autoBtnLabel, attr: { title: autoBtnTitle } });
         autoHpBtn.onclick = async () => {
-            let hitDieMax = 8;
-            if (classData && classData.hitDice) {
-                const parsedHitDie = parseInt(String(classData.hitDice).replace(/\D/g, ''));
-                if (!isNaN(parsedHitDie)) hitDieMax = parsedHitDie;
-            }
-
             let totalCon = this.wizardData.constitution || 10;
             if (this.wizardData.chosenAbilityBonuses) {
                 totalCon += this.wizardData.chosenAbilityBonuses.filter((b: string) => b.toLowerCase() === "constitution").length;
             }
 
             const conMod = Math.floor((totalCon - 10) / 2);
-            this.wizardData.maxHealth = hitDieMax + conMod;
+            const lvl1Hp = hitDieMax + conMod;
+            const avgPerHigherLvl = Math.ceil(hitDieMax / 2) + 1 + conMod;
+            this.wizardData.maxHealth = Math.max(1, lvl1Hp + (wizardLevel - 1) * avgPerHigherLvl);
             await this.renderStep();
         };
 
@@ -3796,31 +3809,98 @@ class CharacterWizardModal extends Modal {
         featInput.placeholder = "Tough, Alert...";
         featInput.onchange = (e) => this.wizardData.extraFeats = (e.target as HTMLInputElement).value;
 
-        // HELPER: Checks for flexible choices and generates a dynamic placeholder
-        const getFlexibleData = (equipmentData: any) => {
-            let hasFlex = false;
-            let placeholder = "e.g., Lute, Mason's Tools...";
+        // HELPER: Extracts flexible ('|') item choice slots from a startingEquipment option
+        interface FlexibleItemSlot {
+            acceptedTypes: string[];
+            labelText: string;
+        }
+        const getFlexibleSlots = (equipmentData: any): FlexibleItemSlot[] => {
+            const slots: FlexibleItemSlot[] = [];
+            if (!equipmentData || !equipmentData.items || typeof equipmentData.items !== "object") {
+                return slots;
+            }
+            for (const [key, rawQty] of Object.entries(equipmentData.items)) {
+                if (!key.includes("|")) continue;
+                const qty = Math.max(1, Number(rawQty) || 1);
+                const acceptedTypes = key
+                    .split("|")
+                    .map(t => t.trim().toLowerCase().replace(/['"]/g, '').replace(/\s+/g, '-'))
+                    .filter(Boolean);
+                if (acceptedTypes.length === 0) continue;
 
-            if (equipmentData && equipmentData.items) {
-                // Find any key that contains the flexible pipe character
-                const flexKeys = Object.keys(equipmentData.items).filter(key => key.includes('|'));
-                if (flexKeys.length > 0) {
-                    hasFlex = true;
-                    // Format the options: 'artisans-tool|musical-instrument' -> 'Artisans Tool, Musical Instrument'
-                    const options = flexKeys[0].split('|')
-                        .filter(item => item !== "") // Handle trailing pipes like 'artisans-tool|'
-                        .map(item => {
-                            return item.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
-                        });
-                    placeholder = `e.g., ${options.join(', ')}`;
+                const formattedTypes = acceptedTypes.map(typeSlug =>
+                    typeSlug.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')
+                ).join(' / ');
+
+                for (let i = 0; i < qty; i++) {
+                    const suffix = qty > 1 ? ` #${i + 1}` : "";
+                    slots.push({
+                        acceptedTypes,
+                        labelText: `${formattedTypes}${suffix}`
+                    });
                 }
             }
-            return { hasFlex, placeholder };
+            return slots;
+        };
+
+        const renderFlexibleItemDropdowns = (
+            parentContainer: HTMLElement,
+            prefixLabel: string,
+            slots: FlexibleItemSlot[],
+            dataKey: "classChosenItems" | "backgroundChosenItems"
+        ) => {
+            if (slots.length === 0) {
+                this.wizardData[dataKey] = [];
+                return;
+            }
+
+            const existingRaw = this.wizardData[dataKey];
+            const existingArr: string[] = Array.isArray(existingRaw)
+                ? existingRaw.map(v => String(v || ""))
+                : (typeof existingRaw === "string" && existingRaw.trim() !== ""
+                    ? existingRaw.split(",").map(s => s.trim())
+                    : []);
+
+            const normalizedSelections: string[] = new Array(slots.length).fill("");
+            const subpanel = parentContainer.createDiv({ cls: "dnd-form-subpanel" });
+
+            slots.forEach((slot, idx) => {
+                const matchingItems = this.availableItems.filter(item =>
+                    slot.acceptedTypes.includes(item.type)
+                );
+
+                subpanel.createEl("label", {
+                    text: `${prefixLabel} (${slot.labelText}): `,
+                    cls: "dnd-form-label-sub"
+                });
+
+                const selectEl = subpanel.createEl("select", { cls: "dnd-modal-form-input" });
+                selectEl.createEl("option", { text: `-- Select ${slot.labelText} --`, value: "" });
+
+                matchingItems.forEach(item => {
+                    selectEl.createEl("option", { text: item.name, value: item.id });
+                });
+
+                const candidate = existingArr[idx] || "";
+                const matchedItem = matchingItems.find(
+                    item => item.id.toLowerCase() === candidate.toLowerCase() || item.name.toLowerCase() === candidate.toLowerCase()
+                );
+                if (matchedItem) {
+                    selectEl.value = matchedItem.id;
+                    normalizedSelections[idx] = matchedItem.id;
+                }
+
+                selectEl.onchange = (e) => {
+                    normalizedSelections[idx] = (e.target as HTMLSelectElement).value;
+                    this.wizardData[dataKey] = [...normalizedSelections];
+                };
+            });
+
+            this.wizardData[dataKey] = normalizedSelections;
         };
 
         // --- Class Equipment Section ---
-        let showClassItems = false;
-        let classPlaceholder = "e.g., Lute, Mason's Tools...";
+        let classFlexSlots: FlexibleItemSlot[] = [];
         let classEqOptions = ["A", "B"]; // Safe fallback
 
         if (this.wizardData.dndClass) {
@@ -3829,11 +3909,11 @@ class CharacterWizardModal extends Modal {
                 // Dynamically fetch A, B, C, etc. directly from the JSON
                 classEqOptions = Object.keys(classData.startingEquipment).sort();
 
-                const eqChoice = this.wizardData.classEquipment || classEqOptions[0];
+                const eqChoice = classEqOptions.includes(this.wizardData.classEquipment)
+                    ? this.wizardData.classEquipment
+                    : classEqOptions[0];
                 if (classData.startingEquipment[eqChoice]) {
-                    const flexData = getFlexibleData(classData.startingEquipment[eqChoice]);
-                    showClassItems = flexData.hasFlex;
-                    classPlaceholder = flexData.placeholder;
+                    classFlexSlots = getFlexibleSlots(classData.startingEquipment[eqChoice]);
                 }
             }
         }
@@ -3856,17 +3936,10 @@ class CharacterWizardModal extends Modal {
             await this.renderStep();
         };
 
-        if (showClassItems) {
-            const classItemsDiv = container.createDiv({ cls: "dnd-form-subpanel" });
-            classItemsDiv.createEl("label", { text: "Class Chosen Items (Required): ", cls: "dnd-form-label-sub" });
-            const classItemsInput = classItemsDiv.createEl("input", { type: "text", value: this.wizardData.classChosenItems || "", cls: "dnd-modal-form-input" });
-            classItemsInput.placeholder = classPlaceholder;
-            classItemsInput.onchange = (e) => this.wizardData.classChosenItems = (e.target as HTMLInputElement).value;
-        }
+        renderFlexibleItemDropdowns(container, "Class Chosen Item", classFlexSlots, "classChosenItems");
 
         // --- Background Equipment Section ---
-        let showBgItems = false;
-        let bgPlaceholder = "e.g., Dice, Forgery Kit...";
+        let bgFlexSlots: FlexibleItemSlot[] = [];
         let bgEqOptions = ["A", "B"]; // Safe fallback
 
         if (this.wizardData.background) {
@@ -3874,11 +3947,11 @@ class CharacterWizardModal extends Modal {
             if (bgData?.startingEquipment) {
                 bgEqOptions = Object.keys(bgData.startingEquipment).sort();
 
-                const eqChoice = this.wizardData.backgroundEquipment || bgEqOptions[0];
+                const eqChoice = bgEqOptions.includes(this.wizardData.backgroundEquipment)
+                    ? this.wizardData.backgroundEquipment
+                    : bgEqOptions[0];
                 if (bgData.startingEquipment[eqChoice]) {
-                    const flexData = getFlexibleData(bgData.startingEquipment[eqChoice]);
-                    showBgItems = flexData.hasFlex;
-                    bgPlaceholder = flexData.placeholder;
+                    bgFlexSlots = getFlexibleSlots(bgData.startingEquipment[eqChoice]);
                 }
             }
         }
@@ -3901,13 +3974,7 @@ class CharacterWizardModal extends Modal {
             await this.renderStep();
         };
 
-        if (showBgItems) {
-            const bgItemsDiv = container.createDiv({ cls: "dnd-form-subpanel" });
-            bgItemsDiv.createEl("label", { text: "Background Chosen Items (Required): ", cls: "dnd-form-label-sub" });
-            const bgItemsInput = bgItemsDiv.createEl("input", { type: "text", value: this.wizardData.backgroundChosenItems || "", cls: "dnd-modal-form-input" });
-            bgItemsInput.placeholder = bgPlaceholder;
-            bgItemsInput.onchange = (e) => this.wizardData.backgroundChosenItems = (e.target as HTMLInputElement).value;
-        }
+        renderFlexibleItemDropdowns(container, "Background Chosen Item", bgFlexSlots, "backgroundChosenItems");
 
         // --- Equipped Items (Weapon & Armor with Custom Toggle) ---
         container.createEl("h4", { text: "Equipped Items", cls: "dnd-wizard-subhead" });
@@ -4092,8 +4159,8 @@ class CharacterWizardModal extends Modal {
         if (this.wizardData.dndClass) {
             const classData = await getClassData(this.app, this.plugin.settings, this.wizardData.dndClass);
             if (classData) {
-                const hd = classData.HitDice || classData.hitDice || classData.hit_dice;
-                if (hd) DnD_hit_dice = hd;
+                const hd = classData.HitDice || classData.hitDice || classData.hit_dice || classData.hitDie || classData.hit_die;
+                if (hd) DnD_hit_dice = String(hd).trim();
 
                 if (classData.savingThroughProf && Array.isArray(classData.savingThroughProf)) {
                     savingThrows = classData.savingThroughProf;
@@ -4210,14 +4277,14 @@ class CharacterWizardModal extends Modal {
         };
 
         const injectListYAML = (key: string, value: any) => {
-            if (value !== undefined && value !== "") {
-                let listStr = "";
-                if (Array.isArray(value)) {
-                    listStr = "\n" + value.map(v => `  - ${v}`).join("\n");
-                } else if (typeof value === "string") {
-                    const arr = value.split(',').map(s => s.trim()).filter(s => s !== "");
-                    listStr = "\n" + arr.map(v => `  - ${v}`).join("\n");
-                }
+            if (value !== undefined && value !== null && value !== "") {
+                const arr = Array.isArray(value)
+                    ? value.map(v => String(v ?? "").trim()).filter(s => s !== "")
+                    : (typeof value === "string"
+                        ? value.split(',').map(s => s.trim()).filter(s => s !== "")
+                        : []);
+                if (arr.length === 0) return;
+                const listStr = "\n" + arr.map(v => `  - ${v}`).join("\n");
                 const regex = new RegExp(`^${key}:.*$`, "m");
                 if (regex.test(finalContent)) {
                     finalContent = finalContent.replace(regex, `${key}:${listStr}`);
@@ -4257,11 +4324,16 @@ class CharacterWizardModal extends Modal {
             const list = Array.isArray(rawItems) ? rawItems : (typeof rawItems === 'string' ? rawItems.split(',') : (rawItems ? [String(rawItems)] : []));
             const pool: { id: string; type: string }[] = [];
             for (const item of list) {
-                const safeId = sanitizeWizardItem(item);
-                if (!safeId) continue;
-                const data = await getItemData(this.app, this.plugin.settings, safeId);
+                const rawStr = String(item || "").trim();
+                if (!rawStr) continue;
+                const matchedFromPool = this.availableItems.find(
+                    it => it.id.toLowerCase() === rawStr.toLowerCase() || it.name.toLowerCase() === rawStr.toLowerCase()
+                );
+                const resolvedId = matchedFromPool ? matchedFromPool.id : sanitizeWizardItem(rawStr);
+                if (!resolvedId) continue;
+                const data = await getItemData(this.app, this.plugin.settings, resolvedId);
                 if (data && data.type) {
-                    pool.push({ id: safeId, type: sanitizeWizardItem(data.type) as string });
+                    pool.push({ id: resolvedId, type: sanitizeWizardItem(data.type) as string });
                 }
             }
             return pool;
@@ -4288,9 +4360,12 @@ class CharacterWizardModal extends Modal {
                 starterItemCounts[itemId] = (starterItemCounts[itemId] || 0) + Number(qty);
             }
 
-            flexibleSlots.sort((a, b) => a[0].split('|').length - b[0].split('|').length);
+            const getCleanAcceptedTypes = (rawKey: string) =>
+                rawKey.split('|').map(t => sanitizeWizardItem(t)).filter((t): t is string => Boolean(t));
+
+            flexibleSlots.sort((a, b) => getCleanAcceptedTypes(a[0]).length - getCleanAcceptedTypes(b[0]).length);
             for (const [itemId, qty] of flexibleSlots) {
-                const acceptedTypes = itemId.split('|').map(t => sanitizeWizardItem(t) as string);
+                const acceptedTypes = getCleanAcceptedTypes(itemId);
                 let amountNeeded = Number(qty);
                 for (let i = 0; i < sourcePool.length && amountNeeded > 0; i++) {
                     const poolItem = sourcePool[i];
@@ -6366,17 +6441,22 @@ class LevelUpModal extends Modal {
             this.currentStats[s] = Number(frontmatter[`DnD_${s}`]) || 10;
         });
 
-        // 2. Fetch the Hit Die dynamically from the rulebook JSON
+        // 2. Fetch the Hit Die from frontmatter (DnD_hitDice) or dynamically from the rulebook JSON
         let classData: any = null;
         if (this.dndClass) {
             classData = await getClassData(this.app, this.plugin.settings, this.dndClass);
-            if (classData) {
-                const hdStr = classData.HitDice || classData.hitDice || classData.hit_dice;
-                if (hdStr) {
-                    const parsed = parseInt(String(hdStr).replace(/\D/g, ''));
-                    if (!isNaN(parsed)) this.hitDie = parsed;
-                }
-            }
+        }
+
+        const fmHitDiceRaw = frontmatter["DnD_hitDice"] ?? frontmatter["DnD_hit_dice"] ?? frontmatter["hitDice"];
+        const fmHitDiceStr = Array.isArray(fmHitDiceRaw) ? fmHitDiceRaw[0] : fmHitDiceRaw;
+        const classHitDiceStr = classData?.HitDice || classData?.hitDice || classData?.hit_dice || classData?.hitDie || classData?.hit_die;
+        const resolvedHdStr = (fmHitDiceStr !== undefined && fmHitDiceStr !== null && String(fmHitDiceStr).trim() !== "" && !String(fmHitDiceStr).trim().startsWith("<"))
+            ? String(fmHitDiceStr).trim()
+            : (classHitDiceStr ? String(classHitDiceStr).trim() : "");
+
+        if (resolvedHdStr) {
+            const parsed = parseInt(resolvedHdStr.replace(/\D/g, ''));
+            if (!isNaN(parsed) && parsed > 0) this.hitDie = parsed;
         }
 
         // --- Build UI ---
