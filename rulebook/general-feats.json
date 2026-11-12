@@ -1,5 +1,6 @@
 {
-      "actor":"Actor (Level 4+, Charisma 13+)",
+      "ability-score-improvement": "Ability Score Improvement (Level 4+)",
+      "actor": "Actor (Level 4+, Charisma 13+)",
       "athlete": "Athlete (Level 4+, Strength or Dexterity 13+)",
       "charger": "Charger (Level 4+, Strength or Dexterity 13+)",
       "chef": "Chef (Level 4+)",
@@ -31,9 +32,9 @@
       "sentinel": "Sentinel (Level 4+, Strength or Dexterity 13+)",
       "shadow-touched": "Shadow-Touched (Level 4+)",
       "sharpshooter": "Sharpshooter (Level 4+, Dexterity 13+)",
+      "shield-master": "Shield Master (Level 4+, Shield Training)",
       "skill-expert": "Skill Expert (Level 4+)",
       "skulker": "Skulker (Level 4+, Dexterity 13+)",
-      "shield-master": "Shield Master (Level 4+, Shield Training)",
       "slasher": "Slasher (Level 4+)",
       "speedy": "Speedy (Level 4+, Dexterity or Constitution 13+)",
       "spell-sniper": "Spell Sniper (Level 4+, Spellcasting or Pact Magic Feature)",

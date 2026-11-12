@@ -1,7 +1,7 @@
 {
-      "name": "Crossbow Bolts",
+      "name": "Crossbow Bolt",
       "type": "ammunition",
-      "description": "A bundle of 20 crossbow bolts used with a Hand Crossbow, Light Crossbow, or Heavy Crossbow.",
-      "weight": 1.5,
-      "cost": 1
+      "description": "A crossbow bolt used with a Hand Crossbow, Light Crossbow, or Heavy Crossbow.",
+      "weight": 0.075,
+      "cost": 0.05
 }
