@@ -1,6 +1,6 @@
 {
       "name": "Splint Armor",
-      "type": "Armor",
+      "type": "armor",
       "description": "17 -- Stealth Disadvantage",
       "weight": 60,
       "ac": "17",

@@ -1,7 +1,7 @@
 {
       "name": "Priest's Pack",
       "type": "gear",
-      "description": "",
+      "description": "A Priest's Pack contains the following items: Backpack, Blanket, Holy Water, Lamp, 7 days of Rations, Robe, and Tinderbox.",
       "weight": 29,
       "cost": 33
 }

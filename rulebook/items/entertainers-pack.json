@@ -1,7 +1,7 @@
 {
       "name": "Entertainer's Pack",
       "type": "gear",
-      "description": "",
+      "description": "An Entertainer's Pack contains the following items: Backpack, Bedroll, Bell, Bullseye Lantern, 3 Costumes, Mirror, 8 flasks of Oil, 9 days of Rations, Tinderbox, and Waterskin.",
       "weight": 58.5,
       "cost": 40
 }
