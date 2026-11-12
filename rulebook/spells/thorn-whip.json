@@ -1,16 +1,18 @@
 {
-      "name": "Thaumaturgy",
+      "name": "Thorn Whip",
       "level": 0,
       "school": "Transmutation",
       "castingTime": "Action",
       "range": "30 feet",
       "components": [
-            "V"
+            "V",
+            "S",
+            "M"
       ],
-      "materials": "",
-      "duration": "Up to 1 minute",
+      "materials": "the stem of a thorny plant",
+      "duration": "Instantaneous",
       "concentration": false,
       "ritual": false,
-      "classes": "Cleric",
-      "description": "You manifest a minor wonder within range. You create one of the effects below within range. If you cast this spell multiple times, you can have up to three of its 1-minute effects active at a time.\n\nAltered Eyes. You alter the appearance of your eyes for 1 minute.\nBooming Voice. Your voice booms up to three times as loud as normal for 1 minute. For the duration, you have Advantage on Charisma (Intimidation) checks.\nFire Play. You cause flames to flicker, brighten, dim, or change color for 1 minute.\nInvisible Hand. You instantaneously cause an unlocked door or window to fly open or slam shut.\nPhantom Sound. You create an instantaneous sound that originates from a point of your choice within range, such as a rumble of thunder, the cry of a raven, or ominous whispers.\nTremors. You cause harmless tremors in the ground for 1 minute."
+      "classes": "Druid",
+      "description": "You create a vine-like whip covered in thorns that lashes out at your command toward a creature within range. Make a melee spell attack against the target. On a hit, the target takes 1d6 Piercing damage, and if it is Large or smaller, you can pull it up to 10 feet closer to you.\n\nCantrip Upgrade. The damage increases by 1d6 when you reach levels 5 (2d6), 11 (3d6), and 17 (4d6)."
 }

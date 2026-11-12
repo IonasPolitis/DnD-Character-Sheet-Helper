@@ -1,17 +1,18 @@
 {
-      "name": "Suggestion",
-      "level": 2,
-      "school": "Enchantment",
+      "name": "Summon Aberration",
+      "level": 4,
+      "school": "Conjuration",
       "castingTime": "Action",
-      "range": "30 feet",
+      "range": "90 feet",
       "components": [
             "V",
+            "S",
             "M"
       ],
-      "materials": "a drop of honey",
-      "duration": "8 hours",
+      "materials": "a pickled tentacle and an eyeball in a platinum-inlaid vial worth 400+ GP",
+      "duration": "1 hour",
       "concentration": true,
       "ritual": false,
-      "classes": "Bard, Sorcerer, Warlock, Wizard",
-      "description": "You suggest a course of activity-described in no more than 25 words-to one creature you can see within range that can hear and understand you. The suggestion must sound achievable and not involve anything that would obviously deal damage to the target or it allies. For example, you could say, \"Fetch the key to the cult's treasure vault, and give the key to me.\" Or you could say, \"Stop fighting, leave this library peacefully, and don't return.\"\n\nThe target must succeed on a Wisdom saving throw or have the Charmed condition for the duration or until you or your allies deal damage to the target. The Charmed target pursues the suggestion to the best of its ability. The suggested activity can continue for the entire duration, but if the suggested activity can be completed in a shorter time, the spell ends for the target upon completing it."
+      "classes": "Warlock, Wizard",
+      "description": "You call forth an aberrant spirit. It manifests in an unoccupied space that you can see within range and uses the Aberrant Spirit stat block. When you cast the spell, choose Beholderkin, Slaad, or Star Spawn. The creature resembles an Aberration of that kind, which determines certain details in its stat block. The creature disappears when it drops to 0 Hit Points or when the spell ends.\n\nThe creature is an ally to you and your allies. In combat, the creature shares your Initiative count, but it takes its turn immediately after yours. It obeys your verbal commands (no action required by you). If you don't issue any, it takes the Dodge action and uses its movement to avoid danger.\n\nABERRANT SPIRIT\nMedium Aberration, Neutral\nAC 11 + the spell's level\nHP 40 + 10 for each spell level above 4\nSpeed 30 ft.; Fly 30 ft. (hover; Beholderkin only)\nSTR 16 (+3), DEX 10 (+0), CON 15 (+2), INT 16 (+3), WIS 10 (+0), CHA 6 (-2)\nImmunities Psychic\nSenses Darkvision 60 ft., Passive Perception 10\nLanguages Deep Speech, understands the languages you know\nCR None (XP 0; PB equals your Proficiency Bonus)\n\nTRAITS\nRegeneration (Slaad Only). The spirit regains 5 Hit Points at the start of each of its turns if it has at least 1 Hit Point.\nWhispering Aura (Star Spawn Only). At the start of each of the spirit's turns, each creature within 5 feet of it must succeed on a Wisdom saving throw against your spell save DC or take 2d6 Psychic damage.\n\nACTIONS\nMultiattack. The spirit makes a number of attacks equal to half this spell's level (round down).\nClaw (Slaad Only). Melee Attack Roll: Bonus equals your spell attack modifier, reach 5 ft. Hit: 1d10 + 3 + the spell's level Slashing damage. If the target is a creature, it can't regain Hit Points until the start of the spirit's next turn.\nEye Ray (Beholderkin Only). Ranged Attack Roll: Bonus equals your spell attack modifier, range 150 ft. Hit: 1d8 + 3 + the spell's level Psychic damage.\nPsychic Slam (Star Spawn Only). Melee Attack Roll: Bonus equals your spell attack modifier, reach 5 ft. Hit: 1d8 + 3 + the spell's level Psychic damage.\n\nUsing a Higher-Level Spell Slot. Use the spell slot's level for the spell's level in the stat block."
 }

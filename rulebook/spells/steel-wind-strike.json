@@ -1,17 +1,17 @@
 {
-      "name": "Starry Wisp",
-      "level": 0,
-      "school": "Evocation",
+      "name": "Steel Wind Strike",
+      "level": 5,
+      "school": "Conjuration",
       "castingTime": "Action",
-      "range": "60 feet",
+      "range": "30 feet",
       "components": [
-            "V",
-            "S"
+            "S",
+            "M"
       ],
-      "materials": "",
+      "materials": "a melee weapon worth 1+ SP",
       "duration": "Instantaneous",
       "concentration": false,
       "ritual": false,
-      "classes": "Bard, Druid",
-      "description": "You launch a mote of light at one creature or object within range. Make a ranged spell attack against the target. On a hit, the target takes 1d8 Radiant damage, and until the end of your next turn, it emits Dim Light in a 10-foot radius and can't benefit from the Invisible condition.\n\nCantrip Upgrade. The damage increases by 1d8 when you reach levels 5 (2d8), 11 (3d8), and 17 (4d8)."
+      "classes": "Ranger, Wizard",
+      "description": "You flourish the weapon used in the casting and then vanish to strike like the wind. Choose up to five creatures you can see within range. Make a melee spell attack against each target. On a hit, a target takes 6d10 Force damage.\n\nYou can then teleport to an unoccupied space you can see within 5 feet of one of the targets."
 }

@@ -1,18 +1,17 @@
 {
-      "name": "Witch Bolt",
-      "level": 1,
+      "name": "Word of Radiance",
+      "level": 0,
       "school": "Evocation",
       "castingTime": "Action",
-      "range": "60 feet",
+      "range": "Self",
       "components": [
             "V",
-            "S",
             "M"
       ],
-      "materials": "a twig struck by lightning",
-      "duration": "1 minute",
-      "concentration": true,
+      "materials": "a sunburst token",
+      "duration": "Instantaneous",
+      "concentration": false,
       "ritual": false,
-      "classes": "Sorcerer, Warlock, Wizard",
-      "description": "A beam of crackling energy lances toward a creature within range, forming a sustained arc of lightning between you and the target. Make a ranged spell attack against it. On a hit, the target takes 2d12 Lightning damage.\n\nOn each of your subsequent turns, you can take a Bonus Action to deal 1d12 Lightning damage to the target automatically, even if the first attack missed.\n\nThe spell ends if the target is ever outside the spell's range or if it has Total Cover from you.\n\nUsing a Higher-Level Spell Slot. The initial damage increases by 1d12 for each spell slot level above 1."
+      "classes": "Cleric",
+      "description": "Burning radiance erupts from you in a 5-foot Emanation. Each creature of your choice that you can see in it must succeed on a Constitution saving throw or take 1d6 Radiant damage.\n\nCantrip Upgrade. The damage increases by 1d6 when you reach levels 5 (2d6), 11 (3d6), and 17 (4d6)."
 }

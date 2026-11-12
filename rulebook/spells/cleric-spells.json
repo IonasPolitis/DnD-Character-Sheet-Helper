@@ -20,6 +20,7 @@
     "detect-poison-and-disease": "Detect Poison and Disease",
     "guiding-bolt": "Guiding Bolt",
     "healing-word": "Healing Word",
+    "inflict-wounds": "Inflict Wounds",
     "protection-from-evil-and-good": "Protection from Evil and Good",
     "purify-food-and-drink": "Purify Food and Drink",
     "sanctuary": "Sanctuary",
@@ -105,6 +106,8 @@
     "word-of-recall": "Word of Recall"
   },
   "7": {
+    "conjure-celestial": "Conjure Celestial",
+    "divine-word": "Divine Word",
     "plane-shift": "Plane Shift",
     "power-word-fortify": "Power Word Fortify",
     "regenerate": "Regenerate",

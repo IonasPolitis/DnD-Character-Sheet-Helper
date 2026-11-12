@@ -1,17 +1,18 @@
 {
-      "name": "Seeming",
-      "level": 5,
-      "school": "Illusion",
+      "name": "Sending",
+      "level": 3,
+      "school": "Divination",
       "castingTime": "Action",
-      "range": "30 feet",
+      "range": "Unlimited",
       "components": [
             "V",
-            "S"
+            "S",
+            "M"
       ],
-      "materials": "",
-      "duration": "8 hours",
+      "materials": "a short piece of fine copper wire",
+      "duration": "Instantaneous",
       "concentration": false,
       "ritual": false,
-      "classes": "Bard, Sorcerer, Wizard",
-      "description": "You give an illusory appearance to each creature of your choice that you can see within range. An unwilling target can make a Charisma saving throw, and if it succeeds, it is unaffected by this spell.\n\nYou can give the same appearance or different ones to the targets. The spell can change the appearance of the targets' bodies and equipment. You can make each creature seem 1 foot shorter or taller and appear heavier or lighter. A target's new appearance must have the same basic arrangement of limbs as the target, but the extent of the illusion is otherwise up to you. The spell lasts for the duration.\n\nThe changes wrought by this spell fail to hold up to physical inspection. For example, if you use this spell to add a hat to a creature's outfit, objects pass through the hat.\n\nA creature that takes the Study action to examine a target can make an Intelligence (Investigation) check against your spell save DC. If it succeeds, it becomes aware that the target is disguised."
+      "classes": "Bard, Cleric, Wizard",
+      "description": "You send a message of 25 words or fewer to a creature you have met or a creature described to you by someone who has met it. The target hears the message in its mind, recognizes you as the sender if it knows you, and can answer in a like manner immediately. The spell enables a target to understand the message even if you don't share a language, provided the target has an Intelligence of 2 or higher.\n\nYou can send the message across any distance and even to other planes of existence, but if the target is on a different plane, there is a 5 percent chance that the message doesn't arrive. You know if the delivery fails.\n\nUpon receiving the message, the creature can block your ability to reach it again with this spell for 8 hours. If you try to cast the spell on that creature during that time, you learn that you are blocked, and the spell fails."
 }
