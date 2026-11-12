@@ -91,7 +91,7 @@
       },
       {
         "name": "Fighting Styles",
-        "description": "You have honed your martial prowess and gain a Fighting Style feat of your choice {see chapter 5). Defense is recommended.",
+        "description": "You have honed your martial prowess and gain a Fighting Style feat of your choice (see chapter 5). Defense is recommended.",
         "classChoices": [
           "fighting-styles"
         ]
@@ -116,7 +116,7 @@
       },
       {
         "name": "Fighting Styles",
-        "description": "You have honed your martial prowess and gain a Fighting Style feat of your choice {see chapter 5). Defense is recommended.",
+        "description": "You have honed your martial prowess and gain a Fighting Style feat of your choice (see chapter 5). Defense is recommended.",
         "classChoices": [
           "fighting-styles"
         ],
@@ -131,7 +131,7 @@
       },
       {
         "name": "Fighting Styles",
-        "description": "You have honed your martial prowess and gain a Fighting Style feat of your choice {see chapter 5). Defense is recommended.",
+        "description": "You have honed your martial prowess and gain a Fighting Style feat of your choice (see chapter 5). Defense is recommended.",
         "classChoices": [
           "fighting-styles"
         ],
@@ -141,7 +141,7 @@
     "4": [
       {
         "name": "Fighting Styles",
-        "description": "You have honed your martial prowess and gain a Fighting Style feat of your choice {see chapter 5). Defense is recommended.",
+        "description": "You have honed your martial prowess and gain a Fighting Style feat of your choice (see chapter 5). Defense is recommended.",
         "classChoices": [
           "fighting-styles"
         ],
@@ -168,7 +168,7 @@
       },
       {
         "name": "Fighting Styles",
-        "description": "You have honed your martial prowess and gain a Fighting Style feat of your choice {see chapter 5). Defense is recommended.",
+        "description": "You have honed your martial prowess and gain a Fighting Style feat of your choice (see chapter 5). Defense is recommended.",
         "classChoices": [
           "fighting-styles"
         ]
@@ -177,7 +177,7 @@
     "6": [
       {
         "name": "Fighting Styles",
-        "description": "You have honed your martial prowess and gain a Fighting Style feat of your choice {see chapter 5). Defense is recommended.",
+        "description": "You have honed your martial prowess and gain a Fighting Style feat of your choice (see chapter 5). Defense is recommended.",
         "classChoices": [
           "fighting-styles"
         ],
@@ -196,7 +196,7 @@
     "7": [
       {
         "name": "Fighting Styles",
-        "description": "You have honed your martial prowess and gain a Fighting Style feat of your choice {see chapter 5). Defense is recommended.",
+        "description": "You have honed your martial prowess and gain a Fighting Style feat of your choice (see chapter 5). Defense is recommended.",
         "classChoices": [
           "fighting-styles"
         ],
@@ -206,7 +206,7 @@
     "8": [
       {
         "name": "Fighting Styles",
-        "description": "You have honed your martial prowess and gain a Fighting Style feat of your choice {see chapter 5). Defense is recommended.",
+        "description": "You have honed your martial prowess and gain a Fighting Style feat of your choice (see chapter 5). Defense is recommended.",
         "classChoices": [
           "fighting-styles"
         ],
@@ -225,7 +225,7 @@
     "9": [
       {
         "name": "Indomitable",
-        "description": "If you fail a saving throw, you can re roll it with a bonus equal to your Fighter level. You must use the new roll, and you can't use this feature again until you finish a Long Rest.\n\tYou can use this feature twice before a Long Reststarting at level 13 and three times at level 17.",
+        "description": "If you fail a saving throw, you can reroll it with a bonus equal to your Fighter level. You must use the new roll, and you can't use this feature again until you finish a Long Rest.\n\tYou can use this feature twice before a Long Rest starting at level 13 and three times at level 17.",
         "uses": [
           "1 + (level - 9) / 4",
           "long"
@@ -237,7 +237,7 @@
       },
       {
         "name": "Fighting Styles",
-        "description": "You have honed your martial prowess and gain a Fighting Style feat of your choice {see chapter 5). Defense is recommended.",
+        "description": "You have honed your martial prowess and gain a Fighting Style feat of your choice (see chapter 5). Defense is recommended.",
         "classChoices": [
           "fighting-styles"
         ]
@@ -246,7 +246,7 @@
     "10": [
       {
         "name": "Fighting Styles",
-        "description": "You have honed your martial prowess and gain a Fighting Style feat of your choice {see chapter 5). Defense is recommended.",
+        "description": "You have honed your martial prowess and gain a Fighting Style feat of your choice (see chapter 5). Defense is recommended.",
         "classChoices": [
           "fighting-styles"
         ],
@@ -260,7 +260,7 @@
       },
       {
         "name": "Fighting Styles",
-        "description": "You have honed your martial prowess and gain a Fighting Style feat of your choice {see chapter 5). Defense is recommended.",
+        "description": "You have honed your martial prowess and gain a Fighting Style feat of your choice (see chapter 5). Defense is recommended.",
         "classChoices": [
           "fighting-styles"
         ]
@@ -269,7 +269,7 @@
     "12": [
       {
         "name": "Fighting Styles",
-        "description": "You have honed your martial prowess and gain a Fighting Style feat of your choice {see chapter 5). Defense is recommended.",
+        "description": "You have honed your martial prowess and gain a Fighting Style feat of your choice (see chapter 5). Defense is recommended.",
         "classChoices": [
           "fighting-styles"
         ],
@@ -292,7 +292,7 @@
       },
       {
         "name": "Fighting Styles",
-        "description": "You have honed your martial prowess and gain a Fighting Style feat of your choice {see chapter 5). Defense is recommended.",
+        "description": "You have honed your martial prowess and gain a Fighting Style feat of your choice (see chapter 5). Defense is recommended.",
         "classChoices": [
           "fighting-styles"
         ]
@@ -305,7 +305,7 @@
     "14": [
       {
         "name": "Fighting Styles",
-        "description": "You have honed your martial prowess and gain a Fighting Style feat of your choice {see chapter 5). Defense is recommended.",
+        "description": "You have honed your martial prowess and gain a Fighting Style feat of your choice (see chapter 5). Defense is recommended.",
         "classChoices": [
           "fighting-styles"
         ],
@@ -324,7 +324,7 @@
     "15": [
       {
         "name": "Fighting Styles",
-        "description": "You have honed your martial prowess and gain a Fighting Style feat of your choice {see chapter 5). Defense is recommended.",
+        "description": "You have honed your martial prowess and gain a Fighting Style feat of your choice (see chapter 5). Defense is recommended.",
         "classChoices": [
           "fighting-styles"
         ],
@@ -334,7 +334,7 @@
     "16": [
       {
         "name": "Fighting Styles",
-        "description": "You have honed your martial prowess and gain a Fighting Style feat of your choice {see chapter 5). Defense is recommended.",
+        "description": "You have honed your martial prowess and gain a Fighting Style feat of your choice (see chapter 5). Defense is recommended.",
         "classChoices": [
           "fighting-styles"
         ],
@@ -353,7 +353,7 @@
     "17": [
       {
         "name": "Fighting Styles",
-        "description": "You have honed your martial prowess and gain a Fighting Style feat of your choice {see chapter 5). Defense is recommended.",
+        "description": "You have honed your martial prowess and gain a Fighting Style feat of your choice (see chapter 5). Defense is recommended.",
         "classChoices": [
           "fighting-styles"
         ],
@@ -371,7 +371,7 @@
     "18": [
       {
         "name": "Fighting Styles",
-        "description": "You have honed your martial prowess and gain a Fighting Style feat of your choice {see chapter 5). Defense is recommended.",
+        "description": "You have honed your martial prowess and gain a Fighting Style feat of your choice (see chapter 5). Defense is recommended.",
         "classChoices": [
           "fighting-styles"
         ],
@@ -381,7 +381,7 @@
     "19": [
       {
         "name": "Fighting Styles",
-        "description": "You have honed your martial prowess and gain a Fighting Style feat of your choice {see chapter 5). Defense is recommended.",
+        "description": "You have honed your martial prowess and gain a Fighting Style feat of your choice (see chapter 5). Defense is recommended.",
         "classChoices": [
           "fighting-styles"
         ],
@@ -404,7 +404,7 @@
       },
       {
         "name": "Fighting Styles",
-        "description": "You have honed your martial prowess and gain a Fighting Style feat of your choice {see chapter 5). Defense is recommended.",
+        "description": "You have honed your martial prowess and gain a Fighting Style feat of your choice (see chapter 5). Defense is recommended.",
         "classChoices": [
           "fighting-styles"
         ]

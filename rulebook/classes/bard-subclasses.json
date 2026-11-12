@@ -41,7 +41,7 @@
     "6": [
       {
         "name": "Mantle of Majesty",
-        "description": "You always have the Command spell prepared.\n  As a Bonus Action, you cast Command without expending a spell slot, and you take on an unearthly appearance for 1 minute or until your Concentration ends. During this time, you can cast Command as a Bonus Action without expending a spell slot. Any creature Charmed by you automaticaily fails its saving throw against the Command you cast with this feature.\n  Once you use this feature, you can't use it again until you finish a Long Rest. You can a lso res tore your use of it by expending a level 3+ s pell slot (no action required).",
+        "description": "You always have the Command spell prepared.\n  As a Bonus Action, you cast Command without expending a spell slot, and you take on an unearthly appearance for 1 minute or until your Concentration ends. During this time, you can cast Command as a Bonus Action without expending a spell slot. Any creature Charmed by you automatically fails its saving throw against the Command you cast with this feature.\n  Once you use this feature, you can't use it again until you finish a Long Rest. You can also restore your use of it by expending a level 3+ spell slot (no action required).",
         "uses": [
           1,
           "long"
@@ -73,13 +73,13 @@
     "6": [
       {
         "name": "Magical Discoveries",
-        "description": "You learn two spells of your choice. These spells can come from the Cleric, Druid, or Wizard spell list or any combination thereof (see a class's section for its spell list). A spell you choose must be a cantrip or a spell for which you have spell slots, as shown in the Bard Features table.\n  You always have the chosen spells prepared, and whenever you ga in a Bard level, you can replace one of the spells with another spell that meets these requirements."
+        "description": "You learn two spells of your choice. These spells can come from the Cleric, Druid, or Wizard spell list or any combination thereof (see a class's section for its spell list). A spell you choose must be a cantrip or a spell for which you have spell slots, as shown in the Bard Features table.\n  You always have the chosen spells prepared, and whenever you gain a Bard level, you can replace one of the spells with another spell that meets these requirements."
       }
     ],
     "14": [
       {
         "name": "Peerless Skill",
-        "description": "When you make an ability check or attack roll and fail. you can expend one use of Bardic Inspiration; roll the Bardic Inspiration die, and add the number rolled to the d20, potentially turning a failure into a success. On a failure, the Bardic Inspiration isn't expended."
+        "description": "When you make an ability check or attack roll and fail, you can expend one use of Bardic Inspiration; roll the Bardic Inspiration die, and add the number rolled to the d20, potentially turning a failure into a success. On a failure, the Bardic Inspiration isn't expended."
       }
     ]
   },

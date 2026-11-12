@@ -23,7 +23,7 @@
     "10": [
       {
         "name": "Nature's Ward",
-        "description": "You are immune to the Poisoned condition, and you have Resistance to a damage type associated with your current land choice in the Circle Spells feature, as shown in the Nature's Ward table.\n#### Nature's Ward\n| Land Type  | Arid | Polar | Temprate  | Tropical |\n| ----- | ----- | ----- | ----- | ----- |\n| Resistance | Fire | Cold | Lightning | Poison |"
+        "description": "You are immune to the Poisoned condition, and you have Resistance to a damage type associated with your current land choice in the Circle Spells feature, as shown in the Nature's Ward table.\n#### Nature's Ward\n| Land Type  | Arid | Polar | Temperate | Tropical |\n| ----- | ----- | ----- | ----- | ----- |\n| Resistance | Fire | Cold | Lightning | Poison |"
       }
     ],
     "14": [
@@ -63,7 +63,7 @@
     "14": [
       {
         "name": "Lunar Form",
-        "description": " - **Improved Lunar Radiance**: Once per turn, you can deal an extra 2d10 Radiant damage to a target you hit with a Wild Shape form's attack.\n - **Shared Moonlight**: Whenever you use MoonlightStep, you can also teleport one willing creature. That creature must be within 10 feet of you, and you teleport it to an unoccupied space you can see within 10 fe et of your destination space."
+        "description": " - **Improved Lunar Radiance**: Once per turn, you can deal an extra 2d10 Radiant damage to a target you hit with a Wild Shape form's attack.\n - **Shared Moonlight**: Whenever you use Moonlight Step, you can also teleport one willing creature. That creature must be within 10 feet of you, and you teleport it to an unoccupied space you can see within 10 feet of your destination space."
       }
     ]
   },
@@ -93,7 +93,7 @@
     "14": [
       {
         "name": "Oceanic Gift",
-        "description": "Instead of manifesting the Emanation of Wrath of the Sea around yourself, you can manifest it around one willing creature within 60 feet of yourself. That creature gains all the benefits of the Emanation and uses your spell save DC and Wisdom modifier for it.\n\tIn addition, you can manifest the Emanation around both the other creature and yourself if you expend two uses of your Wild Shape ins tead of one when manifesting it."
+        "description": "Instead of manifesting the Emanation of Wrath of the Sea around yourself, you can manifest it around one willing creature within 60 feet of yourself. That creature gains all the benefits of the Emanation and uses your spell save DC and Wisdom modifier for it.\n\tIn addition, you can manifest the Emanation around both the other creature and yourself if you expend two uses of your Wild Shape instead of one when manifesting it."
       }
     ]
   },
@@ -131,7 +131,7 @@
     "14": [
       {
         "name": "Full of Stars",
-        "description": "While in your Starry Form, you become partially incor poreal, giving you Resistance to Bludgeoning, Piercing, a nd Slashing damage."
+        "description": "While in your Starry Form, you become partially incorporeal, giving you Resistance to Bludgeoning, Piercing, and Slashing damage."
       }
     ]
   }

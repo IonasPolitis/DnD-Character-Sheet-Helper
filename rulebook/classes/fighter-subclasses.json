@@ -3,7 +3,7 @@
     "3": [
       {
         "name": "Combat Superiority",
-        "description": "Your experience on the battlefield has refined your figh ting techniques. You learn maneuvers that are fueled by special dice called Superiority Dice.\n\t**Saving Throughs**: If a maneuver requires a saving throw, the DC equals 8 plus your Strength or Dexterity modifier (your choice) and Proficiency Bonus.",
+        "description": "Your experience on the battlefield has refined your fighting techniques. You learn maneuvers that are fueled by special dice called Superiority Dice.\n\t**Saving Throws**: If a maneuver requires a saving throw, the DC equals 8 plus your Strength or Dexterity modifier (your choice) and Proficiency Bonus.",
         "uses": [
           4,
           "short"
@@ -78,7 +78,7 @@
     "18": [
       {
         "name": "Survivor",
-        "description": "You attain the pinnacle of resilience in battle, giving you these benefits.\n - **Defy Death**: You have Advantage on Death Saving Throws. Moreover, when you roll 18-20 on a Death Saving Thr:ow, you gain the benefit of rolling a 20 on it.\n - **Heroic Rally**: At the start of each of your turns, you regain Hit Points equal to 5 plus your Constitution modifier if you are Bloodied and have at least 1 Hit Point."
+        "description": "You attain the pinnacle of resilience in battle, giving you these benefits.\n - **Defy Death**: You have Advantage on Death Saving Throws. Moreover, when you roll 18-20 on a Death Saving Throw, you gain the benefit of rolling a 20 on it.\n - **Heroic Rally**: At the start of each of your turns, you regain Hit Points equal to 5 plus your Constitution modifier if you are Bloodied and have at least 1 Hit Point."
       }
     ]
   },
@@ -90,7 +90,7 @@
       },
       {
         "name": "War Bond",
-        "description": "You learn a ritual that creates a magical bond between yourself and one weapon, which ritual takes 1 hour. You can have up to two bonded weapons.\n\tOnce you have bonded a weapon to yourself, you can't be disarmed of that weapon unless you have the Incapacitated condition.If it is on the same plane of existence, you can summon that weapon as a Bonus Action, causing it to teleport instantly to your hand."
+        "description": "You learn a ritual that creates a magical bond between yourself and one weapon, which ritual takes 1 hour. You can have up to two bonded weapons.\n\tOnce you have bonded a weapon to yourself, you can't be disarmed of that weapon unless you have the Incapacitated condition. If it is on the same plane of existence, you can summon that weapon as a Bonus Action, causing it to teleport instantly to your hand."
       }
     ],
     "7": [
