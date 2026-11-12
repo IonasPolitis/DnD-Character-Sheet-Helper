@@ -1,7 +1,7 @@
 {
     "name": "Shovel",
     "type": "gear",
-    "description": "A tool used for digging trenches, excavating ruins, or clearing obstacles.",
+    "description": "Working for 1 hour, you can use a Shovel to dig a hole that is 5 feet on each side in soil or similar material.",
     "weight": 5,
     "cost": 2
 }

@@ -1,7 +1,7 @@
 {
     "name": "Costume",
     "type": "gear",
-    "description": "Clothes designed for theatrical performance, disguised masquerades, or mummer shows.",
+    "description": "While wearing a Costume, you have Advantage on any ability check you make to impersonate the person or type of person it represents.",
     "weight": 4,
     "cost": 5
 }

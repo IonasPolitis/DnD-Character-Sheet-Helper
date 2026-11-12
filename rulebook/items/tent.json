@@ -1,7 +1,7 @@
 {
     "name": "Tent",
     "type": "gear",
-    "description": "A simple, portable canvas shelter that can sleep up to two people.",
+    "description": "A Tent sleeps up to two Small or Medium creatures.",
     "weight": 20,
     "cost": 2
 }

@@ -1,7 +1,7 @@
 {
     "name": "Manacles",
     "type": "gear",
-    "description": "These metal restraints can bind a Small or Medium creature. Escaping them requires a successful DC 20 Dexterity (Acrobatics) check. Breaking them requires a successful DC 20 Strength (Athletics) check.",
+    "description": "As a Utilize action, you can use Manacles to bind an unwilling Small or Medium creature within 5 feet that has the Grappled, Incapacitated, or Restrained condition (DC 13 Sleight of Hand). While bound, the creature has Disadvantage on attack rolls. Escaping requires a DC 20 Dexterity (Sleight of Hand) check; bursting them requires a DC 25 Strength (Athletics) check; picking them requires Thieves' Tools (DC 15 Sleight of Hand).",
     "weight": 6,
     "cost": 2
 }

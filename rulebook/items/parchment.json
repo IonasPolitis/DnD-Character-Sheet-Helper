@@ -1,7 +1,7 @@
 {
     "name": "Parchment",
     "type": "gear",
-    "description": "A sheet of durable animal-skin paper used for writing notes, letters, or maps.",
+    "description": "One sheet of Parchment can hold about 250 handwritten words.",
     "weight": 0,
     "cost": 0.1
 }

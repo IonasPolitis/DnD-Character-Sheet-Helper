@@ -1,7 +1,7 @@
 {
     "name": "Perfume",
     "type": "gear",
-    "description": "A small vial of fragrant scent typically used by courtiers and nobility.",
+    "description": "Perfume comes in a 4-ounce vial. For 1 hour after applying perfume to yourself, you have Advantage on Charisma (Persuasion) checks made to influence an indifferent Humanoid within 5 feet of yourself.",
     "weight": 0,
     "cost": 5
 }

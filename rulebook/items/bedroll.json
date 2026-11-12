@@ -1,7 +1,7 @@
 {
     "name": "Bedroll",
     "type": "gear",
-    "description": "A sleeping bag made of canvas and wool designed for resting outdoors or in rugged environments.",
+    "description": "A Bedroll sleeps one Small or Medium creature. While in a Bedroll, you automatically succeed on saving throws against extreme cold.",
     "weight": 7,
     "cost": 1
 }
