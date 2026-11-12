@@ -1,151 +1,229 @@
 {
-    "class": "Barbarian",
-    "hitDice": "D12",
-    "savingThroughProf": ["strength", "constitution"],
-    "proficiencyBonus": [ "2", "2", "2", "2", "3", "3", "3", "3", "4", "4", "4", "4", "5", "5", "5", "5", "6", "6", "6", "6", "7", "7", "7", "7", "8", "8", "8", "8", "9", "9" ],
-    "skillsPool": [["animal handling", "athletics", "intimidation", "nature", "perception", "survival"], 2 ],
-    "startingEquipment": {
-        "A": {
-            "items": {
-                "greataxe": 1,
-                "handaxe": 4,
-                "longsword": 1,
-                "explorers-pack": 1
-            }, "gold": 15
-        },
-        "B": { "items": {}, "gold": 75 }
+  "class": "Barbarian",
+  "hitDice": "D12",
+  "savingThroughProf": [
+    "strength",
+    "constitution"
+  ],
+  "proficiencyBonus": [
+    "2",
+    "2",
+    "2",
+    "2",
+    "3",
+    "3",
+    "3",
+    "3",
+    "4",
+    "4",
+    "4",
+    "4",
+    "5",
+    "5",
+    "5",
+    "5",
+    "6",
+    "6",
+    "6",
+    "6",
+    "7",
+    "7",
+    "7",
+    "7",
+    "8",
+    "8",
+    "8",
+    "8",
+    "9",
+    "9"
+  ],
+  "skillsPool": [
+    [
+      "animal handling",
+      "athletics",
+      "intimidation",
+      "nature",
+      "perception",
+      "survival"
+    ],
+    2
+  ],
+  "startingEquipment": {
+    "A": {
+      "items": {
+        "greataxe": 1,
+        "handaxe": 4,
+        "explorers-pack": 1
+      },
+      "gold": 15
     },
-    "features": {
-        "1": [
-            {
-                "name": "Rage",
-                "description": "While active, your Rage follows the rules below:\n - **Damage Resistance**:\nYou have Resistance to Bludgeoning, Piercing, and Slashing damage.\n - **Rage Damage**: When you make an attack using Strength-with either a weapon or an Unarmed Strike-and deal damage to the target, you gain a bonus to the damage that increases as you gain levels as a Barbarian, as shown in the Rage Damage column of the Barbarian Features table.\n - **Strength Advantage**:\nYou have Advantage on Strength checks and Strength saving throws.\n - **No Concentration or Spells**:\nYou can't maintain Concentration, and you can't cast spells.\n - **Duration**: The Rage lasts until the end of your next turn, and it ends early if you don Heavy armor or have the Incapacitated condition. If your Rage is still active on your next turn, you can extend the Rage for another round by doing one of the following:\n - Make an attack roll against an enemy.\n - Force an enemy to make a saving throw.\n - Take a Bonus Action to extend your Rage.",
-                "uses": [2, "long"]
-            },
-            {
-                "name": "Unarmored Defense",
-                "description": "While you aren't wearing any armor, your base Armor Class equals 10 plus your Dexterity and Constitution modifiers. You can use a Shield and still gain this benefit."
-            },
-            {
-                "name": "Unarmored Defense",
-                "description": "10+dexterity+constitution",
-                "hide": true
-            }
-        ],
-        "2": [
-            {
-                  "name": "Danger Sense",
-                  "description": "You gain an uncanny sense of when things aren't as they should be, giving you an edge when you dodge perils. You have Advantage on Dexterity saving throws unless you have the Incapacitated condition."
-            },
-            {
-                "name": "Reckless Attack",
-                "description": "You can throw aside all concern for defense to attack with increased ferocity. When you make your first attack roll on your turn, you can decide to attack recklessly. Doing so gives you Advantage on attack rolls using Strength until the start of your next turn, but attack rolls against you have Advantage during that time."
-            }
-        ],
-        "3": [
-            {
-                "name": "Barbarian Subclass",
-                "grantedSubclasses": "barbarian-subclasses",
-                "hide": true
-            },
-            {
-                  "name": "Primal Knowledge",
-                  "description": "while your Rage is active, you can channel primal power when you attempt certain tasks; whenever you make an ability check using one of the following skills, you can make it as a Strength check even if it normally uses a different ability: Acrobatics, Intimidation, Perception, Stealth, or Survival."
-            }
-        ],
-        "4": [
-            {
-                "name": "Ability Score Improvement",
-                "description": "Choose between increasing your ability scores or selecting a feat.",
-                "grantedFeats": [
-                    "ability-score-improvement",
-                    "general-feats"
-                ],
-                "hide": true
-            }
-        ],
-        "5": [
-            {
-                  "name": "Extra Attack",
-                  "description": "You can attack twice instead of once whenever you take the Attack action on your turn."
-            },
-            {
-                "name": "Fast Movement",
-                "description": "Your speed increases by 10 feet while you aren't wearing Heavy armor.",
-                "speedMod": 10
-            }
-        ],
-        "7": [
-            {
-                  "name": "Feral Instinct",
-                  "description": "Your instincts are so honed that you have Advantage on Initiative rolls."
-            },
-            {
-                  "name": "Instinctive Pounce",
-                  "description": "As part of the Bonus Action you take to enter your Rage, you can move up to half your Speed."
-            }
-        ],
-        "8": [
-            {
-                "name": "Ability Score Improvement",
-                "description": "Choose between increasing your ability scores or selecting a feat.",
-                "grantedFeats": [
-                    "ability-score-improvement",
-                    "general-feats"
-                ],
-                "hide": true
-            }
-        ],
-        "9": [
-            {
-                  "name": "Brutal Strike",
-                  "description": "If you use Reck.less Attack, you can forgo any Advantage on one Strength-based attack roll of your choice on your turn. The chosen attack roll mustn't have Disadvantage. If the chosen attack roll hits, the target takes an extra 1d10 damage of the same type dealt by the weapon or Unarmed Strike, and you can cause one Brutal Strike effect of your choice. You have the following effect options.\n - **Forceful Blow**: The target is pushed 15 feet straight away from you. You can then move up to half your Speed straight toward the target without provoking Opportunity Attacks.\n - **Hamstering Blow**: The target's Speed is reduced by 15 feet until the start of your next turn. A target can be affected by only one Hamstering Blow at a timethe most recent one."
-            }
-        ],
-        "11": [
-            {
-                  "name": "Relentless Rage",
-                  "description": "Your Rage can keep you fighting despite grievous wounds. If you drop to O Hit Points while your Rage is active and don't die outright, you can make a DC 10 Constitution saving throw. If you succeed, your Hit Points instead change to a number equal to twice your Barbarian level.\n  Each time you use this feature after the first, the DC increases by 5. When you finish a Short or Long Rest, the DC resets to 10."
-            }
-        ],
-        "12": [
-            {
-                "name": "Ability Score Improvement",
-                "description": "Choose between increasing your ability scores or selecting a feat.",
-                "grantedFeats": [
-                    "ability-score-improvement",
-                    "general-feats"
-                ],
-                "hide": true
-            }
-        ],
-        "13": [
-            {
-                  "name": "Improved Brutal Strike",
-                  "description": "You have honed new ways to attack furiously. The following effects are now among your Brutal Strike options.\n - **Staggering Blow**: The target has Disadvantage on the next saving throw it makes, and it can't make Opportunity Attacks until the start of your next turn.\n - **Sundering Blow**: Before the start of your next turn, the next attack roll made by another creature against the target gains a +5 bonus to the roll. An attack roll can gain only one Sundering Blow bonus."
-            }
-        ],
-        "16": [
-            {
-                "name": "Ability Score Improvement",
-                "description": "Choose between increasing your ability scores or selecting a feat.",
-                "grantedFeats": [
-                    "ability-score-improvement",
-                    "general-feats"
-                ],
-                "hide": true
-            }
-        ],
-        "19": [
-            {
-                "name": "Epic Boon Feat",
-                "description": "You gain an Epic Boon feat (see chapter 5) or another feat of your choice for which you qualify. Boon of Fate is recommended.",
-                "grantedFeats": [
-                    "epic-boon-feats",
-                    "general-feats"
-                ],
-                "hide": true
-            }
-        ]
+    "B": {
+      "items": {},
+      "gold": 75
     }
+  },
+  "features": {
+    "1": [
+      {
+        "name": "Rage",
+        "description": "While active, your Rage follows the rules below:\n - **Damage Resistance**:\nYou have Resistance to Bludgeoning, Piercing, and Slashing damage.\n - **Rage Damage**: When you make an attack using Strength-with either a weapon or an Unarmed Strike-and deal damage to the target, you gain a bonus to the damage that increases as you gain levels as a Barbarian, as shown in the Rage Damage column of the Barbarian Features table.\n - **Strength Advantage**:\nYou have Advantage on Strength checks and Strength saving throws.\n - **No Concentration or Spells**:\nYou can't maintain Concentration, and you can't cast spells.\n - **Duration**: The Rage lasts until the end of your next turn, and it ends early if you don Heavy armor or have the Incapacitated condition. If your Rage is still active on your next turn, you can extend the Rage for another round by doing one of the following:\n - Make an attack roll against an enemy.\n - Force an enemy to make a saving throw.\n - Take a Bonus Action to extend your Rage.",
+        "uses": [
+          2,
+          "long"
+        ]
+      },
+      {
+        "name": "Unarmored Defense",
+        "description": "While you aren't wearing any armor, your base Armor Class equals 10 plus your Dexterity and Constitution modifiers. You can use a Shield and still gain this benefit."
+      },
+      {
+        "name": "Unarmored Defense",
+        "description": "10+dexterity+constitution",
+        "hide": true
+      },
+      {
+        "name": "Weapon Mastery",
+        "description": "Your training with weapons allows you to use the mastery properties of two kinds of weapons of your choice with which you have proficiency, such as Greataxes and Handaxes. Whenever you finish a Long Rest, you can change the kinds of weapons you chose."
+      }
+    ],
+    "2": [
+      {
+        "name": "Danger Sense",
+        "description": "You gain an uncanny sense of when things aren't as they should be, giving you an edge when you dodge perils. You have Advantage on Dexterity saving throws unless you have the Incapacitated condition."
+      },
+      {
+        "name": "Reckless Attack",
+        "description": "You can throw aside all concern for defense to attack with increased ferocity. When you make your first attack roll on your turn, you can decide to attack recklessly. Doing so gives you Advantage on attack rolls using Strength until the start of your next turn, but attack rolls against you have Advantage during that time."
+      }
+    ],
+    "3": [
+      {
+        "name": "Barbarian Subclass",
+        "grantedSubclasses": "barbarian-subclasses",
+        "hide": true
+      },
+      {
+        "name": "Primal Knowledge",
+        "description": "while your Rage is active, you can channel primal power when you attempt certain tasks; whenever you make an ability check using one of the following skills, you can make it as a Strength check even if it normally uses a different ability: Acrobatics, Intimidation, Perception, Stealth, or Survival."
+      }
+    ],
+    "4": [
+      {
+        "name": "Ability Score Improvement",
+        "description": "Choose between increasing your ability scores or selecting a feat.",
+        "grantedFeats": [
+          "ability-score-improvement",
+          "general-feats"
+        ],
+        "hide": true
+      }
+    ],
+    "5": [
+      {
+        "name": "Extra Attack",
+        "description": "You can attack twice instead of once whenever you take the Attack action on your turn."
+      },
+      {
+        "name": "Fast Movement",
+        "description": "Your speed increases by 10 feet while you aren't wearing Heavy armor.",
+        "speedMod": 10
+      }
+    ],
+    "7": [
+      {
+        "name": "Feral Instinct",
+        "description": "Your instincts are so honed that you have Advantage on Initiative rolls."
+      },
+      {
+        "name": "Instinctive Pounce",
+        "description": "As part of the Bonus Action you take to enter your Rage, you can move up to half your Speed."
+      }
+    ],
+    "8": [
+      {
+        "name": "Ability Score Improvement",
+        "description": "Choose between increasing your ability scores or selecting a feat.",
+        "grantedFeats": [
+          "ability-score-improvement",
+          "general-feats"
+        ],
+        "hide": true
+      }
+    ],
+    "9": [
+      {
+        "name": "Brutal Strike",
+        "description": "If you use Reckless Attack, you can forgo any Advantage on one Strength-based attack roll of your choice on your turn. The chosen attack roll mustn't have Disadvantage. If the chosen attack roll hits, the target takes an extra 1d10 damage of the same type dealt by the weapon or Unarmed Strike, and you can cause one Brutal Strike effect of your choice. You have the following effect options.\n - **Forceful Blow**: The target is pushed 15 feet straight away from you. You can then move up to half your Speed straight toward the target without provoking Opportunity Attacks.\n - **Hamstring Blow**: The target's Speed is reduced by 15 feet until the start of your next turn. A target can be affected by only one Hamstring Blow at a time\u2014the most recent one."
+      }
+    ],
+    "11": [
+      {
+        "name": "Relentless Rage",
+        "description": "Your Rage can keep you fighting despite grievous wounds. If you drop to 0 Hit Points while your Rage is active and don't die outright, you can make a DC 10 Constitution saving throw. If you succeed, your Hit Points instead change to a number equal to twice your Barbarian level.\n  Each time you use this feature after the first, the DC increases by 5. When you finish a Short or Long Rest, the DC resets to 10."
+      }
+    ],
+    "12": [
+      {
+        "name": "Ability Score Improvement",
+        "description": "Choose between increasing your ability scores or selecting a feat.",
+        "grantedFeats": [
+          "ability-score-improvement",
+          "general-feats"
+        ],
+        "hide": true
+      }
+    ],
+    "13": [
+      {
+        "name": "Improved Brutal Strike",
+        "description": "You have honed new ways to attack furiously. The following effects are now among your Brutal Strike options.\n - **Staggering Blow**: The target has Disadvantage on the next saving throw it makes, and it can't make Opportunity Attacks until the start of your next turn.\n - **Sundering Blow**: Before the start of your next turn, the next attack roll made by another creature against the target gains a +5 bonus to the roll. An attack roll can gain only one Sundering Blow bonus."
+      }
+    ],
+    "15": [
+      {
+        "name": "Persistent Rage",
+        "description": "Your Rage is so fierce that it now lasts for 10 minutes without you needing to do anything to extend it on each turn. It ends early only if you have the Incapacitated condition or don Heavy armor.\n\tIn addition, whenever you roll Initiative, you can regain one expended use of your Rage if you have no uses remaining."
+      }
+    ],
+    "16": [
+      {
+        "name": "Ability Score Improvement",
+        "description": "Choose between increasing your ability scores or selecting a feat.",
+        "grantedFeats": [
+          "ability-score-improvement",
+          "general-feats"
+        ],
+        "hide": true
+      }
+    ],
+    "17": [
+      {
+        "name": "Improved Brutal Strike",
+        "description": "The extra damage of your Brutal Strike increases to 2d10. In addition, you can choose two different Brutal Strike effects whenever you use the feature."
+      }
+    ],
+    "18": [
+      {
+        "name": "Indomitable Might",
+        "description": "If your total for a Strength check or Strength saving throw is less than your Strength score, you can use that score in place of the total."
+      }
+    ],
+    "19": [
+      {
+        "name": "Epic Boon Feat",
+        "description": "You gain an Epic Boon feat (see chapter 5) or another feat of your choice for which you qualify. Boon of Fate is recommended.",
+        "grantedFeats": [
+          "epic-boon-feats",
+          "general-feats"
+        ],
+        "hide": true
+      }
+    ],
+    "20": [
+      {
+        "name": "Primal Champion",
+        "description": "You embody the primal power of the wild. Your Strength and Constitution scores increase by 4, to a maximum of 25."
+      }
+    ]
+  }
 }

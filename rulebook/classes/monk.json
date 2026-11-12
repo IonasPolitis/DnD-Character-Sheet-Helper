@@ -2,8 +2,8 @@
   "class": "Monk",
   "hitDice": "D8",
   "savingThroughProf": [
-    "dexterity",
-    "wisdom"
+    "strength",
+    "dexterity"
   ],
   "proficiencyBonus": [
     "2",
@@ -98,6 +98,10 @@
   "features": {
     "1": [
       {
+        "name": "Martial Arts",
+        "description": "Your practice of martial arts gives you mastery of combat styles that use your Unarmed Strike and Monk weapons (Simple Melee weapons and Martial Melee weapons with the Light property). You gain Dexterous Attacks (use DEX instead of STR for attack and damage rolls), Martial Arts Die (roll your scaling Martial Arts die instead of normal damage), and Bonus Unarmed Strike (make an Unarmed Strike as a Bonus Action)."
+      },
+      {
         "name": "Bonus Unarmed Strike",
         "description": "You can make an Unarmed Strike as a Bonus Action."
       },
@@ -120,12 +124,18 @@
       {
         "name": "Uncanny Metabolism",
         "description": "When you roll Initiative, you can regain all expended Focus Points. When you do so, roll your Martial Arts die, and regain a number of Hit Points equal to your Monk level plus the number rolled.\n\tOnce you use this feature, you can't use it again until you finish a Long Rest.",
-        "uses": [1, "long"]
+        "uses": [
+          1,
+          "long"
+        ]
       },
       {
         "name": "Monk's Focus",
         "description": " - **Flurry of Blows**:\nYou can expend 1 Focus Point to make two Unarmed Strikes as a Bonus Action.\n - **Patient Defense**:\nYou can take the Disengage action as a Bonus Action. Alternatively, you can expend 1 Focus Point to take both the Disengage and the Dodge actions as a Bonus Action.\n - **Step of the Wind**:\nYou can take the Dash action as a Bonus Action. Alternatively, you can expend 1 Focus Point to take both the Disengage and Dash actions as a Bonus Action, and your jump distance is doubled for the turn.",
-        "uses": ["level", "short"]
+        "uses": [
+          "level",
+          "short"
+        ]
       }
     ],
     "3": [

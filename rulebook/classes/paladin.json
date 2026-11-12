@@ -1,157 +1,527 @@
 {
-    "class": "Paladin",
-    "hitDice": "D10",
-    "savingThroughProf": [ "strength", "charisma" ],
-    "proficiencyBonus": [ "2", "2", "2", "2", "3", "3", "3", "3", "4", "4", "4", "4", "5", "5", "5", "5", "6", "6", "6", "6", "7", "7", "7", "7", "8", "8", "8", "8", "9", "9" ],
-    "skillsPool": [ [ "athletics", "insight", "intimidation", "medicine", "persuasion", "religion" ], 2 ],
-    "spellcastingAbilities": [ "Charisma" ],
-    "startingEquipment": {
-        "A": {
-            "items": {
-                "chain-mail": 1,
-                "shield": 1,
-                "longsword": 1,
-                "javelin": 6,
-                "holy-symbol": 1,
-                "priests-pack": 1
-            },
-            "gold": 9
-        },
-        "B": {
-            "items": {},
-            "gold": 150
-        }
+  "class": "Paladin",
+  "hitDice": "D10",
+  "savingThroughProf": [
+    "wisdom",
+    "charisma"
+  ],
+  "proficiencyBonus": [
+    "2",
+    "2",
+    "2",
+    "2",
+    "3",
+    "3",
+    "3",
+    "3",
+    "4",
+    "4",
+    "4",
+    "4",
+    "5",
+    "5",
+    "5",
+    "5",
+    "6",
+    "6",
+    "6",
+    "6",
+    "7",
+    "7",
+    "7",
+    "7",
+    "8",
+    "8",
+    "8",
+    "8",
+    "9",
+    "9"
+  ],
+  "skillsPool": [
+    [
+      "athletics",
+      "insight",
+      "intimidation",
+      "medicine",
+      "persuasion",
+      "religion"
+    ],
+    2
+  ],
+  "spellcastingAbilities": [
+    "Charisma"
+  ],
+  "startingEquipment": {
+    "A": {
+      "items": {
+        "chain-mail": 1,
+        "shield": 1,
+        "longsword": 1,
+        "javelin": 6,
+        "holy-symbol": 1,
+        "priests-pack": 1
+      },
+      "gold": 9
     },
-    "spellsPool": "paladin-spells",
-    "spellcasting": {
-        "1": { "cantrips": 0, "preparedSpells": 2, "slots": [2, 0, 0, 0, 0, 0, 0, 0, 0] },
-        "2": { "cantrips": 0, "preparedSpells": 3, "slots": [2, 0, 0, 0, 0, 0, 0, 0, 0] },
-        "3": { "cantrips": 0, "preparedSpells": 4, "slots": [3, 0, 0, 0, 0, 0, 0, 0, 0] },
-        "4": { "cantrips": 0, "preparedSpells": 5, "slots": [3, 0, 0, 0, 0, 0, 0, 0, 0] },
-        "5": { "cantrips": 0, "preparedSpells": 6, "slots": [4, 2, 0, 0, 0, 0, 0, 0, 0] },
-        "6": { "cantrips": 0, "preparedSpells": 6, "slots": [4, 2, 0, 0, 0, 0, 0, 0, 0] },
-        "7": { "cantrips": 0, "preparedSpells": 7, "slots": [4, 3, 0, 0, 0, 0, 0, 0, 0] },
-        "8": { "cantrips": 0, "preparedSpells": 7, "slots": [4, 3, 0, 0, 0, 0, 0, 0, 0] },
-        "9": { "cantrips": 0, "preparedSpells": 9, "slots": [4, 3, 2, 0, 0, 0, 0, 0, 0] },
-        "10": { "cantrips": 0, "preparedSpells": 9, "slots": [4, 3, 2, 0, 0, 0, 0, 0, 0] },
-        "11": { "cantrips": 0, "preparedSpells": 10, "slots": [4, 3, 3, 0, 0, 0, 0, 0, 0] },
-        "12": { "cantrips": 0, "preparedSpells": 10, "slots": [4, 3, 3, 0, 0, 0, 0, 0, 0] },
-        "13": { "cantrips": 0, "preparedSpells": 11, "slots": [4, 3, 3, 1, 0, 0, 0, 0, 0] },
-        "14": { "cantrips": 0, "preparedSpells": 11, "slots": [4, 3, 3, 1, 0, 0, 0, 0, 0] },
-        "15": { "cantrips": 0, "preparedSpells": 12, "slots": [4, 3, 3, 2, 0, 0, 0, 0, 0] },
-        "16": { "cantrips": 0, "preparedSpells": 12, "slots": [4, 3, 3, 2, 0, 0, 0, 0, 0] },
-        "17": { "cantrips": 0, "preparedSpells": 14, "slots": [4, 3, 3, 3, 1, 0, 0, 0, 0] },
-        "18": { "cantrips": 0, "preparedSpells": 14, "slots": [4, 3, 3, 3, 1, 0, 0, 0, 0] },
-        "19": { "cantrips": 0, "preparedSpells": 15, "slots": [4, 3, 3, 3, 2, 0, 0, 0, 0] },
-        "20": { "cantrips": 0, "preparedSpells": 15, "slots": [4, 3, 3, 3, 2, 0, 0, 0, 0] }
-    },
-    "features": {
-        "1": [
-            {
-                "name": "Lay on Hands",
-                "description": "Your blessed touch can heal wounds. You have a pool of healing power that replenishes when you finish a Long Rest. With that pool, you can restore a total number of Hit Points equal to five times your Paladin level.\n\tAs a Bonus Action, you can touch a creature (which could be yourself) and draw power from the pool of healing to restore a number of Hit Points to that creature, up to the maximum amount remaining in the pool.\n\tYou can also expend 5 Hit Points from the pool of healing power to remove the Poisoned condition from the creature; those points don't also restore Hit Points to the creature."
-            },
-            {
-                "name": "Weapon Mastery",
-                "description": "Whenever you finish a Long Rest, you can change the kinds of weapons you chose. For example, you could switch to using the mastery properties of Hal-berds and Flails"
-            }
-        ],
-        "3": [
-            {
-                "name": "Paladin Subclass",
-                "grantedSubclasses": "paladin-subclasses",
-                "hide": true
-            }
-        ],
-        "4": [
-            {
-                "name": "Ability Score Improvement",
-                "description": "Choose between increasing your ability scores or selecting a feat.",
-                "grantedFeats": [
-                    "ability-score-improvement",
-                    "general-feats"
-                ],
-                "hide": true
-            }
-        ],
-        "5": [
-            {
-                "name": "Extra Attack",
-                "description": "You can attack twice instead of once whenever you take the Attack action on your turn."
-            },
-            {
-                "name": "Faithful Steed",
-                "description": "You can call on the aid of an otherworldly steed. You always have the Find Steed spell prepared.\n\tYou can also cast the spell once without expending a spell slot, and you regain the ability to do so when you finish a Long Rest.",
-                "uses": [1, "long"]
-            }
-        ],
-        "6": [
-            {
-                "name": "Aura of Protection",
-                "description": "You radiate a protective, unseeable aura in a 10-foot Emanation that originates from you. The aura is inactive while you have the Incapacitated condition.\n\tYou and your allies in the aura gain a bonus to saving throws equal to your Charisma modifier (minimum bonus of +1).\n\tIf another Paladin is present, a creature can benefit from only one Aura of Protection at a time; the creat ure chooses which aura while in them."
-            }
-        ],
-        "8": [
-            {
-                "name": "Ability Score Improvement",
-                "description": "Choose between increasing your ability scores or selecting a feat.",
-                "grantedFeats": [
-                    "ability-score-improvement",
-                    "general-feats"
-                ],
-                "hide": true
-            }
-        ],
-        "9": [
-            {
-                "name": "Abjure Foes",
-                "description": "As a Magic action, you can expend one use of this class's Channel Divinity to overwhelm foes with awe. As you present your Holy Symbol or weapon, you can target a number of creatures equal to your Charisma modifier (minimum of one creature) that you can see within 60 feet of yourself. Each target must succeed on a Wisdom saving throw or have the Frightened condition for 1 minute or until it takes any damage. While Frightened in this way, a target can do only one of the following on its turns: move, take an action, or take a Bonus Action."
-            }
-        ],
-        "10": [
-            {
-                "name": "Aura of Courage",
-                "description": "You and your allies have Immunity to the Frightened condition while in your Aura of Protection. If a Frightened ally enters the aura, that condition has no effect on that ally while there."
-            }
-        ],
-        "12": [
-            {
-                "name": "Ability Score Improvement",
-                "description": "Choose between increasing your ability scores or selecting a feat.",
-                "grantedFeats": [
-                    "ability-score-improvement",
-                    "general-feats"
-                ],
-                "hide": true
-            }
-        ],
-        "14": [
-            {
-                "name": "Restoring Touch",
-                "description": "When you use Lay On Hands on a creature, you can also remove one or more of the following conditions from the creature: Blinded, Charmed, Deafened, Frightened, Paralyzed, or Stunned. You must expend 5 Hit Points from the healing pool of Lay On Hands for each of these conditions you remove; those points don't also restore Hit Points to the creature."
-            }
-        ],
-        "16": [
-            {
-                "name": "Ability Score Improvement",
-                "description": "Choose between increasing your ability scores or selecting a feat.",
-                "grantedFeats": [
-                    "ability-score-improvement",
-                    "general-feats"
-                ],
-                "hide": true
-            }
-        ],
-        "19": [
-            {
-                "name": "Epic Boon Feat",
-                "description": "You gain an Epic Boon feat (see chapter 5) or another feat of your choice for which you qualify. Boon of Fate is recommended.",
-                "grantedFeats": [
-                    "epic-boon-feats",
-                    "general-feats"
-                ],
-                "hide": true
-            }
-        ]
+    "B": {
+      "items": {},
+      "gold": 150
     }
+  },
+  "spellsPool": "paladin-spells",
+  "spellcasting": {
+    "1": {
+      "cantrips": 0,
+      "preparedSpells": 2,
+      "slots": [
+        2,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "2": {
+      "cantrips": 0,
+      "preparedSpells": 3,
+      "slots": [
+        2,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "3": {
+      "cantrips": 0,
+      "preparedSpells": 4,
+      "slots": [
+        3,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "4": {
+      "cantrips": 0,
+      "preparedSpells": 5,
+      "slots": [
+        3,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "5": {
+      "cantrips": 0,
+      "preparedSpells": 6,
+      "slots": [
+        4,
+        2,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "6": {
+      "cantrips": 0,
+      "preparedSpells": 6,
+      "slots": [
+        4,
+        2,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "7": {
+      "cantrips": 0,
+      "preparedSpells": 7,
+      "slots": [
+        4,
+        3,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "8": {
+      "cantrips": 0,
+      "preparedSpells": 7,
+      "slots": [
+        4,
+        3,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "9": {
+      "cantrips": 0,
+      "preparedSpells": 9,
+      "slots": [
+        4,
+        3,
+        2,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "10": {
+      "cantrips": 0,
+      "preparedSpells": 9,
+      "slots": [
+        4,
+        3,
+        2,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "11": {
+      "cantrips": 0,
+      "preparedSpells": 10,
+      "slots": [
+        4,
+        3,
+        3,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "12": {
+      "cantrips": 0,
+      "preparedSpells": 10,
+      "slots": [
+        4,
+        3,
+        3,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "13": {
+      "cantrips": 0,
+      "preparedSpells": 11,
+      "slots": [
+        4,
+        3,
+        3,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "14": {
+      "cantrips": 0,
+      "preparedSpells": 11,
+      "slots": [
+        4,
+        3,
+        3,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "15": {
+      "cantrips": 0,
+      "preparedSpells": 12,
+      "slots": [
+        4,
+        3,
+        3,
+        2,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "16": {
+      "cantrips": 0,
+      "preparedSpells": 12,
+      "slots": [
+        4,
+        3,
+        3,
+        2,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "17": {
+      "cantrips": 0,
+      "preparedSpells": 14,
+      "slots": [
+        4,
+        3,
+        3,
+        3,
+        1,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "18": {
+      "cantrips": 0,
+      "preparedSpells": 14,
+      "slots": [
+        4,
+        3,
+        3,
+        3,
+        1,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "19": {
+      "cantrips": 0,
+      "preparedSpells": 15,
+      "slots": [
+        4,
+        3,
+        3,
+        3,
+        2,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "20": {
+      "cantrips": 0,
+      "preparedSpells": 15,
+      "slots": [
+        4,
+        3,
+        3,
+        3,
+        2,
+        0,
+        0,
+        0,
+        0
+      ]
+    }
+  },
+  "features": {
+    "1": [
+      {
+        "name": "Lay on Hands",
+        "description": "Your blessed touch can heal wounds. You have a pool of healing power that replenishes when you finish a Long Rest. With that pool, you can restore a total number of Hit Points equal to five times your Paladin level.\n\tAs a Bonus Action, you can touch a creature (which could be yourself) and draw power from the pool of healing to restore a number of Hit Points to that creature, up to the maximum amount remaining in the pool.\n\tYou can also expend 5 Hit Points from the pool of healing power to remove the Poisoned condition from the creature; those points don't also restore Hit Points to the creature."
+      },
+      {
+        "name": "Weapon Mastery",
+        "description": "Whenever you finish a Long Rest, you can change the kinds of weapons you chose. For example, you could switch to using the mastery properties of Hal-berds and Flails"
+      },
+      {
+        "name": "Spellcasting",
+        "description": "You have learned to cast spells through meditation and prayer. You prepare spells from the Paladin spell list, using Charisma as your spellcasting ability. You can use a Holy Symbol as a spellcasting focus for your Paladin spells."
+      }
+    ],
+    "2": [
+      {
+        "name": "Fighting Style",
+        "description": "You gain a Fighting Style feat of your choice. Instead of choosing one of those feats, you can choose the Blessed Warrior option below.\n - **Blessed Warrior**: You learn two Cleric cantrips of your choice (Guidance and Sacred Flame are recommended). Whenever you gain a Paladin level, you can replace one of these cantrips with another Cleric cantrip. Charisma is your spellcasting ability for them.\nWhenever you gain a Paladin level, you can replace the feat you chose with a different Fighting Style feat.",
+        "classChoices": [
+          "fighting-styles"
+        ]
+      },
+      {
+        "name": "Paladin's Smite",
+        "description": "You have the Divine Smite spell prepared. In addition, you can cast it once without expending a spell slot, and you regain the ability to do so when you finish a Long Rest.",
+        "uses": [
+          1,
+          "long"
+        ]
+      }
+    ],
+    "3": [
+      {
+        "name": "Channel Divinity",
+        "description": "You gain the ability to channel divine energy directly from the Outer Planes, using it to fuel magical effects. You start with one such effect: Divine Sense. Each time you use your Channel Divinity, you choose which effect to create. You can use this feature twice, and you regain all expended uses when you finish a Short or Long Rest.\n - **Divine Sense**: As a Bonus Action, you can open your awareness to detect Celestials, Fiends, and Undead. For the next 10 minutes or until you have the Incapacitated condition, you know the location of any creature of that type within 60 feet of yourself that isn't behind Total Cover. You also detect the presence of any place or object that has been consecrated or desecrated, as with the Hallow spell.",
+        "uses": [
+          2,
+          "short"
+        ]
+      },
+      {
+        "name": "Paladin Subclass",
+        "grantedSubclasses": "paladin-subclasses",
+        "hide": true
+      }
+    ],
+    "4": [
+      {
+        "name": "Ability Score Improvement",
+        "description": "Choose between increasing your ability scores or selecting a feat.",
+        "grantedFeats": [
+          "ability-score-improvement",
+          "general-feats"
+        ],
+        "hide": true
+      }
+    ],
+    "5": [
+      {
+        "name": "Extra Attack",
+        "description": "You can attack twice instead of once whenever you take the Attack action on your turn."
+      },
+      {
+        "name": "Faithful Steed",
+        "description": "You can call on the aid of an otherworldly steed. You always have the Find Steed spell prepared.\n\tYou can also cast the spell once without expending a spell slot, and you regain the ability to do so when you finish a Long Rest.",
+        "uses": [
+          1,
+          "long"
+        ]
+      }
+    ],
+    "6": [
+      {
+        "name": "Aura of Protection",
+        "description": "You radiate a protective, unseeable aura in a 10-foot Emanation that originates from you. The aura is inactive while you have the Incapacitated condition.\n\tYou and your allies in the aura gain a bonus to saving throws equal to your Charisma modifier (minimum bonus of +1).\n\tIf another Paladin is present, a creature can benefit from only one Aura of Protection at a time; the creat ure chooses which aura while in them."
+      }
+    ],
+    "8": [
+      {
+        "name": "Ability Score Improvement",
+        "description": "Choose between increasing your ability scores or selecting a feat.",
+        "grantedFeats": [
+          "ability-score-improvement",
+          "general-feats"
+        ],
+        "hide": true
+      }
+    ],
+    "9": [
+      {
+        "name": "Abjure Foes",
+        "description": "As a Magic action, you can expend one use of this class's Channel Divinity to overwhelm foes with awe. As you present your Holy Symbol or weapon, you can target a number of creatures equal to your Charisma modifier (minimum of one creature) that you can see within 60 feet of yourself. Each target must succeed on a Wisdom saving throw or have the Frightened condition for 1 minute or until it takes any damage. While Frightened in this way, a target can do only one of the following on its turns: move, take an action, or take a Bonus Action."
+      }
+    ],
+    "10": [
+      {
+        "name": "Aura of Courage",
+        "description": "You and your allies have Immunity to the Frightened condition while in your Aura of Protection. If a Frightened ally enters the aura, that condition has no effect on that ally while there."
+      }
+    ],
+    "11": [
+      {
+        "name": "Radiant Strikes",
+        "description": "You are so suffused with righteous might that all your melee attacks strike with supernatural power. When you hit a target with an attack roll using a Melee weapon or an Unarmed Strike, the target takes an extra 1d8 Radiant damage."
+      }
+    ],
+    "12": [
+      {
+        "name": "Ability Score Improvement",
+        "description": "Choose between increasing your ability scores or selecting a feat.",
+        "grantedFeats": [
+          "ability-score-improvement",
+          "general-feats"
+        ],
+        "hide": true
+      }
+    ],
+    "14": [
+      {
+        "name": "Restoring Touch",
+        "description": "When you use Lay On Hands on a creature, you can also remove one or more of the following conditions from the creature: Blinded, Charmed, Deafened, Frightened, Paralyzed, or Stunned. You must expend 5 Hit Points from the healing pool of Lay On Hands for each of these conditions you remove; those points don't also restore Hit Points to the creature."
+      }
+    ],
+    "16": [
+      {
+        "name": "Ability Score Improvement",
+        "description": "Choose between increasing your ability scores or selecting a feat.",
+        "grantedFeats": [
+          "ability-score-improvement",
+          "general-feats"
+        ],
+        "hide": true
+      }
+    ],
+    "18": [
+      {
+        "name": "Aura Expansion",
+        "description": "Your Aura of Protection and Aura of Courage now have a range of 30 feet."
+      }
+    ],
+    "19": [
+      {
+        "name": "Epic Boon Feat",
+        "description": "You gain an Epic Boon feat (see chapter 5) or another feat of your choice for which you qualify. Boon of Fate is recommended.",
+        "grantedFeats": [
+          "epic-boon-feats",
+          "general-feats"
+        ],
+        "hide": true
+      }
+    ]
+  }
 }

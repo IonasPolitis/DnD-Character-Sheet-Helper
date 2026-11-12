@@ -1,148 +1,514 @@
 {
-    "class": "Sorcerer",
-    "hitDice": "D6",
-    "savingThroughProf": ["constitution", "charisma"],
-    "proficiencyBonus": [ "2", "2", "2", "2", "3", "3", "3", "3", "4", "4", "4", "4", "5", "5", "5", "5", "6", "6", "6", "6", "7", "7", "7", "7", "8", "8", "8", "8", "9", "9" ],
-    "skillsPool": [["arcana", "deception", "insight", "intimidation", "persuasion", "religion"], 2 ],
-    "spellcastingAbilities": ["Charisma"],
-    "startingEquipment": {
-        "A": {
-            "items": {
-                "spear": 1,
-                "dagger": 2,
-                "arcane-focus": 1,
-                "dungeoneers-pack": 1
-            }, "gold": 28
-        },
-        "B": { "items": {}, "gold": 50 }
+  "class": "Sorcerer",
+  "hitDice": "D6",
+  "savingThroughProf": [
+    "constitution",
+    "charisma"
+  ],
+  "proficiencyBonus": [
+    "2",
+    "2",
+    "2",
+    "2",
+    "3",
+    "3",
+    "3",
+    "3",
+    "4",
+    "4",
+    "4",
+    "4",
+    "5",
+    "5",
+    "5",
+    "5",
+    "6",
+    "6",
+    "6",
+    "6",
+    "7",
+    "7",
+    "7",
+    "7",
+    "8",
+    "8",
+    "8",
+    "8",
+    "9",
+    "9"
+  ],
+  "skillsPool": [
+    [
+      "arcana",
+      "deception",
+      "insight",
+      "intimidation",
+      "persuasion",
+      "religion"
+    ],
+    2
+  ],
+  "spellcastingAbilities": [
+    "Charisma"
+  ],
+  "startingEquipment": {
+    "A": {
+      "items": {
+        "spear": 1,
+        "dagger": 2,
+        "arcane-focus": 1,
+        "dungeoneers-pack": 1
+      },
+      "gold": 28
     },
-    "spellsPool": "sorcerer-spells",
-    "spellcasting": {
-        "1": { "cantrips": 4, "preparedSpells": 2, "slots": [2, 0, 0, 0, 0, 0, 0, 0, 0] },
-        "2": { "cantrips": 4, "preparedSpells": 4, "slots": [3, 0, 0, 0, 0, 0, 0, 0, 0] },
-        "3": { "cantrips": 4, "preparedSpells": 6, "slots": [4, 2, 0, 0, 0, 0, 0, 0, 0] },
-        "4": { "cantrips": 5, "preparedSpells": 7, "slots": [4, 3, 0, 0, 0, 0, 0, 0, 0] },
-        "5": { "cantrips": 5, "preparedSpells": 9, "slots": [4, 3, 2, 0, 0, 0, 0, 0, 0] },
-        "6": { "cantrips": 5, "preparedSpells": 10, "slots": [4, 3, 3, 0, 0, 0, 0, 0, 0] },
-        "7": { "cantrips": 5, "preparedSpells": 11, "slots": [4, 3, 3, 1, 0, 0, 0, 0, 0] },
-        "8": { "cantrips": 5, "preparedSpells": 12, "slots": [4, 3, 3, 2, 0, 0, 0, 0, 0] },
-        "9": { "cantrips": 5, "preparedSpells": 14, "slots": [4, 3, 3, 3, 1, 0, 0, 0, 0] },
-        "10": { "cantrips": 6, "preparedSpells": 15, "slots": [4, 3, 3, 3, 2, 0, 0, 0, 0] },
-        "11": { "cantrips": 6, "preparedSpells": 16, "slots": [4, 3, 3, 3, 2, 1, 0, 0, 0] },
-        "12": { "cantrips": 6, "preparedSpells": 16, "slots": [4, 3, 3, 3, 2, 1, 0, 0, 0] },
-        "13": { "cantrips": 6, "preparedSpells": 17, "slots": [4, 3, 3, 3, 2, 1, 1, 0, 0] },
-        "14": { "cantrips": 6, "preparedSpells": 17, "slots": [4, 3, 3, 3, 2, 1, 1, 0, 0] },
-        "15": { "cantrips": 6, "preparedSpells": 18, "slots": [4, 3, 3, 3, 2, 1, 1, 1, 0] },
-        "16": { "cantrips": 6, "preparedSpells": 18, "slots": [4, 3, 3, 3, 2, 1, 1, 1, 0] },
-        "17": { "cantrips": 6, "preparedSpells": 19, "slots": [4, 3, 3, 3, 2, 1, 1, 1, 1] },
-        "18": { "cantrips": 6, "preparedSpells": 20, "slots": [4, 3, 3, 3, 3, 1, 1, 1, 1] },
-        "19": { "cantrips": 6, "preparedSpells": 21, "slots": [4, 3, 3, 3, 3, 2, 1, 1, 1] },
-        "20": { "cantrips": 6, "preparedSpells": 22, "slots": [4, 3, 3, 3, 3, 2, 2, 1, 1] }
+    "B": {
+      "items": {},
+      "gold": 50
+    }
+  },
+  "spellsPool": "sorcerer-spells",
+  "spellcasting": {
+    "1": {
+      "cantrips": 4,
+      "preparedSpells": 2,
+      "slots": [
+        2,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
     },
-    "features": {
-        "1": [
-            {
-                "name": "Innate Sorcery",
-                "description": "An event in your past left an indelible mark on you, infusing you with simmering magic. As a Bonus Action, you can unleash that magic for 1 minute, during which you gain the following benefits:\n - The spell save DC of your Sorcerer spells increases by 1.\n - You have Advantage on the attack rolls of Sorcerer spells you cast.\nYou can use this feature twice, and you regain all expended uses of it when you fin ish a Long Rest.",
-                "uses": [2, "long"]
-            }
-        ],
-        "2": [
-            {
-                "name": "Metamagic",
-                "description": "Because your magic flows from within, you can alter your spells to suit your needs; you gain two [Metamagic Options](note:metamagic-options) of your choice. You use the chosen options to temporarily modify spells you cast. To use an option, you must spend the number of Sorcery Points that it costs.\n\tYou can use only one Metamagic option on a spell when you cast it unless otherwise noted in one of those options.",
-                "classChoices": ["metamagic", "metamagic"]
-            }
-        ],
-        "3": [
-            {
-                "name": "Sorcerer Subclass",
-                "grantedSubclasses": "sorcerer-subclasses",
-                "hide": true
-            }
-        ],
-        "4": [
-            {
-                "name": "Ability Score Improvement",
-                "description": "Choose between increasing your ability scores or selecting a feat.",
-                "grantedFeats": [
-                    "ability-score-improvement",
-                    "general-feats"
-                ],
-                "hide": true
-            }
-        ],
-        "7": [
-            {
-                "name": "Sorcery Incarnate",
-                "description": "If you have no uses of Innate Sorcery left, you can use it if you spend 2 Sorcery Points when you take the Bonus Action to activate it.\n\tIn addition, while your Innate Sorcery feature is active, you can use up to two of your Meta magic options on each spell you cast."
-            }
-        ],
-        "8": [
-            {
-                "name": "Ability Score Improvement",
-                "description": "Choose between increasing your ability scores or selecting a feat.",
-                "grantedFeats": [
-                    "ability-score-improvement",
-                    "general-feats"
-                ],
-                "hide": true
-            }
-        ],
-        "10": [
-            {
-                "name": "Metamagic",
-                "description": "Because your magic flows from within, you can alter your spells to suit your needs; you gain two [Metamagic Options](note:metamagic-options) of your choice. You use the chosen options to temporarily modify spells you cast. To use an option, you must spend the number of Sorcery Points that it costs.\n\tYou can use only one Metamagic option on a spell when you cast it unless otherwise noted in one of those options.",
-                "classChoices": ["metamagic", "metamagic", "metamagic", "metamagic"],
-                "hide": true
-            }
-        ],
-        "12": [
-            {
-                "name": "Ability Score Improvement",
-                "description": "Choose between increasing your ability scores or selecting a feat.",
-                "grantedFeats": [
-                    "ability-score-improvement",
-                    "general-feats"
-                ],
-                "hide": true
-            }
-        ],
-        "16": [
-            {
-                "name": "Ability Score Improvement",
-                "description": "Choose between increasing your ability scores or selecting a feat.",
-                "grantedFeats": [
-                    "ability-score-improvement",
-                    "general-feats"
-                ],
-                "hide": true
-            }
-        ],
-        "17": [
-            {
-                "name": "Metamagic",
-                "description": "Because your magic flows from within, you can alter your spells to suit your needs; you gain two [Metamagic Options](note:metamagic-options) of your choice. You use the chosen options to temporarily modify spells you cast. To use an option, you must spend the number of Sorcery Points that it costs.\n\tYou can use only one Metamagic option on a spell when you cast it unless otherwise noted in one of those options.",
-                "classChoices": ["metamagic", "metamagic", "metamagic", "metamagic", "metamagic", "metamagic"],
-                "hide": true
-            }
-        ],
-        "19": [
-            {
-                "name": "Epic Boon Feat",
-                "description": "You gain an Epic Boon feat (see chapter 5) or another feat of your choice for which you qualify. Boon of Fate is recommended.",
-                "grantedFeats": [
-                    "epic-boon-feats",
-                    "general-feats"
-                ],
-                "hide": true
-            }
-        ],
-        "20": [
-            {
-                "name": "Arcane Apotheosis",
-                "description": "While your Innate Sorcery feature is active, you can use one Meta magic option on each of your turns without spending Sorcery Points on it."
-            }
+    "2": {
+      "cantrips": 4,
+      "preparedSpells": 4,
+      "slots": [
+        3,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "3": {
+      "cantrips": 4,
+      "preparedSpells": 6,
+      "slots": [
+        4,
+        2,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "4": {
+      "cantrips": 5,
+      "preparedSpells": 7,
+      "slots": [
+        4,
+        3,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "5": {
+      "cantrips": 5,
+      "preparedSpells": 9,
+      "slots": [
+        4,
+        3,
+        2,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "6": {
+      "cantrips": 5,
+      "preparedSpells": 10,
+      "slots": [
+        4,
+        3,
+        3,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "7": {
+      "cantrips": 5,
+      "preparedSpells": 11,
+      "slots": [
+        4,
+        3,
+        3,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "8": {
+      "cantrips": 5,
+      "preparedSpells": 12,
+      "slots": [
+        4,
+        3,
+        3,
+        2,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "9": {
+      "cantrips": 5,
+      "preparedSpells": 14,
+      "slots": [
+        4,
+        3,
+        3,
+        3,
+        1,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "10": {
+      "cantrips": 6,
+      "preparedSpells": 15,
+      "slots": [
+        4,
+        3,
+        3,
+        3,
+        2,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "11": {
+      "cantrips": 6,
+      "preparedSpells": 16,
+      "slots": [
+        4,
+        3,
+        3,
+        3,
+        2,
+        1,
+        0,
+        0,
+        0
+      ]
+    },
+    "12": {
+      "cantrips": 6,
+      "preparedSpells": 16,
+      "slots": [
+        4,
+        3,
+        3,
+        3,
+        2,
+        1,
+        0,
+        0,
+        0
+      ]
+    },
+    "13": {
+      "cantrips": 6,
+      "preparedSpells": 17,
+      "slots": [
+        4,
+        3,
+        3,
+        3,
+        2,
+        1,
+        1,
+        0,
+        0
+      ]
+    },
+    "14": {
+      "cantrips": 6,
+      "preparedSpells": 17,
+      "slots": [
+        4,
+        3,
+        3,
+        3,
+        2,
+        1,
+        1,
+        0,
+        0
+      ]
+    },
+    "15": {
+      "cantrips": 6,
+      "preparedSpells": 18,
+      "slots": [
+        4,
+        3,
+        3,
+        3,
+        2,
+        1,
+        1,
+        1,
+        0
+      ]
+    },
+    "16": {
+      "cantrips": 6,
+      "preparedSpells": 18,
+      "slots": [
+        4,
+        3,
+        3,
+        3,
+        2,
+        1,
+        1,
+        1,
+        0
+      ]
+    },
+    "17": {
+      "cantrips": 6,
+      "preparedSpells": 19,
+      "slots": [
+        4,
+        3,
+        3,
+        3,
+        2,
+        1,
+        1,
+        1,
+        1
+      ]
+    },
+    "18": {
+      "cantrips": 6,
+      "preparedSpells": 20,
+      "slots": [
+        4,
+        3,
+        3,
+        3,
+        3,
+        1,
+        1,
+        1,
+        1
+      ]
+    },
+    "19": {
+      "cantrips": 6,
+      "preparedSpells": 21,
+      "slots": [
+        4,
+        3,
+        3,
+        3,
+        3,
+        2,
+        1,
+        1,
+        1
+      ]
+    },
+    "20": {
+      "cantrips": 6,
+      "preparedSpells": 22,
+      "slots": [
+        4,
+        3,
+        3,
+        3,
+        3,
+        2,
+        2,
+        1,
+        1
+      ]
+    }
+  },
+  "features": {
+    "1": [
+      {
+        "name": "Innate Sorcery",
+        "description": "An event in your past left an indelible mark on you, infusing you with simmering magic. As a Bonus Action, you can unleash that magic for 1 minute, during which you gain the following benefits:\n - The spell save DC of your Sorcerer spells increases by 1.\n - You have Advantage on the attack rolls of Sorcerer spells you cast.\nYou can use this feature twice, and you regain all expended uses of it when you fin ish a Long Rest.",
+        "uses": [
+          2,
+          "long"
+        ]
+      },
+      {
+        "name": "Spellcasting",
+        "description": "You have learned to tap into the wellspring of magic within yourself to cast spells. You know cantrips and prepare spells from the Sorcerer spell list, using Charisma as your spellcasting ability. You can use an Arcane Focus as a spellcasting focus for your Sorcerer spells."
+      }
+    ],
+    "2": [
+      {
+        "name": "Font of Magic",
+        "description": "You tap into a deep wellspring of magic within yourself. This wellspring is represented by Sorcery Points, which allow you to create a variety of magical effects.\n - **Sorcery Points**: You have 2 Sorcery Points at level 2, and you gain more as you reach higher levels, as shown in the Sorcery Points column of the Sorcerer Features table (equal to your Sorcerer level). You regain all expended Sorcery Points when you finish a Long Rest.\n - **Converting Spell Slots**: As a Bonus Action, you can expend one spell slot and gain a number of Sorcery Points equal to the slot's level.\n - **Creating Spell Slots**: As a Bonus Action, you can transform unexpended Sorcery Points into one spell slot: Level 1 (2 pts), Level 2 (3 pts), Level 3 (5 pts), Level 4 (6 pts), Level 5 (7 pts). Created slots vanish when you finish a Long Rest."
+      },
+      {
+        "name": "Metamagic",
+        "description": "Because your magic flows from within, you can alter your spells to suit your needs; you gain two [Metamagic Options](note:metamagic-options) of your choice. You use the chosen options to temporarily modify spells you cast. To use an option, you must spend the number of Sorcery Points that it costs.\n\tYou can use only one Metamagic option on a spell when you cast it unless otherwise noted in one of those options.",
+        "classChoices": [
+          "metamagic",
+          "metamagic"
         ]
       }
+    ],
+    "3": [
+      {
+        "name": "Sorcerer Subclass",
+        "grantedSubclasses": "sorcerer-subclasses",
+        "hide": true
+      }
+    ],
+    "4": [
+      {
+        "name": "Ability Score Improvement",
+        "description": "Choose between increasing your ability scores or selecting a feat.",
+        "grantedFeats": [
+          "ability-score-improvement",
+          "general-feats"
+        ],
+        "hide": true
+      }
+    ],
+    "5": [
+      {
+        "name": "Sorcerous Restoration",
+        "description": "When you finish a Short Rest, you can regain expended Sorcery Points, but no more than a number equal to half your Sorcerer level (round down). Once you use this feature, you can't do so again until you finish a Long Rest.",
+        "uses": [
+          1,
+          "long"
+        ]
+      }
+    ],
+    "7": [
+      {
+        "name": "Sorcery Incarnate",
+        "description": "If you have no uses of Innate Sorcery left, you can use it if you spend 2 Sorcery Points when you take the Bonus Action to activate it.\n\tIn addition, while your Innate Sorcery feature is active, you can use up to two of your Meta magic options on each spell you cast."
+      }
+    ],
+    "8": [
+      {
+        "name": "Ability Score Improvement",
+        "description": "Choose between increasing your ability scores or selecting a feat.",
+        "grantedFeats": [
+          "ability-score-improvement",
+          "general-feats"
+        ],
+        "hide": true
+      }
+    ],
+    "10": [
+      {
+        "name": "Metamagic",
+        "description": "Because your magic flows from within, you can alter your spells to suit your needs; you gain two [Metamagic Options](note:metamagic-options) of your choice. You use the chosen options to temporarily modify spells you cast. To use an option, you must spend the number of Sorcery Points that it costs.\n\tYou can use only one Metamagic option on a spell when you cast it unless otherwise noted in one of those options.",
+        "classChoices": [
+          "metamagic",
+          "metamagic",
+          "metamagic",
+          "metamagic"
+        ],
+        "hide": true
+      }
+    ],
+    "12": [
+      {
+        "name": "Ability Score Improvement",
+        "description": "Choose between increasing your ability scores or selecting a feat.",
+        "grantedFeats": [
+          "ability-score-improvement",
+          "general-feats"
+        ],
+        "hide": true
+      }
+    ],
+    "16": [
+      {
+        "name": "Ability Score Improvement",
+        "description": "Choose between increasing your ability scores or selecting a feat.",
+        "grantedFeats": [
+          "ability-score-improvement",
+          "general-feats"
+        ],
+        "hide": true
+      }
+    ],
+    "17": [
+      {
+        "name": "Metamagic",
+        "description": "Because your magic flows from within, you can alter your spells to suit your needs; you gain two [Metamagic Options](note:metamagic-options) of your choice. You use the chosen options to temporarily modify spells you cast. To use an option, you must spend the number of Sorcery Points that it costs.\n\tYou can use only one Metamagic option on a spell when you cast it unless otherwise noted in one of those options.",
+        "classChoices": [
+          "metamagic",
+          "metamagic",
+          "metamagic",
+          "metamagic",
+          "metamagic",
+          "metamagic"
+        ],
+        "hide": true
+      }
+    ],
+    "19": [
+      {
+        "name": "Epic Boon Feat",
+        "description": "You gain an Epic Boon feat (see chapter 5) or another feat of your choice for which you qualify. Boon of Fate is recommended.",
+        "grantedFeats": [
+          "epic-boon-feats",
+          "general-feats"
+        ],
+        "hide": true
+      }
+    ],
+    "20": [
+      {
+        "name": "Arcane Apotheosis",
+        "description": "While your Innate Sorcery feature is active, you can use one Meta magic option on each of your turns without spending Sorcery Points on it."
+      }
+    ]
+  }
 }

@@ -28,25 +28,34 @@
                   {
                         "name": "Beguiling Magic",
                         "description": "immediately after you cast an Enchantment or Illusion spell using a spell slot, you can cause a creature you can see within 60 feet of yourself to make a Wisdom saving throw against your spell save DC. On a failed save, the target has the Charmed or Frightened condition (your choice) for 1 minute. The target repeats the save at the end of each of its turns, ending the effect on itself on a success.\n  Once you use this benefit, you can't use it again until you finish a Long Rest. You can also restore your use of it by expending one use of your Bardic Inspiration (no action required).",
-                        "uses": [1, "long"]
+                        "uses": [
+                              1,
+                              "long"
+                        ]
                   },
                   {
-                        "name": "Mantle of Inspiearion",
+                        "name": "Mantle of Inspiration",
                         "description": "You can weave fey magic into a song or dance to fill others with vigor. As a Bonus Action, you can expend a use of Bardic Inspiration, rolling a Bardic Inspiration die. When you do so, choose a number of other creatures within 60 feet of yourself, up to a number equal to your Charisma modifier (minimum of one creature). Each of those creatures gains a number of Temporary Hit Points equal to two times the number rolled on the Bardic Inspiration die, and then each can use its Reaction to move up to its Speed without provoking Opportunity Attacks."
                   }
             ],
             "6": [
                   {
-                        "name": "Mantle of Majestry",
+                        "name": "Mantle of Majesty",
                         "description": "You always have the Command spell prepared.\n  As a Bonus Action, you cast Command without expending a spell slot, and you take on an unearthly appearance for 1 minute or until your Concentration ends. During this time, you can cast Command as a Bonus Action without expending a spell slot. Any creature Charmed by you automaticaily fails its saving throw against the Command you cast with this feature.\n  Once you use this feature, you can't use it again until you finish a Long Rest. You can a lso res tore your use of it by expending a level 3+ s pell slot (no action required).",
-                        "uses": [1, "long"]
+                        "uses": [
+                              1,
+                              "long"
+                        ]
                   }
             ],
             "14": [
                   {
                         "name": "Unbreakable Majesty",
                         "description": "As a Bonus Action, you can assume a magically majestic presence for 1 minute or until you have the Incapacitated condition. For the duration, whenever any creature hits you with an attack roll for the first time on a turn, the attacker must succeed on a Charisma saving throw against your spell save DC, or the attack misses instead, as the creature recoils from your majesty. Once you assume this majestic presence, you can't do so again until you finish a Short or Long Rest.",
-                        "uses": [1, "short"]
+                        "uses": [
+                              1,
+                              "short"
+                        ]
                   }
             ]
       },
@@ -73,7 +82,11 @@
       "College of Valor": {
             "3": [
                   {
-                        "name": "",
+                        "name": "Martial Training",
+                        "description": "You gain proficiency with Martial weapons, Medium armor, and Shields. Additionally, you can use a Simple or Martial melee weapon as a Spellcasting Focus for your Bard spells."
+                  },
+                  {
+                        "name": "Combat Inspiration",
                         "description": "A creature that has a Bardic Inspiration die from you can use it for one of the following effects.\n - **Defense**: When the creature is hit by an attack roll, that creature can use its Reaction to roll the Bardic Inspiration die and add the number rolled to its AC against that attack, potentially causing the attack to miss.\n - **Offense**: Immediately after the creature hits a target with an attack roll, the creature can roll the Bardic Inspiration die and add the number rolled to the attack's damage against the target."
                   }
             ],

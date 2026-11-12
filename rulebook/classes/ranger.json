@@ -1,161 +1,536 @@
 {
-    "class": "Ranger",
-    "hitDice": "D10",
-    "savingThroughProf": ["strength", "dexterity"],
-    "proficiencyBonus": [ "2", "2", "2", "2", "3", "3", "3", "3", "4", "4", "4", "4", "5", "5", "5", "5", "6", "6", "6", "6", "7", "7", "7", "7", "8", "8", "8", "8", "9", "9" ],
-    "skillsPool": [["animal handling", "athletics", "insight", "investigation", "nature", "perception", "stealth", "survival"], 3 ],
-    "spellcastingAbilities": ["Wisdom"],
-    "startingEquipment": {
-        "A": {
-            "items": {
-                "studded-leather-armor": 1,
-                "scimitar": 1,
-                "shortsword": 1,
-                "longbow": 1,
-                "arrows": 20,
-                "quiver": 1,
-                "druidic-focus": 1,
-                "explorers-pack": 1
-            }, "gold": 7
-        },
-        "B": { "items": {}, "gold": 150 }
+  "class": "Ranger",
+  "hitDice": "D10",
+  "savingThroughProf": [
+    "strength",
+    "dexterity"
+  ],
+  "proficiencyBonus": [
+    "2",
+    "2",
+    "2",
+    "2",
+    "3",
+    "3",
+    "3",
+    "3",
+    "4",
+    "4",
+    "4",
+    "4",
+    "5",
+    "5",
+    "5",
+    "5",
+    "6",
+    "6",
+    "6",
+    "6",
+    "7",
+    "7",
+    "7",
+    "7",
+    "8",
+    "8",
+    "8",
+    "8",
+    "9",
+    "9"
+  ],
+  "skillsPool": [
+    [
+      "animal handling",
+      "athletics",
+      "insight",
+      "investigation",
+      "nature",
+      "perception",
+      "stealth",
+      "survival"
+    ],
+    3
+  ],
+  "spellcastingAbilities": [
+    "Wisdom"
+  ],
+  "startingEquipment": {
+    "A": {
+      "items": {
+        "studded-leather-armor": 1,
+        "scimitar": 1,
+        "shortsword": 1,
+        "longbow": 1,
+        "arrows": 20,
+        "quiver": 1,
+        "druidic-focus": 1,
+        "explorers-pack": 1
+      },
+      "gold": 7
     },
-    "spellsPool": "ranger-spells",
-    "spellcasting": {
-        "1": { "cantrips": 0, "preparedSpells": 2, "slots": [2, 0, 0, 0, 0, 0, 0, 0, 0] },
-        "2": { "cantrips": 0, "preparedSpells": 3, "slots": [2, 0, 0, 0, 0, 0, 0, 0, 0] },
-        "3": { "cantrips": 0, "preparedSpells": 4, "slots": [3, 0, 0, 0, 0, 0, 0, 0, 0] },
-        "4": { "cantrips": 0, "preparedSpells": 5, "slots": [3, 0, 0, 0, 0, 0, 0, 0, 0] },
-        "5": { "cantrips": 0, "preparedSpells": 6, "slots": [4, 2, 0, 0, 0, 0, 0, 0, 0] },
-        "6": { "cantrips": 0, "preparedSpells": 6, "slots": [4, 2, 0, 0, 0, 0, 0, 0, 0] },
-        "7": { "cantrips": 0, "preparedSpells": 7, "slots": [4, 3, 0, 0, 0, 0, 0, 0, 0] },
-        "8": { "cantrips": 0, "preparedSpells": 7, "slots": [4, 3, 0, 0, 0, 0, 0, 0, 0] },
-        "9": { "cantrips": 0, "preparedSpells": 9, "slots": [4, 3, 2, 0, 0, 0, 0, 0, 0] },
-        "10": { "cantrips": 0, "preparedSpells": 9, "slots": [4, 3, 2, 0, 0, 0, 0, 0, 0] },
-        "11": { "cantrips": 0, "preparedSpells": 10, "slots": [4, 3, 3, 0, 0, 0, 0, 0, 0] },
-        "12": { "cantrips": 0, "preparedSpells": 10, "slots": [4, 3, 3, 0, 0, 0, 0, 0, 0] },
-        "13": { "cantrips": 0, "preparedSpells": 11, "slots": [4, 3, 3, 1, 0, 0, 0, 0, 0] },
-        "14": { "cantrips": 0, "preparedSpells": 11, "slots": [4, 3, 3, 1, 0, 0, 0, 0, 0] },
-        "15": { "cantrips": 0, "preparedSpells": 12, "slots": [4, 3, 3, 2, 0, 0, 0, 0, 0] },
-        "16": { "cantrips": 0, "preparedSpells": 12, "slots": [4, 3, 3, 2, 0, 0, 0, 0, 0] },
-        "17": { "cantrips": 0, "preparedSpells": 14, "slots": [4, 3, 3, 3, 1, 0, 0, 0, 0] },
-        "18": { "cantrips": 0, "preparedSpells": 14, "slots": [4, 3, 3, 3, 1, 0, 0, 0, 0] },
-        "19": { "cantrips": 0, "preparedSpells": 15, "slots": [4, 3, 3, 3, 2, 0, 0, 0, 0] },
-        "20": { "cantrips": 0, "preparedSpells": 15, "slots": [4, 3, 3, 3, 2, 0, 0, 0, 0] }
+    "B": {
+      "items": {},
+      "gold": 150
+    }
+  },
+  "spellsPool": "ranger-spells",
+  "spellcasting": {
+    "1": {
+      "cantrips": 0,
+      "preparedSpells": 2,
+      "slots": [
+        2,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
     },
-    "features": {
-        "1": [
-            {
-                "name": "Favored Enemy",
-                "description": "You always have the Hunter's Mark spell prepared. You can cast it twice without expending a spell slot, and you regain all expended uses of this ability when you finish a Long Rest.",
-                "uses": [2, "long"]
-            }
-        ],
-        "2": [
-            {
-                "name": "Weapon Mastery",
-                "description": "Whenever you finish a Long Rest, you can change the kinds of weapons you chose. For example, you could switch to using the mastery properties of Scimitars and Longswords."
-            }
-        ],
-        "3": [
-            {
-                "name": "Ranger Subclass",
-                "grantedSubclasses": "ranger-subclasses",
-                "hide": true
-            }
-        ],
-        "4": [
-            {
-                "name": "Ability Score Improvement",
-                "description": "Choose between increasing your ability scores or selecting a feat.",
-                "grantedFeats": [
-                    "ability-score-improvement",
-                    "general-feats"
-                ],
-                "hide": true
-            }
-        ],
-        "5": [
-            {
-                "name": "Extra Attack",
-                "description": "You can attack twice instead of once whenever you take the Attack action on you r turn."
-            }
-        ],
-        "8": [
-            {
-                "name": "Ability Score Improvement",
-                "description": "Choose between increasing your ability scores or selecting a feat.",
-                "grantedFeats": [
-                    "ability-score-improvement",
-                    "general-feats"
-                ],
-                "hide": true
-            }
-        ],
-        "10": [
-            {
-                "name": "Tireless",
-                "description": "Primal forces now help fuel you on your journeys, granting you the following benefits:\n - **Temporary Hit Poinfs**: As a Magic action, you can give yourself a number of Temporary Hit Points equal to ld8 plus your Wisdom modifier (minimum of 1). You can use this action a number of times equal to your Wisdom modifier (minimum of once), and you regain all expended uses when you finish a Long Rest.\n - **Decrease Exhaustion**: Whenever you finish a Short Rest, your Exhaustion level, if any, decreases by 1.",
-                "uses": ["(wisdom - 10) / 2", "long"]
-            }
-        ],
-        "12": [
-            {
-                "name": "Ability Score Improvement",
-                "description": "Choose between increasing your ability scores or selecting a feat.",
-                "grantedFeats": [
-                    "ability-score-improvement",
-                    "general-feats"
-                ],
-                "hide": true
-            }
-        ],
-        "13": [
-            {
-                "name": "Relentless Hunter",
-                "description": "Taking damage can't break your Concentration on Hunter's Mark."
-            }
-        ],
-        "14": [
-            {
-                "name": "Nature's Veil",
-                "description": "You invoke spirits of nature to magically hide your-self. As a Bonus Action, you can give yourself the Invisible condition until the end of your next turn.\n\tYou can use this feature a number of times equal to your Wisdom modifier (minimum of once), and you regain all expended uses when you finish a Long Rest.",
-                "uses": ["(wisdom - 10) / 2", "long"]
-            }
-        ],
-        "16": [
-            {
-                "name": "Ability Score Improvement",
-                "description": "Choose between increasing your ability scores or selecting a feat.",
-                "grantedFeats": [
-                    "ability-score-improvement",
-                    "general-feats"
-                ],
-                "hide": true
-            }
-        ],
-        "17": [
-            {
-                "name": "Precise Hunter",
-                "description": "You have Advantage on attack rolls against the creature currently marked by your Hunter's Mark."
-            }
-        ],
-        "18": [
-            {
-                "name": "Feral Senses",
-                "description": "Your connection to the forces of nature grants you Blindsight with a range of 30 feet."
-            }
-        ],
-        "19": [
-            {
-                "name": "Epic Boon Feat",
-                "description": "You gain an Epic Boon feat (see chapter 5) or another feat of your choice for which you qualify. Boon of Fate is recommended.",
-                "grantedFeats": [
-                    "epic-boon-feats",
-                    "general-feats"
-                ],
-                "hide": true
-            }
+    "2": {
+      "cantrips": 0,
+      "preparedSpells": 3,
+      "slots": [
+        2,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "3": {
+      "cantrips": 0,
+      "preparedSpells": 4,
+      "slots": [
+        3,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "4": {
+      "cantrips": 0,
+      "preparedSpells": 5,
+      "slots": [
+        3,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "5": {
+      "cantrips": 0,
+      "preparedSpells": 6,
+      "slots": [
+        4,
+        2,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "6": {
+      "cantrips": 0,
+      "preparedSpells": 6,
+      "slots": [
+        4,
+        2,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "7": {
+      "cantrips": 0,
+      "preparedSpells": 7,
+      "slots": [
+        4,
+        3,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "8": {
+      "cantrips": 0,
+      "preparedSpells": 7,
+      "slots": [
+        4,
+        3,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "9": {
+      "cantrips": 0,
+      "preparedSpells": 9,
+      "slots": [
+        4,
+        3,
+        2,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "10": {
+      "cantrips": 0,
+      "preparedSpells": 9,
+      "slots": [
+        4,
+        3,
+        2,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "11": {
+      "cantrips": 0,
+      "preparedSpells": 10,
+      "slots": [
+        4,
+        3,
+        3,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "12": {
+      "cantrips": 0,
+      "preparedSpells": 10,
+      "slots": [
+        4,
+        3,
+        3,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "13": {
+      "cantrips": 0,
+      "preparedSpells": 11,
+      "slots": [
+        4,
+        3,
+        3,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "14": {
+      "cantrips": 0,
+      "preparedSpells": 11,
+      "slots": [
+        4,
+        3,
+        3,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "15": {
+      "cantrips": 0,
+      "preparedSpells": 12,
+      "slots": [
+        4,
+        3,
+        3,
+        2,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "16": {
+      "cantrips": 0,
+      "preparedSpells": 12,
+      "slots": [
+        4,
+        3,
+        3,
+        2,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "17": {
+      "cantrips": 0,
+      "preparedSpells": 14,
+      "slots": [
+        4,
+        3,
+        3,
+        3,
+        1,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "18": {
+      "cantrips": 0,
+      "preparedSpells": 14,
+      "slots": [
+        4,
+        3,
+        3,
+        3,
+        1,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "19": {
+      "cantrips": 0,
+      "preparedSpells": 15,
+      "slots": [
+        4,
+        3,
+        3,
+        3,
+        2,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "20": {
+      "cantrips": 0,
+      "preparedSpells": 15,
+      "slots": [
+        4,
+        3,
+        3,
+        3,
+        2,
+        0,
+        0,
+        0,
+        0
+      ]
+    }
+  },
+  "features": {
+    "1": [
+      {
+        "name": "Favored Enemy",
+        "description": "You always have the Hunter's Mark spell prepared. You can cast it twice without expending a spell slot, and you regain all expended uses of this ability when you finish a Long Rest.",
+        "uses": [
+          2,
+          "long"
+        ]
+      },
+      {
+        "name": "Weapon Mastery",
+        "description": "Your training with weapons allows you to use the mastery properties of two kinds of weapons of your choice with which you have proficiency. Whenever you finish a Long Rest, you can change the kinds of weapons you chose."
+      },
+      {
+        "name": "Spellcasting",
+        "description": "You have learned to channel the magical essence of nature to cast spells. You prepare spells from the Ranger spell list, using Wisdom as your spellcasting ability. You can use a Druidic Focus as a spellcasting focus for your Ranger spells."
+      }
+    ],
+    "2": [
+      {
+        "name": "Deft Explorer",
+        "description": "You are an unsurpassed explorer and survivor. You gain Expertise in one of your skill proficiencies of your choice. You also know two additional languages of your choice."
+      },
+      {
+        "name": "Fighting Style",
+        "description": "You gain a Fighting Style feat of your choice. Instead of choosing one of those feats, you can choose the Druidic Warrior option below.\n - **Druidic Warrior**: You learn two Druid cantrips of your choice (Guidance and Starry Wisp are recommended). Whenever you gain a Ranger level, you can replace one of these cantrips with another Druid cantrip. Wisdom is your spellcasting ability for them.\nWhenever you gain a Ranger level, you can replace the feat you chose with a different Fighting Style feat.",
+        "classChoices": [
+          "fighting-styles"
         ]
       }
+    ],
+    "3": [
+      {
+        "name": "Ranger Subclass",
+        "grantedSubclasses": "ranger-subclasses",
+        "hide": true
+      }
+    ],
+    "4": [
+      {
+        "name": "Ability Score Improvement",
+        "description": "Choose between increasing your ability scores or selecting a feat.",
+        "grantedFeats": [
+          "ability-score-improvement",
+          "general-feats"
+        ],
+        "hide": true
+      }
+    ],
+    "5": [
+      {
+        "name": "Extra Attack",
+        "description": "You can attack twice instead of once whenever you take the Attack action on you r turn."
+      }
+    ],
+    "6": [
+      {
+        "name": "Roving",
+        "description": "Your Speed increases by 10 feet while you aren't wearing Heavy armor. You also have a Climb Speed and a Swim Speed equal to your Speed.",
+        "speedMod": 10
+      }
+    ],
+    "8": [
+      {
+        "name": "Ability Score Improvement",
+        "description": "Choose between increasing your ability scores or selecting a feat.",
+        "grantedFeats": [
+          "ability-score-improvement",
+          "general-feats"
+        ],
+        "hide": true
+      }
+    ],
+    "9": [
+      {
+        "name": "Expertise",
+        "description": "You gain Expertise in two of your skill proficiencies of your choice."
+      }
+    ],
+    "10": [
+      {
+        "name": "Tireless",
+        "description": "Primal forces now help fuel you on your journeys, granting you the following benefits:\n - **Temporary Hit Poinfs**: As a Magic action, you can give yourself a number of Temporary Hit Points equal to ld8 plus your Wisdom modifier (minimum of 1). You can use this action a number of times equal to your Wisdom modifier (minimum of once), and you regain all expended uses when you finish a Long Rest.\n - **Decrease Exhaustion**: Whenever you finish a Short Rest, your Exhaustion level, if any, decreases by 1.",
+        "uses": [
+          "(wisdom - 10) / 2",
+          "long"
+        ]
+      }
+    ],
+    "12": [
+      {
+        "name": "Ability Score Improvement",
+        "description": "Choose between increasing your ability scores or selecting a feat.",
+        "grantedFeats": [
+          "ability-score-improvement",
+          "general-feats"
+        ],
+        "hide": true
+      }
+    ],
+    "13": [
+      {
+        "name": "Relentless Hunter",
+        "description": "Taking damage can't break your Concentration on Hunter's Mark."
+      }
+    ],
+    "14": [
+      {
+        "name": "Nature's Veil",
+        "description": "You invoke spirits of nature to magically hide your-self. As a Bonus Action, you can give yourself the Invisible condition until the end of your next turn.\n\tYou can use this feature a number of times equal to your Wisdom modifier (minimum of once), and you regain all expended uses when you finish a Long Rest.",
+        "uses": [
+          "(wisdom - 10) / 2",
+          "long"
+        ]
+      }
+    ],
+    "16": [
+      {
+        "name": "Ability Score Improvement",
+        "description": "Choose between increasing your ability scores or selecting a feat.",
+        "grantedFeats": [
+          "ability-score-improvement",
+          "general-feats"
+        ],
+        "hide": true
+      }
+    ],
+    "17": [
+      {
+        "name": "Precise Hunter",
+        "description": "You have Advantage on attack rolls against the creature currently marked by your Hunter's Mark."
+      }
+    ],
+    "18": [
+      {
+        "name": "Feral Senses",
+        "description": "Your connection to the forces of nature grants you Blindsight with a range of 30 feet."
+      }
+    ],
+    "19": [
+      {
+        "name": "Epic Boon Feat",
+        "description": "You gain an Epic Boon feat (see chapter 5) or another feat of your choice for which you qualify. Boon of Fate is recommended.",
+        "grantedFeats": [
+          "epic-boon-feats",
+          "general-feats"
+        ],
+        "hide": true
+      }
+    ],
+    "20": [
+      {
+        "name": "Foe Slayer",
+        "description": "The damage die of your Hunter's Mark becomes a d10 instead of a d6."
+      }
+    ]
+  }
 }

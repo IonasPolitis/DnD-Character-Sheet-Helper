@@ -1,10 +1,68 @@
 {
     "class": "Bard",
     "hitDice": "D8",
-    "savingThroughProf": ["dexterity", "charisma"],
-    "proficiencyBonus": [ "2", "2", "2", "2", "3", "3", "3", "3", "4", "4", "4", "4", "5", "5", "5", "5", "6", "6", "6", "6", "7", "7", "7", "7", "8", "8", "8", "8", "9", "9" ],
-    "skillsPool": [ ["acrobatics", "animal handling", "arcana", "athletics", "deception", "history", "insight", "intimidation", "investigation", "medicine", "nature", "perception", "performance", "persuasion", "religion", "sleight of hand", "stealth", "survival"], 3 ],
-    "spellcastingAbilities": ["Charisma"],
+    "savingThroughProf": [
+        "dexterity",
+        "charisma"
+    ],
+    "proficiencyBonus": [
+        "2",
+        "2",
+        "2",
+        "2",
+        "3",
+        "3",
+        "3",
+        "3",
+        "4",
+        "4",
+        "4",
+        "4",
+        "5",
+        "5",
+        "5",
+        "5",
+        "6",
+        "6",
+        "6",
+        "6",
+        "7",
+        "7",
+        "7",
+        "7",
+        "8",
+        "8",
+        "8",
+        "8",
+        "9",
+        "9"
+    ],
+    "skillsPool": [
+        [
+            "acrobatics",
+            "animal handling",
+            "arcana",
+            "athletics",
+            "deception",
+            "history",
+            "insight",
+            "intimidation",
+            "investigation",
+            "medicine",
+            "nature",
+            "perception",
+            "performance",
+            "persuasion",
+            "religion",
+            "sleight of hand",
+            "stealth",
+            "survival"
+        ],
+        3
+    ],
+    "spellcastingAbilities": [
+        "Charisma"
+    ],
     "startingEquipment": {
         "A": {
             "items": {
@@ -12,10 +70,13 @@
                 "dagger": 2,
                 "musical-instrument|": 1,
                 "entertainers-pack": 1
-
-            }, "gold": 19
+            },
+            "gold": 19
         },
-        "B": { "items": {}, "gold": 0 }
+        "B": {
+            "items": {},
+            "gold": 90
+        }
     },
     "spellsPool": "bard-spells",
     "features": {
@@ -23,7 +84,14 @@
             {
                 "name": "Bardic Inspiration",
                 "description": "As a Bonus Action, you can inspire another creature within 60 feet of yourself who can see or hear you. That creature gains one of your Bardic Inspiration dice.\n - **Number of Uses**: You can confer a Bardic Inspiration die a number of times equal to your Charisma modifier (minimum of once), and you regain all expended uses when you finish a Long Rest.",
-                "uses": ["(charisma - 10) / 2", "long"]
+                "uses": [
+                    "(charisma - 10) / 2",
+                    "long"
+                ]
+            },
+            {
+                "name": "Spellcasting",
+                "description": "You have learned to cast spells through your artistic performance. You know cantrips and prepare spells from the Bard spell list, using Charisma as your spellcasting ability. You can use a Musical Instrument as a spellcasting focus for your Bard spells."
             }
         ],
         "2": [
@@ -34,7 +102,29 @@
             {
                 "name": "Expertise",
                 "description": "You gain Expertise (see the rules glossary) in two of your skill proficiencies of your choice. Performance and Persuasion are recommended if you have proficiency in them.\n\tAt Bard level 9, you gain Expertise in two more of your skill proficiencies of your choice.",
-                "grantedExpertise": [ ["acrobatics", "animal handling", "arcana", "athletics", "deception", "history", "insight", "intimidation", "investigation", "medicine", "nature", "perception", "performance", "persuasion", "religion", "sleight of hand", "stealth", "survival"], 2 ]
+                "grantedExpertise": [
+                    [
+                        "acrobatics",
+                        "animal handling",
+                        "arcana",
+                        "athletics",
+                        "deception",
+                        "history",
+                        "insight",
+                        "intimidation",
+                        "investigation",
+                        "medicine",
+                        "nature",
+                        "perception",
+                        "performance",
+                        "persuasion",
+                        "religion",
+                        "sleight of hand",
+                        "stealth",
+                        "survival"
+                    ],
+                    2
+                ]
             }
         ],
         "3": [
@@ -82,7 +172,35 @@
             {
                 "name": "Expertise",
                 "description": "You gain Expertise (see the rules glossary) in two of your skill proficiencies of your choice. Performance and Persuasion are recommended if you have proficiency in them.\n\tAt Bard level 9, you gain Expertise in two more of your skill proficiencies of your choice.",
-                "grantedExpertise": [ ["acrobatics", "animal handling", "arcana", "athletics", "deception", "history", "insight", "intimidation", "investigation", "medicine", "nature", "perception", "performance", "persuasion", "religion", "sleight of hand", "stealth", "survival"], 2 ]
+                "grantedExpertise": [
+                    [
+                        "acrobatics",
+                        "animal handling",
+                        "arcana",
+                        "athletics",
+                        "deception",
+                        "history",
+                        "insight",
+                        "intimidation",
+                        "investigation",
+                        "medicine",
+                        "nature",
+                        "perception",
+                        "performance",
+                        "persuasion",
+                        "religion",
+                        "sleight of hand",
+                        "stealth",
+                        "survival"
+                    ],
+                    2
+                ]
+            }
+        ],
+        "10": [
+            {
+                "name": "Magical Secrets",
+                "description": "You have learned to draw upon magic from any tradition. Whenever your number of prepared Bard spells increases or you replace a prepared spell on gaining a Bard level, you can choose the new spell from the Bard, Cleric, Druid, or Wizard spell list. The chosen spells count as Bard spells for you, and they must be of a level for which you have spell slots."
             }
         ],
         "12": [
@@ -130,5 +248,307 @@
                 "description": "You have mastered two of the Words of Creation: the words of life and death. You therefore always have the Power Word Heal and Power Word Kill spells prepared. When you cast either spell, you can target a second creature with it if that creature is within 10 feet of the first target."
             }
         ]
-      }
+    },
+    "spellcasting": {
+        "1": {
+            "cantrips": 2,
+            "preparedSpells": 4,
+            "slots": [
+                2,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0
+            ]
+        },
+        "2": {
+            "cantrips": 2,
+            "preparedSpells": 5,
+            "slots": [
+                3,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0
+            ]
+        },
+        "3": {
+            "cantrips": 2,
+            "preparedSpells": 6,
+            "slots": [
+                4,
+                2,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0
+            ]
+        },
+        "4": {
+            "cantrips": 3,
+            "preparedSpells": 7,
+            "slots": [
+                4,
+                3,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0
+            ]
+        },
+        "5": {
+            "cantrips": 3,
+            "preparedSpells": 9,
+            "slots": [
+                4,
+                3,
+                2,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0
+            ]
+        },
+        "6": {
+            "cantrips": 3,
+            "preparedSpells": 10,
+            "slots": [
+                4,
+                3,
+                3,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0
+            ]
+        },
+        "7": {
+            "cantrips": 3,
+            "preparedSpells": 11,
+            "slots": [
+                4,
+                3,
+                3,
+                1,
+                0,
+                0,
+                0,
+                0,
+                0
+            ]
+        },
+        "8": {
+            "cantrips": 3,
+            "preparedSpells": 12,
+            "slots": [
+                4,
+                3,
+                3,
+                2,
+                0,
+                0,
+                0,
+                0,
+                0
+            ]
+        },
+        "9": {
+            "cantrips": 3,
+            "preparedSpells": 14,
+            "slots": [
+                4,
+                3,
+                3,
+                3,
+                1,
+                0,
+                0,
+                0,
+                0
+            ]
+        },
+        "10": {
+            "cantrips": 4,
+            "preparedSpells": 15,
+            "slots": [
+                4,
+                3,
+                3,
+                3,
+                2,
+                0,
+                0,
+                0,
+                0
+            ]
+        },
+        "11": {
+            "cantrips": 4,
+            "preparedSpells": 16,
+            "slots": [
+                4,
+                3,
+                3,
+                3,
+                2,
+                1,
+                0,
+                0,
+                0
+            ]
+        },
+        "12": {
+            "cantrips": 4,
+            "preparedSpells": 16,
+            "slots": [
+                4,
+                3,
+                3,
+                3,
+                2,
+                1,
+                0,
+                0,
+                0
+            ]
+        },
+        "13": {
+            "cantrips": 4,
+            "preparedSpells": 17,
+            "slots": [
+                4,
+                3,
+                3,
+                3,
+                2,
+                1,
+                1,
+                0,
+                0
+            ]
+        },
+        "14": {
+            "cantrips": 4,
+            "preparedSpells": 17,
+            "slots": [
+                4,
+                3,
+                3,
+                3,
+                2,
+                1,
+                1,
+                0,
+                0
+            ]
+        },
+        "15": {
+            "cantrips": 4,
+            "preparedSpells": 18,
+            "slots": [
+                4,
+                3,
+                3,
+                3,
+                2,
+                1,
+                1,
+                1,
+                0
+            ]
+        },
+        "16": {
+            "cantrips": 4,
+            "preparedSpells": 18,
+            "slots": [
+                4,
+                3,
+                3,
+                3,
+                2,
+                1,
+                1,
+                1,
+                0
+            ]
+        },
+        "17": {
+            "cantrips": 4,
+            "preparedSpells": 19,
+            "slots": [
+                4,
+                3,
+                3,
+                3,
+                2,
+                1,
+                1,
+                1,
+                1
+            ]
+        },
+        "18": {
+            "cantrips": 4,
+            "preparedSpells": 20,
+            "slots": [
+                4,
+                3,
+                3,
+                3,
+                3,
+                1,
+                1,
+                1,
+                1
+            ]
+        },
+        "19": {
+            "cantrips": 4,
+            "preparedSpells": 21,
+            "slots": [
+                4,
+                3,
+                3,
+                3,
+                3,
+                2,
+                1,
+                1,
+                1
+            ]
+        },
+        "20": {
+            "cantrips": 4,
+            "preparedSpells": 22,
+            "slots": [
+                4,
+                3,
+                3,
+                3,
+                3,
+                2,
+                2,
+                1,
+                1
+            ]
+        }
+    }
 }

@@ -1,137 +1,484 @@
 {
-    "class": "Wizard",
-    "hitDice": "D6",
-    "savingThroughProf": [ "intelligence", "wisdom" ],
-    "proficiencyBonus": [ "2", "2", "2", "2", "3", "3", "3", "3", "4", "4", "4", "4", "5", "5", "5", "5", "6", "6", "6", "6", "7", "7", "7", "7", "8", "8", "8", "8", "9", "9" ],
-    "skillsPool": [ [ "arcana", "history", "insight", "investigation", "medicine", "nature", "religion" ], 2 ],
-    "startingEquipment": {
-        "A": {
-            "items": {
-                "dagger": 2,
-                "arcane-focus": 1,
-                "robe": 1,
-                "spellbook": 1,
-                "scholars-pack": 1
-            },
-            "gold": 5
-        },
-        "B": {
-            "items": {},
-            "gold": 55
-        }
+  "class": "Wizard",
+  "hitDice": "D6",
+  "savingThroughProf": [
+    "intelligence",
+    "wisdom"
+  ],
+  "proficiencyBonus": [
+    "2",
+    "2",
+    "2",
+    "2",
+    "3",
+    "3",
+    "3",
+    "3",
+    "4",
+    "4",
+    "4",
+    "4",
+    "5",
+    "5",
+    "5",
+    "5",
+    "6",
+    "6",
+    "6",
+    "6",
+    "7",
+    "7",
+    "7",
+    "7",
+    "8",
+    "8",
+    "8",
+    "8",
+    "9",
+    "9"
+  ],
+  "skillsPool": [
+    [
+      "arcana",
+      "history",
+      "insight",
+      "investigation",
+      "medicine",
+      "nature",
+      "religion"
+    ],
+    2
+  ],
+  "startingEquipment": {
+    "A": {
+      "items": {
+        "dagger": 2,
+        "arcane-focus": 1,
+        "robe": 1,
+        "spellbook": 1,
+        "scholars-pack": 1
+      },
+      "gold": 5
     },
-    "spellcastingAbilities": [ "Intelligence" ],
-    "spellsPool": "wizard-spells",
-    "spellcasting": {
-        "1": { "cantrips": 3, "preparedSpells": 4, "slots": [2, 0, 0, 0, 0, 0, 0, 0, 0] },
-        "2": { "cantrips": 3, "preparedSpells": 5, "slots": [3, 0, 0, 0, 0, 0, 0, 0, 0] },
-        "3": { "cantrips": 3, "preparedSpells": 6, "slots": [4, 2, 0, 0, 0, 0, 0, 0, 0] },
-        "4": { "cantrips": 4, "preparedSpells": 7, "slots": [4, 3, 0, 0, 0, 0, 0, 0, 0] },
-        "5": { "cantrips": 4, "preparedSpells": 9, "slots": [4, 3, 2, 0, 0, 0, 0, 0, 0] },
-        "6": { "cantrips": 4, "preparedSpells": 10, "slots": [4, 3, 3, 0, 0, 0, 0, 0, 0] },
-        "7": { "cantrips": 4, "preparedSpells": 11, "slots": [4, 3, 3, 1, 0, 0, 0, 0, 0] },
-        "8": { "cantrips": 4, "preparedSpells": 12, "slots": [4, 3, 3, 2, 0, 0, 0, 0, 0] },
-        "9": { "cantrips": 4, "preparedSpells": 14, "slots": [4, 3, 3, 3, 1, 0, 0, 0, 0] },
-        "10": { "cantrips": 5, "preparedSpells": 15, "slots": [4, 3, 3, 3, 2, 0, 0, 0, 0] },
-        "11": { "cantrips": 5, "preparedSpells": 16, "slots": [4, 3, 3, 0, 0, 0, 0, 0, 0] },
-        "12": { "cantrips": 5, "preparedSpells": 16, "slots": [4, 3, 3, 3, 0, 0, 0, 0, 0] },
-        "13": { "cantrips": 5, "preparedSpells": 17, "slots": [4, 3, 3, 3, 2, 1, 1, 0, 0] },
-        "14": { "cantrips": 5, "preparedSpells": 18, "slots": [4, 3, 3, 3, 2, 1, 1, 0, 0] },
-        "15": { "cantrips": 5, "preparedSpells": 19, "slots": [4, 3, 3, 3, 2, 1, 1, 1, 0] },
-        "16": { "cantrips": 5, "preparedSpells": 21, "slots": [4, 3, 3, 3, 2, 1, 1, 1, 0] },
-        "17": { "cantrips": 5, "preparedSpells": 22, "slots": [4, 3, 3, 3, 3, 2, 1, 1, 1] },
-        "18": { "cantrips": 5, "preparedSpells": 23, "slots": [4, 3, 3, 3, 3, 1, 1, 1, 1] },
-        "19": { "cantrips": 5, "preparedSpells": 24, "slots": [4, 3, 3, 3, 3, 2, 1, 1, 1] },
-        "20": { "cantrips": 5, "preparedSpells": 25, "slots": [4, 3, 3, 3, 3, 2, 2, 1, 1] }
-    },
-    "features": {
-        "1": [
-            {
-                "name": "Arcane Recovery",
-                "description": "You can regain some of your magical energy by studying your spellbook. When you finish a Short Rest, you can choose expended spell slots to recover. The spell slots can have a combined level equal to no more than half your Wizard level (round up), and none of the slots can be level 6 or higher. For exam-ple, if you're a level 4 Wizard, you can recover up to two levels' worth of spell slots, regaining either one level 2 spell slot or two level 1 spell slots.\n\tOnce you use this feature, you can't do so again until you finish a Long Rest.",
-                "uses": [1, "long"]
-            }
-        ],
-        "3": [
-            {
-                "name": "Wizard Subclass",
-                "grantedSubclasses": "wizard-subclasses",
-                "hide": true
-            }
-        ],
-        "4": [
-            {
-                "name": "Ability Score Improvement",
-                "description": "Choose between increasing your ability scores or selecting a feat.",
-                "grantedFeats": [
-                    "ability-score-improvement",
-                    "general-feats"
-                ],
-                "hide": true
-            }
-        ],
-        "5": [
-            {
-                "name": "Memorize Spells",
-                "description": "Whenever you finish a Short Rest, you can study your spellbook and replace one of the level 1+ Wizard spells you have prepared for your Spellcasting feature with another level 1+ spell from the book."
-            }
-        ],
-        "8": [
-            {
-                "name": "Ability Score Improvement",
-                "description": "Choose between increasing your ability scores or selecting a feat.",
-                "grantedFeats": [
-                    "ability-score-improvement",
-                    "general-feats"
-                ],
-                "hide": true
-            }
-        ],
-        "12": [
-            {
-                "name": "Ability Score Improvement",
-                "description": "Choose between increasing your ability scores or selecting a feat.",
-                "grantedFeats": [
-                    "ability-score-improvement",
-                    "general-feats"
-                ],
-                "hide": true
-            }
-        ],
-        "16": [
-            {
-                "name": "Ability Score Improvement",
-                "description": "Choose between increasing your ability scores or selecting a feat.",
-                "grantedFeats": [
-                    "ability-score-improvement",
-                    "general-feats"
-                ],
-                "hide": true
-            }
-        ],
-        "18": [
-            {
-                "name": "Spell Mastery",
-                "description": "You have achieved such mastery over certain spells that you can cast them at will. Choose a level 1 and a level 2 spell in your spellbook that have a casting time of an action. You always have those spells pre-pared, and you can cast them at their lowest level without expending a spell slot. To cast either spell at a higher levei, you must expend a spell slot.\n\tWhenever you finish a Long Rest, you can study your spellbook and replace one of those spells with an eligible spell of the same level from the book."
-            }
-        ],
-        "19": [
-            {
-                "name": "Epic Boon Feat",
-                "description": "You gain an Epic Boon feat (see chapter 5) or another feat of your choice for which you qualify. Boon of Fate is recommended.",
-                "grantedFeats": [
-                    "epic-boon-feats",
-                    "general-feats"
-                ],
-                "hide": true
-            }
-        ],
-        "20": [
-            {
-                "name": "Signature Spells",
-                "description": "Choose two level 3 spells in your spellbook as your signature spells. You always have these spells pre-pared, and you can cast each of them once at level 3 without expending a spell slot. When you do so, you can't cast them in this way again until you finish a Short or Long Rest. To cast either spell at a higher level, you must expend a spell slot.",
-                "uses": [2, "short"]
-            }
-        ]
+    "B": {
+      "items": {},
+      "gold": 55
     }
+  },
+  "spellcastingAbilities": [
+    "Intelligence"
+  ],
+  "spellsPool": "wizard-spells",
+  "spellcasting": {
+    "1": {
+      "cantrips": 3,
+      "preparedSpells": 4,
+      "slots": [
+        2,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "2": {
+      "cantrips": 3,
+      "preparedSpells": 5,
+      "slots": [
+        3,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "3": {
+      "cantrips": 3,
+      "preparedSpells": 6,
+      "slots": [
+        4,
+        2,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "4": {
+      "cantrips": 4,
+      "preparedSpells": 7,
+      "slots": [
+        4,
+        3,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "5": {
+      "cantrips": 4,
+      "preparedSpells": 9,
+      "slots": [
+        4,
+        3,
+        2,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "6": {
+      "cantrips": 4,
+      "preparedSpells": 10,
+      "slots": [
+        4,
+        3,
+        3,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "7": {
+      "cantrips": 4,
+      "preparedSpells": 11,
+      "slots": [
+        4,
+        3,
+        3,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "8": {
+      "cantrips": 4,
+      "preparedSpells": 12,
+      "slots": [
+        4,
+        3,
+        3,
+        2,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "9": {
+      "cantrips": 4,
+      "preparedSpells": 14,
+      "slots": [
+        4,
+        3,
+        3,
+        3,
+        1,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "10": {
+      "cantrips": 5,
+      "preparedSpells": 15,
+      "slots": [
+        4,
+        3,
+        3,
+        3,
+        2,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "11": {
+      "cantrips": 5,
+      "preparedSpells": 16,
+      "slots": [
+        4,
+        3,
+        3,
+        3,
+        2,
+        1,
+        0,
+        0,
+        0
+      ]
+    },
+    "12": {
+      "cantrips": 5,
+      "preparedSpells": 16,
+      "slots": [
+        4,
+        3,
+        3,
+        3,
+        2,
+        1,
+        0,
+        0,
+        0
+      ]
+    },
+    "13": {
+      "cantrips": 5,
+      "preparedSpells": 17,
+      "slots": [
+        4,
+        3,
+        3,
+        3,
+        2,
+        1,
+        1,
+        0,
+        0
+      ]
+    },
+    "14": {
+      "cantrips": 5,
+      "preparedSpells": 18,
+      "slots": [
+        4,
+        3,
+        3,
+        3,
+        2,
+        1,
+        1,
+        0,
+        0
+      ]
+    },
+    "15": {
+      "cantrips": 5,
+      "preparedSpells": 19,
+      "slots": [
+        4,
+        3,
+        3,
+        3,
+        2,
+        1,
+        1,
+        1,
+        0
+      ]
+    },
+    "16": {
+      "cantrips": 5,
+      "preparedSpells": 21,
+      "slots": [
+        4,
+        3,
+        3,
+        3,
+        2,
+        1,
+        1,
+        1,
+        0
+      ]
+    },
+    "17": {
+      "cantrips": 5,
+      "preparedSpells": 22,
+      "slots": [
+        4,
+        3,
+        3,
+        3,
+        2,
+        1,
+        1,
+        1,
+        1
+      ]
+    },
+    "18": {
+      "cantrips": 5,
+      "preparedSpells": 23,
+      "slots": [
+        4,
+        3,
+        3,
+        3,
+        3,
+        1,
+        1,
+        1,
+        1
+      ]
+    },
+    "19": {
+      "cantrips": 5,
+      "preparedSpells": 24,
+      "slots": [
+        4,
+        3,
+        3,
+        3,
+        3,
+        2,
+        1,
+        1,
+        1
+      ]
+    },
+    "20": {
+      "cantrips": 5,
+      "preparedSpells": 25,
+      "slots": [
+        4,
+        3,
+        3,
+        3,
+        3,
+        2,
+        2,
+        1,
+        1
+      ]
+    }
+  },
+  "features": {
+    "1": [
+      {
+        "name": "Arcane Recovery",
+        "description": "You can regain some of your magical energy by studying your spellbook. When you finish a Short Rest, you can choose expended spell slots to recover. The spell slots can have a combined level equal to no more than half your Wizard level (round up), and none of the slots can be level 6 or higher. For exam-ple, if you're a level 4 Wizard, you can recover up to two levels' worth of spell slots, regaining either one level 2 spell slot or two level 1 spell slots.\n\tOnce you use this feature, you can't do so again until you finish a Long Rest.",
+        "uses": [
+          1,
+          "long"
+        ]
+      },
+      {
+        "name": "Ritual Adept",
+        "description": "You can cast any spell as a Ritual if that spell has the Ritual tag and the spell is in your spellbook. You don't need to have the spell prepared."
+      },
+      {
+        "name": "Spellcasting",
+        "description": "As a student of arcane magic, you have learned to cast spells. You know cantrips and prepare spells from your spellbook, using Intelligence as your spellcasting ability. You can use an Arcane Focus as a spellcasting focus for your Wizard spells."
+      }
+    ],
+    "2": [
+      {
+        "name": "Scholar",
+        "description": "While studying magic, you specialized in another field of study. Choose one of the following skills in which you have proficiency: Arcana, History, Investigation, Medicine, Nature, or Religion. You have Expertise in the chosen skill."
+      }
+    ],
+    "3": [
+      {
+        "name": "Wizard Subclass",
+        "grantedSubclasses": "wizard-subclasses",
+        "hide": true
+      }
+    ],
+    "4": [
+      {
+        "name": "Ability Score Improvement",
+        "description": "Choose between increasing your ability scores or selecting a feat.",
+        "grantedFeats": [
+          "ability-score-improvement",
+          "general-feats"
+        ],
+        "hide": true
+      }
+    ],
+    "5": [
+      {
+        "name": "Memorize Spell",
+        "description": "Whenever you finish a Short Rest, you can study your spellbook and replace one of the level 1+ Wizard spells you have prepared for your Spellcasting feature with another level 1+ spell from the book."
+      }
+    ],
+    "8": [
+      {
+        "name": "Ability Score Improvement",
+        "description": "Choose between increasing your ability scores or selecting a feat.",
+        "grantedFeats": [
+          "ability-score-improvement",
+          "general-feats"
+        ],
+        "hide": true
+      }
+    ],
+    "12": [
+      {
+        "name": "Ability Score Improvement",
+        "description": "Choose between increasing your ability scores or selecting a feat.",
+        "grantedFeats": [
+          "ability-score-improvement",
+          "general-feats"
+        ],
+        "hide": true
+      }
+    ],
+    "16": [
+      {
+        "name": "Ability Score Improvement",
+        "description": "Choose between increasing your ability scores or selecting a feat.",
+        "grantedFeats": [
+          "ability-score-improvement",
+          "general-feats"
+        ],
+        "hide": true
+      }
+    ],
+    "18": [
+      {
+        "name": "Spell Mastery",
+        "description": "You have achieved such mastery over certain spells that you can cast them at will. Choose a level 1 and a level 2 spell in your spellbook that have a casting time of an action. You always have those spells pre-pared, and you can cast them at their lowest level without expending a spell slot. To cast either spell at a higher levei, you must expend a spell slot.\n\tWhenever you finish a Long Rest, you can study your spellbook and replace one of those spells with an eligible spell of the same level from the book."
+      }
+    ],
+    "19": [
+      {
+        "name": "Epic Boon Feat",
+        "description": "You gain an Epic Boon feat (see chapter 5) or another feat of your choice for which you qualify. Boon of Fate is recommended.",
+        "grantedFeats": [
+          "epic-boon-feats",
+          "general-feats"
+        ],
+        "hide": true
+      }
+    ],
+    "20": [
+      {
+        "name": "Signature Spells",
+        "description": "Choose two level 3 spells in your spellbook as your signature spells. You always have these spells pre-pared, and you can cast each of them once at level 3 without expending a spell slot. When you do so, you can't cast them in this way again until you finish a Short or Long Rest. To cast either spell at a higher level, you must expend a spell slot.",
+        "uses": [
+          2,
+          "short"
+        ]
+      }
+    ]
+  }
 }

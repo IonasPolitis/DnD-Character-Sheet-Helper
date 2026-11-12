@@ -1,9 +1,54 @@
 {
     "class": "Warlock",
     "hitDice": "D8",
-    "savingThroughProf": [ "wisdom", "charisma" ],
-    "proficiencyBonus": [ "2", "2", "2", "2", "3", "3", "3", "3", "4", "4", "4", "4", "5", "5", "5", "5", "6", "6", "6", "6", "7", "7", "7", "7", "8", "8", "8", "8", "9", "9" ],
-    "skillsPool": [ [ "arcana", "deception", "history", "intimidation", "investigation", "nature", "religion" ], 2 ],
+    "savingThroughProf": [
+        "wisdom",
+        "charisma"
+    ],
+    "proficiencyBonus": [
+        "2",
+        "2",
+        "2",
+        "2",
+        "3",
+        "3",
+        "3",
+        "3",
+        "4",
+        "4",
+        "4",
+        "4",
+        "5",
+        "5",
+        "5",
+        "5",
+        "6",
+        "6",
+        "6",
+        "6",
+        "7",
+        "7",
+        "7",
+        "7",
+        "8",
+        "8",
+        "8",
+        "8",
+        "9",
+        "9"
+    ],
+    "skillsPool": [
+        [
+            "arcana",
+            "deception",
+            "history",
+            "intimidation",
+            "investigation",
+            "nature",
+            "religion"
+        ],
+        2
+    ],
     "startingEquipment": {
         "A": {
             "items": {
@@ -21,29 +66,311 @@
             "gold": 100
         }
     },
-    "spellcastingAbilities": [ "Charisma" ],
+    "spellcastingAbilities": [
+        "Charisma"
+    ],
     "spellsPool": "warlock-spells",
     "spellcasting": {
-        "1": { "cantrips": 2, "preparedSpells": 2, "slots": [1, 0, 0, 0, 0, 0, 0, 0, 0] },
-        "2": { "cantrips": 2, "preparedSpells": 3, "slots": [2, 0, 0, 0, 0, 0, 0, 0, 0] },
-        "3": { "cantrips": 2, "preparedSpells": 4, "slots": [0, 2, 0, 0, 0, 0, 0, 0, 0] },
-        "4": { "cantrips": 3, "preparedSpells": 5, "slots": [0, 2, 0, 0, 0, 0, 0, 0, 0] },
-        "5": { "cantrips": 3, "preparedSpells": 6, "slots": [0, 0, 2, 0, 0, 0, 0, 0, 0] },
-        "6": { "cantrips": 3, "preparedSpells": 7, "slots": [0, 0, 2, 0, 0, 0, 0, 0, 0] },
-        "7": { "cantrips": 3, "preparedSpells": 8, "slots": [0, 0, 0, 2, 0, 0, 0, 0, 0] },
-        "8": { "cantrips": 3, "preparedSpells": 9, "slots": [0, 0, 0, 2, 0, 0, 0, 0, 0] },
-        "9": { "cantrips": 3, "preparedSpells": 10, "slots": [0, 0, 0, 0, 2, 0, 0, 0, 0] },
-        "10": { "cantrips": 4, "preparedSpells": 10, "slots": [0, 0, 0, 0, 2, 0, 0, 0, 0] },
-        "11": { "cantrips": 4, "preparedSpells": 11, "slots": [0, 0, 0, 0, 3, 0, 0, 0, 0] },
-        "12": { "cantrips": 4, "preparedSpells": 11, "slots": [0, 0, 0, 0, 3, 0, 0, 0, 0] },
-        "13": { "cantrips": 4, "preparedSpells": 12, "slots": [0, 0, 0, 0, 3, 0, 0, 0, 0] },
-        "14": { "cantrips": 4, "preparedSpells": 12, "slots": [0, 0, 0, 0, 3, 0, 0, 0, 0] },
-        "15": { "cantrips": 4, "preparedSpells": 13, "slots": [0, 0, 0, 0, 3, 0, 0, 0, 0] },
-        "16": { "cantrips": 4, "preparedSpells": 13, "slots": [0, 0, 0, 0, 3, 0, 0, 0, 0] },
-        "17": { "cantrips": 4, "preparedSpells": 14, "slots": [0, 0, 0, 0, 4, 0, 0, 0, 0] },
-        "18": { "cantrips": 4, "preparedSpells": 14, "slots": [0, 0, 0, 0, 4, 0, 0, 0, 0] },
-        "19": { "cantrips": 4, "preparedSpells": 15, "slots": [0, 0, 0, 0, 4, 0, 0, 0, 0] },
-        "20": { "cantrips": 4, "preparedSpells": 15, "slots": [0, 0, 0, 0, 4, 0, 0, 0, 0] }
+        "1": {
+            "cantrips": 2,
+            "preparedSpells": 2,
+            "slots": [
+                1,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0
+            ]
+        },
+        "2": {
+            "cantrips": 2,
+            "preparedSpells": 3,
+            "slots": [
+                2,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0
+            ]
+        },
+        "3": {
+            "cantrips": 2,
+            "preparedSpells": 4,
+            "slots": [
+                0,
+                2,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0
+            ]
+        },
+        "4": {
+            "cantrips": 3,
+            "preparedSpells": 5,
+            "slots": [
+                0,
+                2,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0
+            ]
+        },
+        "5": {
+            "cantrips": 3,
+            "preparedSpells": 6,
+            "slots": [
+                0,
+                0,
+                2,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0
+            ]
+        },
+        "6": {
+            "cantrips": 3,
+            "preparedSpells": 7,
+            "slots": [
+                0,
+                0,
+                2,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0
+            ]
+        },
+        "7": {
+            "cantrips": 3,
+            "preparedSpells": 8,
+            "slots": [
+                0,
+                0,
+                0,
+                2,
+                0,
+                0,
+                0,
+                0,
+                0
+            ]
+        },
+        "8": {
+            "cantrips": 3,
+            "preparedSpells": 9,
+            "slots": [
+                0,
+                0,
+                0,
+                2,
+                0,
+                0,
+                0,
+                0,
+                0
+            ]
+        },
+        "9": {
+            "cantrips": 3,
+            "preparedSpells": 10,
+            "slots": [
+                0,
+                0,
+                0,
+                0,
+                2,
+                0,
+                0,
+                0,
+                0
+            ]
+        },
+        "10": {
+            "cantrips": 4,
+            "preparedSpells": 10,
+            "slots": [
+                0,
+                0,
+                0,
+                0,
+                2,
+                0,
+                0,
+                0,
+                0
+            ]
+        },
+        "11": {
+            "cantrips": 4,
+            "preparedSpells": 11,
+            "slots": [
+                0,
+                0,
+                0,
+                0,
+                3,
+                0,
+                0,
+                0,
+                0
+            ]
+        },
+        "12": {
+            "cantrips": 4,
+            "preparedSpells": 11,
+            "slots": [
+                0,
+                0,
+                0,
+                0,
+                3,
+                0,
+                0,
+                0,
+                0
+            ]
+        },
+        "13": {
+            "cantrips": 4,
+            "preparedSpells": 12,
+            "slots": [
+                0,
+                0,
+                0,
+                0,
+                3,
+                0,
+                0,
+                0,
+                0
+            ]
+        },
+        "14": {
+            "cantrips": 4,
+            "preparedSpells": 12,
+            "slots": [
+                0,
+                0,
+                0,
+                0,
+                3,
+                0,
+                0,
+                0,
+                0
+            ]
+        },
+        "15": {
+            "cantrips": 4,
+            "preparedSpells": 13,
+            "slots": [
+                0,
+                0,
+                0,
+                0,
+                3,
+                0,
+                0,
+                0,
+                0
+            ]
+        },
+        "16": {
+            "cantrips": 4,
+            "preparedSpells": 13,
+            "slots": [
+                0,
+                0,
+                0,
+                0,
+                3,
+                0,
+                0,
+                0,
+                0
+            ]
+        },
+        "17": {
+            "cantrips": 4,
+            "preparedSpells": 14,
+            "slots": [
+                0,
+                0,
+                0,
+                0,
+                4,
+                0,
+                0,
+                0,
+                0
+            ]
+        },
+        "18": {
+            "cantrips": 4,
+            "preparedSpells": 14,
+            "slots": [
+                0,
+                0,
+                0,
+                0,
+                4,
+                0,
+                0,
+                0,
+                0
+            ]
+        },
+        "19": {
+            "cantrips": 4,
+            "preparedSpells": 15,
+            "slots": [
+                0,
+                0,
+                0,
+                0,
+                4,
+                0,
+                0,
+                0,
+                0
+            ]
+        },
+        "20": {
+            "cantrips": 4,
+            "preparedSpells": 15,
+            "slots": [
+                0,
+                0,
+                0,
+                0,
+                4,
+                0,
+                0,
+                0,
+                0
+            ]
+        }
     },
     "features": {
         "1": [
@@ -63,13 +390,18 @@
             {
                 "name": "Magical Cunning",
                 "description": "You can perform an esoteric rite for 1 minute. At the end of it, you regain expended Pact Magic spell slots but no more than a number equal to half your maximum (round up). Once you use this feature, you can't do so again until you finish a Long Rest.",
-                "uses": [1, "long"]
+                "uses": [
+                    1,
+                    "long"
+                ]
             },
             {
                 "name": "Eldritch Invocations",
                 "description": "You have unearthed Eldritch Invocations...",
                 "classChoices": [
-                    "eldritch-invocations", "eldritch-invocations", "eldritch-invocations"
+                    "eldritch-invocations",
+                    "eldritch-invocations",
+                    "eldritch-invocations"
                 ],
                 "hide": true
             }
@@ -84,7 +416,9 @@
                 "name": "Eldritch Invocations",
                 "description": "You have unearthed Eldritch Invocations...",
                 "classChoices": [
-                    "eldritch-invocations", "eldritch-invocations", "eldritch-invocations"
+                    "eldritch-invocations",
+                    "eldritch-invocations",
+                    "eldritch-invocations"
                 ],
                 "hide": true
             }
@@ -94,7 +428,9 @@
                 "name": "Eldritch Invocations",
                 "description": "You have unearthed Eldritch Invocations...",
                 "classChoices": [
-                    "eldritch-invocations", "eldritch-invocations", "eldritch-invocations"
+                    "eldritch-invocations",
+                    "eldritch-invocations",
+                    "eldritch-invocations"
                 ],
                 "hide": true
             },
@@ -113,7 +449,11 @@
                 "name": "Eldritch Invocations",
                 "description": "You have unearthed Eldritch Invocations...",
                 "classChoices": [
-                    "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations"
+                    "eldritch-invocations",
+                    "eldritch-invocations",
+                    "eldritch-invocations",
+                    "eldritch-invocations",
+                    "eldritch-invocations"
                 ],
                 "hide": true
             }
@@ -123,7 +463,11 @@
                 "name": "Eldritch Invocations",
                 "description": "You have unearthed Eldritch Invocations...",
                 "classChoices": [
-                    "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations"
+                    "eldritch-invocations",
+                    "eldritch-invocations",
+                    "eldritch-invocations",
+                    "eldritch-invocations",
+                    "eldritch-invocations"
                 ],
                 "hide": true
             }
@@ -133,7 +477,12 @@
                 "name": "Eldritch Invocations",
                 "description": "You have unearthed Eldritch Invocations...",
                 "classChoices": [
-                    "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations"
+                    "eldritch-invocations",
+                    "eldritch-invocations",
+                    "eldritch-invocations",
+                    "eldritch-invocations",
+                    "eldritch-invocations",
+                    "eldritch-invocations"
                 ],
                 "hide": true
             }
@@ -143,7 +492,12 @@
                 "name": "Eldritch Invocations",
                 "description": "You have unearthed Eldritch Invocations...",
                 "classChoices": [
-                    "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations"
+                    "eldritch-invocations",
+                    "eldritch-invocations",
+                    "eldritch-invocations",
+                    "eldritch-invocations",
+                    "eldritch-invocations",
+                    "eldritch-invocations"
                 ],
                 "hide": true
             },
@@ -159,15 +513,24 @@
         ],
         "9": [
             {
-                "name": "Contract Patron",
+                "name": "Contact Patron",
                 "description": "In the past, you usually contacted your patron through intermediaries. Now you can communicate directly: you always have the Contact Other Plane spell prepared. With this feature, you can cast the spell without expending a spell slot to contact your patron, and you automatically succeed on the spell's saving throw.\n\tOnce you cast the spell with this feature, you can't do so in this way again until you finish a Long Rest.",
-                "uses": [1, "long"]
+                "uses": [
+                    1,
+                    "long"
+                ]
             },
             {
                 "name": "Eldritch Invocations",
                 "description": "You have unearthed Eldritch Invocations...",
                 "classChoices": [
-                    "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations"
+                    "eldritch-invocations",
+                    "eldritch-invocations",
+                    "eldritch-invocations",
+                    "eldritch-invocations",
+                    "eldritch-invocations",
+                    "eldritch-invocations",
+                    "eldritch-invocations"
                 ],
                 "hide": true
             }
@@ -177,7 +540,13 @@
                 "name": "Eldritch Invocations",
                 "description": "You have unearthed Eldritch Invocations...",
                 "classChoices": [
-                    "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations"
+                    "eldritch-invocations",
+                    "eldritch-invocations",
+                    "eldritch-invocations",
+                    "eldritch-invocations",
+                    "eldritch-invocations",
+                    "eldritch-invocations",
+                    "eldritch-invocations"
                 ],
                 "hide": true
             }
@@ -186,13 +555,22 @@
             {
                 "name": "Mystic Arcanum",
                 "description": "Your patron grants you a magical secret called an arcanum.\n\tYou can cast your arcanum spell once without expending a spell slot, and you must finish a Long Rest before you can cast it in this way again.\n\tAs shown in the Warlock Features table, you gain another Warlock spell of your choice that can be cast in this way when you reach Warlock levels 13 (level 7 spell), 15 (level 8 spell), and 17 (level 9 spell).\n\tYou regain all uses of your Mystic Arcanum when you finish a Long Rest.\n\tWhenever you gain a Warlock level, you can replace one of your arcanum spells with another Warlock spell of the same level.",
-                "uses": ["1 + (level - 11) / 2", "long"]
+                "uses": [
+                    "1 + (level - 11) / 2",
+                    "long"
+                ]
             },
             {
                 "name": "Eldritch Invocations",
                 "description": "You have unearthed Eldritch Invocations...",
                 "classChoices": [
-                    "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations"
+                    "eldritch-invocations",
+                    "eldritch-invocations",
+                    "eldritch-invocations",
+                    "eldritch-invocations",
+                    "eldritch-invocations",
+                    "eldritch-invocations",
+                    "eldritch-invocations"
                 ],
                 "hide": true
             }
@@ -202,7 +580,14 @@
                 "name": "Eldritch Invocations",
                 "description": "You have unearthed Eldritch Invocations...",
                 "classChoices": [
-                    "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations"
+                    "eldritch-invocations",
+                    "eldritch-invocations",
+                    "eldritch-invocations",
+                    "eldritch-invocations",
+                    "eldritch-invocations",
+                    "eldritch-invocations",
+                    "eldritch-invocations",
+                    "eldritch-invocations"
                 ],
                 "hide": true
             },
@@ -218,10 +603,21 @@
         ],
         "13": [
             {
+                "name": "Mystic Arcanum (7th Level)",
+                "description": "Your patron grants you a 7th-level Warlock spell of your choice as an arcanum spell. You can cast it once without expending a spell slot, and you regain the ability to do so when you finish a Long Rest."
+            },
+            {
                 "name": "Eldritch Invocations",
                 "description": "You have unearthed Eldritch Invocations...",
                 "classChoices": [
-                    "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations"
+                    "eldritch-invocations",
+                    "eldritch-invocations",
+                    "eldritch-invocations",
+                    "eldritch-invocations",
+                    "eldritch-invocations",
+                    "eldritch-invocations",
+                    "eldritch-invocations",
+                    "eldritch-invocations"
                 ],
                 "hide": true
             }
@@ -231,17 +627,35 @@
                 "name": "Eldritch Invocations",
                 "description": "You have unearthed Eldritch Invocations...",
                 "classChoices": [
-                    "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations"
+                    "eldritch-invocations",
+                    "eldritch-invocations",
+                    "eldritch-invocations",
+                    "eldritch-invocations",
+                    "eldritch-invocations",
+                    "eldritch-invocations",
+                    "eldritch-invocations",
+                    "eldritch-invocations"
                 ],
                 "hide": true
             }
         ],
         "15": [
             {
+                "name": "Mystic Arcanum (8th Level)",
+                "description": "Your patron grants you an 8th-level Warlock spell of your choice as an arcanum spell. You can cast it once without expending a spell slot, and you regain the ability to do so when you finish a Long Rest."
+            },
+            {
                 "name": "Eldritch Invocations",
                 "description": "You have unearthed Eldritch Invocations...",
                 "classChoices": [
-                    "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations"
+                    "eldritch-invocations",
+                    "eldritch-invocations",
+                    "eldritch-invocations",
+                    "eldritch-invocations",
+                    "eldritch-invocations",
+                    "eldritch-invocations",
+                    "eldritch-invocations",
+                    "eldritch-invocations"
                 ],
                 "hide": true
             }
@@ -251,7 +665,15 @@
                 "name": "Eldritch Invocations",
                 "description": "You have unearthed Eldritch Invocations...",
                 "classChoices": [
-                    "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations"
+                    "eldritch-invocations",
+                    "eldritch-invocations",
+                    "eldritch-invocations",
+                    "eldritch-invocations",
+                    "eldritch-invocations",
+                    "eldritch-invocations",
+                    "eldritch-invocations",
+                    "eldritch-invocations",
+                    "eldritch-invocations"
                 ],
                 "hide": true
             },
@@ -267,10 +689,22 @@
         ],
         "17": [
             {
+                "name": "Mystic Arcanum (9th Level)",
+                "description": "Your patron grants you a 9th-level Warlock spell of your choice as an arcanum spell. You can cast it once without expending a spell slot, and you regain the ability to do so when you finish a Long Rest."
+            },
+            {
                 "name": "Eldritch Invocations",
                 "description": "You have unearthed Eldritch Invocations...",
                 "classChoices": [
-                    "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations"
+                    "eldritch-invocations",
+                    "eldritch-invocations",
+                    "eldritch-invocations",
+                    "eldritch-invocations",
+                    "eldritch-invocations",
+                    "eldritch-invocations",
+                    "eldritch-invocations",
+                    "eldritch-invocations",
+                    "eldritch-invocations"
                 ],
                 "hide": true
             }
@@ -280,7 +714,16 @@
                 "name": "Eldritch Invocations",
                 "description": "You have unearthed Eldritch Invocations...",
                 "classChoices": [
-                    "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations"
+                    "eldritch-invocations",
+                    "eldritch-invocations",
+                    "eldritch-invocations",
+                    "eldritch-invocations",
+                    "eldritch-invocations",
+                    "eldritch-invocations",
+                    "eldritch-invocations",
+                    "eldritch-invocations",
+                    "eldritch-invocations",
+                    "eldritch-invocations"
                 ],
                 "hide": true
             }
@@ -290,7 +733,16 @@
                 "name": "Eldritch Invocations",
                 "description": "You have unearthed Eldritch Invocations...",
                 "classChoices": [
-                    "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations"
+                    "eldritch-invocations",
+                    "eldritch-invocations",
+                    "eldritch-invocations",
+                    "eldritch-invocations",
+                    "eldritch-invocations",
+                    "eldritch-invocations",
+                    "eldritch-invocations",
+                    "eldritch-invocations",
+                    "eldritch-invocations",
+                    "eldritch-invocations"
                 ],
                 "hide": true
             },
@@ -313,7 +765,16 @@
                 "name": "Eldritch Invocations",
                 "description": "You have unearthed Eldritch Invocations...",
                 "classChoices": [
-                    "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations", "eldritch-invocations"
+                    "eldritch-invocations",
+                    "eldritch-invocations",
+                    "eldritch-invocations",
+                    "eldritch-invocations",
+                    "eldritch-invocations",
+                    "eldritch-invocations",
+                    "eldritch-invocations",
+                    "eldritch-invocations",
+                    "eldritch-invocations",
+                    "eldritch-invocations"
                 ],
                 "hide": true
             }

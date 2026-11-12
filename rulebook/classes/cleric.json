@@ -1,145 +1,494 @@
 {
-    "class": "Cleric",
-    "hitDice": "D8",
-    "savingThroughProf": [ "wisdom", "charisma" ],
-    "proficiencyBonus": [ "2", "2", "2", "2", "3", "3", "3", "3", "4", "4", "4", "4", "5", "5", "5", "5", "6", "6", "6", "6", "7", "7", "7", "7", "8", "8", "8", "8", "9", "9" ],
-    "skillsPool": [ [ "history", "insight", "medicine", "persuasion", "religion" ], 2 ],
-    "spellcastingAbilities": [ "Wisdom" ],
-    "startingEquipment": {
-        "A": {
-            "items": {
-                "chain-shirt": 1,
-                "shield": 1,
-                "mace": 1,
-                "Holy Symbol": 1,
-                "Priest's Pack": 1
-            },
-            "gold": 7
-        },
-        "B": {
-            "items": {},
-            "gold": 110
-        }
+  "class": "Cleric",
+  "hitDice": "D8",
+  "savingThroughProf": [
+    "wisdom",
+    "charisma"
+  ],
+  "proficiencyBonus": [
+    "2",
+    "2",
+    "2",
+    "2",
+    "3",
+    "3",
+    "3",
+    "3",
+    "4",
+    "4",
+    "4",
+    "4",
+    "5",
+    "5",
+    "5",
+    "5",
+    "6",
+    "6",
+    "6",
+    "6",
+    "7",
+    "7",
+    "7",
+    "7",
+    "8",
+    "8",
+    "8",
+    "8",
+    "9",
+    "9"
+  ],
+  "skillsPool": [
+    [
+      "history",
+      "insight",
+      "medicine",
+      "persuasion",
+      "religion"
+    ],
+    2
+  ],
+  "spellcastingAbilities": [
+    "Wisdom"
+  ],
+  "startingEquipment": {
+    "A": {
+      "items": {
+        "chain-shirt": 1,
+        "shield": 1,
+        "mace": 1,
+        "holy-symbol": 1,
+        "priests-pack": 1
+      },
+      "gold": 7
     },
-    "spellsPool": "cleric-spells",
-    "spellcasting": {
-        "1": { "cantrips": 3, "preparedSpells": 4, "slots": [2, 0, 0, 0, 0, 0, 0, 0, 0] },
-        "2": { "cantrips": 3, "preparedSpells": 5, "slots": [3, 0, 0, 0, 0, 0, 0, 0, 0] },
-        "3": { "cantrips": 3, "preparedSpells": 6, "slots": [4, 2, 0, 0, 0, 0, 0, 0, 0] },
-        "4": { "cantrips": 4, "preparedSpells": 7, "slots": [4, 3, 0, 0, 0, 0, 0, 0, 0] },
-        "5": { "cantrips": 4, "preparedSpells": 9, "slots": [4, 3, 2, 0, 0, 0, 0, 0, 0] },
-        "6": { "cantrips": 4, "preparedSpells": 10, "slots": [4, 3, 3, 0, 0, 0, 0, 0, 0] },
-        "7": { "cantrips": 4, "preparedSpells": 11, "slots": [4, 3, 3, 1, 0, 0, 0, 0, 0] },
-        "8": { "cantrips": 4, "preparedSpells": 12, "slots": [4, 3, 3, 2, 0, 0, 0, 0, 0] },
-        "9": { "cantrips": 4, "preparedSpells": 14, "slots": [4, 3, 3, 3, 1, 0, 0, 0, 0] },
-        "10": { "cantrips": 5, "preparedSpells": 15, "slots": [4, 3, 3, 3, 2, 0, 0, 0, 0] },
-        "11": { "cantrips": 5, "preparedSpells": 16, "slots": [4, 3, 3, 3, 2, 1, 0, 0, 0] },
-        "12": { "cantrips": 5, "preparedSpells": 16, "slots": [4, 3, 3, 3, 2, 1, 0, 0, 0] },
-        "13": { "cantrips": 5, "preparedSpells": 17, "slots": [4, 3, 3, 3, 2, 1, 1, 0, 0] },
-        "14": { "cantrips": 5, "preparedSpells": 17, "slots": [4, 3, 3, 3, 2, 1, 1, 0, 0] },
-        "15": { "cantrips": 5, "preparedSpells": 18, "slots": [4, 3, 3, 3, 2, 1, 1, 1, 0] },
-        "16": { "cantrips": 5, "preparedSpells": 18, "slots": [4, 3, 3, 3, 2, 1, 1, 1, 0] },
-        "17": { "cantrips": 5, "preparedSpells": 19, "slots": [4, 3, 3, 3, 2, 1, 1, 1, 1] },
-        "18": { "cantrips": 5, "preparedSpells": 20, "slots": [4, 3, 3, 3, 3, 1, 1, 1, 1] },
-        "19": { "cantrips": 5, "preparedSpells": 21, "slots": [4, 3, 3, 3, 3, 2, 1, 1, 1] },
-        "20": { "cantrips": 5, "preparedSpells": 22, "slots": [4, 3, 3, 3, 3, 2, 2, 1, 1] }
-    },
-    "features": {
-        "1": [
-            {
-                "name": "Divine Order",
-                "description": "You have dedicated yourself to one of the following sacred roles of your choice.\n - **Protector**: Trained for battle, you gain proficiency with Martial weapons and training with Heavy armor.\n - **Thaumaturge**: You know one extra cantrip from the Cleric spell list. In addition, your mystical connection to the divine gives you a bonus to your Intelligence (Arcana or Religion) checks. The bonus equals your Wisdom modifier (minimum of +1).",
-                "classChoices": ["divine-orders"],
-                "hide": true
-            }
-        ],
-        "2": [
-            {
-                "name": "Channel Divinity",
-                "description": "You can channel divine energy directly from the Outer Planes to fuel magical effects. You start with two such effects: Divine Spark and Turn Undead. You can use this class's Channel Divinity twice. You regain one of its expended uses when you finish a Short Rest, and you regain all expended uses when you finish a Long Rest.\n - **Divine Spark**: As a Magic action, you point your Holy Symbol at another creature you can see within 30 feet of yourself and focus divine energy at it. Roll ld8 and add your Wisdom modifier. You either restore Hit Points to the creature equal to that total or force the creature to make a Constitution saving throw. On a failed save, the creature takes Necrotic or Radiant damage (your choice) equal to that total. On a successful save, the creature takes half as much damage (round down).\n - **Turn Undead**: As a Magic action, you present your Holy Symbol and censure Undead creatures. Each Undead of your choice within 30 feet of you must make a Wisdom saving throw. If the creature fails its save, it has the Frightened and Incapacitated conditions for 1 minute. For that duration, it tries to move as far from you as it can on its turns. This effect ends early on the creature if it takes any damage, if you have the Incapacitated condition, or if you die.",
-                "uses": [2, "long"]
-            }
-        ],
-        "3": [
-            {
-                "name": "Cleric Subclass",
-                "grantedSubclasses": "cleric-subclasses",
-                "hide": true
-            }
-        ],
-        "4": [
-            {
-                "name": "Ability Score Improvement",
-                "description": "Choose between increasing your ability scores or selecting a feat.",
-                "grantedFeats": [
-                    "ability-score-improvement",
-                    "general-feats"
-                ],
-                "hide": true
-            }
-        ],
-        "5": [
-            {
-                "name": "Sear Undead",
-                "description": "Whenever you use Turn Undead, you can roll a number of d8s equal to your Wisdom modifier (minimum of ld8) and add the rolls together. Each Undead that fails its saving throw against that use of Turn Undead takes Radiant damage equal to the roll's total. This damage doesn't end the turn effect."
-            }
-        ],
-        "7": [
-            {
-                "name": "Blessed Strikes",
-                "description": "You gain one of the following options of your choice:\n - **Divine Strike**:\nOnce on each of your turns when you hit a creature with an attack roll using a weapon, you can cause the target to take an extra 1d8 Necrotic or Radiant damage.\n - **Potent Spellcasting**:\nAdd your Wisdom modifier to the damage you deal with any Cleric cantrip."
-            }
-        ],
-        "8": [
-            {
-                "name": "Ability Score Improvement",
-                "description": "Choose between increasing your ability scores or selecting a feat.",
-                "grantedFeats": [
-                    "ability-score-improvement",
-                    "general-feats"
-                ],
-                "hide": true
-            }
-        ],
-        "10": [
-            {
-                "name": "Devine Intervention",
-                "description": "As a Magic action, choose any Cleric spell of level 5 or lower that doesn't require a Reaction to cast. As part of the same action, you cast that spell without expending a spell slot or needing Material components. You can't use this feature again until you finish a Long Rest.",
-                "uses": [1, "long"]
-            }
-        ],
-        "12": [
-            {
-                "name": "Ability Score Improvement",
-                "description": "Choose between increasing your ability scores or selecting a feat.",
-                "grantedFeats": [
-                    "ability-score-improvement",
-                    "general-feats"
-                ],
-                "hide": true
-            }
-        ],
-        "16": [
-            {
-                "name": "Ability Score Improvement",
-                "description": "Choose between increasing your ability scores or selecting a feat.",
-                "grantedFeats": [
-                    "ability-score-improvement",
-                    "general-feats"
-                ],
-                "hide": true
-            }
-        ],
-        "19": [
-            {
-                "name": "Epic Boon Feat",
-                "description": "You gain an Epic Boon feat (see chapter 5) or another feat of your choice for which you qualify. Boon of Fate is recommended.",
-                "grantedFeats": [
-                    "epic-boon-feats",
-                    "general-feats"
-                ],
-                "hide": true
-            }
-        ]
+    "B": {
+      "items": {},
+      "gold": 110
     }
+  },
+  "spellsPool": "cleric-spells",
+  "spellcasting": {
+    "1": {
+      "cantrips": 3,
+      "preparedSpells": 4,
+      "slots": [
+        2,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "2": {
+      "cantrips": 3,
+      "preparedSpells": 5,
+      "slots": [
+        3,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "3": {
+      "cantrips": 3,
+      "preparedSpells": 6,
+      "slots": [
+        4,
+        2,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "4": {
+      "cantrips": 4,
+      "preparedSpells": 7,
+      "slots": [
+        4,
+        3,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "5": {
+      "cantrips": 4,
+      "preparedSpells": 9,
+      "slots": [
+        4,
+        3,
+        2,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "6": {
+      "cantrips": 4,
+      "preparedSpells": 10,
+      "slots": [
+        4,
+        3,
+        3,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "7": {
+      "cantrips": 4,
+      "preparedSpells": 11,
+      "slots": [
+        4,
+        3,
+        3,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "8": {
+      "cantrips": 4,
+      "preparedSpells": 12,
+      "slots": [
+        4,
+        3,
+        3,
+        2,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "9": {
+      "cantrips": 4,
+      "preparedSpells": 14,
+      "slots": [
+        4,
+        3,
+        3,
+        3,
+        1,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "10": {
+      "cantrips": 5,
+      "preparedSpells": 15,
+      "slots": [
+        4,
+        3,
+        3,
+        3,
+        2,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "11": {
+      "cantrips": 5,
+      "preparedSpells": 16,
+      "slots": [
+        4,
+        3,
+        3,
+        3,
+        2,
+        1,
+        0,
+        0,
+        0
+      ]
+    },
+    "12": {
+      "cantrips": 5,
+      "preparedSpells": 16,
+      "slots": [
+        4,
+        3,
+        3,
+        3,
+        2,
+        1,
+        0,
+        0,
+        0
+      ]
+    },
+    "13": {
+      "cantrips": 5,
+      "preparedSpells": 17,
+      "slots": [
+        4,
+        3,
+        3,
+        3,
+        2,
+        1,
+        1,
+        0,
+        0
+      ]
+    },
+    "14": {
+      "cantrips": 5,
+      "preparedSpells": 17,
+      "slots": [
+        4,
+        3,
+        3,
+        3,
+        2,
+        1,
+        1,
+        0,
+        0
+      ]
+    },
+    "15": {
+      "cantrips": 5,
+      "preparedSpells": 18,
+      "slots": [
+        4,
+        3,
+        3,
+        3,
+        2,
+        1,
+        1,
+        1,
+        0
+      ]
+    },
+    "16": {
+      "cantrips": 5,
+      "preparedSpells": 18,
+      "slots": [
+        4,
+        3,
+        3,
+        3,
+        2,
+        1,
+        1,
+        1,
+        0
+      ]
+    },
+    "17": {
+      "cantrips": 5,
+      "preparedSpells": 19,
+      "slots": [
+        4,
+        3,
+        3,
+        3,
+        2,
+        1,
+        1,
+        1,
+        1
+      ]
+    },
+    "18": {
+      "cantrips": 5,
+      "preparedSpells": 20,
+      "slots": [
+        4,
+        3,
+        3,
+        3,
+        3,
+        1,
+        1,
+        1,
+        1
+      ]
+    },
+    "19": {
+      "cantrips": 5,
+      "preparedSpells": 21,
+      "slots": [
+        4,
+        3,
+        3,
+        3,
+        3,
+        2,
+        1,
+        1,
+        1
+      ]
+    },
+    "20": {
+      "cantrips": 5,
+      "preparedSpells": 22,
+      "slots": [
+        4,
+        3,
+        3,
+        3,
+        3,
+        2,
+        2,
+        1,
+        1
+      ]
+    }
+  },
+  "features": {
+    "1": [
+      {
+        "name": "Divine Order",
+        "description": "You have dedicated yourself to one of the following sacred roles of your choice.\n - **Protector**: Trained for battle, you gain proficiency with Martial weapons and training with Heavy armor.\n - **Thaumaturge**: You know one extra cantrip from the Cleric spell list. In addition, your mystical connection to the divine gives you a bonus to your Intelligence (Arcana or Religion) checks. The bonus equals your Wisdom modifier (minimum of +1).",
+        "classChoices": [
+          "divine-orders"
+        ],
+        "hide": true
+      },
+      {
+        "name": "Spellcasting",
+        "description": "You have learned to cast spells through prayer and meditation. You know cantrips and prepare spells from the Cleric spell list, using Wisdom as your spellcasting ability. You can use a Holy Symbol as a spellcasting focus for your Cleric spells."
+      }
+    ],
+    "2": [
+      {
+        "name": "Channel Divinity",
+        "description": "You can channel divine energy directly from the Outer Planes to fuel magical effects. You start with two such effects: Divine Spark and Turn Undead. You can use this class's Channel Divinity twice. You regain one of its expended uses when you finish a Short Rest, and you regain all expended uses when you finish a Long Rest.\n - **Divine Spark**: As a Magic action, you point your Holy Symbol at another creature you can see within 30 feet of yourself and focus divine energy at it. Roll ld8 and add your Wisdom modifier. You either restore Hit Points to the creature equal to that total or force the creature to make a Constitution saving throw. On a failed save, the creature takes Necrotic or Radiant damage (your choice) equal to that total. On a successful save, the creature takes half as much damage (round down).\n - **Turn Undead**: As a Magic action, you present your Holy Symbol and censure Undead creatures. Each Undead of your choice within 30 feet of you must make a Wisdom saving throw. If the creature fails its save, it has the Frightened and Incapacitated conditions for 1 minute. For that duration, it tries to move as far from you as it can on its turns. This effect ends early on the creature if it takes any damage, if you have the Incapacitated condition, or if you die.",
+        "uses": [
+          2,
+          "long"
+        ]
+      }
+    ],
+    "3": [
+      {
+        "name": "Cleric Subclass",
+        "grantedSubclasses": "cleric-subclasses",
+        "hide": true
+      }
+    ],
+    "4": [
+      {
+        "name": "Ability Score Improvement",
+        "description": "Choose between increasing your ability scores or selecting a feat.",
+        "grantedFeats": [
+          "ability-score-improvement",
+          "general-feats"
+        ],
+        "hide": true
+      }
+    ],
+    "5": [
+      {
+        "name": "Sear Undead",
+        "description": "Whenever you use Turn Undead, you can roll a number of d8s equal to your Wisdom modifier (minimum of ld8) and add the rolls together. Each Undead that fails its saving throw against that use of Turn Undead takes Radiant damage equal to the roll's total. This damage doesn't end the turn effect."
+      }
+    ],
+    "7": [
+      {
+        "name": "Blessed Strikes",
+        "description": "You gain one of the following options of your choice:\n - **Divine Strike**:\nOnce on each of your turns when you hit a creature with an attack roll using a weapon, you can cause the target to take an extra 1d8 Necrotic or Radiant damage.\n - **Potent Spellcasting**:\nAdd your Wisdom modifier to the damage you deal with any Cleric cantrip."
+      }
+    ],
+    "8": [
+      {
+        "name": "Ability Score Improvement",
+        "description": "Choose between increasing your ability scores or selecting a feat.",
+        "grantedFeats": [
+          "ability-score-improvement",
+          "general-feats"
+        ],
+        "hide": true
+      }
+    ],
+    "10": [
+      {
+        "name": "Divine Intervention",
+        "description": "As a Magic action, choose any Cleric spell of level 5 or lower that doesn't require a Reaction to cast. As part of the same action, you cast that spell without expending a spell slot or needing Material components. You can't use this feature again until you finish a Long Rest.",
+        "uses": [
+          1,
+          "long"
+        ]
+      }
+    ],
+    "12": [
+      {
+        "name": "Ability Score Improvement",
+        "description": "Choose between increasing your ability scores or selecting a feat.",
+        "grantedFeats": [
+          "ability-score-improvement",
+          "general-feats"
+        ],
+        "hide": true
+      }
+    ],
+    "14": [
+      {
+        "name": "Improved Blessed Strikes",
+        "description": "Your Blessed Strikes option increases in power:\n - **Divine Strike**: The extra damage increases to 2d8.\n - **Potent Spellcasting**: When you deal damage with a cantrip to a creature, you can grant yourself or a creature within 60 feet of yourself Temporary Hit Points equal to twice your Wisdom modifier."
+      }
+    ],
+    "16": [
+      {
+        "name": "Ability Score Improvement",
+        "description": "Choose between increasing your ability scores or selecting a feat.",
+        "grantedFeats": [
+          "ability-score-improvement",
+          "general-feats"
+        ],
+        "hide": true
+      }
+    ],
+    "19": [
+      {
+        "name": "Epic Boon Feat",
+        "description": "You gain an Epic Boon feat (see chapter 5) or another feat of your choice for which you qualify. Boon of Fate is recommended.",
+        "grantedFeats": [
+          "epic-boon-feats",
+          "general-feats"
+        ],
+        "hide": true
+      }
+    ],
+    "20": [
+      {
+        "name": "Greater Divine Intervention",
+        "description": "You can shape the divine power of your deity to cast Wish. When you use your Divine Intervention feature, you can choose Wish as the spell. Doing so doesn't require a spell slot, material components, or any of the stress from casting Wish. Once you use Divine Intervention to cast Wish, you can't use Divine Intervention again until you finish 2d4 Long Rests."
+      }
+    ]
+  }
 }
