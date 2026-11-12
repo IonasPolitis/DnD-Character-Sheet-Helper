@@ -1,4 +1,5 @@
 {
 	"name": "Musician",
-	"description": "**Encouraging Song**: As you finish a Short or Long Rest, you can play a song on a Musical Instrument with which you have proficiency and give Heroic Inspiration to allies who hear the song. The number of allies you can affect in this way equals your Proficiency Bonus."
+	"description": "You gain the following benefits.\n\t**Encouraging Song**: As you finish a Short or Long Rest, you can play a song on a Musical Instrument with which you have proficiency and give Heroic Inspiration to allies who hear the song. The number of allies you can affect in this way equals your Proficiency Bonus.",
+	"category": "Origin Feat"
 }

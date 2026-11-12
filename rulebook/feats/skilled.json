@@ -1,4 +1,5 @@
 {
 	"name": "Skilled",
-	"description": "You gain proficiency in any combination of three skills or tools of your choice."
+	"description": "You gain proficiency in any combination of three skills or tools of your choice.",
+	"category": "Origin Feat"
 }
