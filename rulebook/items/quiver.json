@@ -1,0 +1,7 @@
+{
+      "name": "Quiver",
+      "type": "gear",
+      "description": "A quiver can hold up to 20 arrows.",
+      "weight": 1,
+      "cost": 1
+}

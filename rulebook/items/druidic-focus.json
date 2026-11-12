@@ -1,0 +1,7 @@
+{
+      "name": "Druidic Focus",
+      "type": "gear",
+      "description": "A Druidic Focus might be a sprig of mistletoe or holly, a wand or rod made of yew or another special wood, a staff drawn whole out of a living tree, or a totem object incorporating feathers, fur, bones, or teeth from sacred animals. A Druid or Ranger can use such an object as a Spellcasting Focus.",
+      "weight": 1,
+      "cost": 5
+}

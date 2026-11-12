@@ -456,7 +456,7 @@
     "18": [
       {
         "name": "Spell Mastery",
-        "description": "You have achieved such mastery over certain spells that you can cast them at will. Choose a level 1 and a level 2 spell in your spellbook that have a casting time of an action. You always have those spells pre-pared, and you can cast them at their lowest level without expending a spell slot. To cast either spell at a higher levei, you must expend a spell slot.\n\tWhenever you finish a Long Rest, you can study your spellbook and replace one of those spells with an eligible spell of the same level from the book."
+        "description": "You have achieved such mastery over certain spells that you can cast them at will. Choose a level 1 and a level 2 spell in your spellbook that have a casting time of an action. You always have those spells prepared, and you can cast them at their lowest level without expending a spell slot. To cast either spell at a higher level, you must expend a spell slot.\n\tWhenever you finish a Long Rest, you can study your spellbook and replace one of those spells with an eligible spell of the same level from the book."
       }
     ],
     "19": [
@@ -473,7 +473,7 @@
     "20": [
       {
         "name": "Signature Spells",
-        "description": "Choose two level 3 spells in your spellbook as your signature spells. You always have these spells pre-pared, and you can cast each of them once at level 3 without expending a spell slot. When you do so, you can't cast them in this way again until you finish a Short or Long Rest. To cast either spell at a higher level, you must expend a spell slot.",
+        "description": "Choose two level 3 spells in your spellbook as your signature spells. You always have these spells prepared, and you can cast each of them once at level 3 without expending a spell slot. When you do so, you can't cast them in this way again until you finish a Short or Long Rest. To cast either spell at a higher level, you must expend a spell slot.",
         "uses": [
           2,
           "short"

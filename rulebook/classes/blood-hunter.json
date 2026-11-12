@@ -101,7 +101,10 @@
             },
             {
                 "name": "Fighting Style",
-                "description": ""
+                "description": "You gain a Fighting Style feat of your choice.",
+                "classChoices": [
+                    "fighting-styles"
+                ]
             }
         ],
         "4": [

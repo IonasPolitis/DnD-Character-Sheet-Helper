@@ -458,7 +458,7 @@
     "10": [
       {
         "name": "Tireless",
-        "description": "Primal forces now help fuel you on your journeys, granting you the following benefits:\n - **Temporary Hit Poinfs**: As a Magic action, you can give yourself a number of Temporary Hit Points equal to ld8 plus your Wisdom modifier (minimum of 1). You can use this action a number of times equal to your Wisdom modifier (minimum of once), and you regain all expended uses when you finish a Long Rest.\n - **Decrease Exhaustion**: Whenever you finish a Short Rest, your Exhaustion level, if any, decreases by 1.",
+        "description": "Primal forces now help fuel you on your journeys, granting you the following benefits:\n - **Temporary Hit Points**: As a Magic action, you can give yourself a number of Temporary Hit Points equal to 1d8 plus your Wisdom modifier (minimum of 1). You can use this action a number of times equal to your Wisdom modifier (minimum of once), and you regain all expended uses when you finish a Long Rest.\n - **Decrease Exhaustion**: Whenever you finish a Short Rest, your Exhaustion level, if any, decreases by 1.",
         "uses": [
           "(wisdom - 10) / 2",
           "long"

@@ -1,0 +1,7 @@
+{
+      "name": "Burglar's Pack",
+      "type": "gear",
+      "description": "Includes a Backpack, 50 feet of Hemp Rope, a Crowbar, 2 Flasks of Oil, 10 Pitons, a Tinderbox, and 10 Torches.",
+      "weight": 42,
+      "cost": 16
+}

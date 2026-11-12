@@ -1,0 +1,7 @@
+{
+      "name": "Book",
+      "type": "gear",
+      "description": "A book might contain poetry, historical accounts, spells, information pertaining to a particular field of lore, or diagrams and notes on gnomish contraptions.",
+      "weight": 5,
+      "cost": 25
+}

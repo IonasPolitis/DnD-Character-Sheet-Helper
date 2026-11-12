@@ -55,8 +55,8 @@
                 "leather-armor": 1,
                 "sickle": 1,
                 "dagger": 2,
-                "Arcane Focus (orb)": 1,
-                "Book (occult lore)": 1,
+                "arcane-focus": 1,
+                "book": 1,
                 "scholars-pack": 1
             },
             "gold": 15
