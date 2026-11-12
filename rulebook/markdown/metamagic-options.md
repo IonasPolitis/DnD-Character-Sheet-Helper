@@ -1,6 +1,6 @@
 ## METAMAGIC OPTIONS
 ---
-The following options are available to your Meta-magic feature. The options are presented in alphabetical order.
+The following options are available to your Metamagic feature. The options are presented in alphabetical order.
 
 #### CAREFUL SPELL
 Cost: 1 Sorcery Point
@@ -40,7 +40,7 @@ When you cast a spell, you can spend 1 Sorcery Point to cast it without any Verb
 
 #### TRANSMUTED SPELL
 Cost: 1 Sorcery Point
-When you cast a spell that deals a type of damage from the following list, you can spend 1 Sorcery Point to change that damage type to one of the other listed types: Acid, Cold, Fire, Lightning, Poi-son, Thunder.
+When you cast a spell that deals a type of damage from the following list, you can spend 1 Sorcery Point to change that damage type to one of the other listed types: Acid, Cold, Fire, Lightning, Poison, Thunder.
 
 #### TWINNED SPELL
 Cost: 1 Sorcery Point

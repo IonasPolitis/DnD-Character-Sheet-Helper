@@ -1,0 +1,7 @@
+{
+    "name": "Oil",
+    "type": "gear",
+    "description": "A flask of oil can fuel a lamp or lantern for 6 hours, or you can splash it onto a creature or surface as an attack roll or Utilize action.",
+    "weight": 1,
+    "cost": 0.1
+}

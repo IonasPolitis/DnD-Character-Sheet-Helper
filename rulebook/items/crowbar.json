@@ -1,0 +1,7 @@
+{
+    "name": "Crowbar",
+    "type": "gear",
+    "description": "Using a crowbar grants Advantage on Strength checks where the crowbar's leverage can be applied.",
+    "weight": 5,
+    "cost": 2
+}

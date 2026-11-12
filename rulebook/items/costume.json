@@ -1,0 +1,7 @@
+{
+    "name": "Costume",
+    "type": "gear",
+    "description": "Clothes designed for theatrical performance, disguised masquerades, or mummer shows.",
+    "weight": 4,
+    "cost": 5
+}

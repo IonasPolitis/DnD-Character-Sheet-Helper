@@ -1,0 +1,7 @@
+{
+    "name": "Shovel",
+    "type": "gear",
+    "description": "A tool used for digging trenches, excavating ruins, or clearing obstacles.",
+    "weight": 5,
+    "cost": 2
+}

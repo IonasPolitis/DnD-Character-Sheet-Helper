@@ -3,6 +3,6 @@
       "type": "weapon",
       "description": "Melee Attack",
       "weight": 0,
-      "damage": "1d6 Bludgeoning",
+      "damage": "1 Bludgeoning",
       "cost": 0
 }

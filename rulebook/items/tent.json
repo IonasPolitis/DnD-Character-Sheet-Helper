@@ -1,0 +1,7 @@
+{
+    "name": "Tent",
+    "type": "gear",
+    "description": "A simple, portable canvas shelter that can sleep up to two people.",
+    "weight": 20,
+    "cost": 2
+}

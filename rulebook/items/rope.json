@@ -1,0 +1,7 @@
+{
+    "name": "Rope",
+    "type": "gear",
+    "description": "A 50-foot coil of hempen rope. It has AC 11 and 2 Hit Points.",
+    "weight": 10,
+    "cost": 1
+}

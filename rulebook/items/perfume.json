@@ -1,0 +1,7 @@
+{
+    "name": "Perfume",
+    "type": "gear",
+    "description": "A small vial of fragrant scent typically used by courtiers and nobility.",
+    "weight": 0,
+    "cost": 5
+}

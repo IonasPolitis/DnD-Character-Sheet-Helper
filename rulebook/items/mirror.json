@@ -1,0 +1,7 @@
+{
+    "name": "Mirror",
+    "type": "gear",
+    "description": "A polished steel mirror useful for viewing around corners, grooming, or signaling with reflected light.",
+    "weight": 0.5,
+    "cost": 5
+}

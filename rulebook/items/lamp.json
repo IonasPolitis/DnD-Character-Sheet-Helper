@@ -1,0 +1,7 @@
+{
+    "name": "Lamp",
+    "type": "gear",
+    "description": "A lamp casts Bright Light in a 15-foot radius and Dim Light for an additional 30 feet. Once lit with a flask of oil, it burns for 6 hours.",
+    "weight": 1,
+    "cost": 0.5
+}
