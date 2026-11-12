@@ -41,7 +41,6 @@
     "mirror-image": "Mirror Image",
     "misty-step": "Misty Step",
     "ray-of-enfeeblement": "Ray of Enfeeblement",
-    "see-invisibility": "See Invisibility",
     "spider-climb": "Spider Climb",
     "suggestion": "Suggestion"
   },
@@ -49,6 +48,7 @@
     "counterspell": "Counterspell",
     "dispel-magic": "Dispel Magic",
     "fear": "Fear",
+    "fly": "Fly",
     "gaseous-form": "Gaseous Form",
     "hunger-of-hadar": "Hunger of Hadar",
     "hypnotic-pattern": "Hypnotic Pattern",
@@ -66,7 +66,6 @@
     "charm-monster": "Charm Monster",
     "dimension-door": "Dimension Door",
     "hallucinatory-terrain": "Hallucinatory Terrain",
-    "phantasmal-killer": "Phantasmal Killer",
     "summon-aberration": "Summon Aberration"
   },
   "5": {
@@ -83,6 +82,7 @@
   "6": {
     "arcane-gate": "Arcane Gate",
     "circle-of-death": "Circle of Death",
+    "create-undead": "Create Undead",
     "eyebite": "Eyebite",
     "summon-fiend": "Summon Fiend",
     "tashas-bubbling-cauldron": "Tasha's Bubbling Cauldron",
@@ -90,10 +90,12 @@
   },
   "7": {
     "etherealness": "Etherealness",
+    "finger-of-death": "Finger of Death",
     "forcecage": "Forcecage",
     "plane-shift": "Plane Shift"
   },
   "8": {
+    "befuddlement": "Befuddlement",
     "demiplane": "Demiplane",
     "dominate-monster": "Dominate Monster",
     "glibness": "Glibness",

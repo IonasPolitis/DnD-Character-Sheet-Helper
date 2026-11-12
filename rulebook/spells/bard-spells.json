@@ -9,6 +9,7 @@
     "message": "Message",
     "minor-illusion": "Minor Illusion",
     "prestidigitation": "Prestidigitation",
+    "starry-wisp": "Starry Wisp",
     "thunderclap": "Thunderclap",
     "true-strike": "True Strike",
     "vicious-mockery": "Vicious Mockery"
@@ -71,6 +72,7 @@
     "dispel-magic": "Dispel Magic",
     "fear": "Fear",
     "feign-death": "Feign Death",
+    "glyph-of-warding": "Glyph of Warding",
     "hypnotic-pattern": "Hypnotic Pattern",
     "leomunds-tiny-hut": "Leomund's Tiny Hut",
     "major-image": "Major Image",
@@ -81,6 +83,7 @@
     "slow": "Slow",
     "speak-with-dead": "Speak with Dead",
     "speak-with-plants": "Speak with Plants",
+    "stinking-cloud": "Stinking Cloud",
     "tongues": "Tongues"
   },
   "4": {
@@ -99,6 +102,7 @@
   "5": {
     "animate-objects": "Animate Objects",
     "awaken": "Awaken",
+    "dominate-person": "Dominate Person",
     "dream": "Dream",
     "geas": "Geas",
     "greater-restoration": "Greater Restoration",
@@ -117,6 +121,8 @@
     "yolandes-regal-presence": "Yolande's Regal Presence"
   },
   "6": {
+    "eyebite": "Eyebite",
+    "find-the-path": "Find the Path",
     "guards-and-wards": "Guards and Wards",
     "heroes-feast": "Heroes' Feast",
     "mass-suggestion": "Mass Suggestion",
@@ -141,6 +147,9 @@
   "8": {
     "antipathy-sympathy": "Antipathy/Sympathy",
     "befuddlement": "Befuddlement",
+    "dominate-monster": "Dominate Monster",
+    "glibness": "Glibness",
+    "mind-blank": "Mind Blank",
     "power-word-stun": "Power Word Stun"
   },
   "9": {

@@ -1,6 +1,7 @@
 {
   "0": {
     "guidance": "Guidance",
+    "light": "Light",
     "mending": "Mending",
     "resistance": "Resistance",
     "sacred-flame": "Sacred Flame",
@@ -35,6 +36,7 @@
     "enhance-ability": "Enhance Ability",
     "find-traps": "Find Traps",
     "gentle-repose": "Gentle Repose",
+    "hold-person": "Hold Person",
     "lesser-restoration": "Lesser Restoration",
     "locate-object": "Locate Object",
     "prayer-of-healing": "Prayer of Healing",
@@ -54,6 +56,7 @@
     "daylight": "Daylight",
     "dispel-magic": "Dispel Magic",
     "feign-death": "Feign Death",
+    "glyph-of-warding": "Glyph of Warding",
     "magic-circle": "Magic Circle",
     "mass-healing-word": "Mass Healing Word",
     "meld-into-stone": "Meld into Stone",
@@ -85,6 +88,7 @@
     "dispel-evil-and-good": "Dispel Evil and Good",
     "flame-strike": "Flame Strike",
     "geas": "Geas",
+    "greater-restoration": "Greater Restoration",
     "hallow": "Hallow",
     "insect-plague": "Insect Plague",
     "legend-lore": "Legend Lore",
@@ -101,13 +105,17 @@
     "forbiddance": "Forbiddance",
     "harm": "Harm",
     "heal": "Heal",
+    "heroes-feast": "Heroes' Feast",
     "planar-ally": "Planar Ally",
+    "sunbeam": "Sunbeam",
     "true-seeing": "True Seeing",
     "word-of-recall": "Word of Recall"
   },
   "7": {
     "conjure-celestial": "Conjure Celestial",
     "divine-word": "Divine Word",
+    "etherealness": "Etherealness",
+    "fire-storm": "Fire Storm",
     "plane-shift": "Plane Shift",
     "power-word-fortify": "Power Word Fortify",
     "regenerate": "Regenerate",
@@ -118,7 +126,8 @@
     "antimagic-field": "Antimagic Field",
     "control-weather": "Control Weather",
     "earthquake": "Earthquake",
-    "holy-aura": "Holy Aura"
+    "holy-aura": "Holy Aura",
+    "sunburst": "Sunburst"
   },
   "9": {
     "astral-projection": "Astral Projection",

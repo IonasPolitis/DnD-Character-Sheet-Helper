@@ -55,6 +55,7 @@
   },
   "4": {
     "conjure-woodland-beings": "Conjure Woodland Beings",
+    "dominate-beast": "Dominate Beast",
     "freedom-of-movement": "Freedom of Movement",
     "grasping-vine": "Grasping Vine",
     "locate-creature": "Locate Creature",
@@ -68,8 +69,5 @@
     "steel-wind-strike": "Steel Wind Strike",
     "swift-quiver": "Swift Quiver",
     "tree-stride": "Tree Stride"
-  },
-  "6": {
-    "find-the-path": "Find the Path"
   }
 }

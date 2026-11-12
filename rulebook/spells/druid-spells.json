@@ -86,6 +86,7 @@
     "conjure-woodland-beings": "Conjure Woodland Beings",
     "control-water": "Control Water",
     "divination": "Divination",
+    "dominate-beast": "Dominate Beast",
     "fire-shield": "Fire Shield",
     "fount-of-moonlight": "Fount of Moonlight",
     "freedom-of-movement": "Freedom of Movement",
@@ -130,7 +131,6 @@
     "wind-walk": "Wind Walk"
   },
   "7": {
-    "etherealness": "Etherealness",
     "fire-storm": "Fire Storm",
     "mirage-arcane": "Mirage Arcane",
     "plane-shift": "Plane Shift",
@@ -144,6 +144,7 @@
     "befuddlement": "Befuddlement",
     "control-weather": "Control Weather",
     "earthquake": "Earthquake",
+    "incendiary-cloud": "Incendiary Cloud",
     "sunburst": "Sunburst",
     "tsunami": "Tsunami"
   },

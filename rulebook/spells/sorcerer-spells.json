@@ -80,6 +80,7 @@
   "3": {
     "blink": "Blink",
     "clairvoyance": "Clairvoyance",
+    "counterspell": "Counterspell",
     "daylight": "Daylight",
     "dispel-magic": "Dispel Magic",
     "fear": "Fear",
@@ -101,6 +102,7 @@
   },
   "4": {
     "banishment": "Banishment",
+    "blight": "Blight",
     "charm-monster": "Charm Monster",
     "confusion": "Confusion",
     "dimension-door": "Dimension Door",
@@ -115,9 +117,12 @@
   },
   "5": {
     "animate-objects": "Animate Objects",
+    "bigbys-hand": "Bigby's Hand",
     "cloudkill": "Cloudkill",
     "cone-of-cold": "Cone of Cold",
+    "creation": "Creation",
     "dominate-person": "Dominate Person",
+    "hold-monster": "Hold Monster",
     "insect-plague": "Insect Plague",
     "seeming": "Seeming",
     "synaptic-static": "Synaptic Static",
@@ -133,6 +138,8 @@
     "eyebite": "Eyebite",
     "flesh-to-stone": "Flesh to Stone",
     "globe-of-invulnerability": "Globe of Invulnerability",
+    "mass-suggestion": "Mass Suggestion",
+    "move-earth": "Move Earth",
     "otilukes-freezing-sphere": "Otiluke's Freezing Sphere",
     "sunbeam": "Sunbeam",
     "true-seeing": "True Seeing"
@@ -140,6 +147,7 @@
   "7": {
     "delayed-blast-fireball": "Delayed Blast Fireball",
     "etherealness": "Etherealness",
+    "finger-of-death": "Finger of Death",
     "fire-storm": "Fire Storm",
     "plane-shift": "Plane Shift",
     "prismatic-spray": "Prismatic Spray",
@@ -150,6 +158,7 @@
     "demiplane": "Demiplane",
     "dominate-monster": "Dominate Monster",
     "earthquake": "Earthquake",
+    "incendiary-cloud": "Incendiary Cloud",
     "power-word-stun": "Power Word Stun",
     "sunburst": "Sunburst"
   },
@@ -157,7 +166,6 @@
     "gate": "Gate",
     "meteor-swarm": "Meteor Swarm",
     "power-word-kill": "Power Word Kill",
-    "shapechange": "Shapechange",
     "time-stop": "Time Stop",
     "wish": "Wish"
   }
