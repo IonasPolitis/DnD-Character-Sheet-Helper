@@ -190,6 +190,7 @@ The Backpack section is also always visible and wil be automatically populated w
 
 *starterEquipment*/*inventoryItems* structure: `[ ["<item-filename>", "<quantity>", "<show: true/false>"], ... ]`
 *customItems* structure: `[ ["<Name>", "<quantity>", "<show: true/false>", "<weight>", "<cost>", "<type>", "<description>"], ... ]`
+*customItems* `<cost>` is written with its currency, e.g. `"50 GP"`, `"5 SP"`, `"2 PP"` or `"5 CP"` (a bare number is treated as GP).
 
 > [!TIP]
 > The aforementioned variables are used to select an Artisan's Tool, a Musical Instrument, or a Gaming Set depeding on what's provided by the class or background. For more information on your choices always look through the actual DnD Player's Handbook.
@@ -410,7 +411,7 @@ The `uses` variable sets how many uses this feature has, and when used checkboxe
       "damage": "<Damage_Dice+Damage_Type>", // <optional>
       "ac": "<Armor's_Base_AC>", // <optional>
       "category": "<Light/Medium/Heavy>",
-      "cost": 0
+      "cost": "<Amount> <PP/GP/SP/CP>" // e.g. "50 GP", "5 SP", "5 CP"
 }
 ```
 

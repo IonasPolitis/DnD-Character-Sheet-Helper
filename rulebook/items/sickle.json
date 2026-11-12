@@ -4,5 +4,5 @@
       "description": "Light",
       "weight": 2,
       "damage": "1d4 Slashing",
-      "cost": 1
+      "cost": "1 GP"
 }

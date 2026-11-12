@@ -1,7 +1,7 @@
 {
-      "name": "Arrows",
+      "name": "Arrow",
       "type": "ammunition",
-      "description": "A bundle of 20 arrows used with weapons that have the Ammunition property, such as a Shortbow or Longbow.",
-      "weight": 1,
-      "cost": 1
+      "description": "An arrow used with weapons that have the Ammunition property, such as a Shortbow or Longbow.",
+      "weight": 0.05,
+      "cost": "5 CP"
 }

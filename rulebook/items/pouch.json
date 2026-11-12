@@ -3,5 +3,5 @@
     "type": "gear",
     "description": "A Pouch holds up to 6 pounds within one-fifth of a cubic foot (such as 20 sling bullets or 50 coins).",
     "weight": 1,
-    "cost": 0.5
+    "cost": "5 SP"
 }

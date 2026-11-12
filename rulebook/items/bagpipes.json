@@ -3,5 +3,5 @@
       "type": "musical-instrument",
       "description": "Play a known tune (DC 10), or improvise a song (DC 15)",
       "weight": 6,
-      "cost": 30
+      "cost": "30 GP"
 }

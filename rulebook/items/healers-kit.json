@@ -3,5 +3,5 @@
     "type": "gear",
     "description": "This kit has 10 uses. As a Utilize action, you can expend one of its uses to stabilize a creature that has 0 Hit Points, without needing to make a Wisdom (Medicine) check.",
     "weight": 3,
-    "cost": 5
+    "cost": "5 GP"
 }

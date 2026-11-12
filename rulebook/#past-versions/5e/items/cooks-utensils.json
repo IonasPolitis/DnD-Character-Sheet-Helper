@@ -3,5 +3,5 @@
       "type": "artisans-tool",
       "description": "Improve food's flavor (DC 10), or detect spoiled or poisoned food (DC 15)",
       "weight": 8,
-      "cost": 1
+      "cost": "1 GP"
 }

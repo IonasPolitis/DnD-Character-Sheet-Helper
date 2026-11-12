@@ -3,5 +3,5 @@
     "type": "gear",
     "description": "Sturdy boots, trousers, tunic, and a warm cloak designed for journeying in varied terrain.",
     "weight": 4,
-    "cost": 2
+    "cost": "2 GP"
 }

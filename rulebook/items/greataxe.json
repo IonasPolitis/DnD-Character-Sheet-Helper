@@ -4,5 +4,5 @@
       "description": "Heavy, Two-Handed",
       "weight": 7,
       "damage": "1d12 Slashing",
-      "cost": 30
+      "cost": "30 GP"
 }

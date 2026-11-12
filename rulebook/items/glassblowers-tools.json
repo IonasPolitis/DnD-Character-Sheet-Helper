@@ -3,5 +3,5 @@
       "type": "artisans-tool",
       "description": "Discern what a glass object held in the past 24 hours (DC 15)",
       "weight": 5,
-      "cost": 30
+      "cost": "30 GP"
 }

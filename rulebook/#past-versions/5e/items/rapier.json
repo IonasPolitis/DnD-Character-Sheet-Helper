@@ -4,5 +4,5 @@
       "description": "Finesse",
       "weight": 2,
       "damage": "1d8 Piercing",
-      "cost": 25
+      "cost": "25 GP"
 }

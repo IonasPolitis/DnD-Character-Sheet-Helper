@@ -3,5 +3,5 @@
       "type": "gear",
       "description": "A Holy Symbol takes the form of an amulet, emblem, or reliquary designed to channel divine magic. A Cleric or Paladin can use a Holy Symbol as a Spellcasting Focus.",
       "weight": 1,
-      "cost": 5
+      "cost": "5 GP"
 }

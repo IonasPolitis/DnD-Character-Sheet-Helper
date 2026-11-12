@@ -3,5 +3,5 @@
     "type": "gear",
     "description": "A heavy cast-iron pot that can hold up to 1 gallon of liquid or food for cooking over a campfire.",
     "weight": 10,
-    "cost": 2
+    "cost": "2 GP"
 }

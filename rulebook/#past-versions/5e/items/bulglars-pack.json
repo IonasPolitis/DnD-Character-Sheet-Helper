@@ -3,5 +3,5 @@
       "type": "gear",
       "description": "",
       "weight": 42,
-      "cost": 16
+      "cost": "16 GP"
 }

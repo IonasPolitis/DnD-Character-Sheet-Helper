@@ -3,5 +3,5 @@
       "type": "artisans-tool",
       "description": "Chisel a symbol or hole in stone (DC 10)",
       "weight": 8,
-      "cost": 10
+      "cost": "10 GP"
 }

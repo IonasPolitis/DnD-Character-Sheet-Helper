@@ -3,5 +3,5 @@
     "type": "gear",
     "description": "A 50-foot coil of rope. As a Utilize action, you can tie a knot with Rope (DC 10 Sleight of Hand), or bind an unwilling creature that has the Grappled, Incapacitated, or Restrained condition (escape DC 15 Acrobatics; burst DC 20 Athletics).",
     "weight": 5,
-    "cost": 1
+    "cost": "1 GP"
 }

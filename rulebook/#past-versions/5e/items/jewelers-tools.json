@@ -3,5 +3,5 @@
       "type": "artisans-tool",
       "description": "Discern a gem's value (DC 15)",
       "weight": 2,
-      "cost": 25
+      "cost": "25 GP"
 }

@@ -3,5 +3,5 @@
       "type": "gear",
       "description": "A unique book containing 100 blank vellum pages suitable for storing spells. Essential for Wizards to record and prepare their spells.",
       "weight": 3,
-      "cost": 50
+      "cost": "50 GP"
 }

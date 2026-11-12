@@ -4,5 +4,5 @@
       "description": "Ammunition (Range 150/600; Arrow), Heavy, Two-Handed",
       "weight": 2,
       "damage": "1d8 Piercing",
-      "cost": 50
+      "cost": "50 GP"
 }

@@ -3,5 +3,5 @@
     "type": "gear",
     "description": "As an attack roll, you can throw a flask of Oil at a creature or object within 20 feet (DC 8 + Dex modifier + Proficiency Bonus or covered in oil; taking Fire damage within 1 minute deals an extra 5 Fire damage). As a Utilize action, you can pour it to cover a 5-foot square that burns for 2 rounds if lit (dealing 5 Fire damage). Fuel: burns for 6 hours in a Lamp or Lantern.",
     "weight": 1,
-    "cost": 0.1
+    "cost": "1 SP"
 }

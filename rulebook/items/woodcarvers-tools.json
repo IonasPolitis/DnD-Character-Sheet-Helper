@@ -3,5 +3,5 @@
       "type": "artisans-tool",
       "description": "Carve a pattern in wood (DC 10)",
       "weight": 5,
-      "cost": 1
+      "cost": "1 GP"
 }

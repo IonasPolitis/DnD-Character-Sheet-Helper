@@ -3,5 +3,5 @@
     "type": "gear",
     "description": "One sheet of Parchment can hold about 250 handwritten words.",
     "weight": 0,
-    "cost": 0.1
+    "cost": "1 SP"
 }

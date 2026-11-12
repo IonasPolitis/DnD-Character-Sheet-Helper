@@ -3,5 +3,5 @@
     "type": "gear",
     "description": "A Bedroll sleeps one Small or Medium creature. While in a Bedroll, you automatically succeed on saving throws against extreme cold.",
     "weight": 7,
-    "cost": 1
+    "cost": "1 GP"
 }

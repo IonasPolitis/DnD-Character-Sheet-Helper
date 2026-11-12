@@ -3,5 +3,5 @@
       "type": "ammunition",
       "description": "A crossbow bolt used with a Hand Crossbow, Light Crossbow, or Heavy Crossbow.",
       "weight": 0.075,
-      "cost": 0.05
+      "cost": "5 CP"
 }

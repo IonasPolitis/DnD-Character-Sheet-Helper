@@ -3,6 +3,39 @@ import { getClassData, getSubclassData, getBackgroundData, getRaceData, getExtra
 import { MarkdownNotes, classesMap, racesMap, backgroundsMap, itemsMap } from './registry';
 import { THEMES } from './themes';
 
+// --- Item cost helpers (PP / GP / SP / CP) ---
+// Item costs are stored as "<amount> <PP|GP|SP|CP>" (e.g. "50 GP", "1 SP", "5 CP").
+// Legacy bare numbers (GP-based, possibly fractional) are converted for backwards compatibility.
+interface ParsedItemCost { amount: number; unit: "PP" | "GP" | "SP" | "CP"; }
+
+function parseItemCost(raw: any): ParsedItemCost | null {
+    if (raw === undefined || raw === null) return null;
+    const s = String(raw).trim();
+    if (!s) return null;
+    const m = s.replace(/(?<=\d),(?=\d{3}\b)/g, "").match(/^(\d+(?:\.\d+)?)\s*(pp|gp|sp|cp)?$/i);
+    if (!m) return null;
+    const amount = Number(m[1]);
+    if (!isFinite(amount)) return null;
+    if (m[2]) return { amount, unit: m[2].toUpperCase() as ParsedItemCost["unit"] };
+    // Legacy: bare number = gold. Express sub-gold values in SP / CP.
+    if (amount === 0 || amount >= 1) return { amount, unit: "GP" };
+    const sp = Math.round(amount * 10 * 1000) / 1000;
+    if (Number.isInteger(sp)) return { amount: sp, unit: "SP" };
+    return { amount: Math.round(amount * 100 * 1000) / 1000, unit: "CP" };
+}
+
+/** "50 GP" style text, or "" if the cost is missing/unparseable. */
+function formatItemCost(raw: any, compact = false): string {
+    const c = parseItemCost(raw);
+    if (!c) return "";
+    return compact ? `${c.amount}${c.unit}` : `${c.amount} ${c.unit}`;
+}
+
+function hasItemCost(raw: any): boolean {
+    const c = parseItemCost(raw);
+    return !!c && c.amount > 0;
+}
+
 // 1. Define the shape of our settings
 interface DnDPluginSettings {
     combineClassSubclass: boolean;
@@ -1690,7 +1723,7 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                 qty: number;
                 show: boolean;
                 unitWeight: number;
-                unitCost: number;
+                costRaw: string;
                 rulebookData: any | null;
             }
 
@@ -1717,7 +1750,7 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                     qty,
                     show,
                     unitWeight: Number(data?.weight) || 0,
-                    unitCost: Number(data?.cost) || 0,
+                    costRaw: data?.cost !== undefined ? String(data.cost) : "",
                     rulebookData: data || null
                 });
             }
@@ -1743,7 +1776,7 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                     qty,
                     show,
                     unitWeight: Number(data?.weight) || 0,
-                    unitCost: Number(data?.cost) || 0,
+                    costRaw: data?.cost !== undefined ? String(data.cost) : "",
                     rulebookData: data || null
                 });
             }
@@ -1759,7 +1792,7 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                 if (!show) continue;
 
                 const unitWeight = Number(entry[3]) || 0;
-                const unitCost = Number(entry[4]) || 0;
+                const costRaw = String(entry[4] ?? "").trim();
                 const customType = String(entry[5] ?? "Custom").trim() || "Custom";
                 const customDesc = String(entry[6] ?? "").trim();
 
@@ -1772,12 +1805,12 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                     qty,
                     show,
                     unitWeight,
-                    unitCost,
+                    costRaw,
                     rulebookData: {
                         name: customName,
                         type: customType,
                         weight: unitWeight,
-                        cost: unitCost,
+                        cost: costRaw,
                         description: customDesc
                     }
                 });
@@ -1857,7 +1890,7 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                         cls: "dnd-level-badge dnd-inventory-qty-badge"
                     });
 
-                    const hasStats = item.unitWeight > 0 || item.unitCost > 0;
+                    const hasStats = item.unitWeight > 0 || hasItemCost(item.costRaw);
                     leftGroup.createEl("strong", {
                         text: item.displayName + (hasStats ? ": " : ""),
                         cls: "dnd-inventory-name"
@@ -1871,8 +1904,8 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                             const w = item.unitWeight * item.qty;
                             parts.push(`${w % 1 === 0 ? w : w.toFixed(1)}lbs`);
                         }
-                        if (item.unitCost > 0) {
-                            parts.push(`${item.unitCost}GP`);
+                        if (hasItemCost(item.costRaw)) {
+                            parts.push(formatItemCost(item.costRaw, true));
                         }
                         statsSpan.setText(parts.join(", "));
                     };
@@ -5926,8 +5959,9 @@ class ItemInfoModal extends Modal {
         if (this.itemData?.weight !== undefined && this.itemData?.weight !== "") {
             statsRow.createEl("span", { text: `Weight: ${this.itemData.weight} lbs` });
         }
-        if (this.itemData?.cost !== undefined && this.itemData?.cost !== "") {
-            statsRow.createEl("span", { text: `Cost: ${this.itemData.cost} GP` });
+        const infoCostText = formatItemCost(this.itemData?.cost);
+        if (infoCostText) {
+            statsRow.createEl("span", { text: `Cost: ${infoCostText}` });
         }
 
         if (this.itemData?.description) {
@@ -6373,11 +6407,11 @@ class InventoryModal extends Modal {
             attr: { min: "0", step: "0.1", title: "Weight (lbs)" }
         });
         const costInput = rowGrid.createEl("input", {
-            type: "number",
-            value: activeTuple ? String(Number(activeTuple[4]) || 0) : "",
-            placeholder: "Cost (GP)",
+            type: "text",
+            value: activeTuple ? formatItemCost(activeTuple[4]) : "",
+            placeholder: "Cost (e.g. 50 GP, 1 SP, 5 CP)",
             cls: "dnd-modal-form-input",
-            attr: { min: "0", step: "0.1", title: "Cost (GP)" }
+            attr: { title: "Cost with currency: PP, GP, SP or CP (e.g. 50 GP)" }
         });
 
         const descInput = formDiv.createEl("textarea", {
@@ -6403,7 +6437,7 @@ class InventoryModal extends Modal {
                 if (cleanName) activeTuple[0] = cleanName;
                 activeTuple[1] = String(Math.max(0, Number(qtyInput.value) || 0));
                 activeTuple[3] = String(Math.max(0, Number(weightInput.value) || 0));
-                activeTuple[4] = String(Math.max(0, Number(costInput.value) || 0));
+                activeTuple[4] = formatItemCost(costInput.value);
                 activeTuple[5] = typeInput.value.trim() || "Custom";
                 activeTuple[6] = descInput.value;
                 this.renderTracker();
@@ -6443,7 +6477,7 @@ class InventoryModal extends Modal {
                 }
                 const qty = String(Math.max(0, Number(qtyInput.value) || 0));
                 const weight = String(Math.max(0, Number(weightInput.value) || 0));
-                const cost = String(Math.max(0, Number(costInput.value) || 0));
+                const cost = formatItemCost(costInput.value);
                 const cleanType = typeInput.value.trim() || "Custom";
                 const desc = descInput.value.trim();
 
@@ -6498,7 +6532,7 @@ class InventoryModal extends Modal {
 
             const metaParts: string[] = [];
             if (Number(weightStr) > 0) metaParts.push(`${weightStr}lbs`);
-            if (Number(costStr) > 0) metaParts.push(`${costStr}GP`);
+            if (hasItemCost(costStr)) metaParts.push(formatItemCost(costStr, true));
             if (metaParts.length > 0) {
                 leftGroup.createEl("small", {
                     text: `(${metaParts.join(", ")})`,
@@ -6573,7 +6607,8 @@ class InventoryModal extends Modal {
         if (data.damage) metaDiv.createEl("div", { text: `Damage: ${data.damage}` });
         if (data.ac) metaDiv.createEl("div", { text: `AC: ${data.ac}` });
         if (data.weight !== undefined) metaDiv.createEl("div", { text: `Weight: ${data.weight} lbs` });
-        if (data.cost !== undefined) metaDiv.createEl("div", { text: `Cost: ${data.cost} GP` });
+        const previewCostText = formatItemCost(data.cost);
+        if (previewCostText) metaDiv.createEl("div", { text: `Cost: ${previewCostText}` });
 
         if (data.description) {
             const descDiv = this.previewContainer.createDiv({ cls: "dnd-modal-preview-desc" });

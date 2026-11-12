@@ -3,5 +3,5 @@
       "type": "artisans-tool",
       "description": "Pry open a door or container (DC 20)",
       "weight": 8,
-      "cost": 20
+      "cost": "20 GP"
 }

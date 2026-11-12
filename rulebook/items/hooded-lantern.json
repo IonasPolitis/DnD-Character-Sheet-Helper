@@ -3,5 +3,5 @@
     "type": "gear",
     "description": "A hooded lantern casts Bright Light in a 30-foot radius and Dim Light for an additional 30 feet. Once lit with a flask of oil, it burns for 6 hours. As a Bonus Action, you can lower the hood, reducing the light to Dim Light in a 5-foot radius.",
     "weight": 2,
-    "cost": 5
+    "cost": "5 GP"
 }

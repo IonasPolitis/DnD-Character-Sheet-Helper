@@ -4,5 +4,5 @@
       "description": "Light, Thrown (Range 20/60)",
       "weight": 2,
       "damage": "1d6 Slashing",
-      "cost": 5
+      "cost": "5 GP"
 }

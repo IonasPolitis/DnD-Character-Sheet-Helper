@@ -3,5 +3,5 @@
       "type": "gear",
       "description": "Common or fine robes worn by travelers, scholars, and spellcasters.",
       "weight": 4,
-      "cost": 1
+      "cost": "1 GP"
 }

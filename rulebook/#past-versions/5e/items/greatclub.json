@@ -4,5 +4,5 @@
       "description": "Two-Handed",
       "weight": 10,
       "damage": "1d8 Bludgeoning",
-      "cost": 0.2
+      "cost": "2 SP"
 }

@@ -3,5 +3,5 @@
     "type": "gear",
     "description": "As a Utilize action, you can use Manacles to bind an unwilling Small or Medium creature within 5 feet that has the Grappled, Incapacitated, or Restrained condition (DC 13 Sleight of Hand). While bound, the creature has Disadvantage on attack rolls. Escaping requires a DC 20 Dexterity (Sleight of Hand) check; bursting them requires a DC 25 Strength (Athletics) check; picking them requires Thieves' Tools (DC 15 Sleight of Hand).",
     "weight": 6,
-    "cost": 2
+    "cost": "2 GP"
 }
