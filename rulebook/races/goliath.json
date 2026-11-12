@@ -2,7 +2,13 @@
       "traits": [
             {
                   "name": "Giant Ancestry",
-                  "description": "**Fire's Burn**: When you hit a target with an attack roll and deal damage to it, you can also deal 1dlO Fire damage to that target.",
+                  "description": "**Cloud's Jaunt**: As a Bonus Action, you magically teleport up to 30 feet to an unoccupied space you can see.",
+                  "lineage": "Cloud Giant",
+                  "uses": ["proficiencyBonus", "long"]
+            },
+            {
+                  "name": "Giant Ancestry",
+                  "description": "**Fire's Burn**: When you hit a target with an attack roll and deal damage to it, you can also deal 1d10 Fire damage to that target.",
                   "lineage": "Fire Giant",
                   "uses": ["proficiencyBonus", "long"]
             },
@@ -32,12 +38,12 @@
             },
             {
                   "name": "Large Form",
-                  "description": "Star ting at character level 5, you can change your size to Large as a Bonus Action if you're in a big enough space. This transformation lasts for 10 minutes or until you end it (no action required). For that duration, you have Advantage on Strength checks, and your Speed increases by 10 feet. Once you use this trait, you can't use it again until you finish a Long Rest.",
+                  "description": "Starting at character level 5, you can change your size to Large as a Bonus Action if you're in a big enough space. This transformation lasts for 10 minutes or until you end it (no action required). For that duration, you have Advantage on Strength checks, and your Speed increases by 10 feet. Once you use this trait, you can't use it again until you finish a Long Rest.",
                   "uses": [1, "long"]
             },
             {
                   "name": "Powerful Build",
-                  "description": "You have Advantage on any saving throw you make to end the Grappled condition. You also count as one size larger whe1 determining your carrying capacity."
+                  "description": "You have Advantage on any saving throw you make to end the Grappled condition. You also count as one size larger when determining your carrying capacity."
             }
       ]
 }

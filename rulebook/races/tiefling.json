@@ -6,22 +6,22 @@
     },
     {
       "name": "Fiendish Legacy",
-      "description": "You are the recipient of a legacy that grants you supernatural abilities.\n\n| Level 1 | Level 2 | Level 3 |\n| ------------- | ------------- | ------------- |\n| You have Resistance to Poison damage.<br>You also know the _Poison Spray_ cantrip. |  _Ray of Sickness_  |  _Hold Person_  |",
+      "description": "You are the recipient of a legacy that grants you supernatural abilities.\n\n| Level 1 | Level 3 | Level 5 |\n| :--- | :--- | :--- |\n| You have Resistance to Poison damage.<br>You also know the _Poison Spray_ cantrip. | _Ray of Sickness_ | _Hold Person_ |\n\nWhen you reach character levels 3 and 5, you learn a higher-level spell, as shown on the table. You always have that spell prepared. You can cast it once without a spell slot, and you regain the ability to cast it in that way when you finish a Long Rest. You can also cast the spell using any spell slots you have of the appropriate level. Intelligence, Wisdom, or Charisma is your spellcasting ability for the spells you cast with this trait (choose the ability when you select the legacy).",
       "lineage": "Abyssal"
     },
     {
       "name": "Fiendish Legacy",
-      "description": "You are the recipient of a legacy that grants you supernatural abilities.\n\n| Level 1 | Level 2 | Level 3 |\n| ------------- | ------------- | ------------- |\n| You have Resistance to Necrotic damage.<br>You also know the _Chill Touch_ cantrip. |  _False Life_  |  _Ray of Enfeeblement_  |",
+      "description": "You are the recipient of a legacy that grants you supernatural abilities.\n\n| Level 1 | Level 3 | Level 5 |\n| :--- | :--- | :--- |\n| You have Resistance to Necrotic damage.<br>You also know the _Chill Touch_ cantrip. | _False Life_ | _Ray of Enfeeblement_ |\n\nWhen you reach character levels 3 and 5, you learn a higher-level spell, as shown on the table. You always have that spell prepared. You can cast it once without a spell slot, and you regain the ability to cast it in that way when you finish a Long Rest. You can also cast the spell using any spell slots you have of the appropriate level. Intelligence, Wisdom, or Charisma is your spellcasting ability for the spells you cast with this trait (choose the ability when you select the legacy).",
       "lineage": "Chthonic"
     },
     {
       "name": "Fiendish Legacy",
-      "description": "You are the recipient of a legacy that grants you supernatural abilities.\n\n| Level 1 | Level 2 | Level 3 |\n| ------------- | ------------- | ------------- |\n| You have Resistance to Fire damage.<br>You also know the _Fire Bolt_ cantrip. |  _Hellish Rebuke_  |  _Darkness_  |",
+      "description": "You are the recipient of a legacy that grants you supernatural abilities.\n\n| Level 1 | Level 3 | Level 5 |\n| :--- | :--- | :--- |\n| You have Resistance to Fire damage.<br>You also know the _Fire Bolt_ cantrip. | _Hellish Rebuke_ | _Darkness_ |\n\nWhen you reach character levels 3 and 5, you learn a higher-level spell, as shown on the table. You always have that spell prepared. You can cast it once without a spell slot, and you regain the ability to cast it in that way when you finish a Long Rest. You can also cast the spell using any spell slots you have of the appropriate level. Intelligence, Wisdom, or Charisma is your spellcasting ability for the spells you cast with this trait (choose the ability when you select the legacy).",
       "lineage": "Infernal"
     },
     {
       "name": "Otherworldly Presence",
-      "description": "You know the Thaumaturgy cantrip. When you cast it with this trait, the spell uses the same spellcasting ability you use for your Fiendish Legacy trait."
+      "description": "You know the _Thaumaturgy_ cantrip. When you cast it with this trait, the spell uses the same spellcasting ability you use for your Fiendish Legacy trait."
     }
   ]
 }
