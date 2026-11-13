@@ -146,9 +146,6 @@ Write down a Feature's name as it appears on the screen inside the variable `hid
 
 The variable `featureUses` savesthe state of the checkboxes on each Class or Subclass Feature, Race Trait and Feat of the character wit this structure: `[ [ "<Feature's-Name>", "<Available-Uses>", "<Expended-Uses>"], ... ]`
 
-> [!TIP]
-> Sometimes a class feature may have you select one of many options permenantly. Those specific features have duplicates with each one being one of the options you might choose. You can use the *hide* variable to hide the options you did not choose.
-
 ### DnD Spells:
 
 A Widget that uses a certain array strcuture to display DnD spells on your Obsidian Note. 
