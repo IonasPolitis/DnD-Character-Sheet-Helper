@@ -7805,16 +7805,48 @@ class LevelUpModal extends Modal {
                     const asiContainer = optionContainer.createDiv({ cls: "dnd-form-grid-2" });
                     const statSelect1 = asiContainer.createEl("select", { cls: "dnd-modal-form-input" });
                     const statSelect2 = asiContainer.createEl("select", { cls: "dnd-modal-form-input" });
-                    statSelect1.createEl("option", { text: "-- +1 Stat --", value: "" });
-                    statSelect2.createEl("option", { text: "-- +1 Stat --", value: "" });
 
-                    statsList.forEach(s => {
-                        const label = s.charAt(0).toUpperCase() + s.slice(1) + ` (${this.currentStats[s]})`;
-                        statSelect1.createEl("option", { text: label, value: s });
-                        statSelect2.createEl("option", { text: label, value: s });
-                    });
-                    statSelect1.onchange = (e) => state.asiStat1 = (e.target as HTMLSelectElement).value;
-                    statSelect2.onchange = (e) => state.asiStat2 = (e.target as HTMLSelectElement).value;
+                    const updateAsiOptions = () => {
+                        const val1 = statSelect1.value;
+                        const val2 = statSelect2.value;
+
+                        statSelect1.empty();
+                        statSelect2.empty();
+
+                        statSelect1.createEl("option", { text: "-- +1 Stat --", value: "" });
+                        statSelect2.createEl("option", { text: "-- +1 Stat --", value: "" });
+
+                        statsList.forEach(s => {
+                            const base = this.currentStats[s] || 10;
+
+                            const new1 = Math.min(20, base + 1);
+                            const capped1 = base >= 20;
+                            const label1 = `${formatFeatureOrSlug(s)} (${base} → ${new1})${capped1 ? " (Maxed)" : ""}`;
+                            const opt1 = statSelect1.createEl("option", { text: label1, value: s });
+                            if (capped1) opt1.disabled = true;
+
+                            const effectiveBase2 = (val1 === s) ? base + 1 : base;
+                            const new2 = Math.min(20, effectiveBase2 + 1);
+                            const capped2 = effectiveBase2 >= 20;
+                            const label2 = `${formatFeatureOrSlug(s)} (${effectiveBase2} → ${new2})${capped2 ? " (Maxed)" : ""}`;
+                            const opt2 = statSelect2.createEl("option", { text: label2, value: s });
+                            if (capped2) opt2.disabled = true;
+                        });
+
+                        statSelect1.value = val1;
+                        statSelect2.value = val2;
+                    };
+
+                    updateAsiOptions();
+
+                    statSelect1.onchange = (e) => {
+                        state.asiStat1 = (e.target as HTMLSelectElement).value;
+                        updateAsiOptions();
+                    };
+                    statSelect2.onchange = (e) => {
+                        state.asiStat2 = (e.target as HTMLSelectElement).value;
+                        updateAsiOptions();
+                    };
 
                     optionContainer.createEl("small", {
                         text: "Tip: If you boost Constitution, manually adjust your Max HP above to retroactively include +1 HP per level!",
