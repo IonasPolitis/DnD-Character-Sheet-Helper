@@ -1,5 +1,5 @@
 {
 	"name": "Skilled",
-	"description": "You gain proficiency in any combination of three skills or tools of your choice.",
+	"description": "You gain proficiency in any combination of three skills or tools of your choice.\n\t**Repeatable**: You can take this feat more than once.",
 	"category": "Origin Feat"
 }

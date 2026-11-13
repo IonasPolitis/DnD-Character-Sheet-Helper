@@ -83,6 +83,48 @@ export function formatFeatureOrSlug(slug: string): string {
         .join(' ');
 }
 
+export function parseSavingThrows(raw: any): AbilityKey[] {
+    if (!raw) return [];
+    let list: any[] = [];
+    if (typeof raw === "string") {
+        try {
+            const parsed = JSON.parse(raw);
+            list = Array.isArray(parsed) ? parsed : [raw];
+        } catch {
+            list = raw.split(",").map(s => s.trim());
+        }
+    } else if (Array.isArray(raw)) {
+        list = raw;
+    }
+    const results: AbilityKey[] = [];
+    for (const item of list) {
+        const s = String(item || "").trim().toLowerCase();
+        if (ALL_ABILITIES.includes(s as AbilityKey) && !results.includes(s as AbilityKey)) {
+            results.push(s as AbilityKey);
+        }
+    }
+    return results;
+}
+
+export function parseFeatSavingThrowProficiencies(featData: any, chosenAbility?: AbilityKey): AbilityKey[] {
+    if (!featData || !featData.proficiencySavingThrow) return [];
+    const raw = featData.proficiencySavingThrow;
+    const items = Array.isArray(raw) ? raw : [raw];
+    const results: AbilityKey[] = [];
+
+    for (const item of items) {
+        const s = String(item || "").trim().toLowerCase();
+        if (s === "improvedability" || s === "improveability" || s === "chosen") {
+            if (chosenAbility && ALL_ABILITIES.includes(chosenAbility)) {
+                if (!results.includes(chosenAbility)) results.push(chosenAbility);
+            }
+        } else if (ALL_ABILITIES.includes(s as AbilityKey)) {
+            if (!results.includes(s as AbilityKey)) results.push(s as AbilityKey);
+        }
+    }
+    return results;
+}
+
 // 1. Define the shape of our settings
 interface DnDPluginSettings {
     combineClassSubclass: boolean;
@@ -6703,6 +6745,8 @@ class ManageCharacterModal extends Modal {
     // --- Unified Data State ---
     // 1. Stats State
     currentStats: Record<string, number> = { strength: 10, dexterity: 10, constitution: 10, intelligence: 10, wisdom: 10, charisma: 10 };
+    // 1b. Saving Throws State
+    currentSavingThrows: AbilityKey[] = [];
     // 2. AC State
     currentAcMod: number = 0;
     // 2b. Speed State
@@ -6748,6 +6792,9 @@ class ManageCharacterModal extends Modal {
         // Fetch Stats
         const statsList = ["strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"];
         statsList.forEach(stat => this.currentStats[stat] = Number(frontmatter[`DnD_${stat}`]) || 10);
+
+        // Fetch Saving Throw Proficiencies
+        this.currentSavingThrows = parseSavingThrows(frontmatter["DnD_classProficiencies"]);
 
         // Fetch AC
         this.currentAcMod = Number(frontmatter["DnD_armorAcMod"]) || 0;
@@ -7009,6 +7056,24 @@ class ManageCharacterModal extends Modal {
                 });
                 statInput.oninput = (e) => this.currentStats[stat] = Number((e.target as HTMLInputElement).value);
             });
+
+            this.contentContainer.createEl("h4", { text: "Saving Throw Proficiencies", cls: "dnd-manage-section-title" });
+            const savesGrid = this.contentContainer.createDiv({ cls: "dnd-form-grid-3" });
+            (statsList as AbilityKey[]).forEach(stat => {
+                const row = savesGrid.createDiv({ cls: "dnd-form-row" });
+                const checkbox = row.createEl("input", { type: "checkbox" });
+                checkbox.checked = this.currentSavingThrows.includes(stat);
+                checkbox.onchange = (e) => {
+                    const checked = (e.target as HTMLInputElement).checked;
+                    if (checked) {
+                        if (!this.currentSavingThrows.includes(stat)) this.currentSavingThrows.push(stat);
+                    } else {
+                        this.currentSavingThrows = this.currentSavingThrows.filter(s => s !== stat);
+                    }
+                };
+                const displayStat = stat.charAt(0).toUpperCase() + stat.slice(1);
+                row.createEl("label", { text: displayStat });
+            });
         }
 
         else if (this.activeTab === "attack") {
@@ -7228,6 +7293,9 @@ class ManageCharacterModal extends Modal {
         // 1. Process Stats Update
         Object.entries(this.currentStats).forEach(([stat, value]) => updates[`DnD_${stat}`] = value);
 
+        // 1b. Process Saving Throw Proficiencies
+        updates["DnD_classProficiencies"] = JSON.stringify(this.currentSavingThrows);
+
         // 2. Process Dynamic Armor AC Bonus & Unarmed Strike Damage (based on new Stats & Unarmored Defense!)
         const currentArmor = String(frontmatter["DnD_armor"] || "");
         const currentWeapon = String(frontmatter["DnD_weapon"] || "");
@@ -7370,8 +7438,14 @@ class LevelUpModal extends Modal {
         asiStat1: string;
         asiStat2: string;
         abilityChoices: Record<number, AbilityKey>;
+        featExpertiseChoices: string[];
     }[] = [];
     currentStats: Record<string, number> = { strength: 10, dexterity: 10, constitution: 10, intelligence: 10, wisdom: 10, charisma: 10 };
+    originalConMod: number = 0;
+    baseMaxHealthChosen: number = 0;
+    conHpBonus: number = 0;
+    hpInputEl: HTMLInputElement | null = null;
+    retroactiveConHpBadge: HTMLElement | null = null;
 
     classChoicesState: { router: string, key: string, level: number, domIndex: number }[] = [];
     // Tracks purely additive Expertise gained at this specific level
@@ -7398,9 +7472,12 @@ class LevelUpModal extends Modal {
 
         this.currentMaxHealth = Number(frontmatter["DnD_maxHealth"]) || 0;
         this.newMaxHealth = this.currentMaxHealth;
+        this.baseMaxHealthChosen = this.newMaxHealth;
+        this.conHpBonus = 0;
 
         const conScore = Number(frontmatter["DnD_constitution"]) || 10;
         this.conMod = Math.floor((conScore - 10) / 2);
+        this.originalConMod = this.conMod;
 
         // Fetch primary class and existing subclass safely (supporting both DnD_subclass and DnD_Subclass)
         const classVal = frontmatter["DnD_class"];
@@ -7454,17 +7531,22 @@ class LevelUpModal extends Modal {
             value: String(this.newMaxHealth),
             cls: "dnd-flex-1"
         });
+        this.hpInputEl = hpInput;
 
         const averageHpGain = Math.ceil(this.hitDie / 2) + 1 + this.conMod;
         const avgBtn = hpInputContainer.createEl("button", { text: `Take Average (+${averageHpGain})` });
-        avgBtn.onclick = () => {
-            this.newMaxHealth = this.currentMaxHealth + averageHpGain;
-            hpInput.value = String(this.newMaxHealth);
+        avgBtn.onclick = async () => {
+            this.baseMaxHealthChosen = this.currentMaxHealth + averageHpGain;
+            await this.updateRetroactiveConHp();
         };
 
         hpInput.addEventListener('input', (e) => {
-            this.newMaxHealth = Number((e.target as HTMLInputElement).value);
+            const val = Number((e.target as HTMLInputElement).value) || 0;
+            this.baseMaxHealthChosen = val - this.conHpBonus;
+            this.newMaxHealth = val;
         });
+
+        this.retroactiveConHpBadge = hpDiv.createDiv({ cls: "dnd-asi-hidden" });
 
         // B. Dynamic Subclass Section
         const targetLevel = this.newLevel.toString();
@@ -7518,6 +7600,58 @@ class LevelUpModal extends Modal {
             e.preventDefault();
             await this.executeLevelUp();
         };
+    }
+
+    async updateRetroactiveConHp() {
+        let projectedCon = this.currentStats.constitution || 10;
+
+        for (const gfState of this.grantedFeatsState) {
+            if (gfState.chosenOptionType === "asi") {
+                if (gfState.asiStat1 === "constitution") projectedCon = Math.min(20, projectedCon + 1);
+                if (gfState.asiStat2 === "constitution") projectedCon = Math.min(20, projectedCon + 1);
+            } else if (gfState.chosenFeatKey) {
+                const featData = await getExtraFeat(this.app, this.plugin.settings, gfState.chosenFeatKey);
+                if (featData) {
+                    const improvements = parseFeatAbilityImprovements(featData);
+                    improvements.forEach((imp, idx) => {
+                        let targetStat: AbilityKey | null = null;
+                        if (!imp.isChoice) {
+                            targetStat = imp.options[0];
+                        } else if (gfState.abilityChoices[idx]) {
+                            targetStat = gfState.abilityChoices[idx];
+                        }
+                        if (targetStat === "constitution") {
+                            projectedCon = Math.min(imp.maxCap, projectedCon + imp.amount);
+                        }
+                    });
+                }
+            }
+        }
+
+        const newConMod = Math.floor((projectedCon - 10) / 2);
+        const modDelta = Math.max(0, newConMod - this.originalConMod);
+        this.conHpBonus = modDelta * this.newLevel;
+
+        this.newMaxHealth = this.baseMaxHealthChosen + this.conHpBonus;
+        if (this.hpInputEl) {
+            this.hpInputEl.value = String(this.newMaxHealth);
+        }
+
+        if (this.retroactiveConHpBadge) {
+            if (this.conHpBonus > 0) {
+                this.retroactiveConHpBadge.className = "dnd-form-hint";
+                this.retroactiveConHpBadge.empty();
+                this.retroactiveConHpBadge.createEl("strong", {
+                    text: `CON Increase Retroactive HP: +${this.conHpBonus} Max HP `
+                });
+                this.retroactiveConHpBadge.createSpan({
+                    text: `(+${modDelta} CON mod × Level ${this.newLevel}) automatically added to Max HP.`
+                });
+            } else {
+                this.retroactiveConHpBadge.className = "dnd-asi-hidden";
+                this.retroactiveConHpBadge.empty();
+            }
+        }
     }
 
     async renderDynamicMilestones(classData: any, frontmatter: Record<string, any>) {
@@ -7690,7 +7824,8 @@ class LevelUpModal extends Modal {
                 chosenFeatKey: "",
                 asiStat1: "",
                 asiStat2: "",
-                abilityChoices: {} as Record<number, AbilityKey>
+                abilityChoices: {} as Record<number, AbilityKey>,
+                featExpertiseChoices: [] as string[]
             };
             this.grantedFeatsState.push(state);
 
@@ -7743,53 +7878,167 @@ class LevelUpModal extends Modal {
             const renderImproveAbilitySub = async (targetEl: HTMLElement, featKey: string) => {
                 targetEl.empty();
                 state.abilityChoices = {};
-                if (!featKey) return;
+                state.featExpertiseChoices = [];
+                if (!featKey) {
+                    await this.updateRetroactiveConHp();
+                    return;
+                }
 
                 const featData = await getExtraFeat(this.app, this.plugin.settings, featKey);
-                if (!featData) return;
+                if (!featData) {
+                    await this.updateRetroactiveConHp();
+                    return;
+                }
 
                 const improvements = parseFeatAbilityImprovements(featData);
-                if (improvements.length === 0) return;
+                const hasImprovedAbilitySave = featData.proficiencySavingThrow && (
+                    featData.proficiencySavingThrow === "improvedAbility" ||
+                    featData.proficiencySavingThrow === "improveAbility" ||
+                    featData.proficiencySavingThrow === "chosen" ||
+                    (Array.isArray(featData.proficiencySavingThrow) && featData.proficiencySavingThrow.some((s: string) => {
+                        const lower = String(s).toLowerCase();
+                        return lower === "improvedability" || lower === "improveability" || lower === "chosen";
+                    }))
+                );
 
-                const improveDiv = targetEl.createDiv({ cls: "dnd-form-group" });
-                for (let impIdx = 0; impIdx < improvements.length; impIdx++) {
-                    const imp = improvements[impIdx];
-                    if (!imp.isChoice) {
-                        const stat = imp.options[0];
-                        const curr = this.currentStats[stat] || 10;
-                        const newVal = Math.min(imp.maxCap, curr + imp.amount);
-                        const isCapped = curr >= imp.maxCap;
-                        const badge = improveDiv.createDiv({ cls: "dnd-form-hint" });
-                        badge.createEl("strong", { text: `+${imp.amount} ${formatFeatureOrSlug(stat)}: ` });
-                        badge.createSpan({ text: `Current: ${curr} → New: ${newVal}${isCapped ? ` (Capped at ${imp.maxCap})` : ""}` });
-                    } else {
-                        const choiceGroup = improveDiv.createDiv({ cls: "dnd-form-group" });
-                        choiceGroup.createEl("label", {
-                            text: `Choose Ability Score (+${imp.amount}, max ${imp.maxCap}):`,
-                            cls: "dnd-form-label-sm"
-                        });
-                        const selectEl = choiceGroup.createEl("select", { cls: "dnd-modal-form-input" });
-                        selectEl.createEl("option", { text: "-- Select an Ability to Improve --", value: "" });
-                        imp.options.forEach(ab => {
-                            const curr = this.currentStats[ab] || 10;
+                const existingSavingThrows = hasImprovedAbilitySave
+                    ? parseSavingThrows(frontmatter["DnD_classProficiencies"])
+                    : [];
+
+                if (improvements.length > 0) {
+                    const improveDiv = targetEl.createDiv({ cls: "dnd-form-group" });
+                    for (let impIdx = 0; impIdx < improvements.length; impIdx++) {
+                        const imp = improvements[impIdx];
+                        if (!imp.isChoice) {
+                            const stat = imp.options[0];
+                            const curr = this.currentStats[stat] || 10;
                             const newVal = Math.min(imp.maxCap, curr + imp.amount);
                             const isCapped = curr >= imp.maxCap;
-                            const optEl = selectEl.createEl("option", {
-                                text: `${formatFeatureOrSlug(ab)} (${curr} → ${newVal})${isCapped ? " (Maxed)" : ""}`,
-                                value: ab
+                            const badge = improveDiv.createDiv({ cls: "dnd-form-hint" });
+                            badge.createEl("strong", { text: `+${imp.amount} ${formatFeatureOrSlug(stat)}: ` });
+                            badge.createSpan({ text: `Current: ${curr} → New: ${newVal}${isCapped ? ` (Capped at ${imp.maxCap})` : ""}` });
+                        } else {
+                            const choiceGroup = improveDiv.createDiv({ cls: "dnd-form-group" });
+                            choiceGroup.createEl("label", {
+                                text: `Choose Ability Score (+${imp.amount}, max ${imp.maxCap}):`,
+                                cls: "dnd-form-label-sm"
                             });
-                            if (isCapped) optEl.disabled = true;
-                        });
-                        selectEl.onchange = (e) => {
-                            const val = (e.target as HTMLSelectElement).value as AbilityKey;
-                            if (val && ALL_ABILITIES.includes(val)) {
-                                state.abilityChoices[impIdx] = val;
-                            } else {
-                                delete state.abilityChoices[impIdx];
-                            }
-                        };
+                            const selectEl = choiceGroup.createEl("select", { cls: "dnd-modal-form-input" });
+                            selectEl.createEl("option", { text: "-- Select an Ability to Improve --", value: "" });
+                            imp.options.forEach(ab => {
+                                const curr = this.currentStats[ab] || 10;
+                                const newVal = Math.min(imp.maxCap, curr + imp.amount);
+                                const isCapped = curr >= imp.maxCap;
+                                const isAlreadyProficient = hasImprovedAbilitySave && existingSavingThrows.includes(ab);
+
+                                const tags: string[] = [];
+                                if (isCapped) tags.push("Maxed");
+                                if (isAlreadyProficient) tags.push("Already Proficient");
+                                const tagStr = tags.length > 0 ? ` (${tags.join(', ')})` : "";
+
+                                const optEl = selectEl.createEl("option", {
+                                    text: `${formatFeatureOrSlug(ab)} (${curr} → ${newVal})${tagStr}`,
+                                    value: ab
+                                });
+                                if (isCapped || isAlreadyProficient) optEl.disabled = true;
+                            });
+                            selectEl.onchange = async (e) => {
+                                const val = (e.target as HTMLSelectElement).value as AbilityKey;
+                                if (val && ALL_ABILITIES.includes(val)) {
+                                    state.abilityChoices[impIdx] = val;
+                                } else {
+                                    delete state.abilityChoices[impIdx];
+                                }
+                                await this.updateRetroactiveConHp();
+                            };
+                        }
+                    }
+
+                    if (hasImprovedAbilitySave) {
+                        const saveNote = improveDiv.createDiv({ cls: "dnd-form-hint" });
+                        saveNote.createEl("small", { text: "Granted Saving Throw: You gain saving throw proficiency in the chosen ability." });
                     }
                 }
+
+                // Explicit saving throws from feat not tied to improvedAbility
+                const explicitSaves = parseFeatSavingThrowProficiencies(featData);
+                if (explicitSaves.length > 0) {
+                    const saveDiv = targetEl.createDiv({ cls: "dnd-form-hint" });
+                    saveDiv.createEl("strong", { text: "Granted Saving Throw Proficiency: " });
+                    saveDiv.createSpan({ text: explicitSaves.map(s => formatFeatureOrSlug(s)).join(', ') });
+                }
+
+                // Granted Expertise from feat
+                if (featData.grantedExpertise && Array.isArray(featData.grantedExpertise) && featData.grantedExpertise.length === 2) {
+                    const featPool: string[] = Array.isArray(featData.grantedExpertise[0]) ? featData.grantedExpertise[0] : [];
+                    const featExpCount: number = Number(featData.grantedExpertise[1]) || 0;
+
+                    if (featExpCount > 0) {
+                        state.featExpertiseChoices = Array(featExpCount).fill("");
+
+                        const expDiv = targetEl.createDiv({ cls: "dnd-form-group" });
+                        expDiv.createEl("label", {
+                            text: `Granted Expertise (${featExpCount} ${featExpCount === 1 ? 'Choice' : 'Choices'}):`,
+                            cls: "dnd-form-label-sm"
+                        });
+
+                        let existingProfsRaw = frontmatter["DnD_skillProficiencies"] || [];
+                        if (typeof existingProfsRaw === 'string') {
+                            try { existingProfsRaw = JSON.parse(existingProfsRaw); } catch { existingProfsRaw = []; }
+                        }
+
+                        let knownSkills: string[] = [];
+                        (Array.isArray(existingProfsRaw) ? existingProfsRaw : []).forEach((p: any) => {
+                            if (Array.isArray(p) && p.length > 0) knownSkills.push(p[0]);
+                            else if (typeof p === 'string') knownSkills.push(p);
+                        });
+
+                        if (featPool.length > 0) {
+                            const lowerPool = featPool.map(e => String(e).toLowerCase());
+                            knownSkills = knownSkills.filter(s => lowerPool.includes(String(s).toLowerCase()));
+                        }
+
+                        let existingExpRaw = frontmatter["DnD_skillExpertise"] || [];
+                        if (typeof existingExpRaw === 'string') {
+                            try { existingExpRaw = JSON.parse(existingExpRaw); } catch { existingExpRaw = []; }
+                        }
+                        const currentExp = (Array.isArray(existingExpRaw) ? existingExpRaw : []).map((e: any) =>
+                            Array.isArray(e) ? String(e[0]).toLowerCase() : String(e).toLowerCase()
+                        );
+
+                        knownSkills = knownSkills.filter(s =>
+                            !currentExp.includes(String(s).toLowerCase()) &&
+                            !this.newExpertiseChoices.map(c => c.toLowerCase()).includes(String(s).toLowerCase())
+                        );
+
+                        if (knownSkills.length === 0) {
+                            expDiv.createEl("p", {
+                                text: "You have no eligible skill proficiencies available to gain Expertise in.",
+                                cls: "dnd-error-text dnd-form-note"
+                            });
+                        } else {
+                            for (let i = 0; i < featExpCount; i++) {
+                                const row = expDiv.createDiv({ cls: "dnd-form-slot-row" });
+                                row.createEl("small", { text: `Choice ${i + 1}:`, cls: "dnd-form-slot-label-sm" });
+                                const selectEl = row.createEl("select", { cls: "dnd-flex-1" });
+                                selectEl.createEl("option", { text: "-- Select Expertise --", value: "" });
+
+                                knownSkills.forEach(skill => {
+                                    selectEl.createEl("option", {
+                                        text: skill.replace(/\b\w/g, c => c.toUpperCase()),
+                                        value: skill
+                                    });
+                                });
+
+                                selectEl.onchange = (e) => {
+                                    state.featExpertiseChoices[i] = (e.target as HTMLSelectElement).value;
+                                };
+                            }
+                        }
+                    }
+                }
+
+                await this.updateRetroactiveConHp();
             };
 
             const renderActiveOption = async (opt: ClassifiedOption) => {
@@ -7800,6 +8049,7 @@ class LevelUpModal extends Modal {
                 state.asiStat1 = "";
                 state.asiStat2 = "";
                 state.abilityChoices = {};
+                state.featExpertiseChoices = [];
 
                 if (opt.type === "asi") {
                     const asiContainer = optionContainer.createDiv({ cls: "dnd-form-grid-2" });
@@ -7839,17 +8089,19 @@ class LevelUpModal extends Modal {
 
                     updateAsiOptions();
 
-                    statSelect1.onchange = (e) => {
+                    statSelect1.onchange = async (e) => {
                         state.asiStat1 = (e.target as HTMLSelectElement).value;
                         updateAsiOptions();
+                        await this.updateRetroactiveConHp();
                     };
-                    statSelect2.onchange = (e) => {
+                    statSelect2.onchange = async (e) => {
                         state.asiStat2 = (e.target as HTMLSelectElement).value;
                         updateAsiOptions();
+                        await this.updateRetroactiveConHp();
                     };
 
                     optionContainer.createEl("small", {
-                        text: "Tip: If you boost Constitution, manually adjust your Max HP above to retroactively include +1 HP per level!",
+                        text: "Constitution increases automatically calculate and apply retroactive Max HP (+1 HP per level) above!",
                         cls: "dnd-form-hint"
                     });
                 } else if (opt.type === "router") {
@@ -7875,6 +8127,8 @@ class LevelUpModal extends Modal {
                     const abilityContainer = optionContainer.createDiv();
                     await renderImproveAbilitySub(abilityContainer, state.chosenFeatKey);
                 }
+
+                await this.updateRetroactiveConHp();
             };
 
             if (classifiedOptions.length > 1) {
@@ -8009,6 +8263,16 @@ class LevelUpModal extends Modal {
             }
         });
 
+        this.grantedFeatsState.forEach(gf => {
+            if (gf.featExpertiseChoices && Array.isArray(gf.featExpertiseChoices)) {
+                gf.featExpertiseChoices.forEach(choice => {
+                    if (choice) {
+                        finalExpertise.push([String(choice), String(this.newLevel)]);
+                    }
+                });
+            }
+        });
+
         if (finalExpertise.length > 0) updates["DnD_skillExpertise"] = JSON.stringify(finalExpertise);
 
         // --- Handle Data-Driven Granted Feats / ASI & Recalculate Unarmed Strike / AC Bonus on Level Up ---
@@ -8051,6 +8315,31 @@ class LevelUpModal extends Modal {
                     });
                 }
             }
+        }
+
+        // Collect saving throw proficiencies from chosen feats
+        const currentSaves = parseSavingThrows(frontmatter["DnD_classProficiencies"]);
+        let savesUpdated = false;
+
+        for (const gfState of this.grantedFeatsState) {
+            if (gfState.chosenFeatKey) {
+                const chosenFeatData = await getExtraFeat(this.app, this.plugin.settings, gfState.chosenFeatKey);
+                if (chosenFeatData) {
+                    const chosenAbilities = Object.values(gfState.abilityChoices);
+                    const firstChoice = chosenAbilities[0];
+                    const gainedSaves = parseFeatSavingThrowProficiencies(chosenFeatData, firstChoice);
+                    for (const save of gainedSaves) {
+                        if (!currentSaves.includes(save)) {
+                            currentSaves.push(save);
+                            savesUpdated = true;
+                        }
+                    }
+                }
+            }
+        }
+
+        if (savesUpdated) {
+            updates["DnD_classProficiencies"] = JSON.stringify(currentSaves);
         }
 
         // Always recalculate Unarmed Strike damage (in case scalingDice increased at this level or ASI boosted STR/DEX)

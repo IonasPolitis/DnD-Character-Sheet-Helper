@@ -3,6 +3,12 @@
 > [!NOTE]
 > DnD Character Sheet Helper is an Obsidian Plugin that brings the DnD Rulebook 5.5e (2024) right inside your Digital Character Sheet. This is not a replacement for the DnD Player's Handbook, but just a handy tool that gives you the information you might need, or you wouldn't remember on top of your mind, while playing.
 
+> [!NOTE]
+> **Player Self-Policing & Modularity:**
+> Due to the openness and modularity of this plugin, the decision was made to let players choose whatever they want without creating unnecessary filtering, restrictions, and extra overhead and complexity on plugin's logic and database files. The user of this plugin should use the provided warnings and lack of information given in certain areas as a reminder to always read through the *Player's Handbook* if they need to make a choice that they do not know the implications of or don't have the contents of the option they are about to choose at the top of their heads. Again, this is not a replacement for the *Player's Handbook*, just a simple and easy way to create, manage, and view a player's Character Sheet.
+> 
+> (I'll also remind that the files are not supposed to be super complex, but easily created with the templates given below in case a user wants to make their own Custom Rulebook with Homebrewd Classes, etc.)
+
 > If there are any races or classes you want me to add to this plugin, make a feature request on GitHub.
 
 > (If any text has been written wrong please make an Issue Report on GitHub. I maintain it myself)
@@ -380,7 +386,9 @@ The `speedMod` variable on a class/subclass feature or feat sets `DnD_speedMod` 
 	"description": "<Feat_Description>",
       "uses": ["<Number-of-Uses>", "<short/long>" ], // <optional>
       "speedMod": <num>, // <optional>
-      "improveAbility": [ [ "<Ability-to-Improve>", <value>, <maxCap> ], ... ] // <optional>
+      "improveAbility": [ [ "<Ability-to-Improve>", <value>, <maxCap> ], ... ], // <optional>
+      "proficiencySavingThrow": "<improvedAbility | Ability-Name | Array>", // <optional>
+      "grantedExpertise": [ [ "<skill_pool>" ], <count> ] // <optional>
 }
 ```
 
@@ -388,6 +396,10 @@ The `improveAbility` array defines ability score increases granted by this feat.
 - `<Ability-to-Improve>`: lowercase ability name (e.g. `"strength"`), multiple choice joined with `|` (e.g. `"strength|dexterity"` or `"intelligence|wisdom|charisma"`), or `"any"`.
 - `<value>`: integer bonus to add (typically `1`).
 - `<maxCap>`: maximum score cap for the ability (typically `20` for General Feats or `30` for Epic Boons).
+
+The `proficiencySavingThrow` property grants saving throw proficiency. It accepts `"improvedAbility"` (automatically grants proficiency in whichever ability was chosen in `improveAbility`, disabling abilities the character is already proficient in during Level Up), an explicit ability string (e.g. `"constitution"`), or an array of mixed entries (e.g. `["improvedAbility", "wisdom"]`).
+
+The `grantedExpertise` property grants expertise in skill proficiencies. It accepts a 2-element tuple `[ [ "<skill_pool>" ], <count> ]` (e.g. `[[], 1]` allows choosing 1 skill from any currently known skill proficiency lacking expertise).
 
 The `uses` variable sets how many uses this feature has, and when used checkboxes will appear at the top right of that feature's line acording to the value it was set. For the amount of uses it accepts single numbers and in string it accepts math (+, -,, *, /) and will also automatically imput the value of a core DnD ability.
 
