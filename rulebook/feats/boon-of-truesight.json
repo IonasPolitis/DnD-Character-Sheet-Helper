@@ -1,5 +1,6 @@
 {
 	"name": "Boon of Truesight",
 	"description": "You gain the following benefits.\n\t**Ability Score Increase**: Increase one ability score of your choice by 1, to a maximum of 30.\n\t**Truesight**: You have Truesight with a range of 60 feet.",
-	"category": "Epic Boon"
+	"category": "Epic Boon",
+	"improveAbility": [["any", 1, 30]]
 }

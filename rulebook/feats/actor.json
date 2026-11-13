@@ -1,5 +1,6 @@
 {
 	"name": "Actor",
 	"description": "You gain the following benefits.\n\t**Ability Score Increase**: Increase your Charisma score by 1, to a maximum of 20.\n\t**Impersonation**: While you're disguised as a real or fictional person, you have Advantage on Charisma (Deception or Performance) checks to convince others that you are that person.\n\t**Mimicry**: You can mimic the sounds of other creatures, including speech. A creature that hears the mimicry must succeed on a Wisdom (Insight) check to determine the effect is faked (DC 8 plus your Charisma modifier and Proficiency Bonus).",
-	"category": "General Feat"
+	"category": "General Feat",
+	"improveAbility": [["charisma", 1, 20]]
 }

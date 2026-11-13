@@ -36,6 +36,53 @@ function hasItemCost(raw: any): boolean {
     return !!c && c.amount > 0;
 }
 
+// --- Feat Ability Score Helpers ---
+export type AbilityKey = "strength" | "dexterity" | "constitution" | "intelligence" | "wisdom" | "charisma";
+export const ALL_ABILITIES: AbilityKey[] = ["strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"];
+
+export interface ParsedAbilityImprovement {
+    options: AbilityKey[];
+    amount: number;
+    maxCap: number;
+    isChoice: boolean;
+}
+
+export function parseFeatAbilityImprovements(featData: any): ParsedAbilityImprovement[] {
+    if (!featData || !Array.isArray(featData.improveAbility)) return [];
+    const results: ParsedAbilityImprovement[] = [];
+    for (const item of featData.improveAbility) {
+        if (!Array.isArray(item) || item.length < 2) continue;
+        const spec = String(item[0]).toLowerCase().trim();
+        const amount = Number(item[1]) || 1;
+        const maxCap = item.length >= 3 && !isNaN(Number(item[2])) ? Number(item[2]) : (featData?.category === "Epic Boon" ? 30 : 20);
+
+        let options: AbilityKey[] = [];
+        if (spec === "any") {
+            options = [...ALL_ABILITIES];
+        } else {
+            const parts = spec.split("|").map(s => s.trim().toLowerCase());
+            options = parts.filter((p): p is AbilityKey => ALL_ABILITIES.includes(p as AbilityKey));
+        }
+
+        if (options.length > 0) {
+            results.push({
+                options,
+                amount,
+                maxCap,
+                isChoice: options.length > 1
+            });
+        }
+    }
+    return results;
+}
+
+export function formatFeatureOrSlug(slug: string): string {
+    return String(slug || "")
+        .split(/[-_]/)
+        .map(w => w.charAt(0).toUpperCase() + w.slice(1))
+        .join(' ');
+}
+
 // 1. Define the shape of our settings
 interface DnDPluginSettings {
     combineClassSubclass: boolean;
@@ -4880,18 +4927,7 @@ class CharacterWizardModal extends Modal {
             }
         }
 
-        const wizardExtraFeats = Array.isArray(this.wizardData.extraFeats)
-            ? this.wizardData.extraFeats
-            : (this.wizardData.extraFeats ? [this.wizardData.extraFeats] : []);
-        for (const fKey of wizardExtraFeats) {
-            if (!fKey) continue;
-            const fData = await getExtraFeat(this.app, this.plugin.settings, String(fKey));
-            if (fData && fData.speedMod !== undefined && !isNaN(Number(fData.speedMod))) {
-                initialSpeedMod = Number(fData.speedMod);
-            }
-        }
-
-        // --- Calculate Final Stats (Base + Background Bonuses) ---
+        // --- Calculate Final Stats (Base + Background Bonuses + Fixed Feat Bonuses) ---
         const getStatDetails = (statName: string) => {
             const base = this.wizardData[statName] || 10;
             const bonus = this.wizardData.chosenAbilityBonuses
@@ -4917,6 +4953,30 @@ class CharacterWizardModal extends Modal {
             charisma: chaStats.final
         };
 
+        const wizardExtraFeats = Array.isArray(this.wizardData.extraFeats)
+            ? this.wizardData.extraFeats
+            : (typeof this.wizardData.extraFeats === "string"
+                ? this.wizardData.extraFeats.split(',').map((s: string) => s.trim()).filter((s: string) => s !== "")
+                : (this.wizardData.extraFeats ? [this.wizardData.extraFeats] : []));
+
+        for (const fKey of wizardExtraFeats) {
+            if (!fKey) continue;
+            const fData = await getExtraFeat(this.app, this.plugin.settings, String(fKey));
+            if (fData) {
+                if (fData.speedMod !== undefined && !isNaN(Number(fData.speedMod))) {
+                    initialSpeedMod = Number(fData.speedMod);
+                }
+                const improvements = parseFeatAbilityImprovements(fData);
+                for (const imp of improvements) {
+                    if (!imp.isChoice && imp.options.length === 1) {
+                        const targetStat = imp.options[0];
+                        const curr = wizardStatsRecord[targetStat] || 10;
+                        wizardStatsRecord[targetStat] = Math.min(imp.maxCap, curr + imp.amount);
+                    }
+                }
+            }
+        }
+
         // If "Unarmed Strike" was chosen as the weapon, compute its dynamic scaling damage
         const safeWizardWeapon = String(this.wizardData.weapon || "").toLowerCase().replace(/['"]/g, '').trim().replace(/\s+/g, '-');
         if (!this.wizardData.isWeaponCustom && (safeWizardWeapon === "unarmed-strike" || safeWizardWeapon === "unarmed-strikes")) {
@@ -4930,7 +4990,7 @@ class CharacterWizardModal extends Modal {
             );
         }
 
-        const dexMod = Math.floor((dexStats.final - 10) / 2);
+        const dexMod = Math.floor((wizardStatsRecord.dexterity - 10) / 2);
         let armorAcBonus = dexMod;
         let isUnarmored = true;
         const parsedManualAc = parseInt(String(this.wizardData.armorAc));
@@ -5211,12 +5271,12 @@ class CharacterWizardModal extends Modal {
         injectYAML("DnD_hitDice", DnD_hit_dice);
         injectYAML("DnD_speed", this.wizardData.speed);
         injectYAML("DnD_speedMod", initialSpeedMod);
-        injectYAML("DnD_strength", strStats.final);
-        injectYAML("DnD_dexterity", dexStats.final);
-        injectYAML("DnD_constitution", conStats.final);
-        injectYAML("DnD_intelligence", intStats.final);
-        injectYAML("DnD_wisdom", wisStats.final);
-        injectYAML("DnD_charisma", chaStats.final);
+        injectYAML("DnD_strength", wizardStatsRecord.strength);
+        injectYAML("DnD_dexterity", wizardStatsRecord.dexterity);
+        injectYAML("DnD_constitution", wizardStatsRecord.constitution);
+        injectYAML("DnD_intelligence", wizardStatsRecord.intelligence);
+        injectYAML("DnD_wisdom", wizardStatsRecord.wisdom);
+        injectYAML("DnD_charisma", wizardStatsRecord.charisma);
 
         // --- 5B. PRECISE SKILLS BLOCK REWRITING ---
         const cSkills = compiledProficiencies.filter(p => p[1] === "class").map(p => `  - ${p[0]}`);
@@ -7300,13 +7360,17 @@ class LevelUpModal extends Modal {
     // Dynamic Milestone Container so selecting a Subclass refreshes choices/feats live
     milestonesContainer!: HTMLElement;
 
-    // ASI & Feat Tracking
-    isAsiLevel: boolean = false;
-    asiChoice: "asi" | "feat" = "asi";
-    asiStat1: string = "";
-    asiStat2: string = "";
-    chosenFeat: string = "";
-    availableFeats: Record<string, string> = {};
+    // Data-Driven Granted Feats & ASI Tracking
+    grantedFeatsState: {
+        featureName: string;
+        options: string[];
+        chosenOptionType: "asi" | "router" | "feat";
+        chosenOptionKey: string;
+        chosenFeatKey: string;
+        asiStat1: string;
+        asiStat2: string;
+        abilityChoices: Record<number, AbilityKey>;
+    }[] = [];
     currentStats: Record<string, number> = { strength: 10, dexterity: 10, constitution: 10, intelligence: 10, wisdom: 10, charisma: 10 };
 
     classChoicesState: { router: string, key: string, level: number, domIndex: number }[] = [];
@@ -7459,7 +7523,7 @@ class LevelUpModal extends Modal {
     async renderDynamicMilestones(classData: any, frontmatter: Record<string, any>) {
         this.milestonesContainer.empty();
 
-        this.isAsiLevel = false;
+        this.grantedFeatsState = [];
         this.newGrantedExpertiseCount = 0;
         this.expertisePool = [];
         this.classChoicesState = [];
@@ -7467,6 +7531,7 @@ class LevelUpModal extends Modal {
 
         const statsList = ["strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"];
         const slotsByRouter: Record<string, number> = {};
+        const grantedFeatMilestones: { featureName: string; grantedFeats: string[] }[] = [];
         const targetLevel = this.newLevel.toString();
 
         if (classData) {
@@ -7481,8 +7546,11 @@ class LevelUpModal extends Modal {
             if (subclassData?.[targetLevel]) levelFeatures = levelFeatures.concat(subclassData[targetLevel]);
 
             for (const feature of levelFeatures) {
-                if (feature.grantedFeats && Array.isArray(feature.grantedFeats)) {
-                    if (feature.grantedFeats.includes("ability-score-improvement")) this.isAsiLevel = true;
+                if (feature.grantedFeats && Array.isArray(feature.grantedFeats) && feature.grantedFeats.length > 0) {
+                    grantedFeatMilestones.push({
+                        featureName: feature.name || "Granted Feats",
+                        grantedFeats: feature.grantedFeats
+                    });
                 }
 
                 if (feature.classChoices && Array.isArray(feature.classChoices)) {
@@ -7611,57 +7679,187 @@ class LevelUpModal extends Modal {
             }
         }
 
-        // 3. Render ASI / Feat UI
-        if (this.isAsiLevel) {
-            const loadedGeneralFeats = await getFeatMapData(this.app, this.plugin.settings, "general-feats");
-            if (loadedGeneralFeats && typeof loadedGeneralFeats === "object") {
-                this.availableFeats = loadedGeneralFeats;
+        // 3. Render Data-Driven Granted Feats / ASI Milestones
+        for (let mIdx = 0; mIdx < grantedFeatMilestones.length; mIdx++) {
+            const milestone = grantedFeatMilestones[mIdx];
+            const state = {
+                featureName: milestone.featureName,
+                options: milestone.grantedFeats,
+                chosenOptionType: "feat" as "asi" | "router" | "feat",
+                chosenOptionKey: "",
+                chosenFeatKey: "",
+                asiStat1: "",
+                asiStat2: "",
+                abilityChoices: {} as Record<number, AbilityKey>
+            };
+            this.grantedFeatsState.push(state);
+
+            interface ClassifiedOption {
+                key: string;
+                type: "asi" | "router" | "feat";
+                label: string;
+                routerMap?: Record<string, string>;
+                featData?: any;
+            }
+            const classifiedOptions: ClassifiedOption[] = [];
+            for (const optKey of milestone.grantedFeats) {
+                if (optKey === "ability-score-improvement") {
+                    classifiedOptions.push({
+                        key: optKey,
+                        type: "asi",
+                        label: "Ability Score Improvement (+2 / +1 & +1)"
+                    });
+                } else {
+                    const routerMap = await getFeatMapData(this.app, this.plugin.settings, optKey);
+                    if (routerMap && typeof routerMap === "object") {
+                        classifiedOptions.push({
+                            key: optKey,
+                            type: "router",
+                            label: formatFeatureOrSlug(optKey),
+                            routerMap
+                        });
+                    } else {
+                        const featData = await getExtraFeat(this.app, this.plugin.settings, optKey);
+                        classifiedOptions.push({
+                            key: optKey,
+                            type: "feat",
+                            label: featData?.name || formatFeatureOrSlug(optKey),
+                            featData
+                        });
+                    }
+                }
             }
 
-            const asiDiv = this.milestonesContainer.createDiv({ cls: "dnd-form-card-active" });
-            asiDiv.createEl("label", {
-                text: `Level ${this.newLevel} Milestone: Ability Score Improvement or Feat`,
+            if (classifiedOptions.length === 0) continue;
+
+            const cardDiv = this.milestonesContainer.createDiv({ cls: "dnd-form-card-active" });
+            cardDiv.createEl("label", {
+                text: `Level ${this.newLevel} Milestone: ${milestone.featureName}`,
                 cls: "dnd-form-label-bold"
             });
 
-            const choiceSelect = asiDiv.createEl("select", { cls: "dnd-modal-form-input dnd-form-group" });
-            choiceSelect.createEl("option", { text: "Ability Score Improvement (+2 / +1 & +1)", value: "asi" });
-            choiceSelect.createEl("option", { text: "Take a General Feat", value: "feat" });
+            const optionContainer = cardDiv.createDiv();
 
-            this.asiChoice = "asi";
+            const renderImproveAbilitySub = async (targetEl: HTMLElement, featKey: string) => {
+                targetEl.empty();
+                state.abilityChoices = {};
+                if (!featKey) return;
 
-            const asiContainer = asiDiv.createDiv({ cls: "dnd-form-grid-2" });
-            const statSelect1 = asiContainer.createEl("select", { cls: "dnd-modal-form-input" });
-            const statSelect2 = asiContainer.createEl("select", { cls: "dnd-modal-form-input" });
-            statSelect1.createEl("option", { text: "-- +1 Stat --", value: "" });
-            statSelect2.createEl("option", { text: "-- +1 Stat --", value: "" });
+                const featData = await getExtraFeat(this.app, this.plugin.settings, featKey);
+                if (!featData) return;
 
-            statsList.forEach(s => {
-                const label = s.charAt(0).toUpperCase() + s.slice(1) + ` (${this.currentStats[s]})`;
-                statSelect1.createEl("option", { text: label, value: s });
-                statSelect2.createEl("option", { text: label, value: s });
-            });
-            statSelect1.onchange = (e) => this.asiStat1 = (e.target as HTMLSelectElement).value;
-            statSelect2.onchange = (e) => this.asiStat2 = (e.target as HTMLSelectElement).value;
+                const improvements = parseFeatAbilityImprovements(featData);
+                if (improvements.length === 0) return;
 
-            const featContainer = asiDiv.createDiv({ cls: "dnd-asi-hidden" });
-            const featSelect = featContainer.createEl("select", { cls: "dnd-modal-form-input" });
-            featSelect.createEl("option", { text: "-- Select a Feat --", value: "" });
-            Object.entries(this.availableFeats).forEach(([key, name]) => {
-                featSelect.createEl("option", { text: name as string, value: key });
-            });
-            featSelect.onchange = (e) => this.chosenFeat = (e.target as HTMLSelectElement).value;
-
-            choiceSelect.onchange = (e) => {
-                this.asiChoice = (e.target as HTMLSelectElement).value as "asi" | "feat";
-                asiContainer.classList.toggle("dnd-asi-hidden", this.asiChoice !== "asi");
-                featContainer.classList.toggle("dnd-asi-hidden", this.asiChoice !== "feat");
+                const improveDiv = targetEl.createDiv({ cls: "dnd-form-group" });
+                for (let impIdx = 0; impIdx < improvements.length; impIdx++) {
+                    const imp = improvements[impIdx];
+                    if (!imp.isChoice) {
+                        const stat = imp.options[0];
+                        const curr = this.currentStats[stat] || 10;
+                        const newVal = Math.min(imp.maxCap, curr + imp.amount);
+                        const isCapped = curr >= imp.maxCap;
+                        const badge = improveDiv.createDiv({ cls: "dnd-form-hint" });
+                        badge.createEl("strong", { text: `+${imp.amount} ${formatFeatureOrSlug(stat)}: ` });
+                        badge.createSpan({ text: `Current: ${curr} → New: ${newVal}${isCapped ? ` (Capped at ${imp.maxCap})` : ""}` });
+                    } else {
+                        const choiceGroup = improveDiv.createDiv({ cls: "dnd-form-group" });
+                        choiceGroup.createEl("label", {
+                            text: `Choose Ability Score (+${imp.amount}, max ${imp.maxCap}):`,
+                            cls: "dnd-form-label-sm"
+                        });
+                        const selectEl = choiceGroup.createEl("select", { cls: "dnd-modal-form-input" });
+                        selectEl.createEl("option", { text: "-- Select an Ability to Improve --", value: "" });
+                        imp.options.forEach(ab => {
+                            const curr = this.currentStats[ab] || 10;
+                            const newVal = Math.min(imp.maxCap, curr + imp.amount);
+                            const isCapped = curr >= imp.maxCap;
+                            const optEl = selectEl.createEl("option", {
+                                text: `${formatFeatureOrSlug(ab)} (${curr} → ${newVal})${isCapped ? " (Maxed)" : ""}`,
+                                value: ab
+                            });
+                            if (isCapped) optEl.disabled = true;
+                        });
+                        selectEl.onchange = (e) => {
+                            const val = (e.target as HTMLSelectElement).value as AbilityKey;
+                            if (val && ALL_ABILITIES.includes(val)) {
+                                state.abilityChoices[impIdx] = val;
+                            } else {
+                                delete state.abilityChoices[impIdx];
+                            }
+                        };
+                    }
+                }
             };
 
-            asiDiv.createEl("small", {
-                text: "Tip: If you boost Constitution, manually adjust your Max HP above to retroactively include +1 HP per level!",
-                cls: "dnd-form-hint"
-            });
+            const renderActiveOption = async (opt: ClassifiedOption) => {
+                optionContainer.empty();
+                state.chosenOptionKey = opt.key;
+                state.chosenOptionType = opt.type;
+                state.chosenFeatKey = "";
+                state.asiStat1 = "";
+                state.asiStat2 = "";
+                state.abilityChoices = {};
+
+                if (opt.type === "asi") {
+                    const asiContainer = optionContainer.createDiv({ cls: "dnd-form-grid-2" });
+                    const statSelect1 = asiContainer.createEl("select", { cls: "dnd-modal-form-input" });
+                    const statSelect2 = asiContainer.createEl("select", { cls: "dnd-modal-form-input" });
+                    statSelect1.createEl("option", { text: "-- +1 Stat --", value: "" });
+                    statSelect2.createEl("option", { text: "-- +1 Stat --", value: "" });
+
+                    statsList.forEach(s => {
+                        const label = s.charAt(0).toUpperCase() + s.slice(1) + ` (${this.currentStats[s]})`;
+                        statSelect1.createEl("option", { text: label, value: s });
+                        statSelect2.createEl("option", { text: label, value: s });
+                    });
+                    statSelect1.onchange = (e) => state.asiStat1 = (e.target as HTMLSelectElement).value;
+                    statSelect2.onchange = (e) => state.asiStat2 = (e.target as HTMLSelectElement).value;
+
+                    optionContainer.createEl("small", {
+                        text: "Tip: If you boost Constitution, manually adjust your Max HP above to retroactively include +1 HP per level!",
+                        cls: "dnd-form-hint"
+                    });
+                } else if (opt.type === "router") {
+                    const featSelect = optionContainer.createEl("select", { cls: "dnd-modal-form-input dnd-form-group" });
+                    featSelect.createEl("option", { text: "-- Select a Feat --", value: "" });
+                    if (opt.routerMap) {
+                        Object.entries(opt.routerMap).forEach(([key, name]) => {
+                            featSelect.createEl("option", { text: name as string, value: key });
+                        });
+                    }
+                    const abilityContainer = optionContainer.createDiv();
+                    featSelect.onchange = async (e) => {
+                        state.chosenFeatKey = (e.target as HTMLSelectElement).value;
+                        await renderImproveAbilitySub(abilityContainer, state.chosenFeatKey);
+                    };
+                } else if (opt.type === "feat") {
+                    state.chosenFeatKey = opt.key;
+                    const infoDiv = optionContainer.createDiv({ cls: "dnd-form-group" });
+                    infoDiv.createEl("span", {
+                        text: `Granted Feat: ${opt.label}`,
+                        cls: "dnd-form-label-bold"
+                    });
+                    const abilityContainer = optionContainer.createDiv();
+                    await renderImproveAbilitySub(abilityContainer, state.chosenFeatKey);
+                }
+            };
+
+            if (classifiedOptions.length > 1) {
+                const choiceSelect = cardDiv.createEl("select", { cls: "dnd-modal-form-input dnd-form-group" });
+                classifiedOptions.forEach((opt) => {
+                    choiceSelect.createEl("option", { text: opt.label, value: opt.key });
+                });
+                choiceSelect.onchange = async (e) => {
+                    const selectedKey = (e.target as HTMLSelectElement).value;
+                    const foundOpt = classifiedOptions.find(o => o.key === selectedKey) || classifiedOptions[0];
+                    await renderActiveOption(foundOpt);
+                };
+                cardDiv.insertBefore(choiceSelect, optionContainer);
+                await renderActiveOption(classifiedOptions[0]);
+            } else {
+                await renderActiveOption(classifiedOptions[0]);
+            }
         }
 
         if (this.classChoicesState.length > 0 || this.newGrantedExpertiseCount > 0) {
@@ -7781,24 +7979,44 @@ class LevelUpModal extends Modal {
 
         if (finalExpertise.length > 0) updates["DnD_skillExpertise"] = JSON.stringify(finalExpertise);
 
-        // --- Handle ASI / Feats & Recalculate Unarmed Strike / AC Bonus on Level Up ---
-        if (this.isAsiLevel) {
-            if (this.asiChoice === "asi") {
-                if (this.asiStat1) this.currentStats[this.asiStat1] += 1;
-                if (this.asiStat2) this.currentStats[this.asiStat2] += 1;
+        // --- Handle Data-Driven Granted Feats / ASI & Recalculate Unarmed Strike / AC Bonus on Level Up ---
+        let existingFeats = frontmatter["DnD_extraFeats"];
+        if (!Array.isArray(existingFeats)) {
+            existingFeats = existingFeats ? [existingFeats] : [];
+        }
+
+        for (const gfState of this.grantedFeatsState) {
+            if (gfState.chosenOptionType === "asi") {
+                if (gfState.asiStat1) this.currentStats[gfState.asiStat1] += 1;
+                if (gfState.asiStat2) this.currentStats[gfState.asiStat2] += 1;
 
                 Object.keys(this.currentStats).forEach(s => updates[`DnD_${s}`] = this.currentStats[s]);
-            }
-            else if (this.asiChoice === "feat" && this.chosenFeat) {
-                let existingFeats = frontmatter["DnD_extraFeats"];
-                if (!Array.isArray(existingFeats)) {
-                    existingFeats = existingFeats ? [existingFeats] : [];
-                }
-                updates["DnD_extraFeats"] = [...existingFeats, this.chosenFeat];
+            } else if (gfState.chosenFeatKey) {
+                existingFeats.push(gfState.chosenFeatKey);
+                updates["DnD_extraFeats"] = [...existingFeats];
 
-                const chosenFeatData = await getExtraFeat(this.app, this.plugin.settings, this.chosenFeat);
-                if (chosenFeatData && chosenFeatData.speedMod !== undefined && !isNaN(Number(chosenFeatData.speedMod))) {
-                    updates["DnD_speedMod"] = Number(chosenFeatData.speedMod);
+                const chosenFeatData = await getExtraFeat(this.app, this.plugin.settings, gfState.chosenFeatKey);
+                if (chosenFeatData) {
+                    if (chosenFeatData.speedMod !== undefined && !isNaN(Number(chosenFeatData.speedMod))) {
+                        updates["DnD_speedMod"] = Number(chosenFeatData.speedMod);
+                    }
+
+                    const improvements = parseFeatAbilityImprovements(chosenFeatData);
+                    improvements.forEach((entry, idx) => {
+                        let targetStat: AbilityKey | null = null;
+                        if (!entry.isChoice) {
+                            targetStat = entry.options[0];
+                        } else if (gfState.abilityChoices[idx]) {
+                            targetStat = gfState.abilityChoices[idx];
+                        }
+
+                        if (targetStat && ALL_ABILITIES.includes(targetStat)) {
+                            const currentVal = this.currentStats[targetStat] || 10;
+                            const newVal = Math.min(entry.maxCap, currentVal + entry.amount);
+                            this.currentStats[targetStat] = newVal;
+                            updates[`DnD_${targetStat}`] = newVal;
+                        }
+                    });
                 }
             }
         }

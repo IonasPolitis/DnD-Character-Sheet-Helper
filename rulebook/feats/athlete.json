@@ -1,5 +1,6 @@
 {
 	"name": "Athlete",
 	"description": "You gain the following benefits.\n\t**Ability Score Increase**: Increase your Strength or Dexterity score by 1, to a maximum of 20.\n\t**Climb Speed**: You gain a Climb Speed equal to your Speed.\n\t**Hop Up**: When you have the Prone condition, you can right yourself with only 5 feet of movement.\n\t**Jumping**: You can make a running Long or High Jump after moving only 5 feet.",
-	"category": "General Feat"
+	"category": "General Feat",
+	"improveAbility": [["strength|dexterity", 1, 20]]
 }

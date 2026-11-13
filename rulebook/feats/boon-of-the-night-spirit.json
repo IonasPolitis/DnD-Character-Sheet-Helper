@@ -1,5 +1,6 @@
 {
 	"name": "Boon of the Night Spirit",
 	"description": "You gain the following benefits.\n\t**Ability Score Increase**: Increase one ability score of your choice by 1, to a maximum of 30.\n\t**Merge with Shadows**: While within Dim Light or Darkness, you can give yourself the Invisible condition as a Bonus Action. The condition ends on you immediately after you take an action, a Bonus Action, or a Reaction.\n\t**Shadowy Form**: While within Dim Light or Darkness, you have Resistance to all damage except Psychic and Radiant.",
-	"category": "Epic Boon"
+	"category": "Epic Boon",
+	"improveAbility": [["any", 1, 30]]
 }

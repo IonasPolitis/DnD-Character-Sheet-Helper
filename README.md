@@ -346,9 +346,10 @@ By adding a pipe character (|) to an item key in your class.json or backgrounds.
 
 The `grantedSubclases` variable grants the player the Sublcasses that are included in the json file entered and are given to the player on the level it is placed at.
 
-The `granted-feat` variable automatically grants the player a certain feat when that level is reached and can be viewd in the "Extra Feats" section.
-
-The `bility-score-improvement` specifically will trigger the option on the Level up button to improve your ability scores as per the Player's Handbook.
+The `grantedFeats` variable gives the player feat choices or automatic feats when that level is reached. The array can contain:
+- Specific feat filenames (e.g. `"actor"`, `"alert"`): directly grants the feat if only one is listed, or offers a choice between them.
+- Router filenames (e.g. `"general-feats"`, `"epic-boon-feats"`): provides a secondary dropdown allowing the player to pick any feat within that category.
+- `"ability-score-improvement"`: triggers the standard Ability Score Improvement milestone (+2 to one stat or +1 to two stats) in the Level Up modal.
 
 The `uses` variable sets how many uses this feature has, and when used checkboxes will appear at the top right of that feature's line acording to the value it was set. For the amount of uses it accepts single numbers and in string it accepts math (+, -,, *, /) and will also automatically imput the value of a core DnD ability.
 
@@ -378,9 +379,15 @@ The `speedMod` variable on a class/subclass feature or feat sets `DnD_speedMod` 
 	"name": "<Feat_Name>",
 	"description": "<Feat_Description>",
       "uses": ["<Number-of-Uses>", "<short/long>" ], // <optional>
-      "speedMod": <num> // <optional>
+      "speedMod": <num>, // <optional>
+      "improveAbility": [ [ "<Ability-to-Improve>", <value>, <maxCap> ], ... ] // <optional>
 }
 ```
+
+The `improveAbility` array defines ability score increases granted by this feat. It accepts 3-element tuples `[ [ "<Ability-to-Improve>", <value>, <maxCap> ], ... ]`:
+- `<Ability-to-Improve>`: lowercase ability name (e.g. `"strength"`), multiple choice joined with `|` (e.g. `"strength|dexterity"` or `"intelligence|wisdom|charisma"`), or `"any"`.
+- `<value>`: integer bonus to add (typically `1`).
+- `<maxCap>`: maximum score cap for the ability (typically `20` for General Feats or `30` for Epic Boons).
 
 The `uses` variable sets how many uses this feature has, and when used checkboxes will appear at the top right of that feature's line acording to the value it was set. For the amount of uses it accepts single numbers and in string it accepts math (+, -,, *, /) and will also automatically imput the value of a core DnD ability.
 

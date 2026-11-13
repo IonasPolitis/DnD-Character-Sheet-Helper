@@ -2,5 +2,6 @@
 	"name": "Speedy",
 	"description": "You gain the following benefits.\n\t**Ability Score Increase**: Increase your Dexterity or Constitution score by 1, to a maximum of 20.\n\t**Speed Increase**: Your Speed increases by 10 feet.\n\t**Dash over Difficult Terrain**: When you take the Dash action on your turn, Difficult Terrain doesn't cost you extra movement for the rest of that turn.\n\t**Agile Movement**: Opportunity Attacks have Disadvantage against you.",
 	"category": "General Feat",
+	"improveAbility": [["dexterity|constitution", 1, 20]],
 	"speedMod": 10
 }

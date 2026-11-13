@@ -1,5 +1,6 @@
 {
 	"name": "Observant",
 	"description": "You gain the following benefits.\n\t**Ability Score Increase**: Increase your Intelligence or Wisdom score by 1, to a maximum of 20.\n\t**Keen Observer**: Choose one of the following skills: Insight, Investigation, or Perception. If you lack proficiency with the chosen skill, you gain proficiency in it, and if you already have proficiency in it, you gain Expertise in it.\n\t**Quick Search**: You can take the Search action as a Bonus Action.",
-	"category": "General Feat"
+	"category": "General Feat",
+	"improveAbility": [["intelligence|wisdom", 1, 20]]
 }

@@ -2,5 +2,6 @@
 	"name": "Boon of Speed",
 	"description": "You gain the following benefits.\n\t**Ability Score Increase**: Increase one ability score of your choice by 1, to a maximum of 30.\n\t**Escape Artist**: As a Bonus Action, you can take the Disengage action, which also ends the Grappled condition on you.\n\t**Quickness**: Your Speed increases by 30 feet.",
 	"category": "Epic Boon",
+	"improveAbility": [["any", 1, 30]],
 	"speedMod": 30
 }
