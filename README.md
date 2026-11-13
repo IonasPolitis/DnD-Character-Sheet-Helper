@@ -5,9 +5,9 @@
 
 > [!NOTE]
 > **Player Self-Policing & Modularity:**
-> Due to the openness and modularity of this plugin, the decision was made to let players choose whatever they want without creating unnecessary filtering, restrictions, and extra overhead and complexity on plugin's logic and database files. The user of this plugin should use the provided warnings and lack of information given in certain areas as a reminder to always read through the *Player's Handbook* if they need to make a choice that they do not know the implications of or don't have the contents of the option they are about to choose at the top of their heads. Again, this is not a replacement for the *Player's Handbook*, just a simple and easy way to create, manage, and view a player's Character Sheet.
+> Due to the openness and modularity of this plugin, the decision was made to let players choose whatever they want without creating unnecessary filtering, restrictions, and extra overhead and complexity on the plugin's logic and database files. The user of this plugin should use the provided warnings and lack of information given in certain areas as a reminder to always read through the *Player's Handbook* if they need to make a choice that they do not know the implications of or don't have the contents of the option they are about to choose at the top of their heads. Again, this is not a replacement for the *Player's Handbook*, just a simple and easy way to create, manage, and view a player's Character Sheet.
 > 
-> (I'll also remind that the files are not supposed to be super complex, but easily created with the templates given below in case a user wants to make their own Custom Rulebook with Homebrewd Classes, etc.)
+> (I'll also remind that the files are not supposed to be super complex, but easily created with the templates given below in case a user wants to make their own Custom Rulebook with Homebrewed Classes, etc.)
 
 > If there are any races or classes you want me to add to this plugin, make a feature request on GitHub.
 
