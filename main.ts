@@ -471,6 +471,19 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
             void this.syncWeaponMasteriesMarkdown();
         });
 
+        // Sidebar ribbon icon to launch Character Wizard
+        this.addRibbonIcon('wand-2', 'Launch Character Creation Wizard', () => {
+            const view = this.app.workspace.getActiveViewOfType(MarkdownView);
+
+            if (!view) {
+                new Notice("Please open a note first to launch the Wizard.");
+                return;
+            }
+
+            // Launch our new multi-step wizard!
+            new CharacterWizardModal(this.app, this).open();
+        });
+
         this.addCommand({
             id: 'csh-launch-character-wizard',
             name: 'Launch Character Creation Wizard',
@@ -3494,13 +3507,6 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                     }
                 }
             }
-
-            await this.renderDndMarkdown(
-                "> [!TIP]\n> Click or tap on a spell card to view its full description.",
-                wrapper,
-                ctx.sourcePath,
-                renderChild
-            );
 
             el.empty();
             el.appendChild(wrapper);
