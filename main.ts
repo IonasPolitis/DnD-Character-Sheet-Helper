@@ -1249,6 +1249,203 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
         return { totalSlots, breakdown };
     }
 
+    /**
+     * Resolves a character's Initiative modifiers from:
+     * 1. Class & Subclass features (`"initiativeMod": <number | "proficiencyBonus" | AbilityKey>`, e.g. Gloom Stalker Dread Ambusher `"wisdom"`).
+     * 2. Race & Lineage traits (`"initiativeMod": <number | "proficiencyBonus" | AbilityKey>`).
+     * 3. Feats (`"initiativeMod": <number | "proficiencyBonus" | AbilityKey>`, e.g. Alert `"proficiencyBonus"`),
+     *    including `extraFeats`, `backgroundFeat`, and auto-granted feats.
+     * 4. Custom / Miscellaneous Initiative modifier (`DnD_customInitiativeMod`).
+     */
+    async resolveCharacterInitiativeModifiers(
+        classInput: any,
+        classLevelsInput: any,
+        totalLevel: number,
+        extraFeatsInput: any,
+        backgroundFeatInput: any,
+        subclassInput: any,
+        raceInput: any,
+        raceLineageInput: any,
+        statsRecord: Record<string, number>,
+        proficiencyBonus: number,
+        customInitiativeModInput: any,
+        fetchOptions?: any
+    ): Promise<{
+        totalInitiativeMod: number;
+        autoBonus: number;
+        customInitiativeMod: number;
+        breakdown: { source: string; amount: number }[];
+    }> {
+        const opts = fetchOptions || this.settings;
+        const hasValid = (val: any): boolean => {
+            if (val === undefined || val === null) return false;
+            const s = String(val).trim();
+            return s !== "" && !s.startsWith("<");
+        };
+
+        const evaluateInitMod = (rawMod: any): number => {
+            if (rawMod === undefined || rawMod === null || rawMod === "") return 0;
+            if (typeof rawMod === "number" && !isNaN(rawMod)) return rawMod;
+            const cleanedNum = String(rawMod).trim().replace(/^\+/, "");
+            if (cleanedNum !== "" && !isNaN(Number(cleanedNum))) {
+                return Number(cleanedNum);
+            }
+            const norm = String(rawMod).trim().toLowerCase().replace(/[\s_-]+/g, "");
+            if (norm === "proficiencybonus" || norm === "pb") {
+                return Number(proficiencyBonus) || Math.ceil(1 + ((Number(totalLevel) || 1) / 4));
+            }
+            const abilityMap: Record<string, string> = {
+                strength: "strength", str: "strength",
+                dexterity: "dexterity", dex: "dexterity",
+                constitution: "constitution", con: "constitution",
+                intelligence: "intelligence", int: "intelligence",
+                wisdom: "wisdom", wis: "wisdom",
+                charisma: "charisma", cha: "charisma"
+            };
+            const matchedAbility = abilityMap[norm];
+            if (matchedAbility) {
+                const score = Number(statsRecord?.[matchedAbility]) || 10;
+                return Math.floor((score - 10) / 2);
+            }
+            return 0;
+        };
+
+        const breakdown: { source: string; amount: number }[] = [];
+        let autoBonus = 0;
+
+        const classArray = classInput ? (Array.isArray(classInput) ? classInput.filter(hasValid) : (hasValid(classInput) ? [classInput] : [])) : [];
+        const rawSubclassArray = subclassInput ? (Array.isArray(subclassInput) ? subclassInput.filter(hasValid) : (hasValid(subclassInput) ? [subclassInput] : [])) : [];
+        const autoGrantedFeats: string[] = [];
+
+        // 1. Class & Subclass Features
+        for (let idx = 0; idx < classArray.length; idx++) {
+            const className = classArray[idx];
+            const currentClassLevel = (classArray.length > 1 && Array.isArray(classLevelsInput) && classLevelsInput.length > idx)
+                ? Number(classLevelsInput[idx])
+                : (Number(totalLevel) || 1);
+
+            const classData = await getClassData(this.app, opts, className);
+            if (!classData?.features) continue;
+
+            let subclassData: any = null;
+            const subName = rawSubclassArray[idx] || null;
+            const grantedSubFile = this.findGrantedSubclass(classData, currentClassLevel);
+            if (subName && grantedSubFile) {
+                subclassData = await getSubclassData(this.app, opts, grantedSubFile, subName);
+            }
+
+            for (let lvl = 1; lvl <= currentClassLevel; lvl++) {
+                const lvlFeatures: any[] = [
+                    ...(classData.features[lvl.toString()] || []),
+                    ...(subclassData?.[lvl.toString()] || [])
+                ];
+                for (const feature of lvlFeatures) {
+                    if (!feature) continue;
+                    if (feature.initiativeMod !== undefined) {
+                        const val = evaluateInitMod(feature.initiativeMod);
+                        breakdown.push({
+                            source: `${classData.name || className}: ${feature.name || "Feature"}`,
+                            amount: val
+                        });
+                        autoBonus += val;
+                    }
+                    if (Array.isArray(feature.grantedFeats)) {
+                        for (const gf of feature.grantedFeats) {
+                            const gfStr = String(gf).trim();
+                            if (gfStr && !gfStr.endsWith(".json") && gfStr.toLowerCase() !== "ability-score-improvement") {
+                                autoGrantedFeats.push(gfStr);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // 2. Race & Lineage Traits
+        const raceArray = raceInput ? (Array.isArray(raceInput) ? raceInput.filter(hasValid) : (hasValid(raceInput) ? [raceInput] : [])) : [];
+        const lineageClean = hasValid(raceLineageInput) ? String(raceLineageInput).trim().toLowerCase() : "";
+        for (const raceName of raceArray) {
+            const raceData = await getRaceData(this.app, opts, raceName);
+            const raceTraits = raceData?.traits || raceData?.features;
+            if (!Array.isArray(raceTraits)) continue;
+            for (const feature of raceTraits) {
+                if (!feature) continue;
+                if (feature.lineage && String(feature.lineage).trim().toLowerCase() !== lineageClean) continue;
+                if (feature.initiativeMod !== undefined) {
+                    const val = evaluateInitMod(feature.initiativeMod);
+                    breakdown.push({
+                        source: `${raceData.name || raceName}: ${feature.name || "Trait"}`,
+                        amount: val
+                    });
+                    autoBonus += val;
+                }
+                if (Array.isArray(feature.grantedFeats)) {
+                    for (const gf of feature.grantedFeats) {
+                        const gfStr = String(gf).trim();
+                        if (gfStr && !gfStr.endsWith(".json") && gfStr.toLowerCase() !== "ability-score-improvement") {
+                            autoGrantedFeats.push(gfStr);
+                        }
+                    }
+                }
+            }
+        }
+
+        // 3. Feats (extraFeats + backgroundFeat + auto-granted feats)
+        const featList: string[] = [];
+        const addFeat = (f: any) => {
+            if (!hasValid(f)) return;
+            const clean = String(f).trim();
+            if (clean && !featList.some(existing => existing.toLowerCase() === clean.toLowerCase())) {
+                featList.push(clean);
+            }
+        };
+
+        if (Array.isArray(extraFeatsInput)) {
+            extraFeatsInput.forEach(addFeat);
+        } else if (typeof extraFeatsInput === "string") {
+            const trimmed = extraFeatsInput.trim();
+            if (trimmed.startsWith("[")) {
+                try {
+                    const parsed = JSON.parse(trimmed);
+                    if (Array.isArray(parsed)) parsed.forEach(addFeat);
+                } catch {
+                    addFeat(trimmed);
+                }
+            } else if (trimmed.includes(",")) {
+                trimmed.split(",").forEach(addFeat);
+            } else {
+                addFeat(trimmed);
+            }
+        } else {
+            addFeat(extraFeatsInput);
+        }
+        addFeat(backgroundFeatInput);
+        autoGrantedFeats.forEach(addFeat);
+
+        for (const featId of featList) {
+            const featData = await getExtraFeat(this.app, opts, featId);
+            if (!featData) continue;
+            if (featData.initiativeMod !== undefined) {
+                const val = evaluateInitMod(featData.initiativeMod);
+                breakdown.push({
+                    source: `${featData.name || formatFeatureOrSlug(featId)} (Feat)`,
+                    amount: val
+                });
+                autoBonus += val;
+            }
+        }
+
+        const customInitiativeMod = Number(String(customInitiativeModInput ?? 0).trim().replace(/^\+/, "")) || 0;
+        const totalInitiativeMod = autoBonus + customInitiativeMod;
+
+        return {
+            totalInitiativeMod,
+            autoBonus,
+            customInitiativeMod,
+            breakdown
+        };
+    }
+
     async processDnDFeaturesBlock(source: string, el: HTMLElement, ctx: MarkdownPostProcessorContext) {
         // 1. Create a Render Child to manage the lifecycle and reactivity
         const renderChild = new MarkdownRenderChild(el);
@@ -3439,6 +3636,42 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                 rightSide.setText(formattedTotal);
             }
 
+            // 4. Render Tool Proficiencies Footer Badge (if present)
+            const rawTools = resolveValue(blockData.tools ?? blockData.toolProficiencies) ?? frontmatter["DnD_toolProficiencies"];
+            const parseToolsList = (rawVal: any): string[] => {
+                if (rawVal === undefined || rawVal === null || rawVal === "") return [];
+                if (Array.isArray(rawVal)) {
+                    return rawVal
+                        .map(item => String(resolveValue(item) ?? "").trim())
+                        .filter(item => item !== "" && !item.startsWith("<"));
+                }
+                if (typeof rawVal === "string") {
+                    const trimmed = rawVal.trim();
+                    if (!trimmed || trimmed.startsWith("<")) return [];
+                    if (trimmed.startsWith("[")) {
+                        try {
+                            const parsed = JSON.parse(trimmed);
+                            return parseToolsList(parsed);
+                        } catch {
+                            // fall through
+                        }
+                    }
+                    return trimmed
+                        .split(",")
+                        .map(s => s.trim())
+                        .filter(s => s !== "" && !s.startsWith("<"));
+                }
+                return [];
+            };
+
+            const toolsList = parseToolsList(rawTools);
+            if (toolsList.length > 0) {
+                const toolsRow = skillsWindow.createDiv({ cls: "dnd-skills-tools-row" });
+                const toolsBadge = toolsRow.createDiv({ cls: "dnd-info-languages-badge" });
+                toolsBadge.createEl("span", { text: "TOOL PROFICIENCIES", cls: "dnd-info-languages-label" });
+                toolsBadge.createEl("span", { text: toolsList.join(", "), cls: "dnd-info-languages-value" });
+            }
+
             el.empty();
             el.appendChild(wrapper);
         };
@@ -3832,12 +4065,53 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                     sublabel: armorName
                 });
 
-                // 2. Initiative
+                const level = Number(resolveValue(blockData.level) ?? frontmatter["DnD_level"]) || 1;
+                const DnD_proficiency_bonus = Number(
+                    resolveValue(blockData.DnD_proficiency_bonus ?? blockData.proficiencyBonus ?? blockData.proficiency_bonus) ?? frontmatter["DnD_proficiencyBonus"]
+                ) || Math.ceil(1 + (level / 4));
+
+                // 2. Initiative (Dexterity Modifier + DnD_initiativeMod / automatic feat & feature modifiers)
                 const explicitInit = resolveValue(blockData.initiative);
+                const rawInitMod = resolveValue(
+                    blockData.initiativeMod ?? blockData.DnD_initiative_mod ?? blockData.DnD_initiativeMod
+                ) ?? frontmatter["DnD_initiativeMod"];
+
+                let resolvedInitMod = 0;
+                if (rawInitMod !== undefined && rawInitMod !== null && String(rawInitMod).trim() !== "") {
+                    resolvedInitMod = parseNumericMod(rawInitMod, 0);
+                } else {
+                    const statsForInit: Record<string, number> = {
+                        strength: Number(resolveValue(blockData.strength) ?? frontmatter["DnD_strength"]) || 10,
+                        dexterity: dexScore,
+                        constitution: Number(resolveValue(blockData.constitution) ?? frontmatter["DnD_constitution"]) || 10,
+                        intelligence: Number(resolveValue(blockData.intelligence) ?? frontmatter["DnD_intelligence"]) || 10,
+                        wisdom: Number(resolveValue(blockData.wisdom) ?? frontmatter["DnD_wisdom"]) || 10,
+                        charisma: Number(resolveValue(blockData.charisma) ?? frontmatter["DnD_charisma"]) || 10
+                    };
+                    const initCalc = await this.resolveCharacterInitiativeModifiers(
+                        frontmatter["DnD_class"],
+                        frontmatter["DnD_classLevels"],
+                        level,
+                        frontmatter["DnD_extraFeats"],
+                        frontmatter["DnD_backgroundFeat"],
+                        frontmatter["DnD_subclass"] ?? frontmatter["DnD_Subclass"],
+                        frontmatter["DnD_race"],
+                        frontmatter["DnD_raceLineage"],
+                        statsForInit,
+                        DnD_proficiency_bonus,
+                        frontmatter["DnD_customInitiativeMod"],
+                        this.settings
+                    );
+                    resolvedInitMod = initCalc.totalInitiativeMod;
+                }
+
                 const initVal = (explicitInit !== undefined && explicitInit !== null && explicitInit !== "" && !isNaN(Number(explicitInit)))
                     ? Number(explicitInit)
-                    : dexMod;
-                const initSublabel = formatTextValue(blockData.initiativeSublabel, "Dexterity Modifier");
+                    : (dexMod + resolvedInitMod);
+                const defaultInitSublabel = resolvedInitMod !== 0
+                    ? `Dex (${formatSigned(dexMod)}) + Bonus (${formatSigned(resolvedInitMod)})`
+                    : "Dexterity Modifier";
+                const initSublabel = formatTextValue(blockData.initiativeSublabel, defaultInitSublabel);
 
                 cards.push({
                     label: "INITIATIVE",
@@ -3849,11 +4123,6 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                 const attackStatRaw = formatTextValue(blockData.attackStat ?? frontmatter["DnD_attackStat"], "strength").toLowerCase();
                 const attackStatScore = Number(resolveValue(blockData[attackStatRaw]) ?? frontmatter[`DnD_${attackStatRaw}`]) || 10;
                 const attackStatMod = Math.floor((attackStatScore - 10) / 2);
-
-                const level = Number(resolveValue(blockData.level) ?? frontmatter["DnD_level"]) || 1;
-                const DnD_proficiency_bonus = Number(
-                    resolveValue(blockData.DnD_proficiency_bonus ?? blockData.proficiencyBonus ?? blockData.proficiency_bonus) ?? frontmatter["DnD_proficiencyBonus"]
-                ) || Math.ceil(1 + (level / 4));
 
                 const rawIncludeProf = resolveValue(blockData.attackProficiency) ?? frontmatter["DnD_attackProficiency"];
                 const includeProf = rawIncludeProf !== undefined && rawIncludeProf !== null && rawIncludeProf !== ""
@@ -4711,7 +4980,7 @@ class ShortRestModal extends Modal {
         cancelBtn.onclick = () => this.close();
 
         const finishBtn = footer.createEl("button", {
-            text: "✨ Finish Short Rest",
+            text: "Finish Short Rest",
             cls: "mod-cta"
         });
         finishBtn.onclick = async () => {
@@ -4764,6 +5033,7 @@ class CharacterWizardModal extends Modal {
     availableItems: { id: string; name: string; type: string }[] = [];
     availableWeapons: { id: string; name: string; damage: string; mastery: string }[] = [];
     availableArmors: { id: string; name: string; ac: string; category: string }[] = [];
+    availableTools: string[] = [];
 
     // Expanded storage for all our new choices
     wizardData: Record<string, any> = {
@@ -4773,7 +5043,7 @@ class CharacterWizardModal extends Modal {
         weapon: "", weaponDamage: "", armor: "", armorAc: "",
         isWeaponCustom: false, isArmorCustom: false,
         weaponMasteries: [] as string[],
-        languages: "", extraFeats: "", speed: 30, maxHealth: 0,
+        languages: "", extraFeats: "", toolProficiencies: "", speed: 30, maxHealth: 0,
         chosenSkills: [],
         chosenBgSkills: [],
         chosenAbilityBonuses: [],
@@ -4868,6 +5138,8 @@ class CharacterWizardModal extends Modal {
         const allItemsMap = new Map<string, { id: string; name: string; type: string }>();
         const weaponsMap = new Map<string, { id: string; name: string; damage: string; mastery: string }>();
         const armorsMap = new Map<string, { id: string; name: string; ac: string; category: string }>();
+        const toolsSet = new Set<string>();
+        const extraToolIds = new Set(["disguise-kit", "forgery-kit", "herbalism-kit", "poisoners-kit", "thieves-tools", "navigators-tools"]);
 
         for (const key of itemLookupKeys) {
             const data = await getItemData(this.app, this.plugin.settings, key);
@@ -4878,6 +5150,15 @@ class CharacterWizardModal extends Modal {
             const mapKey = displayName.toLowerCase();
 
             allItemsMap.set(mapKey, { id: key, name: displayName, type: typeLower });
+
+            if (
+                typeLower === "artisans-tool" ||
+                typeLower === "musical-instrument" ||
+                typeLower === "gaming-set" ||
+                extraToolIds.has(String(key).toLowerCase().trim())
+            ) {
+                toolsSet.add(displayName);
+            }
 
             if (typeLower.includes("weapon")) {
                 const masteryInfo = data.mastery
@@ -4897,6 +5178,7 @@ class CharacterWizardModal extends Modal {
         this.availableItems = Array.from(allItemsMap.values()).sort((a, b) => a.name.localeCompare(b.name));
         this.availableWeapons = Array.from(weaponsMap.values()).sort((a, b) => a.name.localeCompare(b.name));
         this.availableArmors = Array.from(armorsMap.values()).sort((a, b) => a.name.localeCompare(b.name));
+        this.availableTools = Array.from(toolsSet).sort((a, b) => a.localeCompare(b));
     }
 
     // Main rendering engine for the Wizard
@@ -5446,6 +5728,40 @@ class CharacterWizardModal extends Modal {
         const featInput = featDiv.createEl("input", { type: "text", value: this.wizardData.extraFeats, cls: "dnd-modal-form-input" });
         featInput.placeholder = "Tough, Alert...";
         featInput.onchange = (e) => this.wizardData.extraFeats = (e.target as HTMLInputElement).value;
+
+        // Tool Proficiencies Row (Comma-separated input + Quick-Add Rulebook Tool Dropdown)
+        const toolsGrid = container.createDiv({ cls: "dnd-form-grid-2" });
+        const toolsInputDiv = toolsGrid.createDiv();
+        toolsInputDiv.createEl("label", { text: "Tool Proficiencies: ", cls: "dnd-form-label-sm" });
+        const toolsInput = toolsInputDiv.createEl("input", {
+            type: "text",
+            value: this.wizardData.toolProficiencies || "",
+            cls: "dnd-modal-form-input"
+        });
+        toolsInput.placeholder = "Thieves' Tools, Herbalism Kit...";
+        toolsInput.oninput = (e) => this.wizardData.toolProficiencies = (e.target as HTMLInputElement).value;
+
+        const toolsSelectDiv = toolsGrid.createDiv();
+        toolsSelectDiv.createEl("label", { text: "Quick-Add Rulebook Tool: ", cls: "dnd-form-label-sm" });
+        const toolsSelect = toolsSelectDiv.createEl("select", { cls: "dnd-modal-form-input" });
+        toolsSelect.createEl("option", { text: "-- Select a Tool to Add --", value: "" });
+        this.availableTools.forEach(toolName => {
+            toolsSelect.createEl("option", { text: toolName, value: toolName });
+        });
+        toolsSelect.onchange = () => {
+            const chosenTool = toolsSelect.value;
+            if (!chosenTool) return;
+            const currentTools = String(this.wizardData.toolProficiencies || "")
+                .split(",")
+                .map(t => t.trim())
+                .filter(Boolean);
+            if (!currentTools.some(t => t.toLowerCase() === chosenTool.toLowerCase())) {
+                currentTools.push(chosenTool);
+                this.wizardData.toolProficiencies = currentTools.join(", ");
+                toolsInput.value = this.wizardData.toolProficiencies;
+            }
+            toolsSelect.value = "";
+        };
 
         // HELPER: Extracts flexible ('|') item choice slots from a startingEquipment option
         interface FlexibleItemSlot {
@@ -6227,6 +6543,7 @@ class CharacterWizardModal extends Modal {
         injectListYAML("DnD_class", this.wizardData.dndClass);
         injectListYAML("DnD_subclass", this.wizardData.subclass);
         injectListYAML("DnD_languages", this.wizardData.languages);
+        injectListYAML("DnD_toolProficiencies", this.wizardData.toolProficiencies);
         injectListYAML("DnD_extraFeats", this.wizardData.extraFeats);
         injectListYAML("DnD_classChosenItems", this.wizardData.classChosenItems);
         injectListYAML("DnD_backgroundChosenItems", this.wizardData.backgroundChosenItems);
@@ -6234,6 +6551,21 @@ class CharacterWizardModal extends Modal {
         injectYAML("DnD_hideFeature", `'[]'`);
 
         // --- Equipment & Combat Formula variables ---
+        const finalInitiativeCalc = await this.plugin.resolveCharacterInitiativeModifiers(
+            this.wizardData.dndClass,
+            [Number(this.wizardData.level) || 1],
+            Number(this.wizardData.level) || 1,
+            wizardExtraFeats,
+            bgDataStore?.feat || bgFeat,
+            this.wizardData.subclass,
+            this.wizardData.race,
+            this.wizardData.raceLineage,
+            wizardStatsRecord,
+            DnD_proficiency_bonus,
+            0,
+            this.plugin.settings
+        );
+
         const finalMasteryCalc = await this.plugin.resolveCharacterWeaponMasterySlots(
             this.wizardData.dndClass,
             [Number(this.wizardData.level) || 1],
@@ -6267,6 +6599,8 @@ class CharacterWizardModal extends Modal {
         injectYAML("DnD_hitDice", `'${serializeHitDiceState(DnD_hit_dice, 0)}'`);
         injectYAML("DnD_speed", this.wizardData.speed);
         injectYAML("DnD_speedMod", initialSpeedMod);
+        injectYAML("DnD_initiativeMod", finalInitiativeCalc.totalInitiativeMod);
+        injectYAML("DnD_customInitiativeMod", 0);
         injectYAML("DnD_strength", wizardStatsRecord.strength);
         injectYAML("DnD_dexterity", wizardStatsRecord.dexterity);
         injectYAML("DnD_constitution", wizardStatsRecord.constitution);
@@ -7848,11 +8182,14 @@ class ManageCharacterModal extends Modal {
     currentSavingThrows: AbilityKey[] = [];
     // 2. AC State
     currentAcMod: number = 0;
-    // 2b. Speed State
+    // 2b. Speed & Initiative State
     currentSpeed: number = 30;
     currentSpeedMod: number = 0;
     currentCustomSpeedMod: number = 0;
     speedBreakdown: SpeedModifierBreakdown | null = null;
+    currentInitiativeMod: number = 0;
+    currentCustomInitiativeMod: number = 0;
+    initiativeBreakdown: { source: string; amount: number }[] = [];
     // 3. Attack State
     currentAttackStat: string = "strength";
     addAttackProficiency: boolean = true;
@@ -7860,8 +8197,10 @@ class ManageCharacterModal extends Modal {
     weaponMasteryState: WeaponMasteryState = { available: 0, mastered: [] };
     weaponMasteryBreakdown: { source: string; count: number }[] = [];
     availableMasteryWeapons: { id: string; name: string; mastery: string }[] = [];
-    // 4. Skills State
+    // 4. Skills & Tools State
     currentExtraSkills: string[] = [];
+    currentToolProficiencies: string[] = [];
+    availableTools: string[] = [];
     baseProficiencies: [string, string][] = [];
     allSkills = [
         "Acrobatics", "Animal Handling", "Arcana", "Athletics", "Deception",
@@ -7931,6 +8270,36 @@ class ManageCharacterModal extends Modal {
         }
         this.currentSpeedMod = autoBonus + this.currentCustomSpeedMod;
 
+        // Fetch Initiative Breakdown & Custom Initiative Modifier
+        const charLevelForInit = Number(frontmatter["DnD_level"]) || 1;
+        const profBonusForInit = Number(frontmatter["DnD_proficiencyBonus"]) || Math.ceil(1 + (charLevelForInit / 4));
+        const bgDataForInit = frontmatter["DnD_background"]
+            ? await getBackgroundData(this.app, this.plugin.settings, frontmatter["DnD_background"])
+            : null;
+        const initCalc = await this.plugin.resolveCharacterInitiativeModifiers(
+            frontmatter["DnD_class"],
+            frontmatter["DnD_classLevels"],
+            charLevelForInit,
+            frontmatter["DnD_extraFeats"],
+            bgDataForInit?.feat || frontmatter["DnD_backgroundFeat"],
+            frontmatter["DnD_subclass"] ?? frontmatter["DnD_Subclass"],
+            frontmatter["DnD_race"],
+            frontmatter["DnD_raceLineage"],
+            this.currentStats,
+            profBonusForInit,
+            0,
+            this.plugin.settings
+        );
+        this.initiativeBreakdown = initCalc.breakdown;
+        if (frontmatter["DnD_customInitiativeMod"] !== undefined && frontmatter["DnD_customInitiativeMod"] !== null && frontmatter["DnD_customInitiativeMod"] !== "") {
+            this.currentCustomInitiativeMod = Number(frontmatter["DnD_customInitiativeMod"]) || 0;
+        } else if (frontmatter["DnD_initiativeMod"] !== undefined && frontmatter["DnD_initiativeMod"] !== null && frontmatter["DnD_initiativeMod"] !== "") {
+            this.currentCustomInitiativeMod = (Number(frontmatter["DnD_initiativeMod"]) || 0) - initCalc.autoBonus;
+        } else {
+            this.currentCustomInitiativeMod = 0;
+        }
+        this.currentInitiativeMod = initCalc.autoBonus + this.currentCustomInitiativeMod;
+
         // Fetch Attack
         this.extraAttackMod = Number(frontmatter["DnD_attackRollMod"]) || 0;
         if (frontmatter["DnD_attackStat"]) {
@@ -7971,19 +8340,50 @@ class ManageCharacterModal extends Modal {
             }
         }
         const masteryWeps: { id: string; name: string; mastery: string }[] = [];
+        const toolsSet = new Set<string>();
+        const extraToolIds = new Set(["disguise-kit", "forgery-kit", "herbalism-kit", "poisoners-kit", "thieves-tools", "navigators-tools"]);
         for (const key of itemLookupKeys) {
             const data = await getItemData(this.app, this.plugin.settings, key);
-            if (!data || !data.type || !data.mastery) continue;
-            if (!String(data.type).toLowerCase().includes("weapon")) continue;
+            if (!data || !data.type) continue;
+            const typeLower = String(data.type).toLowerCase().trim().replace(/['"]/g, '').replace(/\s+/g, '-');
+            const displayName = String(data.name || key).trim();
+            if (
+                typeLower === "artisans-tool" ||
+                typeLower === "musical-instrument" ||
+                typeLower === "gaming-set" ||
+                extraToolIds.has(String(key).toLowerCase().trim())
+            ) {
+                toolsSet.add(displayName);
+            }
+            if (!data.mastery || !typeLower.includes("weapon")) continue;
             const masteryInfo = await getWeaponMasteryDescription(this.app, this.plugin.settings, data.mastery);
             if (!masteryInfo) continue;
             masteryWeps.push({
                 id: sanitizeWeaponSlug(key),
-                name: String(data.name || key).trim(),
+                name: displayName,
                 mastery: masteryInfo.name
             });
         }
         this.availableMasteryWeapons = masteryWeps.sort((a, b) => a.name.localeCompare(b.name));
+        this.availableTools = Array.from(toolsSet).sort((a, b) => a.localeCompare(b));
+
+        // Fetch Tool Proficiencies from Frontmatter (DnD_toolProficiencies)
+        let toolsRaw = frontmatter["DnD_toolProficiencies"] || [];
+        if (typeof toolsRaw === "string") {
+            const trimmed = toolsRaw.trim();
+            if (trimmed.startsWith("[")) {
+                try { toolsRaw = JSON.parse(trimmed); } catch { toolsRaw = []; }
+            } else if (trimmed !== "" && !trimmed.startsWith("<")) {
+                toolsRaw = trimmed.split(",").map((s: string) => s.trim());
+            } else {
+                toolsRaw = [];
+            }
+        }
+        if (Array.isArray(toolsRaw)) {
+            this.currentToolProficiencies = toolsRaw
+                .map((t: any) => String(t ?? "").trim())
+                .filter((t: string) => t !== "" && !t.startsWith("<"));
+        }
 
         // Fetch Skills from Frontmatter Database (Force Strings)
         let profsRaw = frontmatter["DnD_skillProficiencies"] || [];
@@ -8466,6 +8866,60 @@ class ManageCharacterModal extends Modal {
                 text: "Note: In D&D 5.5e, Monk Unarmored Movement scales automatically and replaces earlier tiers. Speedy and other feats stack additively with class speed.",
                 cls: "dnd-form-note"
             });
+
+            // --- INITIATIVE ADJUSTMENTS SECTION ---
+            this.contentContainer.createEl("h4", { text: "Initiative Adjustments", cls: "dnd-manage-section-title" });
+
+            const initAutoBonus = this.initiativeBreakdown.reduce((sum, item) => sum + item.amount, 0);
+            const initBreakdownCard = this.contentContainer.createDiv({ cls: "dnd-form-card" });
+            initBreakdownCard.createEl("label", { text: "Class, Subclass & Feat Initiative Bonuses (Automatic):", cls: "dnd-form-label-bold" });
+
+            if (this.initiativeBreakdown.length === 0) {
+                initBreakdownCard.createEl("p", {
+                    text: "No class features or feats currently grant initiative bonuses (e.g., Alert, Dread Ambusher).",
+                    cls: "dnd-form-hint"
+                });
+            } else {
+                this.initiativeBreakdown.forEach(b => {
+                    const row = initBreakdownCard.createDiv({ cls: "dnd-modal-list-row" });
+                    const signedAmt = b.amount >= 0 ? `+${b.amount}` : `${b.amount}`;
+                    row.createEl("span", {
+                        text: `${b.source}: ${signedAmt}`,
+                        cls: "dnd-modal-row-name"
+                    });
+                });
+            }
+
+            const customInitDiv = this.contentContainer.createDiv({ cls: "dnd-form-group" });
+            customInitDiv.createEl("label", { text: "Miscellaneous / Gear Initiative Modifier (Magic Items, Buffs):", cls: "dnd-form-label-sub" });
+            const customInitInput = customInitDiv.createEl("input", {
+                type: "number",
+                value: String(this.currentCustomInitiativeMod),
+                cls: "dnd-modal-form-input"
+            });
+
+            const initPreviewCard = this.contentContainer.createDiv({ cls: "dnd-form-card-active" });
+            const updateInitPreview = () => {
+                const dexMod = Math.floor(((Number(this.currentStats.dexterity) || 10) - 10) / 2);
+                this.currentInitiativeMod = initAutoBonus + this.currentCustomInitiativeMod;
+                const totalInit = dexMod + this.currentInitiativeMod;
+                const fmtSigned = (n: number) => (n >= 0 ? `+${n}` : `${n}`);
+                initPreviewCard.empty();
+                initPreviewCard.createEl("strong", {
+                    text: `Total Initiative Bonus: ${fmtSigned(totalInit)}`
+                });
+                const modText = this.currentInitiativeMod !== 0
+                    ? ` (Dex ${fmtSigned(dexMod)} + ${fmtSigned(this.currentInitiativeMod)} Modifier)`
+                    : ` (Dex ${fmtSigned(dexMod)})`;
+                initPreviewCard.createSpan({ text: modText });
+            };
+
+            customInitInput.oninput = (e) => {
+                this.currentCustomInitiativeMod = Number((e.target as HTMLInputElement).value) || 0;
+                updateInitPreview();
+            };
+
+            updateInitPreview();
         }
 
         else if (this.activeTab === "skills") {
@@ -8501,6 +8955,51 @@ class ManageCharacterModal extends Modal {
             addBtn.onclick = () => {
                 if (selectEl.value) {
                     this.currentExtraSkills.push(selectEl.value);
+                    this.renderContent();
+                }
+            };
+
+            // --- TOOL PROFICIENCIES SECTION ---
+            this.contentContainer.createEl("h4", { text: "Tool Proficiencies", cls: "dnd-manage-section-title" });
+
+            const toolsListDiv = this.contentContainer.createDiv({ cls: "dnd-manage-scroll-list" });
+            if (this.currentToolProficiencies.length === 0) {
+                toolsListDiv.createEl("p", { text: "No tool proficiencies added.", cls: "dnd-manage-empty-box" });
+            } else {
+                this.currentToolProficiencies.forEach((toolName, index) => {
+                    const row = toolsListDiv.createDiv({ cls: "dnd-modal-list-row" });
+                    row.createEl("span", { text: toolName, cls: "dnd-modal-row-name" });
+
+                    const delBtn = row.createEl("button", { text: "✕", cls: "dnd-modal-del-btn" });
+                    delBtn.onclick = () => {
+                        this.currentToolProficiencies.splice(index, 1);
+                        this.renderContent();
+                    };
+                });
+            }
+
+            const toolAddDiv = this.contentContainer.createDiv({ cls: "dnd-modal-add-bar" });
+            const toolSelectEl = toolAddDiv.createEl("select", { cls: "dnd-flex-2" });
+            toolSelectEl.createEl("option", { text: "-- Select Rulebook Tool --", value: "" });
+            const existingToolsLower = new Set(this.currentToolProficiencies.map(t => t.toLowerCase().trim()));
+            this.availableTools.forEach(tName => {
+                if (!existingToolsLower.has(tName.toLowerCase().trim())) {
+                    toolSelectEl.createEl("option", { text: tName, value: tName });
+                }
+            });
+
+            const customToolInput = toolAddDiv.createEl("input", {
+                type: "text",
+                cls: "dnd-flex-2",
+                attr: { placeholder: "Or custom tool..." }
+            });
+
+            const addToolBtn = toolAddDiv.createEl("button", { text: "Add Tool" });
+            addToolBtn.onclick = () => {
+                const chosen = customToolInput.value.trim() || toolSelectEl.value.trim();
+                if (!chosen) return;
+                if (!this.currentToolProficiencies.some(t => t.toLowerCase().trim() === chosen.toLowerCase())) {
+                    this.currentToolProficiencies.push(chosen);
                     this.renderContent();
                 }
             };
@@ -8673,6 +9172,29 @@ class ManageCharacterModal extends Modal {
         updates["DnD_speed"] = this.currentSpeed;
         updates["DnD_customSpeedMod"] = this.currentCustomSpeedMod;
         updates["DnD_speedMod"] = this.currentSpeedMod;
+
+        // Recalculate Initiative Modifiers (in case Ability Scores like WIS changed in Stats tab)
+        const profBonusForInitSave = Number(frontmatter["DnD_proficiencyBonus"]) || Math.ceil(1 + (level / 4));
+        const bgDataForInitSave = frontmatter["DnD_background"]
+            ? await getBackgroundData(this.app, this.plugin.settings, frontmatter["DnD_background"])
+            : null;
+        const initCalcSave = await this.plugin.resolveCharacterInitiativeModifiers(
+            dndClass,
+            classLevels,
+            level,
+            frontmatter["DnD_extraFeats"],
+            bgDataForInitSave?.feat || frontmatter["DnD_backgroundFeat"],
+            frontmatter["DnD_subclass"] ?? frontmatter["DnD_Subclass"],
+            frontmatter["DnD_race"],
+            frontmatter["DnD_raceLineage"],
+            this.currentStats,
+            profBonusForInitSave,
+            this.currentCustomInitiativeMod,
+            this.plugin.settings
+        );
+        updates["DnD_customInitiativeMod"] = this.currentCustomInitiativeMod;
+        updates["DnD_initiativeMod"] = initCalcSave.totalInitiativeMod;
+
         updates["DnD_attackRollMod"] = this.extraAttackMod;
         updates["DnD_attackStat"] = this.currentAttackStat;
         updates["DnD_attackProficiency"] = this.addAttackProficiency;
@@ -8681,10 +9203,11 @@ class ManageCharacterModal extends Modal {
             this.weaponMasteryState.mastered
         );
 
-        // 3. Process Skills Database
+        // 3. Process Skills & Tools Database
         const combinedProficiencies = [...this.baseProficiencies];
         this.currentExtraSkills.forEach(s => combinedProficiencies.push([s, "extra"]));
         updates["DnD_skillProficiencies"] = JSON.stringify(combinedProficiencies);
+        updates["DnD_toolProficiencies"] = this.currentToolProficiencies;
 
         // 4. Process Item Bonuses Database
         updates["DnD_skillBonuses"] = JSON.stringify(this.currentSkillBonuses);
@@ -9828,6 +10351,23 @@ class LevelUpModal extends Modal {
         const existingMasteryState = parseWeaponMasteryState(frontmatter["DnD_weaponMastery"]);
         updates["DnD_weaponMastery"] = serializeWeaponMasteryState(masteryCalc.totalSlots, existingMasteryState.mastered);
 
+        // Recalculate Initiative Modifier on Level Up (Proficiency Bonus, new Feats, or ASI to WIS/etc.)
+        const initCalc = await this.plugin.resolveCharacterInitiativeModifiers(
+            frontmatter["DnD_class"] || this.dndClass,
+            frontmatter["DnD_classLevels"],
+            this.newLevel,
+            existingFeats,
+            bgDataForMastery?.feat || frontmatter["DnD_backgroundFeat"],
+            this.currentSubclass ? [this.currentSubclass] : (frontmatter["DnD_subclass"] ?? frontmatter["DnD_Subclass"]),
+            frontmatter["DnD_race"],
+            frontmatter["DnD_raceLineage"],
+            this.currentStats,
+            DnD_proficiency_bonus,
+            frontmatter["DnD_customInitiativeMod"],
+            this.plugin.settings
+        );
+        updates["DnD_initiativeMod"] = initCalc.totalInitiativeMod;
+
         // 1. Thread-safe Frontmatter Update
         await this.plugin.updateCharacterFrontmatter(this.sourcePath, updates);
 
@@ -10163,6 +10703,16 @@ class SpellbookModal extends Modal {
             };
 
             leftGroup.createEl("span", { text: displayName, cls: "dnd-modal-row-name" });
+            const badgesSpan = leftGroup.createSpan({ cls: "dnd-modal-row-badges" });
+            this.loadSpellJson(spellKey).then((spellData) => {
+                if (!spellData || !badgesSpan.isConnected) return;
+                if (spellData.concentration) {
+                    badgesSpan.createEl("span", { text: "C", cls: "dnd-level-badge dnd-spell-badge-sm", attr: { title: "Concentration" } });
+                }
+                if (spellData.ritual) {
+                    badgesSpan.createEl("span", { text: "R", cls: "dnd-level-badge dnd-badge-combined dnd-spell-badge-sm", attr: { title: "Ritual" } });
+                }
+            });
             leftGroup.onclick = async () => {
                 await this.renderSpellPreview(spellKey, displayName);
             };

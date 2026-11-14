@@ -62,6 +62,7 @@ armor: $string$
 armorAc: $num$
 armorAcBonus: $num$
 armorAcMod: $num$
+initiativeMod: $num$ // <optional>
 attackStat: $string$
 attackRollMod: $num$
 speed: $num$
@@ -92,7 +93,7 @@ The `extras` variables allows you to add your own homebrew abilities right besid
 
 ### DnD Skills:
 
-A Simple widget that displays your character's skills, proficienies, half-proficiencies and experties on those skills, with support for bonuses on certain items.
+A Simple widget that displays your character's skills, proficienies, half-proficiencies and experties on those skills, with support for bonuses on certain items and a Tool Proficiencies badge.
 
 A Sample of the Code Block looks like this:
 ````markdown
@@ -100,6 +101,7 @@ A Sample of the Code Block looks like this:
 proficiencies: $array$
 expertise: $array$
 half_proficiencies: $array$
+tools: $array$ // <optional>
 bonuses: $array$
 ```
 ````
@@ -343,6 +345,7 @@ Cantrips are on "Level 0" and the rest of the Spell Levels are as normal.
                         "grantedFeats": ["<ability-score-improvement>", "<Feat_Name>", "<Feat_Router_Filename>"], // <optional>
                         "uses": ["<Number-of-Uses>", "<short/long>" ], // <optional>
                         "speedMod": <num>, // <optional>
+                        "initiativeMod": "<num | proficiencyBonus | Ability-Name>", // <optional>
                         "weaponMastery": <num>, // <optional>
                         "hide": true // <optional>
                   }
@@ -394,6 +397,7 @@ The `speedMod` variable on a class/subclass feature or feat defines bonus moveme
 	"description": "<Feat_Description>",
       "uses": ["<Number-of-Uses>", "<short/long>" ], // <optional>
       "speedMod": <num>, // <optional>
+      "initiativeMod": "<num | proficiencyBonus | Ability-Name>", // <optional>
       "weaponMastery": <num>, // <optional>
       "improveAbility": [ [ "<Ability-to-Improve>", <value>, <maxCap> ], ... ], // <optional>
       "proficiencySavingThrow": "<improvedAbility | Ability-Name | Array>", // <optional>

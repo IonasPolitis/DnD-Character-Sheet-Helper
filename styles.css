@@ -774,6 +774,26 @@
     flex-shrink: 0;
 }
 
+.dnd-skills-tools-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 12px;
+    padding-top: 10px;
+    border-top: 1px solid var(--dnd-ui-color-border-primary);
+}
+
+.dnd-skills-tools-row .dnd-info-languages-badge {
+    background-color: var(--dnd-ui-color-bg-secondary);
+}
+
+.dnd-modal-row-badges {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-left: 6px;
+}
+
 /* ==========================================
    12. CUSTOM NOTIFICATIONS
    ========================================== */

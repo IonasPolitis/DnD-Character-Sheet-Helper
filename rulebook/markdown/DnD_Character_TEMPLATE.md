@@ -24,9 +24,12 @@ DnD_skillProficiencies:
 DnD_skillExpertise:
 DnD_skillHalfProficiencies:
 DnD_skillBonuses:
+DnD_toolProficiencies:
 DnD_maxHealth:
 DnD_currentHealth:
 DnD_exhaustion:
+DnD_initiativeMod:
+DnD_customInitiativeMod:
 DnD_speed:
 DnD_speedMod:
 DnD_customSpeedMod:
@@ -98,6 +101,7 @@ armor: frontmatter.DnD_armor
 armorAc: frontmatter.DnD_armorAc
 armorAcBonus: frontmatter.DnD_armorAcBonus
 armorAcMod: frontmatter.DnD_armorAcMod
+initiativeMod: frontmatter.DnD_initiativeMod
 attackStat: frontmatter.DnD_attackStat
 attackRollMod: frontmatter.DnD_attackRollMod
 speed: frontmatter.DnD_speed
@@ -110,6 +114,7 @@ proficiencies: frontmatter.DnD_skillProficiencies
 expertise: frontmatter.DnD_skillExpertise
 half_proficiencies: frontmatter.DnD_skillHalfProficiencies
 bonuses: frontmatter.DnD_skillBonuses
+tools: frontmatter.DnD_toolProficiencies
 ```
 ---
 ```dnd-controls

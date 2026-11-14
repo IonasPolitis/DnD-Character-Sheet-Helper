@@ -75,7 +75,8 @@
         "uses": [
           "(wisdom - 10) / 2",
           "long"
-        ]
+        ],
+        "initiativeMod": "wisdom"
       },
       {
         "name": "Gloom Stalker Spells",
