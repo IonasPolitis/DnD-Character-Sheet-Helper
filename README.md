@@ -16,7 +16,7 @@
 
 ## DnD Wizard:
 
-You can use the Character Creation Wizard button on the Obsidian sidebar (wand icon) or the command palette on an open note to create your new DnD Character Sheet, just fill all the availabe fields and options in the wizard and your Character Sheet will be created for you; just be sure to stick to the rules of the Player's Handbook and read throug it to know which options you want to choose.
+You can use the Character Creation Wizard Ribbon Button on the Obsidian sidebar (sword icon) or the command palette on an open note to create your new DnD Character Sheet, just fill all the availabe fields and options in the wizard and your Character Sheet will be created for you; just be sure to stick to the rules of the Player's Handbook and read throug it to know which options you want to choose.
 Everything will be placed in appropriate frontmatter variuables (file properties) that then can be fetched by the rest of the code blocks in the Character Sheet Template provided by the creation wizard.
 
 ## For creating a Character Sheet on your own, you may use one, or all of the code blocks below to assist you into managing your chracter:

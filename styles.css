@@ -2441,3 +2441,14 @@
 .dnd-flex-2 {
     flex: 2;
 }
+
+/* Custom Ribbon Button - Theme Color Sync */
+.csh-ribbon-btn svg,
+.csh-wand-ribbon-btn svg {
+    color: var(--icon-color, var(--text-muted));
+}
+
+.csh-ribbon-btn:hover svg,
+.csh-wand-ribbon-btn:hover svg {
+    color: var(--icon-color-hover, var(--text-normal));
+}

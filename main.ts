@@ -2,7 +2,7 @@ import { App, Plugin, PluginSettingTab, Setting, MarkdownPostProcessorContext, p
 import { getClassData, getSubclassData, getBackgroundData, getRaceData, getExtraFeat, getItemData, getRuleData, getSpellData, getSpellsPoolData, getClassChoiceData, getClassChoiceRouterData, classChoiceRouterRegistry, getFeatMapData, getWeaponMasteriesMap, getWeaponMasteryDescription, buildWeaponMasteriesMarkdown } from './data';
 import { MarkdownNotes, classesMap, racesMap, backgroundsMap, itemsMap } from './registry';
 import { THEMES } from './themes';
-import { WAND_ICON_SVG } from './wand-icon';
+import { RIBBON_ICON_SVG } from './ribbon-icon';
 
 // --- Item cost helpers (PP / GP / SP / CP) ---
 // Item costs are stored as "<amount> <PP|GP|SP|CP>" (e.g. "50 GP", "1 SP", "5 CP").
@@ -472,11 +472,11 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
             void this.syncWeaponMasteriesMarkdown();
         });
 
-        // Register custom wand icon from wand.svg
-        addIcon('csh-wand', WAND_ICON_SVG);
+        // Register custom ribbon icon from ribbon.svg
+        addIcon('csh-ribbon', RIBBON_ICON_SVG);
 
         // Sidebar ribbon icon to launch Character Wizard
-        this.addRibbonIcon('csh-wand', 'Launch Character Creation Wizard', () => {
+        const ribbonIconEl = this.addRibbonIcon('csh-ribbon', 'Launch Character Creation Wizard', () => {
             const view = this.app.workspace.getActiveViewOfType(MarkdownView);
 
             if (!view) {
@@ -487,6 +487,7 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
             // Launch our new multi-step wizard!
             new CharacterWizardModal(this.app, this).open();
         });
+        ribbonIconEl.addClass('csh-ribbon-btn');
 
         this.addCommand({
             id: 'csh-launch-character-wizard',

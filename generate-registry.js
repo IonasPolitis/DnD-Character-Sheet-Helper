@@ -54,13 +54,17 @@ function syncWeaponMasteriesMarkdownFile() {
 
 syncWeaponMasteriesMarkdownFile();
 
-// --- AUTO-GENERATE wand-icon.ts FROM wand.svg ---
-function syncWandIcon() {
-    const wandSvgPath = path.join(__dirname, 'wand.svg');
-    const wandTsPath = path.join(__dirname, 'wand-icon.ts');
-    if (!fs.existsSync(wandSvgPath)) return;
+// --- AUTO-GENERATE ribbon-icon.ts FROM ribbon.svg ---
+function syncRibbonIcon() {
+    let ribbonSvgPath = path.join(__dirname, 'ribbon.svg');
+    if (!fs.existsSync(ribbonSvgPath)) {
+        const fallbackPath = path.join(__dirname, 'wand.svg');
+        if (fs.existsSync(fallbackPath)) ribbonSvgPath = fallbackPath;
+        else return;
+    }
+    const ribbonTsPath = path.join(__dirname, 'ribbon-icon.ts');
     try {
-        const svg = fs.readFileSync(wandSvgPath, 'utf8');
+        const svg = fs.readFileSync(ribbonSvgPath, 'utf8');
         const match = svg.match(/<image[\s\S]*?\/>/);
         let innerContent = '';
         if (match) {
@@ -68,7 +72,10 @@ function syncWandIcon() {
             if (!imageTag.includes(' href=')) {
                 imageTag = imageTag.replace('xlink:href=', 'href=');
             }
-            innerContent = `<defs><clipPath id="csh-wand-clip"><rect x="0" y="0" width="1445" height="1445"/></clipPath></defs><g transform="scale(0.06920415224913495)" clip-path="url(#csh-wand-clip)">${imageTag}</g>`;
+            if (!imageTag.includes('filter=')) {
+                imageTag = imageTag.replace('<image ', '<image filter="url(#csh-ribbon-tint)" ');
+            }
+            innerContent = `<defs><filter id="csh-ribbon-tint" x="0%" y="0%" width="100%" height="100%" color-interpolation-filters="sRGB"><feFlood flood-color="currentColor" result="flood"/><feComposite in="flood" in2="SourceAlpha" operator="in"/></filter><clipPath id="csh-ribbon-clip"><rect x="0" y="0" width="1445" height="1445"/></clipPath></defs><g transform="scale(0.06920415224913495)" clip-path="url(#csh-ribbon-clip)">${imageTag}</g>`;
         } else {
             innerContent = svg.replace(/<\?xml[\s\S]*?\?>/g, '')
                               .replace(/<!--[\s\S]*?-->/g, '')
@@ -76,15 +83,15 @@ function syncWandIcon() {
                               .replace(/<\/svg>/g, '')
                               .trim();
         }
-        const tsContent = `// Auto-generated from wand.svg by generate-registry.js\nexport const WAND_ICON_SVG = ${JSON.stringify(innerContent)};\n`;
-        fs.writeFileSync(wandTsPath, tsContent, 'utf8');
-        console.log('✅ Auto-generated wand-icon.ts successfully!');
+        const tsContent = `// Auto-generated from ribbon.svg by generate-registry.js\nexport const RIBBON_ICON_SVG = ${JSON.stringify(innerContent)};\n`;
+        fs.writeFileSync(ribbonTsPath, tsContent, 'utf8');
+        console.log('✅ Auto-generated ribbon-icon.ts successfully!');
     } catch (e) {
-        console.error('Failed to sync wand icon:', e);
+        console.error('Failed to sync ribbon icon:', e);
     }
 }
 
-syncWandIcon();
+syncRibbonIcon();
 
 // --- MARKDOWN NOTE SCANNER ---
 function scanMarkdownNotes() {
