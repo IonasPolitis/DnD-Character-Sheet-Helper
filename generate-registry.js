@@ -54,36 +54,63 @@ function syncWeaponMasteriesMarkdownFile() {
 
 syncWeaponMasteriesMarkdownFile();
 
-// --- AUTO-GENERATE ribbon-icon.ts FROM ribbon.svg ---
+// --- AUTO-GENERATE ribbon-icon.ts FROM ribbon.png OR ribbon.svg ---
 function syncRibbonIcon() {
-    let ribbonSvgPath = path.join(__dirname, 'ribbon.svg');
-    if (!fs.existsSync(ribbonSvgPath)) {
-        const fallbackPath = path.join(__dirname, 'wand.svg');
-        if (fs.existsSync(fallbackPath)) ribbonSvgPath = fallbackPath;
-        else return;
-    }
+    const pngPath = path.join(__dirname, 'ribbon.png');
+    const svgPath = path.join(__dirname, 'ribbon.svg');
     const ribbonTsPath = path.join(__dirname, 'ribbon-icon.ts');
-    try {
-        const svg = fs.readFileSync(ribbonSvgPath, 'utf8');
-        const match = svg.match(/<image[\s\S]*?\/>/);
-        let innerContent = '';
-        if (match) {
-            let imageTag = match[0];
-            if (!imageTag.includes(' href=')) {
-                imageTag = imageTag.replace('xlink:href=', 'href=');
-            }
-            if (!imageTag.includes('filter=')) {
-                imageTag = imageTag.replace('<image ', '<image filter="url(#csh-ribbon-tint)" ');
-            }
-            innerContent = `<defs><filter id="csh-ribbon-tint" x="0%" y="0%" width="100%" height="100%" color-interpolation-filters="sRGB"><feFlood flood-color="currentColor" result="flood"/><feComposite in="flood" in2="SourceAlpha" operator="in"/></filter><clipPath id="csh-ribbon-clip"><rect x="0" y="0" width="1445" height="1445"/></clipPath></defs><g transform="scale(0.06920415224913495)" clip-path="url(#csh-ribbon-clip)">${imageTag}</g>`;
-        } else {
-            innerContent = svg.replace(/<\?xml[\s\S]*?\?>/g, '')
-                              .replace(/<!--[\s\S]*?-->/g, '')
-                              .replace(/<svg[\s\S]*?>/g, '')
-                              .replace(/<\/svg>/g, '')
-                              .trim();
+
+    let base64Str = '';
+    let w = 100;
+    let h = 100;
+
+    if (fs.existsSync(pngPath)) {
+        const buf = fs.readFileSync(pngPath);
+        base64Str = buf.toString('base64');
+        if (buf.length > 24 && buf[0] === 0x89 && buf[1] === 0x50) {
+            w = buf.readUInt32BE(16);
+            h = buf.readUInt32BE(20);
         }
-        const tsContent = `// Auto-generated from ribbon.svg by generate-registry.js\nexport const RIBBON_ICON_SVG = ${JSON.stringify(innerContent)};\n`;
+    } else if (fs.existsSync(svgPath)) {
+        const svg = fs.readFileSync(svgPath, 'utf8');
+        const m = svg.match(/data:image\/png;base64,\s*([A-Za-z0-9+/=]+)/);
+        if (m) {
+            base64Str = m[1].replace(/\s+/g, '');
+            const buf = Buffer.from(base64Str, 'base64');
+            if (buf.length > 24 && buf[0] === 0x89 && buf[1] === 0x50) {
+                w = buf.readUInt32BE(16);
+                h = buf.readUInt32BE(20);
+            }
+        } else {
+            // Raw SVG fallback
+            const inner = svg.replace(/<\?xml[\s\S]*?\?>/g, '')
+                             .replace(/<!--[\s\S]*?-->/g, '')
+                             .replace(/<svg[\s\S]*?>/g, '')
+                             .replace(/<\/svg>/g, '')
+                             .trim();
+            const tsContent = `// Auto-generated from ribbon.svg by generate-registry.js\nexport const RIBBON_ICON_SVG = ${JSON.stringify(inner)};\n`;
+            fs.writeFileSync(ribbonTsPath, tsContent, 'utf8');
+            console.log('✅ Auto-generated ribbon-icon.ts successfully!');
+            return;
+        }
+    } else {
+        return;
+    }
+
+    if (!base64Str) return;
+
+    try {
+        const targetSize = 78.0;
+        const maxDim = Math.max(w, h) || 1;
+        const scaledW = (w / maxDim) * targetSize;
+        const scaledH = (h / maxDim) * targetSize;
+        const posX = ((100.0 - scaledW) / 2.0).toFixed(2);
+        const posY = ((100.0 - scaledH) / 2.0).toFixed(2);
+        const wStr = scaledW.toFixed(2);
+        const hStr = scaledH.toFixed(2);
+
+        const innerContent = `<defs><filter id="csh-ribbon-tint" x="0%" y="0%" width="100%" height="100%" color-interpolation-filters="sRGB"><feFlood flood-color="currentColor" result="flood"/><feComposite in="flood" in2="SourceAlpha" operator="in"/></filter></defs><image filter="url(#csh-ribbon-tint)" x="${posX}" y="${posY}" width="${wStr}" height="${hStr}" href="data:image/png;base64,${base64Str}"/>`;
+        const tsContent = `// Auto-generated from ribbon.png / ribbon.svg by generate-registry.js\nexport const RIBBON_ICON_SVG = ${JSON.stringify(innerContent)};\n`;
         fs.writeFileSync(ribbonTsPath, tsContent, 'utf8');
         console.log('✅ Auto-generated ribbon-icon.ts successfully!');
     } catch (e) {
