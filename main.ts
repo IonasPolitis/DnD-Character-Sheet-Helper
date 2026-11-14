@@ -4661,28 +4661,13 @@ class ShortRestModal extends Modal {
             cls: "dnd-short-rest-stat-val"
         });
 
-        // 2. Spend Hit Dice Controls
+        // 2. Spend Hit Dice Controls (Physical Die Roll Input)
         const spendCard = contentEl.createDiv({ cls: "dnd-form-card dnd-short-rest-actions" });
         const canSpend = remainingHd > 0 && this.options.currentHealth < this.options.maxHealth;
 
-        const rollBtn = spendCard.createEl("button", {
-            text: `🎲 Roll & Spend Hit Die (1d${this.dieSize} ${conModStr})`,
-            cls: "mod-cta dnd-short-rest-roll-btn"
-        });
-        if (!canSpend) {
-            rollBtn.disabled = true;
-            rollBtn.title = remainingHd <= 0 ? "No Hit Dice remaining" : "Already at Maximum HP";
-        }
-        rollBtn.onclick = async () => {
-            if (!canSpend) return;
-            const rolled = Math.floor(Math.random() * this.dieSize) + 1;
-            await this.applyHitDieHeal(rolled, "Digital Roll");
-        };
-
-        // Manual Physical Roll Row
         const manualRow = spendCard.createDiv({ cls: "dnd-short-rest-manual-row" });
         manualRow.createEl("span", {
-            text: `Or enter physical d${this.dieSize} roll:`,
+            text: `Enter your d${this.dieSize} roll:`,
             cls: "dnd-short-rest-manual-label"
         });
 
@@ -4694,12 +4679,13 @@ class ShortRestModal extends Modal {
         });
 
         const manualBtn = manualRow.createEl("button", {
-            text: `Spend (${conModStr} CON)`,
+            text: `Spend Hit Die (${conModStr} CON)`,
             cls: "dnd-health-btn dnd-health-btn-heal"
         });
         if (!canSpend) {
             manualInput.disabled = true;
             manualBtn.disabled = true;
+            manualBtn.title = remainingHd <= 0 ? "No Hit Dice remaining" : "Already at Maximum HP";
         }
         manualBtn.onclick = async () => {
             if (!canSpend) return;
@@ -4708,7 +4694,7 @@ class ShortRestModal extends Modal {
                 new Notice(`Please enter a roll between 1 and ${this.dieSize}.`);
                 return;
             }
-            await this.applyHitDieHeal(rawVal, "Manual Roll");
+            await this.applyHitDieHeal(rawVal);
         };
 
         // 3. Roll Log (if any dice spent during this rest)
@@ -4736,7 +4722,7 @@ class ShortRestModal extends Modal {
         };
     }
 
-    async applyHitDieHeal(dieRoll: number, sourceLabel: string) {
+    async applyHitDieHeal(dieRoll: number) {
         const healAmount = Math.max(1, dieRoll + this.conMod);
         const oldHp = this.options.currentHealth;
         const newHp = Math.min(this.options.maxHealth, oldHp + healAmount);
@@ -4746,7 +4732,7 @@ class ShortRestModal extends Modal {
         this.options.spentHitDice = newSpent;
 
         const conStr = `${this.conMod >= 0 ? "+" : ""}${this.conMod}`;
-        this.rollLogs.push(`🎲 ${sourceLabel}: d${this.dieSize} (${dieRoll}) ${conStr} CON = +${healAmount} HP (${oldHp} → ${newHp} HP)`);
+        this.rollLogs.push(`🎲 Rolled d${this.dieSize} (${dieRoll}) ${conStr} CON = +${healAmount} HP (${oldHp} → ${newHp} HP)`);
 
         const updates: Record<string, any> = {
             [this.options.targetCurrentHpKey]: newHp,
