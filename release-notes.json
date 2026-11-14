@@ -1,3 +1,3 @@
 {
-      "notes": "Version 2.0.11. Exhaustion Rework and added Heroic Inspiration Tracking for Humans and an additional button in the Inventory and Character Management to add a one-use Heroic Inspiration Checkbox under the Inventory Widget"
+      "notes": "Version 2.0.12. Hit Dice persistence with Short Rest healing, data-driven Initiative modifiers with Alert feat integration, tool proficiencies tracking, and ritual/concentration spell tags alongside innate species spells."
 }

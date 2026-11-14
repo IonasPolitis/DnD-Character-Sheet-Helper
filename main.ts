@@ -7595,13 +7595,13 @@ class InventoryModal extends Modal {
         const hiBtn = footerDiv.createEl("button", {
             text: this.plugin.activeHeroicInspiration.has(this.sourcePath)
                 ? "✨ Heroic Inspiration: ON"
-                : "✨ Grant Heroic Inspiration",
+                : "Grant Heroic Inspiration",
             cls: this.plugin.activeHeroicInspiration.has(this.sourcePath) ? "is-active" : ""
         });
         hiBtn.onclick = () => {
             const nextState = !this.plugin.activeHeroicInspiration.has(this.sourcePath);
             this.plugin.setHeroicInspiration(this.sourcePath, nextState);
-            hiBtn.setText(nextState ? "✨ Heroic Inspiration: ON" : "✨ Grant Heroic Inspiration");
+            hiBtn.setText(nextState ? "✨ Heroic Inspiration: ON" : "Grant Heroic Inspiration");
             hiBtn.classList.toggle("is-active", nextState);
             new Notice(nextState ? "Heroic Inspiration added to Inventory!" : "Heroic Inspiration removed.");
         };
@@ -8462,13 +8462,13 @@ class ManageCharacterModal extends Modal {
         const hiBtn = btnDiv.createEl("button", {
             text: this.plugin.activeHeroicInspiration.has(this.sourcePath)
                 ? "✨ Heroic Inspiration: ON"
-                : "✨ Grant Heroic Inspiration",
+                : "Grant Heroic Inspiration",
             cls: this.plugin.activeHeroicInspiration.has(this.sourcePath) ? "is-active" : ""
         });
         hiBtn.onclick = () => {
             const nextState = !this.plugin.activeHeroicInspiration.has(this.sourcePath);
             this.plugin.setHeroicInspiration(this.sourcePath, nextState);
-            hiBtn.setText(nextState ? "✨ Heroic Inspiration: ON" : "✨ Grant Heroic Inspiration");
+            hiBtn.setText(nextState ? "✨ Heroic Inspiration: ON" : "Grant Heroic Inspiration");
             hiBtn.classList.toggle("is-active", nextState);
             new Notice(nextState ? "Heroic Inspiration added to Inventory!" : "Heroic Inspiration removed.");
         };
