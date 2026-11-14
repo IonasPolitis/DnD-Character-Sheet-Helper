@@ -42,7 +42,7 @@
     /* Base fallback color */
 
     /* Optional: Add your own custom background image here */
-    background-image: url('data:image/png;base64,...');
+    /* background-image: url('data:image/png;base64,...'); */
     /* Or a local vault URL */
     background-size: cover;
     background-blend-mode: overlay;
