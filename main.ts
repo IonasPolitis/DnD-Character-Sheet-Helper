@@ -2158,15 +2158,18 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                     let displayName = rawItemInput;
                     let displayStat = manualStat ? String(manualStat) : "-";
                     let displayDesc = "";
+                    let hasInfoDesc = false;
 
                     if (isRecognizedType) {
                         displayName = data.name || rawItemInput;
                         displayStat = manualStat ? String(manualStat) : (expectedType === "Weapon" ? (data.damage || "-") : (data.ac || "-"));
                         displayDesc = data.description || "";
+                        hasInfoDesc = Boolean(data.description && String(data.description).trim());
 
                         if (expectedType === "Weapon" && data.mastery) {
                             const masteryInfo = await getWeaponMasteryDescription(this.app, fetchOptions, data.mastery);
                             if (masteryInfo) {
+                                hasInfoDesc = true;
                                 const displaySlug = sanitizeItem(displayName) as string;
                                 const isMastered = weaponMasteryState.mastered.includes(safeName) || (displaySlug ? weaponMasteryState.mastered.includes(displaySlug) : false);
                                 if (isMastered) {
@@ -2186,6 +2189,19 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                     }
 
                     const card = equipGrid.createDiv({ cls: "dnd-features-window dnd-equip-card" });
+
+                    if (isRecognizedType && hasInfoDesc) {
+                        const infoBtn = card.createEl("button", {
+                            cls: "dnd-inventory-icon-btn dnd-equip-card-info-btn",
+                            attr: { title: "Item Details" }
+                        });
+                        setSvgIcon(infoBtn, "info");
+                        infoBtn.onclick = (e) => {
+                            e.stopPropagation();
+                            new ItemInfoModal(this.app, this, data, ctx.sourcePath).open();
+                        };
+                    }
+
                     card.createDiv({ text: displayName.toUpperCase(), cls: "dnd-equip-card-title" });
                     card.createDiv({ text: displayStat, cls: "dnd-equip-card-stat" });
 

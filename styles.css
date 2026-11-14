@@ -1096,6 +1096,7 @@
 }
 
 .dnd-features-window.dnd-equip-card {
+    position: relative;
     flex: 1;
     display: flex;
     flex-direction: column;
@@ -1104,6 +1105,12 @@
     margin: 0;
     justify-content: center;
     gap: 6px;
+}
+
+.dnd-features-window button.dnd-equip-card-info-btn {
+    position: absolute;
+    top: 6px;
+    right: 6px;
 }
 
 .dnd-equip-card-title {
