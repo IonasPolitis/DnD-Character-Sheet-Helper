@@ -2169,10 +2169,10 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                             if (masteryInfo) {
                                 const displaySlug = sanitizeItem(displayName) as string;
                                 const isMastered = weaponMasteryState.mastered.includes(safeName) || (displaySlug ? weaponMasteryState.mastered.includes(displaySlug) : false);
-                                const masteryLine = isMastered
-                                    ? `**Mastery ([${masteryInfo.name}](note:weapon-masteries))**: ${masteryInfo.description}`
-                                    : `Mastery: [${masteryInfo.name}](note:weapon-masteries)`;
-                                displayDesc = displayDesc ? `${displayDesc}\n\n${masteryLine}` : masteryLine;
+                                if (isMastered) {
+                                    const masteryTag = `Mastery: [${masteryInfo.name}](note:weapon-masteries)`;
+                                    displayDesc = displayDesc ? `${displayDesc}, ${masteryTag}` : masteryTag;
+                                }
                             }
                         }
                     }
@@ -5938,6 +5938,7 @@ class CharacterWizardModal extends Modal {
 class NoteModal extends Modal {
     plugin: DnDCharacterSheetHelperPlugin;
     noteKey: string;
+    renderChild!: MarkdownRenderChild;
 
     constructor(app: App, plugin: DnDCharacterSheetHelperPlugin, noteKey: string) {
         super(app);
@@ -5947,6 +5948,8 @@ class NoteModal extends Modal {
 
     async onOpen() {
         const { contentEl, titleEl } = this;
+        this.renderChild = new MarkdownRenderChild(contentEl);
+        this.renderChild.load();
 
         const formattedTitle = this.noteKey.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
         titleEl.setText(formattedTitle);
@@ -5978,7 +5981,7 @@ class NoteModal extends Modal {
         }
 
         if (fileContent) {
-            MarkdownRenderer.render(this.app, fileContent, contentEl, "", null as any);
+            await this.plugin.renderDndMarkdown(fileContent, contentEl, "", this.renderChild);
         } else {
             contentEl.createEl("p", {
                 text: `Error: Could not find "${this.noteKey}" in the bundled Markdown registry or Custom Rulebook.`,
@@ -5988,6 +5991,7 @@ class NoteModal extends Modal {
     }
 
     onClose() {
+        if (this.renderChild) this.renderChild.unload();
         this.contentEl.empty();
     }
 }
