@@ -52,8 +52,20 @@ jobs:
           echo "Target tag is $TAG_NAME"
 
           git fetch --tags
-          gh release delete "$TAG_NAME-beta" --cleanup-tag -y || true
-          git tag -d "$TAG_NAME-beta" 2>/dev/null || true
+
+          echo "Searching for pre-releases and tags matching ${TAG_NAME}..."
+          CANDIDATE_TAGS=$( { git tag -l; gh release list --limit 1000 --json tagName -q '.[].tagName' 2>/dev/null || true; } | sort -u )
+
+          for tag in $CANDIDATE_TAGS; do
+            case "$tag" in
+              "$TAG_NAME"[!0-9.]*)
+                echo "Deleting pre-release / tag: $tag"
+                gh release delete "$tag" --cleanup-tag -y 2>/dev/null || true
+                git push origin --delete "$tag" 2>/dev/null || true
+                git tag -d "$tag" 2>/dev/null || true
+                ;;
+            esac
+          done
 
           git tag -f "$TAG_NAME"
           git push -f origin "$TAG_NAME"
