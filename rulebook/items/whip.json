@@ -1,8 +1,9 @@
 {
-      "name": "Whip",
-      "type": "weapon",
-      "description": "Finesse, Reach",
-      "weight": 3,
-      "damage": "1d4 Slashing",
-      "cost": "2 GP"
+	"name": "Whip",
+	"type": "weapon",
+	"description": "Finesse, Reach",
+	"weight": 3,
+	"damage": "1d4 Slashing",
+	"mastery": "Slow",
+	"cost": "2 GP"
 }

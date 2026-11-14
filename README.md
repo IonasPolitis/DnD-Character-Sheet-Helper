@@ -133,6 +133,7 @@ raceLineage: $string$
 background: $array$
 extraFeats: $array$
 featureUses: $array$
+weaponMastery: $array$
 hide: $array$
 ```
 ````
@@ -145,6 +146,8 @@ The variable `classChoices` stores class-specific feature selections (such as Wa
 Write down a Feature's name as it appears on the screen inside the variable `hide` (or manage it via the **Manage Character** button) to hide it from view.
 
 The variable `featureUses` savesthe state of the checkboxes on each Class or Subclass Feature, Race Trait and Feat of the character wit this structure: `[ [ "<Feature's-Name>", "<Available-Uses>", "<Expended-Uses>"], ... ]`
+
+The variable `weaponMastery` connects to `frontmatter.DnD_weaponMastery` using the structure `[ "<Number-of-Weapons-from-JSON>", [ "<Filename-of-Weapon>", "<Filename-of-Weapon>", ... ] ]`. Whenever `dnd-features` renders, it automatically synchronizes index `0` (available mastery slots unlocked from class/subclass features and feats) while preserving index `1` (the array of mastered weapon filenames).
 
 ### DnD Spells:
 
@@ -170,6 +173,7 @@ A Sample of the Code Block looks like this:
 ```dnd-inventory
 weapon: $string$
 weaponDamage: $string$
+weaponMastery: $array$ <optional>
 armor: $string$
 armorAc: $string$
 class: $string$
@@ -253,7 +257,8 @@ rulebook/
 ├── general-feats.json
 ├── items.json
 ├── races.json
-└── rules.json
+├── rules.json
+└── weapon-masteries.json
 ```
 
 The backgrounds.json, classes.json and races.json work as router files to the specific feat, class, or race JSON is needed for better modularity.
@@ -337,6 +342,7 @@ Cantrips are on "Level 0" and the rest of the Spell Levels are as normal.
                         "grantedFeats": ["<ability-score-improvement>", "<Feat_Name>", "<Feat_Router_Filename>"], // <optional>
                         "uses": ["<Number-of-Uses>", "<short/long>" ], // <optional>
                         "speedMod": <num>, // <optional>
+                        "weaponMastery": <num>, // <optional>
                         "hide": true // <optional>
                   }
             ]
@@ -387,6 +393,7 @@ The `speedMod` variable on a class/subclass feature or feat defines bonus moveme
 	"description": "<Feat_Description>",
       "uses": ["<Number-of-Uses>", "<short/long>" ], // <optional>
       "speedMod": <num>, // <optional>
+      "weaponMastery": <num>, // <optional>
       "improveAbility": [ [ "<Ability-to-Improve>", <value>, <maxCap> ], ... ], // <optional>
       "proficiencySavingThrow": "<improvedAbility | Ability-Name | Array>", // <optional>
       "grantedExpertise": [ [ "<skill_pool>" ], <count> ] // <optional>
@@ -429,11 +436,20 @@ The `uses` variable sets how many uses this feature has, and when used checkboxe
       "description": "<Item's_Description>",
       "weight": 0,
       "damage": "<Damage_Dice+Damage_Type>", // <optional>
+      "mastery": "<Weapon_Mastery_Property>", // <optional>
       "ac": "<Armor's_Base_AC>", // <optional>
       "category": "<Light/Medium/Heavy>",
       "cost": "<Amount> <PP/GP/SP/CP>" // e.g. "50 GP", "5 SP", "5 CP"
 }
 ```
+
+- weapon-masteries.json:
+```json
+{
+      "<weapon-mastery>": "<description>"
+}
+```
+The `weapon-masteries.json` file defines all valid Weapon Mastery properties and their full descriptions. When an item has a `"mastery"` field matching a key in `weapon-masteries.json`, its mastery description is shown in the Item Info and Inventory modals, and on the equipped weapon card if the weapon's filename is listed in `DnD_weaponMastery[1]`. If an item's `"mastery"` cannot be found in `weapon-masteries.json`, the plugin will not display it. The plugin also automatically generates `markdown/weapon-masteries.md` from `weapon-masteries.json` whenever the plugin loads or detects a change in the Custom Rulebook.
 
 - spell.json:
 ```json

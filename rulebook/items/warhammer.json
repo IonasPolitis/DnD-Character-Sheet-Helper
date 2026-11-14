@@ -1,8 +1,9 @@
 {
-      "name": "Warhammer",
-      "type": "weapon",
-      "description": "Versatile (1d10)",
-      "weight": 5,
-      "damage": "1d8 Bludgeoning",
-      "cost": "15 GP"
+	"name": "Warhammer",
+	"type": "weapon",
+	"description": "Versatile (1d10)",
+	"weight": 5,
+	"damage": "1d8 Bludgeoning",
+	"mastery": "Push",
+	"cost": "15 GP"
 }

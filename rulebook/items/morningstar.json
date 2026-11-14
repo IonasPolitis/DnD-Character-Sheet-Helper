@@ -1,8 +1,9 @@
 {
-      "name": "Morningstar",
-      "type": "weapon",
-      "description": "",
-      "weight": 4,
-      "damage": "1d8 Piercing",
-      "cost": "15 GP"
+	"name": "Morningstar",
+	"type": "weapon",
+	"description": "",
+	"weight": 4,
+	"damage": "1d8 Piercing",
+	"mastery": "Sap",
+	"cost": "15 GP"
 }

@@ -40,6 +40,7 @@ DnD_wisdom:
 DnD_charisma:
 DnD_weapon:
 DnD_weaponDamage:
+DnD_weaponMastery:
 DnD_armor:
 DnD_armorAc:
 DnD_armorAcBonus:
@@ -121,6 +122,7 @@ backgroundEquipment: frontmatter.DnD_backgroundEquipment
 backgroundChosenItems: frontmatter.DnD_backgroundChosenItems
 weapon: frontmatter.DnD_weapon
 weaponDamage: frontmatter.DnD_weaponDamage
+weaponMastery: frontmatter.DnD_weaponMastery
 armor: frontmatter.DnD_armor
 armorAc: frontmatter.DnD_armorAc
 starterEquipment: frontmatter.DnD_starterEquipment
@@ -149,6 +151,7 @@ raceLineage: frontmatter.DnD_raceLineage
 background: frontmatter.DnD_background
 extraFeats: frontmatter.DnD_extraFeats
 featureUses: frontmatter.DnD_featureUses
+weaponMastery: frontmatter.DnD_weaponMastery
 hide: frontmatter.DnD_hideFeature
 ```
 

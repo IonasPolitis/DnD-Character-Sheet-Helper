@@ -1,8 +1,9 @@
 {
-      "name": "Greatclub",
-      "type": "weapon",
-      "description": "Two-Handed",
-      "weight": 10,
-      "damage": "1d8 Bludgeoning",
-      "cost": "2 SP"
+	"name": "Greatclub",
+	"type": "weapon",
+	"description": "Two-Handed",
+	"weight": 10,
+	"damage": "1d8 Bludgeoning",
+	"mastery": "Push",
+	"cost": "2 SP"
 }

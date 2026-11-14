@@ -1,5 +1,5 @@
 import { App, Plugin, PluginSettingTab, Setting, MarkdownPostProcessorContext, parseYaml, MarkdownRenderChild, MarkdownRenderer, TFile, Modal, Notice, MarkdownView, normalizePath, Platform } from 'obsidian';
-import { getClassData, getSubclassData, getBackgroundData, getRaceData, getExtraFeat, getItemData, getRuleData, getSpellData, getSpellsPoolData, getClassChoiceData, getFeatMapData } from './data';
+import { getClassData, getSubclassData, getBackgroundData, getRaceData, getExtraFeat, getItemData, getRuleData, getSpellData, getSpellsPoolData, getClassChoiceData, getFeatMapData, getWeaponMasteriesMap, getWeaponMasteryDescription, buildWeaponMasteriesMarkdown } from './data';
 import { MarkdownNotes, classesMap, racesMap, backgroundsMap, itemsMap } from './registry';
 import { THEMES } from './themes';
 
@@ -133,6 +133,67 @@ export function parseFeatSavingThrowProficiencies(featData: any, chosenAbility?:
         }
     }
     return results;
+}
+
+// --- Weapon Mastery State Helpers ---
+// Structure in frontmatter: DnD_weaponMastery: '[ "<AvailableSlots>", [ "<WeaponSlug>", ... ] ]'
+export interface WeaponMasteryState {
+    available: number;
+    mastered: string[];
+}
+
+export function sanitizeWeaponSlug(val: any): string {
+    if (!val) return "";
+    return String(val).toLowerCase().replace(/['"]/g, '').trim().replace(/\s+/g, '-');
+}
+
+export function parseWeaponMasteryState(raw: any): WeaponMasteryState {
+    if (raw === undefined || raw === null || raw === "") {
+        return { available: 0, mastered: [] };
+    }
+    let parsed: any = raw;
+    if (typeof parsed === "string") {
+        const trimmed = parsed.trim();
+        if (trimmed.startsWith("[")) {
+            try {
+                parsed = JSON.parse(trimmed);
+            } catch {
+                return { available: 0, mastered: [] };
+            }
+        } else if (!isNaN(Number(trimmed))) {
+            return { available: Math.max(0, Math.floor(Number(trimmed))), mastered: [] };
+        } else {
+            return { available: 0, mastered: [] };
+        }
+    }
+    if (Array.isArray(parsed)) {
+        const rawAvail = parsed[0];
+        const available = Math.max(0, Math.floor(Number(String(rawAvail ?? "0").replace(/[^0-9.-]/g, "")) || 0));
+        const rawList = Array.isArray(parsed[1]) ? parsed[1] : [];
+        const mastered: string[] = [];
+        for (const w of rawList) {
+            const slug = sanitizeWeaponSlug(w);
+            if (slug && slug !== "none" && !mastered.includes(slug)) {
+                mastered.push(slug);
+            }
+        }
+        return { available, mastered };
+    }
+    return { available: 0, mastered: [] };
+}
+
+export function serializeWeaponMasteryState(available: number, mastered: string[]): string {
+    const cleanAvail = String(Math.max(0, Math.floor(Number(available) || 0)));
+    const cleanMastered: string[] = [];
+    if (Array.isArray(mastered)) {
+        for (const w of mastered) {
+            const slug = sanitizeWeaponSlug(w);
+            if (slug && slug !== "none" && !cleanMastered.includes(slug)) {
+                cleanMastered.push(slug);
+            }
+        }
+    }
+    return JSON.stringify([cleanAvail, cleanMastered]);
 }
 
 // 1. Define the shape of our settings
@@ -284,6 +345,9 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
             if (!basePath) return;
             const normBase = normalizePath(basePath);
             if (filePath.startsWith(normBase + "/") || filePath === normBase) {
+                if (filePath === normalizePath(`${normBase}/weapon-masteries.json`)) {
+                    void this.syncWeaponMasteriesMarkdown();
+                }
                 this.app.workspace.iterateAllLeaves((leaf) => {
                     if (leaf.view instanceof MarkdownView && leaf.view.file) {
                         const activeFile = leaf.view.file;
@@ -299,6 +363,10 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
         this.registerEvent(this.app.vault.on('modify', (file) => refreshIfCustomRulebookFile(file.path)));
         this.registerEvent(this.app.vault.on('create', (file) => refreshIfCustomRulebookFile(file.path)));
         this.registerEvent(this.app.vault.on('delete', (file) => refreshIfCustomRulebookFile(file.path)));
+
+        this.app.workspace.onLayoutReady(() => {
+            void this.syncWeaponMasteriesMarkdown();
+        });
 
         this.addCommand({
             id: 'csh-launch-character-wizard',
@@ -436,6 +504,40 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
         return this.settings.customRulebookPriority
             ? (await fetchCustom()) ?? fetchNative()
             : fetchNative() ?? (await fetchCustom());
+    }
+
+    /**
+     * Dynamically rebuilds the in-memory and custom rulebook `weapon-masteries.md`
+     * reference note from `weapon-masteries.json` whenever the plugin loads or the
+     * Custom Rulebook changes.
+     */
+    async syncWeaponMasteriesMarkdown(): Promise<void> {
+        try {
+            const map = await getWeaponMasteriesMap(this.app, this.settings);
+            const mdContent = buildWeaponMasteriesMarkdown(map);
+            MarkdownNotes["weapon-masteries"] = mdContent;
+
+            const basePath = this.settings.customRulebookPath?.replace(/^['"]+|['"]+$/g, '').trim().replace(/^\/+|\/+$/g, '');
+            if (!basePath) return;
+
+            const customJsonPath = normalizePath(`${basePath}/weapon-masteries.json`);
+            if (await this.app.vault.adapter.exists(customJsonPath)) {
+                const mdDirPath = normalizePath(`${basePath}/markdown`);
+                if (!(await this.app.vault.adapter.exists(mdDirPath))) {
+                    await this.app.vault.adapter.mkdir(mdDirPath);
+                }
+                const customMdPath = normalizePath(`${mdDirPath}/weapon-masteries.md`);
+                let existing = "";
+                if (await this.app.vault.adapter.exists(customMdPath)) {
+                    existing = await this.app.vault.adapter.read(customMdPath);
+                }
+                if (existing !== mdContent) {
+                    await this.app.vault.adapter.write(customMdPath, mdContent);
+                }
+            }
+        } catch (e) {
+            console.error("Failed to sync weapon-masteries.md:", e);
+        }
     }
 
     // --- Theme Engine Logic ---
@@ -1009,6 +1111,135 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
             totalSpeed,
             breakdown
         };
+    }
+
+    /**
+     * Resolves a character's total unlocked Weapon Mastery slots from:
+     * 1. Class & Subclass features (`"weaponMastery": <number>`). Within a single class,
+     *    if multiple unlocked features share the same `name` (e.g. "Weapon Mastery" at
+     *    Level 1 with 2, and hidden "Weapon Mastery" at Level 4 with 3), the highest value
+     *    replaces earlier tiers for that feature name. Different classes stack additively.
+     * 2. Feats (`"weaponMastery": <number>`), including `extraFeats`, `backgroundFeat`,
+     *    and auto-granted non-router feats from class/subclass features.
+     */
+    async resolveCharacterWeaponMasterySlots(
+        classInput: any,
+        classLevelsInput: any,
+        totalLevel: number,
+        extraFeatsInput: any,
+        backgroundFeatInput: any,
+        subclassInput?: any,
+        fetchOptions?: any
+    ): Promise<{ totalSlots: number; breakdown: { source: string; count: number }[] }> {
+        const opts = fetchOptions || this.settings;
+        const hasValid = (val: any): boolean => {
+            if (val === undefined || val === null) return false;
+            const s = String(val).trim();
+            return s !== "" && !s.startsWith("<");
+        };
+
+        const breakdown: { source: string; count: number }[] = [];
+        const classArray = classInput ? (Array.isArray(classInput) ? classInput.filter(hasValid) : (hasValid(classInput) ? [classInput] : [])) : [];
+        const rawSubclassArray = subclassInput ? (Array.isArray(subclassInput) ? subclassInput.filter(hasValid) : (hasValid(subclassInput) ? [subclassInput] : [])) : [];
+        const autoGrantedFeats: string[] = [];
+
+        for (let idx = 0; idx < classArray.length; idx++) {
+            const className = classArray[idx];
+            const currentClassLevel = (classArray.length > 1 && Array.isArray(classLevelsInput) && classLevelsInput.length > idx)
+                ? Number(classLevelsInput[idx])
+                : (Number(totalLevel) || 1);
+
+            const classData = await getClassData(this.app, opts, className);
+            if (!classData?.features) continue;
+
+            let subclassData: any = null;
+            const subName = rawSubclassArray[idx] || null;
+            const grantedSubFile = this.findGrantedSubclass(classData, currentClassLevel);
+            if (subName && grantedSubFile) {
+                subclassData = await getSubclassData(this.app, opts, grantedSubFile, subName);
+            }
+
+            // Track highest weaponMastery count per feature name within this class
+            const classFeatureMasteries = new Map<string, { displayName: string; count: number }>();
+
+            for (let lvl = 1; lvl <= currentClassLevel; lvl++) {
+                const lvlFeatures: any[] = [
+                    ...(classData.features[lvl.toString()] || []),
+                    ...(subclassData?.[lvl.toString()] || [])
+                ];
+                for (const feature of lvlFeatures) {
+                    if (!feature) continue;
+                    if (feature.weaponMastery !== undefined && !isNaN(Number(feature.weaponMastery))) {
+                        const val = Math.max(0, Math.floor(Number(feature.weaponMastery)));
+                        const fKey = String(feature.name || `feature-${lvl}`).trim().toLowerCase();
+                        const prev = classFeatureMasteries.get(fKey);
+                        if (!prev || val >= prev.count) {
+                            classFeatureMasteries.set(fKey, {
+                                displayName: `${classData.name || className}: ${feature.name || "Weapon Mastery"}`,
+                                count: val
+                            });
+                        }
+                    }
+
+                    if (Array.isArray(feature.grantedFeats)) {
+                        for (const gf of feature.grantedFeats) {
+                            const gfStr = String(gf).trim();
+                            if (gfStr && !gfStr.endsWith(".json") && gfStr.toLowerCase() !== "ability-score-improvement") {
+                                autoGrantedFeats.push(gfStr);
+                            }
+                        }
+                    }
+                }
+            }
+
+            for (const entry of classFeatureMasteries.values()) {
+                if (entry.count > 0) {
+                    breakdown.push({ source: entry.displayName, count: entry.count });
+                }
+            }
+        }
+
+        // Gather all feats (extraFeats + backgroundFeat + auto-granted feats)
+        const featList: string[] = [];
+        const addFeat = (f: any) => {
+            if (!hasValid(f)) return;
+            const clean = String(f).trim();
+            if (clean && !featList.some(existing => existing.toLowerCase() === clean.toLowerCase())) {
+                featList.push(clean);
+            }
+        };
+
+        if (Array.isArray(extraFeatsInput)) {
+            extraFeatsInput.forEach(addFeat);
+        } else if (typeof extraFeatsInput === "string" && extraFeatsInput.trim().startsWith("[")) {
+            try {
+                const parsed = JSON.parse(extraFeatsInput.trim());
+                if (Array.isArray(parsed)) parsed.forEach(addFeat);
+            } catch {
+                addFeat(extraFeatsInput);
+            }
+        } else {
+            addFeat(extraFeatsInput);
+        }
+        addFeat(backgroundFeatInput);
+        autoGrantedFeats.forEach(addFeat);
+
+        for (const featId of featList) {
+            const featData = await getExtraFeat(this.app, opts, featId);
+            if (!featData) continue;
+            if (featData.weaponMastery !== undefined && !isNaN(Number(featData.weaponMastery))) {
+                const val = Math.max(0, Math.floor(Number(featData.weaponMastery)));
+                if (val > 0) {
+                    breakdown.push({
+                        source: `${featData.name || formatFeatureOrSlug(featId)} (Feat)`,
+                        count: val
+                    });
+                }
+            }
+        }
+
+        const totalSlots = breakdown.reduce((sum, item) => sum + item.count, 0);
+        return { totalSlots, breakdown };
     }
 
     async processDnDFeaturesBlock(source: string, el: HTMLElement, ctx: MarkdownPostProcessorContext) {
@@ -1702,8 +1933,54 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
             el.empty();
             el.appendChild(wrapper);
 
-            if (featureUsesNeedsSync) {
-                saveFeatureUsesToFrontmatter();
+            // Auto-sync DnD_weaponMastery[0] (available slots) in frontmatter from class/subclass/feat JSONs
+            const rawWeaponMasteryProp = blockData.weaponMastery ?? blockData['weapon-mastery'];
+            let targetWeaponMasteryFmKey = "DnD_weaponMastery";
+            if (typeof rawWeaponMasteryProp === "string") {
+                const trimmedWmProp = rawWeaponMasteryProp.trim().replace(/^\{\{\s*|\s*\}\}$/g, '');
+                if (trimmedWmProp.startsWith("frontmatter.")) {
+                    targetWeaponMasteryFmKey = trimmedWmProp.replace("frontmatter.", "").trim() || "DnD_weaponMastery";
+                }
+            }
+
+            const rawWmValue = resolveValue(rawWeaponMasteryProp) ?? frontmatter[targetWeaponMasteryFmKey];
+            const currentMasteryState = parseWeaponMasteryState(rawWmValue);
+            const bgDataForMastery = background ? await getBackgroundData(this.app, fetchOptions, background) : null;
+            const bgFeatForMastery = bgDataForMastery?.feat || frontmatter["DnD_backgroundFeat"];
+            const masteryCalc = await this.resolveCharacterWeaponMasterySlots(
+                dndClass,
+                classLevels,
+                parsedLevel,
+                finalExtraFeats,
+                bgFeatForMastery,
+                subclass,
+                fetchOptions
+            );
+            const expectedSerializedMastery = serializeWeaponMasteryState(masteryCalc.totalSlots, currentMasteryState.mastered);
+            const weaponMasteryNeedsSync = (
+                currentMasteryState.available !== masteryCalc.totalSlots ||
+                (rawWmValue !== undefined && String(rawWmValue).trim() !== expectedSerializedMastery && rawWeaponMasteryProp !== undefined)
+            );
+
+            if (featureUsesNeedsSync || weaponMasteryNeedsSync) {
+                const fmUpdates: Record<string, any> = {};
+                if (featureUsesNeedsSync) {
+                    const serializedUses: [string, string, string][] = featureUsesState.map(entry => [
+                        String(entry.name),
+                        String(entry.max),
+                        String(entry.used)
+                    ]);
+                    fmUpdates[targetFeatureUsesFmKey] = JSON.stringify(serializedUses);
+                }
+                if (weaponMasteryNeedsSync) {
+                    fmUpdates[targetWeaponMasteryFmKey] = expectedSerializedMastery;
+                }
+                isUpdatingFeatureUses = true;
+                try {
+                    await this.updateCharacterFrontmatter(ctx.sourcePath, fmUpdates);
+                } finally {
+                    setTimeout(() => { isUpdatingFeatureUses = false; }, 150);
+                }
             }
         };
 
@@ -1786,6 +2063,8 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
             const bgEq = resolveValue(blockData.backgroundEquipment ?? blockData['background-equipment']);
             const weaponSlot = resolveValue(blockData.weapon);
             const weaponDamage = resolveValue(blockData.weaponDamage ?? blockData['weapon_damage']);
+            const weaponMasteryRaw = resolveValue(blockData.weaponMastery ?? blockData['weapon-mastery']) ?? frontmatter["DnD_weaponMastery"];
+            const weaponMasteryState = parseWeaponMasteryState(weaponMasteryRaw);
             const armorSlot = resolveValue(blockData.armor);
             const armorAc = resolveValue(blockData.armorAc ?? blockData['armor_ac']);
             const edition = resolveValue(blockData.edition);
@@ -1884,6 +2163,18 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                         displayName = data.name || rawItemInput;
                         displayStat = manualStat ? String(manualStat) : (expectedType === "Weapon" ? (data.damage || "-") : (data.ac || "-"));
                         displayDesc = data.description || "";
+
+                        if (expectedType === "Weapon" && data.mastery) {
+                            const masteryInfo = await getWeaponMasteryDescription(this.app, fetchOptions, data.mastery);
+                            if (masteryInfo) {
+                                const displaySlug = sanitizeItem(displayName) as string;
+                                const isMastered = weaponMasteryState.mastered.includes(safeName) || (displaySlug ? weaponMasteryState.mastered.includes(displaySlug) : false);
+                                const masteryLine = isMastered
+                                    ? `**Mastery ([${masteryInfo.name}](note:weapon-masteries))**: ${masteryInfo.description}`
+                                    : `Mastery: [${masteryInfo.name}](note:weapon-masteries)`;
+                                displayDesc = displayDesc ? `${displayDesc}\n\n${masteryLine}` : masteryLine;
+                            }
+                        }
                     }
 
                     // Dynamic calculation for "Unarmed Strike" (scalingDice + ability modifier) and "Unarmored Defense" (10 + class modifiers)
@@ -4087,7 +4378,7 @@ class CharacterWizardModal extends Modal {
     availableRaces: string[] = [];
     availableBackgrounds: string[] = [];
     availableItems: { id: string; name: string; type: string }[] = [];
-    availableWeapons: { id: string; name: string; damage: string }[] = [];
+    availableWeapons: { id: string; name: string; damage: string; mastery: string }[] = [];
     availableArmors: { id: string; name: string; ac: string; category: string }[] = [];
 
     // Expanded storage for all our new choices
@@ -4097,6 +4388,7 @@ class CharacterWizardModal extends Modal {
         classChosenItems: [] as string[], backgroundChosenItems: [] as string[],
         weapon: "", weaponDamage: "", armor: "", armorAc: "",
         isWeaponCustom: false, isArmorCustom: false,
+        weaponMasteries: [] as string[],
         languages: "", extraFeats: "", speed: 30, maxHealth: 0,
         chosenSkills: [],
         chosenBgSkills: [],
@@ -4190,7 +4482,7 @@ class CharacterWizardModal extends Modal {
         }
 
         const allItemsMap = new Map<string, { id: string; name: string; type: string }>();
-        const weaponsMap = new Map<string, { id: string; name: string; damage: string }>();
+        const weaponsMap = new Map<string, { id: string; name: string; damage: string; mastery: string }>();
         const armorsMap = new Map<string, { id: string; name: string; ac: string; category: string }>();
 
         for (const key of itemLookupKeys) {
@@ -4204,7 +4496,15 @@ class CharacterWizardModal extends Modal {
             allItemsMap.set(mapKey, { id: key, name: displayName, type: typeLower });
 
             if (typeLower.includes("weapon")) {
-                weaponsMap.set(mapKey, { id: key, name: displayName, damage: String(data.damage || "") });
+                const masteryInfo = data.mastery
+                    ? await getWeaponMasteryDescription(this.app, this.plugin.settings, data.mastery)
+                    : null;
+                weaponsMap.set(mapKey, {
+                    id: key,
+                    name: displayName,
+                    damage: String(data.damage || ""),
+                    mastery: masteryInfo ? masteryInfo.name : ""
+                });
             } else if (typeLower.includes("armor")) {
                 armorsMap.set(mapKey, { id: key, name: displayName, ac: String(data.ac || "10"), category: String(data.category || "") });
             }
@@ -4953,10 +5253,74 @@ class CharacterWizardModal extends Modal {
         };
 
         // 1. WEAPON SECTION
+        const bgDataForMastery = this.wizardData.background
+            ? await getBackgroundData(this.app, this.plugin.settings, this.wizardData.background)
+            : null;
+        const wizardMasteryCalc = await this.plugin.resolveCharacterWeaponMasterySlots(
+            this.wizardData.dndClass,
+            [Number(this.wizardData.level) || 1],
+            Number(this.wizardData.level) || 1,
+            this.wizardData.extraFeats,
+            bgDataForMastery?.feat,
+            this.wizardData.subclass,
+            this.plugin.settings
+        );
+        const availableMasterySlots = wizardMasteryCalc.totalSlots;
+        if (!Array.isArray(this.wizardData.weaponMasteries)) {
+            this.wizardData.weaponMasteries = [];
+        }
+
         const weaponSection = container.createDiv({ cls: "dnd-form-group-lg" });
-        weaponSection.createEl("label", { text: "Weapon Name:", cls: "dnd-form-label-sub" });
+        const weaponLabelRow = weaponSection.createDiv({ cls: "dnd-flex-between" });
+        weaponLabelRow.createEl("label", { text: "Weapon Name:", cls: "dnd-form-label-sub" });
+        const viewMasteriesLink = weaponLabelRow.createEl("a", {
+            text: "📖 View Weapon Masteries",
+            cls: "dnd-note-link dnd-form-hint",
+            href: "#"
+        });
+        viewMasteriesLink.onclick = (e) => {
+            e.preventDefault();
+            new NoteModal(this.app, this.plugin, "weapon-masteries").open();
+        };
 
         const weaponRow = weaponSection.createDiv({ cls: "dnd-equip-row" });
+        const masteryCheckboxContainer = weaponSection.createDiv();
+
+        const renderWizardWeaponMasteryToggle = () => {
+            masteryCheckboxContainer.empty();
+            if (this.wizardData.isWeaponCustom || !this.wizardData.weapon || this.wizardData.weapon === "None") return;
+            const matchedWeapon = this.availableWeapons.find(w => w.name === this.wizardData.weapon);
+            if (!matchedWeapon || !matchedWeapon.mastery) return;
+
+            const weaponSlug = sanitizeWeaponSlug(matchedWeapon.id || matchedWeapon.name);
+            const currentMastered: string[] = Array.isArray(this.wizardData.weaponMasteries) ? this.wizardData.weaponMasteries : [];
+            const isChecked = currentMastered.includes(weaponSlug);
+            const usedCount = currentMastered.length;
+            const isDisabled = availableMasterySlots <= 0 || (!isChecked && usedCount >= availableMasterySlots);
+
+            const masteryRow = masteryCheckboxContainer.createDiv({ cls: "dnd-form-row" });
+            const cb = masteryRow.createEl("input", { type: "checkbox" });
+            cb.checked = isChecked && availableMasterySlots > 0;
+            cb.disabled = isDisabled;
+            cb.onchange = (ev) => {
+                const checked = (ev.target as HTMLInputElement).checked;
+                let list: string[] = Array.isArray(this.wizardData.weaponMasteries) ? [...this.wizardData.weaponMasteries] : [];
+                if (checked) {
+                    if (list.length < availableMasterySlots && !list.includes(weaponSlug)) {
+                        list.push(weaponSlug);
+                    }
+                } else {
+                    list = list.filter(s => s !== weaponSlug);
+                }
+                this.wizardData.weaponMasteries = list;
+                renderWizardWeaponMasteryToggle();
+            };
+
+            const labelText = availableMasterySlots > 0
+                ? `Use Weapon Mastery (${matchedWeapon.mastery}) — ${usedCount} / ${availableMasterySlots} Masteries Used`
+                : `Use Weapon Mastery (${matchedWeapon.mastery}) — 0 Masteries Available`;
+            masteryRow.createEl("label", { text: labelText });
+        };
 
         if (!this.wizardData.isWeaponCustom) {
             const weaponSelect = weaponRow.createEl("select", { cls: "dnd-equip-field" });
@@ -4964,8 +5328,9 @@ class CharacterWizardModal extends Modal {
             weaponSelect.createEl("option", { text: "None (Unarmed)", value: "None" });
 
             this.availableWeapons.forEach(w => {
-                const dmgSuffix = w.damage ? ` (${w.damage})` : "";
-                weaponSelect.createEl("option", { text: `${w.name}${dmgSuffix}`, value: w.name });
+                const metaParts = [w.damage, w.mastery].filter(Boolean);
+                const metaSuffix = metaParts.length > 0 ? ` (${metaParts.join(", ")})` : "";
+                weaponSelect.createEl("option", { text: `${w.name}${metaSuffix}`, value: w.name });
             });
 
             weaponSelect.value = this.wizardData.weapon || "";
@@ -4977,6 +5342,7 @@ class CharacterWizardModal extends Modal {
                 } else if (this.wizardData.weapon === "None" || this.wizardData.weapon === "") {
                     this.wizardData.weaponDamage = "";
                 }
+                renderWizardWeaponMasteryToggle();
             };
         } else {
             const weaponInput = weaponRow.createEl("input", {
@@ -4989,6 +5355,8 @@ class CharacterWizardModal extends Modal {
                 this.wizardData.weapon = (e.target as HTMLInputElement).value;
             };
         }
+
+        renderWizardWeaponMasteryToggle();
 
         createModeToggle(weaponRow, Boolean(this.wizardData.isWeaponCustom), () => {
             this.wizardData.isWeaponCustom = !this.wizardData.isWeaponCustom;
@@ -5482,8 +5850,23 @@ class CharacterWizardModal extends Modal {
         injectYAML("DnD_hideFeature", `'[]'`);
 
         // --- Equipment & Combat Formula variables ---
+        const finalMasteryCalc = await this.plugin.resolveCharacterWeaponMasterySlots(
+            this.wizardData.dndClass,
+            [Number(this.wizardData.level) || 1],
+            Number(this.wizardData.level) || 1,
+            this.wizardData.extraFeats,
+            bgData?.feat,
+            this.wizardData.subclass,
+            this.plugin.settings
+        );
+        const validMastered = Array.isArray(this.wizardData.weaponMasteries)
+            ? this.wizardData.weaponMasteries.slice(0, finalMasteryCalc.totalSlots)
+            : [];
+        const serializedWeaponMastery = serializeWeaponMasteryState(finalMasteryCalc.totalSlots, validMastered);
+
         injectYAML("DnD_weapon", this.wizardData.weapon);
         injectYAML("DnD_weaponDamage", this.wizardData.weaponDamage);
+        injectYAML("DnD_weaponMastery", `'${serializedWeaponMastery}'`);
         injectYAML("DnD_armor", this.wizardData.armor);
         injectYAML("DnD_armorAc", this.wizardData.armorAc);
         injectYAML("DnD_armorAcBonus", this.wizardData.armorAcBonus);
@@ -5662,6 +6045,7 @@ class DnDSettingsTab extends PluginSettingTab {
                 .onChange(async (value) => {
                     this.plugin.settings.customRulebookPath = value;
                     await this.plugin.saveSettings();
+                    await this.plugin.syncWeaponMasteriesMarkdown();
                     this.refreshOpenSheets();
                 }));
 
@@ -5673,6 +6057,7 @@ class DnDSettingsTab extends PluginSettingTab {
                 .onChange(async (value) => {
                     this.plugin.settings.customRulebookPriority = value;
                     await this.plugin.saveSettings();
+                    await this.plugin.syncWeaponMasteriesMarkdown();
                     this.refreshOpenSheets();
                 }));
 
@@ -5804,7 +6189,10 @@ class EquipItemsModal extends Modal {
     isWeaponCustom: boolean = false;
     isArmorCustom: boolean = false;
 
-    availableWeapons: { id: string; name: string; damage: string }[] = [];
+    weaponMasteryState: WeaponMasteryState = { available: 0, mastered: [] };
+    originalWeaponMasterySerialized: string = "";
+
+    availableWeapons: { id: string; name: string; damage: string; mastery: string }[] = [];
     availableArmors: { id: string; name: string; ac: string; category: string }[] = [];
 
     formContainer!: HTMLElement;
@@ -5832,6 +6220,25 @@ class EquipItemsModal extends Modal {
         this.weaponDamage = this.originalWeaponDamage;
         this.armorName = this.originalArmor;
         this.armorAc = this.originalArmorAc;
+
+        this.weaponMasteryState = parseWeaponMasteryState(frontmatter["DnD_weaponMastery"]);
+        const bgData = frontmatter["DnD_background"]
+            ? await getBackgroundData(this.app, this.plugin.settings, frontmatter["DnD_background"])
+            : null;
+        const masteryCalc = await this.plugin.resolveCharacterWeaponMasterySlots(
+            frontmatter["DnD_class"],
+            frontmatter["DnD_classLevels"],
+            Number(frontmatter["DnD_level"]) || 1,
+            frontmatter["DnD_extraFeats"],
+            bgData?.feat || frontmatter["DnD_backgroundFeat"],
+            frontmatter["DnD_subclass"] ?? frontmatter["DnD_Subclass"],
+            this.plugin.settings
+        );
+        this.weaponMasteryState.available = masteryCalc.totalSlots;
+        this.originalWeaponMasterySerialized = serializeWeaponMasteryState(
+            this.weaponMasteryState.available,
+            this.weaponMasteryState.mastered
+        );
 
         // 2. Load available Weapons and Armors from native registry + custom rulebook
         await this.fetchEquipmentPools();
@@ -5894,7 +6301,7 @@ class EquipItemsModal extends Modal {
             }
         }
 
-        const weaponsMap = new Map<string, { id: string; name: string; damage: string }>();
+        const weaponsMap = new Map<string, { id: string; name: string; damage: string; mastery: string }>();
         const armorsMap = new Map<string, { id: string; name: string; ac: string; category: string }>();
 
         for (const key of itemLookupKeys) {
@@ -5906,10 +6313,14 @@ class EquipItemsModal extends Modal {
             const mapKey = displayName.toLowerCase();
 
             if (typeLower.includes("weapon")) {
+                const masteryInfo = data.mastery
+                    ? await getWeaponMasteryDescription(this.app, this.plugin.settings, data.mastery)
+                    : null;
                 weaponsMap.set(mapKey, {
                     id: key,
                     name: displayName,
-                    damage: String(data.damage || "")
+                    damage: String(data.damage || ""),
+                    mastery: masteryInfo ? masteryInfo.name : ""
                 });
             } else if (typeLower.includes("armor")) {
                 armorsMap.set(mapKey, {
@@ -5956,9 +6367,55 @@ class EquipItemsModal extends Modal {
         // 1. WEAPON SECTION
         // ==========================================
         const weaponSection = this.formContainer.createDiv({ cls: "dnd-form-group-lg" });
-        weaponSection.createEl("label", { text: "Weapon Name:", cls: "dnd-form-label-sub" });
+        const weaponLabelRow = weaponSection.createDiv({ cls: "dnd-flex-between" });
+        weaponLabelRow.createEl("label", { text: "Weapon Name:", cls: "dnd-form-label-sub" });
+        const viewMasteriesLink = weaponLabelRow.createEl("a", {
+            text: "📖 View Weapon Masteries",
+            cls: "dnd-note-link dnd-form-hint",
+            href: "#"
+        });
+        viewMasteriesLink.onclick = (e) => {
+            e.preventDefault();
+            new NoteModal(this.app, this.plugin, "weapon-masteries").open();
+        };
 
         const weaponRow = weaponSection.createDiv({ cls: "dnd-equip-row" });
+        const masteryCheckboxContainer = weaponSection.createDiv();
+
+        const renderEquipWeaponMasteryToggle = () => {
+            masteryCheckboxContainer.empty();
+            if (this.isWeaponCustom || !this.weaponName || this.weaponName === "None") return;
+            const matchedWeapon = this.availableWeapons.find(w => w.name === this.weaponName);
+            if (!matchedWeapon || !matchedWeapon.mastery) return;
+
+            const weaponSlug = sanitizeWeaponSlug(matchedWeapon.id || matchedWeapon.name);
+            const availableSlots = this.weaponMasteryState.available;
+            const currentMastered = this.weaponMasteryState.mastered;
+            const isChecked = currentMastered.includes(weaponSlug);
+            const usedCount = currentMastered.length;
+            const isDisabled = availableSlots <= 0 || (!isChecked && usedCount >= availableSlots);
+
+            const masteryRow = masteryCheckboxContainer.createDiv({ cls: "dnd-form-row" });
+            const cb = masteryRow.createEl("input", { type: "checkbox" });
+            cb.checked = isChecked && availableSlots > 0;
+            cb.disabled = isDisabled;
+            cb.onchange = (ev) => {
+                const checked = (ev.target as HTMLInputElement).checked;
+                if (checked) {
+                    if (this.weaponMasteryState.mastered.length < availableSlots && !this.weaponMasteryState.mastered.includes(weaponSlug)) {
+                        this.weaponMasteryState.mastered.push(weaponSlug);
+                    }
+                } else {
+                    this.weaponMasteryState.mastered = this.weaponMasteryState.mastered.filter(s => s !== weaponSlug);
+                }
+                renderEquipWeaponMasteryToggle();
+            };
+
+            const labelText = availableSlots > 0
+                ? `Use Weapon Mastery (${matchedWeapon.mastery}) — ${usedCount} / ${availableSlots} Masteries Used`
+                : `Use Weapon Mastery (${matchedWeapon.mastery}) — 0 Masteries Available`;
+            masteryRow.createEl("label", { text: labelText });
+        };
 
         if (!this.isWeaponCustom) {
             const weaponSelect = weaponRow.createEl("select", { cls: "dnd-equip-field" });
@@ -5966,8 +6423,9 @@ class EquipItemsModal extends Modal {
             weaponSelect.createEl("option", { text: "None (Unarmed)", value: "None" });
 
             this.availableWeapons.forEach(w => {
-                const dmgSuffix = w.damage ? ` (${w.damage})` : "";
-                weaponSelect.createEl("option", { text: `${w.name}${dmgSuffix}`, value: w.name });
+                const metaParts = [w.damage, w.mastery].filter(Boolean);
+                const metaSuffix = metaParts.length > 0 ? ` (${metaParts.join(", ")})` : "";
+                weaponSelect.createEl("option", { text: `${w.name}${metaSuffix}`, value: w.name });
             });
 
             weaponSelect.value = this.weaponName;
@@ -5979,6 +6437,7 @@ class EquipItemsModal extends Modal {
                 } else if (this.weaponName === "None" || this.weaponName === "") {
                     this.weaponDamage = "";
                 }
+                renderEquipWeaponMasteryToggle();
             };
         } else {
             const weaponInput = weaponRow.createEl("input", {
@@ -5992,6 +6451,8 @@ class EquipItemsModal extends Modal {
             };
             weaponInput.onkeyup = handleEnter;
         }
+
+        renderEquipWeaponMasteryToggle();
 
         createModeToggle(weaponRow, this.isWeaponCustom, () => {
             this.isWeaponCustom = !this.isWeaponCustom;
@@ -6138,6 +6599,14 @@ class EquipItemsModal extends Modal {
             }
         }
 
+        const newWeaponMasterySerialized = serializeWeaponMasteryState(
+            this.weaponMasteryState.available,
+            this.weaponMasteryState.mastered
+        );
+        if (newWeaponMasterySerialized !== this.originalWeaponMasterySerialized) {
+            updates["DnD_weaponMastery"] = newWeaponMasterySerialized;
+        }
+
         // 2. Process Armor Update
         const armorChanged = this.armorName !== this.originalArmor || (this.isArmorCustom && this.armorAc !== this.originalArmorAc);
         if (armorChanged) {
@@ -6267,9 +6736,22 @@ class ItemInfoModal extends Modal {
             statsRow.createEl("span", { text: `Cost: ${infoCostText}` });
         }
 
-        if (this.itemData?.description) {
+        const masteryInfo = this.itemData?.mastery
+            ? await getWeaponMasteryDescription(this.app, this.plugin.settings, this.itemData.mastery)
+            : null;
+        if (masteryInfo) {
+            statsRow.createEl("span", { text: `Mastery: ${masteryInfo.name}` });
+        }
+
+        let fullDesc = this.itemData?.description ? String(this.itemData.description) : "";
+        if (masteryInfo) {
+            const masteryBlock = `**Mastery ([${masteryInfo.name}](note:weapon-masteries))**: ${masteryInfo.description}`;
+            fullDesc = fullDesc ? `${fullDesc}\n\n${masteryBlock}` : masteryBlock;
+        }
+
+        if (fullDesc) {
             const descDiv = container.createDiv({ cls: "dnd-item-info-desc" });
-            await this.plugin.renderDndMarkdown(String(this.itemData.description), descDiv, this.sourcePath, this.renderChild);
+            await this.plugin.renderDndMarkdown(fullDesc, descDiv, this.sourcePath, this.renderChild);
         } else {
             container.createEl("p", {
                 text: "No additional description available for this item.",
@@ -6913,9 +7395,22 @@ class InventoryModal extends Modal {
         const previewCostText = formatItemCost(data.cost);
         if (previewCostText) metaDiv.createEl("div", { text: `Cost: ${previewCostText}` });
 
-        if (data.description) {
+        const masteryInfo = data.mastery
+            ? await getWeaponMasteryDescription(this.app, this.plugin.settings, data.mastery)
+            : null;
+        if (masteryInfo) {
+            metaDiv.createEl("div", { text: `Mastery: ${masteryInfo.name}` });
+        }
+
+        let previewDesc = data.description ? String(data.description) : "";
+        if (masteryInfo) {
+            const masteryBlock = `**Mastery ([${masteryInfo.name}](note:weapon-masteries))**: ${masteryInfo.description}`;
+            previewDesc = previewDesc ? `${previewDesc}\n\n${masteryBlock}` : masteryBlock;
+        }
+
+        if (previewDesc) {
             const descDiv = this.previewContainer.createDiv({ cls: "dnd-modal-preview-desc" });
-            await this.plugin.renderDndMarkdown(String(data.description), descDiv, this.sourcePath, this.renderChild);
+            await this.plugin.renderDndMarkdown(previewDesc, descDiv, this.sourcePath, this.renderChild);
         }
     }
 
@@ -6959,6 +7454,9 @@ class ManageCharacterModal extends Modal {
     currentAttackStat: string = "strength";
     addAttackProficiency: boolean = true;
     extraAttackMod: number = 0;
+    weaponMasteryState: WeaponMasteryState = { available: 0, mastered: [] };
+    weaponMasteryBreakdown: { source: string; count: number }[] = [];
+    availableMasteryWeapons: { id: string; name: string; mastery: string }[] = [];
     // 4. Skills State
     currentExtraSkills: string[] = [];
     baseProficiencies: [string, string][] = [];
@@ -7035,6 +7533,54 @@ class ManageCharacterModal extends Modal {
         if (frontmatter["DnD_attackStat"]) {
             this.currentAttackStat = String(frontmatter["DnD_attackStat"]).toLowerCase().trim();
         }
+
+        // Fetch Weapon Mastery State & Available Weapons with Valid Masteries
+        this.weaponMasteryState = parseWeaponMasteryState(frontmatter["DnD_weaponMastery"]);
+        const bgDataForMastery = frontmatter["DnD_background"]
+            ? await getBackgroundData(this.app, this.plugin.settings, frontmatter["DnD_background"])
+            : null;
+        const masteryCalc = await this.plugin.resolveCharacterWeaponMasterySlots(
+            frontmatter["DnD_class"],
+            frontmatter["DnD_classLevels"],
+            Number(frontmatter["DnD_level"]) || 1,
+            frontmatter["DnD_extraFeats"],
+            bgDataForMastery?.feat || frontmatter["DnD_backgroundFeat"],
+            frontmatter["DnD_subclass"] ?? frontmatter["DnD_Subclass"],
+            this.plugin.settings
+        );
+        this.weaponMasteryState.available = masteryCalc.totalSlots;
+        this.weaponMasteryBreakdown = masteryCalc.breakdown;
+
+        const itemLookupKeys = new Set<string>(Object.keys(itemsMap || {}));
+        const basePath = this.plugin.settings.customRulebookPath?.trim();
+        if (basePath) {
+            const customItemsPath = normalizePath(`${basePath}/items.json`);
+            try {
+                if (await this.app.vault.adapter.exists(customItemsPath)) {
+                    const content = await this.app.vault.adapter.read(customItemsPath);
+                    const parsed = JSON.parse(content);
+                    if (parsed && typeof parsed === "object") {
+                        Object.keys(parsed).forEach(k => itemLookupKeys.add(k));
+                    }
+                }
+            } catch (e) {
+                console.error(`ManageCharacterModal: Could not read custom items.json at ${customItemsPath}`, e);
+            }
+        }
+        const masteryWeps: { id: string; name: string; mastery: string }[] = [];
+        for (const key of itemLookupKeys) {
+            const data = await getItemData(this.app, this.plugin.settings, key);
+            if (!data || !data.type || !data.mastery) continue;
+            if (!String(data.type).toLowerCase().includes("weapon")) continue;
+            const masteryInfo = await getWeaponMasteryDescription(this.app, this.plugin.settings, data.mastery);
+            if (!masteryInfo) continue;
+            masteryWeps.push({
+                id: sanitizeWeaponSlug(key),
+                name: String(data.name || key).trim(),
+                mastery: masteryInfo.name
+            });
+        }
+        this.availableMasteryWeapons = masteryWeps.sort((a, b) => a.name.localeCompare(b.name));
 
         // Fetch Skills from Frontmatter Database (Force Strings)
         let profsRaw = frontmatter["DnD_skillProficiencies"] || [];
@@ -7326,6 +7872,83 @@ class ManageCharacterModal extends Modal {
                 cls: "dnd-modal-form-input"
             });
             modInput.oninput = (e) => this.extraAttackMod = Number((e.target as HTMLInputElement).value);
+
+            // Weapon Masteries Management Section
+            const masteryHeaderRow = this.contentContainer.createDiv({ cls: "dnd-flex-between dnd-mt-15" });
+            masteryHeaderRow.createEl("h4", {
+                text: `Weapon Masteries (${this.weaponMasteryState.mastered.length} / ${this.weaponMasteryState.available} Slots Used)`,
+                cls: "dnd-manage-section-title"
+            });
+            const viewMasteriesLink = masteryHeaderRow.createEl("a", {
+                text: "📖 View Weapon Masteries",
+                cls: "dnd-note-link dnd-form-hint",
+                href: "#"
+            });
+            viewMasteriesLink.onclick = (e) => {
+                e.preventDefault();
+                new NoteModal(this.app, this.plugin, "weapon-masteries").open();
+            };
+
+            if (this.weaponMasteryBreakdown.length > 0) {
+                const sourcesText = this.weaponMasteryBreakdown.map(b => `${b.source} (${b.count})`).join(" • ");
+                this.contentContainer.createEl("small", {
+                    text: `Unlocked from: ${sourcesText}`,
+                    cls: "dnd-form-hint"
+                });
+            }
+
+            const masteryListDiv = this.contentContainer.createDiv({ cls: "dnd-modal-list dnd-form-group" });
+            if (this.weaponMasteryState.mastered.length === 0) {
+                masteryListDiv.createEl("p", {
+                    text: this.weaponMasteryState.available > 0
+                        ? "No weapons mastered yet. Select a weapon below to master it."
+                        : "Your character does not currently have any unlocked Weapon Mastery slots.",
+                    cls: "dnd-modal-empty-text"
+                });
+            } else {
+                this.weaponMasteryState.mastered.forEach((slug) => {
+                    const matched = this.availableMasteryWeapons.find(w => w.id === slug || sanitizeWeaponSlug(w.name) === slug);
+                    const displayLabel = matched
+                        ? `${matched.name} (${matched.mastery})`
+                        : formatFeatureOrSlug(slug);
+
+                    const itemRow = masteryListDiv.createDiv({ cls: "dnd-modal-list-item" });
+                    itemRow.createEl("span", { text: displayLabel });
+
+                    const removeBtn = itemRow.createEl("button", { text: "✕", cls: "dnd-btn-danger" });
+                    removeBtn.onclick = () => {
+                        this.weaponMasteryState.mastered = this.weaponMasteryState.mastered.filter(s => s !== slug);
+                        this.renderContent();
+                    };
+                });
+            }
+
+            const addMasteryBar = this.contentContainer.createDiv({ cls: "dnd-modal-add-bar" });
+            const masterySelect = addMasteryBar.createEl("select", { cls: "dnd-flex-1" });
+            masterySelect.createEl("option", { text: "-- Select Weapon to Master --", value: "" });
+
+            const canAddMore = this.weaponMasteryState.mastered.length < this.weaponMasteryState.available;
+            this.availableMasteryWeapons.forEach(w => {
+                if (!this.weaponMasteryState.mastered.includes(w.id)) {
+                    masterySelect.createEl("option", { text: `${w.name} (${w.mastery})`, value: w.id });
+                }
+            });
+            masterySelect.disabled = !canAddMore;
+
+            const addMasteryBtn = addMasteryBar.createEl("button", { text: "Add Mastery" });
+            addMasteryBtn.disabled = !canAddMore;
+            addMasteryBtn.onclick = () => {
+                const chosenSlug = masterySelect.value;
+                if (!chosenSlug) return;
+                if (this.weaponMasteryState.mastered.length >= this.weaponMasteryState.available) {
+                    new Notice(`You can only master up to ${this.weaponMasteryState.available} weapon(s).`);
+                    return;
+                }
+                if (!this.weaponMasteryState.mastered.includes(chosenSlug)) {
+                    this.weaponMasteryState.mastered.push(chosenSlug);
+                    this.renderContent();
+                }
+            };
         }
 
         else if (this.activeTab === "ac") {
@@ -7635,6 +8258,10 @@ class ManageCharacterModal extends Modal {
         updates["DnD_attackRollMod"] = this.extraAttackMod;
         updates["DnD_attackStat"] = this.currentAttackStat;
         updates["DnD_attackProficiency"] = this.addAttackProficiency;
+        updates["DnD_weaponMastery"] = serializeWeaponMasteryState(
+            this.weaponMasteryState.available,
+            this.weaponMasteryState.mastered
+        );
 
         // 3. Process Skills Database
         const combinedProficiencies = [...this.baseProficiencies];
@@ -7727,7 +8354,9 @@ class LevelUpModal extends Modal {
     hpInputEl: HTMLInputElement | null = null;
     retroactiveConHpBadge: HTMLElement | null = null;
     speedMilestoneBadge: HTMLElement | null = null;
+    weaponMasteryMilestoneBadge: HTMLElement | null = null;
     currentSpeedCalc: SpeedModifierBreakdown | null = null;
+    currentMasterySlots: number = 0;
 
     classChoicesState: { router: string, key: string, level: number, domIndex: number }[] = [];
     // Tracks purely additive Expertise gained at this specific level
@@ -7790,6 +8419,20 @@ class LevelUpModal extends Modal {
             this.plugin.settings
         );
 
+        const bgDataForMastery = frontmatter["DnD_background"]
+            ? await getBackgroundData(this.app, this.plugin.settings, frontmatter["DnD_background"])
+            : null;
+        const currentMasteryCalc = await this.plugin.resolveCharacterWeaponMasterySlots(
+            frontmatter["DnD_class"] || this.dndClass,
+            frontmatter["DnD_classLevels"],
+            this.currentLevel,
+            frontmatter["DnD_extraFeats"],
+            bgDataForMastery?.feat || frontmatter["DnD_backgroundFeat"],
+            frontmatter["DnD_subclass"] ?? frontmatter["DnD_Subclass"],
+            this.plugin.settings
+        );
+        this.currentMasterySlots = currentMasteryCalc.totalSlots;
+
         // 2. Fetch the Hit Die from frontmatter (DnD_hitDice) or dynamically from the rulebook JSON
         let classData: any = null;
         if (this.dndClass) {
@@ -7814,6 +8457,7 @@ class LevelUpModal extends Modal {
             cls: "dnd-levelup-intro"
         });
         this.speedMilestoneBadge = contentEl.createDiv({ cls: "dnd-asi-hidden" });
+        this.weaponMasteryMilestoneBadge = contentEl.createDiv({ cls: "dnd-asi-hidden" });
 
         // A. Hit Points Section
         const hpDiv = contentEl.createDiv({ cls: "dnd-form-card" });
@@ -7991,6 +8635,34 @@ class LevelUpModal extends Modal {
             } else {
                 this.speedMilestoneBadge.className = "dnd-asi-hidden";
                 this.speedMilestoneBadge.empty();
+            }
+        }
+
+        const bgDataForMastery = frontmatter["DnD_background"]
+            ? await getBackgroundData(this.app, this.plugin.settings, frontmatter["DnD_background"])
+            : null;
+        const projectedMastery = await this.plugin.resolveCharacterWeaponMasterySlots(
+            frontmatter["DnD_class"] || this.dndClass,
+            frontmatter["DnD_classLevels"],
+            this.newLevel,
+            currentFeats,
+            bgDataForMastery?.feat || frontmatter["DnD_backgroundFeat"],
+            this.currentSubclass ? [this.currentSubclass] : (frontmatter["DnD_subclass"] ?? frontmatter["DnD_Subclass"]),
+            this.plugin.settings
+        );
+
+        if (this.weaponMasteryMilestoneBadge) {
+            if (projectedMastery.totalSlots > this.currentMasterySlots) {
+                const diff = projectedMastery.totalSlots - this.currentMasterySlots;
+                this.weaponMasteryMilestoneBadge.className = "dnd-form-hint";
+                this.weaponMasteryMilestoneBadge.empty();
+                this.weaponMasteryMilestoneBadge.createEl("strong", { text: `⚔️ Weapon Mastery Slots: ` });
+                this.weaponMasteryMilestoneBadge.createSpan({
+                    text: `${this.currentMasterySlots} → ${projectedMastery.totalSlots} (+${diff} Slot${diff > 1 ? 's' : ''} — Manage in Attack Ability tab or Equip Items)`
+                });
+            } else {
+                this.weaponMasteryMilestoneBadge.className = "dnd-asi-hidden";
+                this.weaponMasteryMilestoneBadge.empty();
             }
         }
     }
@@ -8725,6 +9397,21 @@ class LevelUpModal extends Modal {
             this.plugin.settings
         );
         updates["DnD_speedMod"] = speedCalc.totalSpeedMod;
+
+        const bgDataForMastery = frontmatter["DnD_background"]
+            ? await getBackgroundData(this.app, this.plugin.settings, frontmatter["DnD_background"])
+            : null;
+        const masteryCalc = await this.plugin.resolveCharacterWeaponMasterySlots(
+            frontmatter["DnD_class"] || this.dndClass,
+            frontmatter["DnD_classLevels"],
+            this.newLevel,
+            existingFeats,
+            bgDataForMastery?.feat || frontmatter["DnD_backgroundFeat"],
+            this.currentSubclass ? [this.currentSubclass] : (frontmatter["DnD_subclass"] ?? frontmatter["DnD_Subclass"]),
+            this.plugin.settings
+        );
+        const existingMasteryState = parseWeaponMasteryState(frontmatter["DnD_weaponMastery"]);
+        updates["DnD_weaponMastery"] = serializeWeaponMasteryState(masteryCalc.totalSlots, existingMasteryState.mastered);
 
         // 1. Thread-safe Frontmatter Update
         await this.plugin.updateCharacterFrontmatter(this.sourcePath, updates);

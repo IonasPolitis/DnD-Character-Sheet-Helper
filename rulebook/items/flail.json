@@ -1,8 +1,9 @@
 {
-      "name": "Flail",
-      "type": "weapon",
-      "description": "",
-      "weight": 2,
-      "damage": "1d8 Bludgeoning",
-      "cost": "10 GP"
+	"name": "Flail",
+	"type": "weapon",
+	"description": "",
+	"weight": 2,
+	"damage": "1d8 Bludgeoning",
+	"mastery": "Sap",
+	"cost": "10 GP"
 }

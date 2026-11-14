@@ -1,8 +1,9 @@
 {
-      "name": "Sickle",
-      "type": "weapon",
-      "description": "Light",
-      "weight": 2,
-      "damage": "1d4 Slashing",
-      "cost": "1 GP"
+	"name": "Sickle",
+	"type": "weapon",
+	"description": "Light",
+	"weight": 2,
+	"damage": "1d4 Slashing",
+	"mastery": "Nick",
+	"cost": "1 GP"
 }

@@ -1,8 +1,9 @@
 {
-      "name": "Longsword",
-      "type": "weapon",
-      "description": "Versatile (1d10)",
-      "weight": 3,
-      "damage": "1d8 Slashing",
-      "cost": "15 GP"
+	"name": "Longsword",
+	"type": "weapon",
+	"description": "Versatile (1d10)",
+	"weight": 3,
+	"damage": "1d8 Slashing",
+	"mastery": "Sap",
+	"cost": "15 GP"
 }

@@ -1,8 +1,9 @@
 {
-      "name": "Longbow",
-      "type": "weapon",
-      "description": "Ammunition (Range 150/600; Arrow), Heavy, Two-Handed",
-      "weight": 2,
-      "damage": "1d8 Piercing",
-      "cost": "50 GP"
+	"name": "Longbow",
+	"type": "weapon",
+	"description": "Ammunition (Range 150/600; Arrow), Heavy, Two-Handed",
+	"weight": 2,
+	"damage": "1d8 Piercing",
+	"mastery": "Slow",
+	"cost": "50 GP"
 }

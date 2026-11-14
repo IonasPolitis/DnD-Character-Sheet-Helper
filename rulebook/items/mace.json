@@ -1,8 +1,9 @@
 {
-      "name": "Mace",
-      "type": "weapon",
-      "description": "",
-      "weight": 4,
-      "damage": "1d6 Bludgeoning",
-      "cost": "5 GP"
+	"name": "Mace",
+	"type": "weapon",
+	"description": "",
+	"weight": 4,
+	"damage": "1d6 Bludgeoning",
+	"mastery": "Sap",
+	"cost": "5 GP"
 }

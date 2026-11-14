@@ -21,6 +21,38 @@ const items = scanFolder('items');
 const rules = scanFolder('rules');
 const spells = scanFolder('spells');
 
+// --- AUTO-GENERATE weapon-masteries.md FROM weapon-masteries.json ---
+function syncWeaponMasteriesMarkdownFile() {
+    const jsonPath = path.join(rulebookDir, 'weapon-masteries.json');
+    const mdDir = path.join(rulebookDir, 'markdown');
+    const mdPath = path.join(mdDir, 'weapon-masteries.md');
+    if (!fs.existsSync(jsonPath)) return;
+    try {
+        const masteries = JSON.parse(fs.readFileSync(jsonPath, 'utf-8'));
+        if (!masteries || typeof masteries !== 'object') return;
+        const lines = [
+            '## WEAPON MASTERY PROPERTIES',
+            '---',
+            'Each weapon has a Mastery property, which is usable only by a character who has a feature, such as Weapon Mastery, that unlocks the property for the character. The properties are defined below in alphabetical order.'
+        ];
+        Object.keys(masteries)
+            .sort((a, b) => a.localeCompare(b))
+            .forEach(key => {
+                const desc = String(masteries[key] || '').trim();
+                if (!desc) return;
+                lines.push('');
+                lines.push(`#### ${key.toUpperCase()}`);
+                lines.push(desc);
+            });
+        if (!fs.existsSync(mdDir)) fs.mkdirSync(mdDir, { recursive: true });
+        fs.writeFileSync(mdPath, lines.join('\n') + '\n', 'utf-8');
+    } catch (e) {
+        console.error('Failed to auto-generate weapon-masteries.md:', e);
+    }
+}
+
+syncWeaponMasteriesMarkdownFile();
+
 // --- MARKDOWN NOTE SCANNER ---
 function scanMarkdownNotes() {
     const notes = [];
@@ -93,6 +125,11 @@ if (fs.existsSync(path.join(rulebookDir, 'epic-boon-feats.json'))) {
 } else {
     out += `const epicBoonFeatsMap = {};\n`;
 }
+if (fs.existsSync(path.join(rulebookDir, 'weapon-masteries.json'))) {
+    out += `import weaponMasteriesMap from './rulebook/weapon-masteries.json';\n`;
+} else {
+    out += `const weaponMasteriesMap = {};\n`;
+}
 
 // 2. Generate Imports for Sub-folders
 classes.forEach(c => {
@@ -132,7 +169,7 @@ spells.forEach(s => {
 });
 out += `};\n`;
 
-out += `\nexport { classesMap, backgroundsMap, racesMap, itemsMap, rulesMap, generalFeatsMap, epicBoonFeatsMap };\n\n`;
+out += `\nexport { classesMap, backgroundsMap, racesMap, itemsMap, rulesMap, generalFeatsMap, epicBoonFeatsMap, weaponMasteriesMap };\n\n`;
 
 // 3. Generate the Registry Maps
 out += `export const classRegistry: Record<string, any> = {\n`;

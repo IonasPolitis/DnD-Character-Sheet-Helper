@@ -83,7 +83,8 @@
       },
       {
         "name": "Weapon Mastery",
-        "description": "Your training with weapons allows you to use the mastery properties of two kinds of weapons of your choice with which you have proficiency, such as Greataxes and Handaxes. Whenever you finish a Long Rest, you can change the kinds of weapons you chose."
+        "description": "Your training with weapons allows you to use the [mastery properties](note:weapon-masteries) of two kinds of weapons of your choice with which you have proficiency, such as Greataxes and Handaxes. Whenever you finish a Long Rest, you can change the kinds of weapons you chose.",
+        "weaponMastery": 2
       }
     ],
     "2": [
@@ -108,6 +109,11 @@
       }
     ],
     "4": [
+      {
+        "name": "Weapon Mastery",
+        "weaponMastery": 3,
+        "hide": true
+      },
       {
         "name": "Ability Score Improvement",
         "description": "Choose between increasing your ability scores or selecting a feat.",
@@ -154,6 +160,13 @@
       {
         "name": "Brutal Strike",
         "description": "If you use Reckless Attack, you can forgo any Advantage on one Strength-based attack roll of your choice on your turn. The chosen attack roll mustn't have Disadvantage. If the chosen attack roll hits, the target takes an extra 1d10 damage of the same type dealt by the weapon or Unarmed Strike, and you can cause one Brutal Strike effect of your choice. You have the following effect options.\n - **Forceful Blow**: The target is pushed 15 feet straight away from you. You can then move up to half your Speed straight toward the target without provoking Opportunity Attacks.\n - **Hamstring Blow**: The target's Speed is reduced by 15 feet until the start of your next turn. A target can be affected by only one Hamstring Blow at a time\u2014the most recent one."
+      }
+    ],
+    "10": [
+      {
+        "name": "Weapon Mastery",
+        "weaponMastery": 4,
+        "hide": true
       }
     ],
     "11": [

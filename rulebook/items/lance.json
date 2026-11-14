@@ -1,8 +1,9 @@
 {
-      "name": "Lance",
-      "type": "weapon",
-      "description": "Heavy, Reach, Two-Handed (unless mounted)",
-      "weight": 6,
-      "damage": "1d10 Piercing",
-      "cost": "10 GP"
+	"name": "Lance",
+	"type": "weapon",
+	"description": "Heavy, Reach, Two-Handed (unless mounted)",
+	"weight": 6,
+	"damage": "1d10 Piercing",
+	"mastery": "Topple",
+	"cost": "10 GP"
 }

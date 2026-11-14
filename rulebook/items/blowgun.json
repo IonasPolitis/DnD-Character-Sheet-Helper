@@ -1,8 +1,9 @@
 {
-      "name": "Blowgun",
-      "type": "weapon",
-      "description": "Ammunition (Range 25/100; Needle), Loading",
-      "weight": 1,
-      "damage": "1 Piercing",
-      "cost": "10 GP"
+	"name": "Blowgun",
+	"type": "weapon",
+	"description": "Ammunition (Range 25/100; Needle), Loading",
+	"weight": 1,
+	"damage": "1 Piercing",
+	"mastery": "Vex",
+	"cost": "10 GP"
 }

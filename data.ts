@@ -14,6 +14,7 @@ import {
     rulesMap,
     generalFeatsMap,
     epicBoonFeatsMap,
+    weaponMasteriesMap,
     spellsMap,
     pastEditionsRegistry
 } from './registry';
@@ -529,4 +530,59 @@ export async function getFeatMapData(app: App, settings: FetchSettings, featMapN
         return mergeDictionaries(fetchNative(), await fetchCustom(basePath), settings.customRulebookPriority);
     }
     return fetchNative();
+}
+
+// --- Logic for Fetching Weapon Masteries Dictionary (weapon-masteries.json) ---
+export async function getWeaponMasteriesMap(app: App, settings: FetchSettings): Promise<Record<string, string>> {
+    const fetchNative = (): Record<string, string> => (weaponMasteriesMap as Record<string, string>) || {};
+    const basePath = getCleanCustomBasePath(settings);
+    if (!basePath) {
+        return { ...fetchNative() };
+    }
+    const customData = await readCustomJson(app, `${basePath}/weapon-masteries.json`);
+    if (customData && typeof customData === 'object' && !Array.isArray(customData)) {
+        return mergeDictionaries(fetchNative(), customData, settings.customRulebookPriority) || {};
+    }
+    return { ...fetchNative() };
+}
+
+// --- Helper: Resolve a single Weapon Mastery property from weapon-masteries.json ---
+// Returns null if the mastery is not found in weapon-masteries.json so unrecognized masteries are hidden.
+export async function getWeaponMasteryDescription(
+    app: App,
+    settings: FetchSettings,
+    masteryName: any
+): Promise<{ name: string; description: string } | null> {
+    if (!masteryName || typeof masteryName !== 'string' || !masteryName.trim()) return null;
+    const cleanTarget = masteryName.trim().toLowerCase();
+    const map = await getWeaponMasteriesMap(app, settings);
+    if (!map || typeof map !== 'object') return null;
+
+    for (const [key, desc] of Object.entries(map)) {
+        if (key.trim().toLowerCase() === cleanTarget && typeof desc === 'string' && desc.trim() !== '') {
+            return { name: key.trim(), description: desc.trim() };
+        }
+    }
+    return null;
+}
+
+// --- Helper: Build Markdown Content for weapon-masteries.md from a weapon-masteries.json Dictionary ---
+export function buildWeaponMasteriesMarkdown(masteriesMap: Record<string, string>): string {
+    const lines = [
+        '## WEAPON MASTERY PROPERTIES',
+        '---',
+        'Each weapon has a Mastery property, which is usable only by a character who has a feature, such as Weapon Mastery, that unlocks the property for the character. The properties are defined below in alphabetical order.'
+    ];
+    if (masteriesMap && typeof masteriesMap === 'object') {
+        Object.keys(masteriesMap)
+            .sort((a, b) => a.localeCompare(b))
+            .forEach(key => {
+                const desc = String(masteriesMap[key] || '').trim();
+                if (!desc) return;
+                lines.push('');
+                lines.push(`#### ${key.toUpperCase()}`);
+                lines.push(desc);
+            });
+    }
+    return lines.join('\n') + '\n';
 }

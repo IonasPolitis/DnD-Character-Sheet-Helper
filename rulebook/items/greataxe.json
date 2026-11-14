@@ -1,8 +1,9 @@
 {
-      "name": "Greataxe",
-      "type": "weapon",
-      "description": "Heavy, Two-Handed",
-      "weight": 7,
-      "damage": "1d12 Slashing",
-      "cost": "30 GP"
+	"name": "Greataxe",
+	"type": "weapon",
+	"description": "Heavy, Two-Handed",
+	"weight": 7,
+	"damage": "1d12 Slashing",
+	"mastery": "Cleave",
+	"cost": "30 GP"
 }

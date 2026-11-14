@@ -1,8 +1,9 @@
 {
-      "name": "Quarterstaff",
-      "type": "weapon",
-      "description": "Versatile (1d8)",
-      "weight": 4,
-      "damage": "1d6 Bludgeoning",
-      "cost": "2 SP"
+	"name": "Quarterstaff",
+	"type": "weapon",
+	"description": "Versatile (1d8)",
+	"weight": 4,
+	"damage": "1d6 Bludgeoning",
+	"mastery": "Topple",
+	"cost": "2 SP"
 }

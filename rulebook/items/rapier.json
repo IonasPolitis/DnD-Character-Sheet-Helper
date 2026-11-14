@@ -1,8 +1,9 @@
 {
-      "name": "Rapier",
-      "type": "weapon",
-      "description": "Finesse",
-      "weight": 2,
-      "damage": "1d8 Piercing",
-      "cost": "25 GP"
+	"name": "Rapier",
+	"type": "weapon",
+	"description": "Finesse",
+	"weight": 2,
+	"damage": "1d8 Piercing",
+	"mastery": "Vex",
+	"cost": "25 GP"
 }

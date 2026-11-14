@@ -1,8 +1,9 @@
 {
-      "name": "Club",
-      "type": "weapon",
-      "description": "Light",
-      "weight": 2,
-      "damage": "1d4 Bludgeoning",
-      "cost": "1 SP"
+	"name": "Club",
+	"type": "weapon",
+	"description": "Light",
+	"weight": 2,
+	"damage": "1d4 Bludgeoning",
+	"mastery": "Slow",
+	"cost": "1 SP"
 }

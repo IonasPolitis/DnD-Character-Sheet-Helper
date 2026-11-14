@@ -1,8 +1,9 @@
 {
-      "name": "Shortsword",
-      "type": "weapon",
-      "description": "Finesse, Light",
-      "weight": 2,
-      "damage": "1d6 Piercing",
-      "cost": "10 GP"
+	"name": "Shortsword",
+	"type": "weapon",
+	"description": "Finesse, Light",
+	"weight": 2,
+	"damage": "1d6 Piercing",
+	"mastery": "Vex",
+	"cost": "10 GP"
 }

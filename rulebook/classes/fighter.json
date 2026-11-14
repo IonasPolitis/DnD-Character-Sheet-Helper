@@ -98,7 +98,8 @@
       },
       {
         "name": "Weapon Mastery",
-        "description": "Your training with weapons allows you to use the mastery properties of three kinds of weapons of your choice with which you have proficiency. Whenever you finish a Long Rest, you can change the kinds of weapons you chose. The number of weapons you can choose increases as you gain Fighter levels, as shown in the Weapon Mastery column of the Fighter Features table (4 at level 4, 5 at level 10, and 6 at level 16)."
+        "description": "Your training with weapons allows you to use the [mastery properties](note:weapon-masteries) of three kinds of weapons of your choice with which you have proficiency. Whenever you finish a Long Rest, you can change the kinds of weapons you chose. The number of weapons you can choose increases as you gain Fighter levels, as shown in the Weapon Mastery column of the Fighter Features table (4 at level 4, 5 at level 10, and 6 at level 16).",
+        "weaponMastery": 3
       }
     ],
     "2": [
@@ -139,6 +140,11 @@
       }
     ],
     "4": [
+      {
+        "name": "Weapon Mastery",
+        "weaponMastery": 4,
+        "hide": true
+      },
       {
         "name": "Fighting Styles",
         "description": "You have honed your martial prowess and gain a Fighting Style feat of your choice (see chapter 5). Defense is recommended.",
@@ -245,6 +251,11 @@
     ],
     "10": [
       {
+        "name": "Weapon Mastery",
+        "weaponMastery": 5,
+        "hide": true
+      },
+      {
         "name": "Fighting Styles",
         "description": "You have honed your martial prowess and gain a Fighting Style feat of your choice (see chapter 5). Defense is recommended.",
         "classChoices": [
@@ -332,6 +343,11 @@
       }
     ],
     "16": [
+      {
+        "name": "Weapon Mastery",
+        "weaponMastery": 6,
+        "hide": true
+      },
       {
         "name": "Fighting Styles",
         "description": "You have honed your martial prowess and gain a Fighting Style feat of your choice (see chapter 5). Defense is recommended.",

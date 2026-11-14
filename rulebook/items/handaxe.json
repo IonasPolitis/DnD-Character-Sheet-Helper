@@ -1,8 +1,9 @@
 {
-      "name": "Handaxe",
-      "type": "weapon",
-      "description": "Light, Thrown (Range 20/60)",
-      "weight": 2,
-      "damage": "1d6 Slashing",
-      "cost": "5 GP"
+	"name": "Handaxe",
+	"type": "weapon",
+	"description": "Light, Thrown (Range 20/60)",
+	"weight": 2,
+	"damage": "1d6 Slashing",
+	"mastery": "Vex",
+	"cost": "5 GP"
 }

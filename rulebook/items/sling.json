@@ -1,8 +1,9 @@
 {
-      "name": "Sling",
-      "type": "weapon",
-      "description": "Ammunition (Range 30/120; Bullet)",
-      "weight": 0,
-      "damage": "1d4 Bludgeoning",
-      "cost": "1 SP"
+	"name": "Sling",
+	"type": "weapon",
+	"description": "Ammunition (Range 30/120; Bullet)",
+	"weight": 0,
+	"damage": "1d4 Bludgeoning",
+	"mastery": "Slow",
+	"cost": "1 SP"
 }
