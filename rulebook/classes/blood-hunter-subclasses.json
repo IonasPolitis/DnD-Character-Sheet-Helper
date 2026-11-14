@@ -1,1 +1,153 @@
-{}
+{
+      "Order of the Ghostslayer": {
+            "3": [
+                  {
+                        "name": "Rite of the Dawn",
+                        "description": "You learn the Rite of the Dawn as part of your Crimson Rite feature. When you activate the Rite of the Dawn, the extra damage dealt by your rite is radiant damage. Additionally, while that rite is active on your weapon, you gain the following benefits:\n- Your weapon sheds Bright Light out to a range of 20 feet.\n- You have Resistance to Necrotic damage.\n- When you hit an Undead creature with a weapon for which the Rite of the Dawn is active, you roll an additional hemocraft die when determining the extra damage from the rite."
+                  },
+                  {
+                        "name": "Curse Specialist",
+                        "description": "You can invoke two blood curses with a single Bonus Action or Reaction. Each blood curse still consumes a separate use of your Hemocraft feature."
+                  }
+            ],
+            "7": [
+                  {
+                        "name": "Aether Walk",
+                        "description": "At the start of your turn, you can step into the veil between the planes. For 1 minute, you can move through other creatures and objects as if they were difficult terrain, as well as see and affect creatures and objects on the Ethereal Plane. You take 1d10 force damage if you end your turn inside an object. If you are inside an object when this feature ends, you are immediately shunted to the nearest unoccupied space and you take force damage equal to twice the number of feet you moved.\n\tYou can use this feature twice. You regain one of its expended uses when you finish a Short Rest, and you regain all expended uses when you finish a Long Rest. You gain another use when you reach Blood Hunter level 15."
+                  }
+            ],
+            "11": [
+                  {
+                        "name": "Brand of Sundering",
+                        "description": "Whenever you hit a branded creature with a weapon for which you have an active crimson rite, you roll an additional hemocraft die when determining the extra damage from the rite. Additionally, if a branded creature has the Incorporeal Movement trait or a similar feature, it can't move through creatures or objects while branded."
+                  }
+            ],
+            "15": [
+                  {
+                        "name": "Blood Curse of the Exorcist",
+                        "description": "You can expend one use of your Hemocraft to invoke a special blood curse as a Bonus Action. Choose one creature you can see within 30 feet of you that is Charmed, Frightened, or possessed. The target creature is no longer Charmed, Frightened, or possessed.\n\t**Amplify**: The creature that Charmed, Frightened, or possessed the target of your curse suffers 3d6 psychic damage and must make a Wisdom saving throw or be stunned until the end of your next turn."
+                  }
+            ],
+            "18": [
+                  {
+                        "name": "Rite Revival",
+                        "description": "You learn to protect your fading life by reabsorbing the energy you feed to your weapons. If you have one or more crimson rites active and you are reduced to O hit points but don't die outright, you can choose to have all your active crimson rites end and drop to 1 hit point instead."
+                  }
+            ]
+      },
+      "Order of the Lycan": {
+            "3": [
+                  {
+                        "name": "Hybrid Transformastion",
+                        "description": "You have the curse of lycanthropy in your veins, and you control it to the best of your ability. As a Bonus Action, you can transform into a hybrid form for up to 1 hour. You can speak, use equipment, and wear armor while in this form, and can revert to your normal form as a Bonus Action. You automatically revert to your normal form if you fall unconscious or die. Once you use this feature, you can't do so again until you finish a Short or Long Rest. While you are transformed, you gain the following features:\n\t**Feral Might**: You have advantage on Strength checks and Strength saving throws, and you have a +1 bonus to melee damage rolls. This bonus increases by 1 when you reach Blood Hunter level 11 (+2) and 18 (+3).\n\t**Resilient Hide**: You have resistance to bludgeoning, piercing, and slashing damage not made with silvered weapons. Additionally, while you are not wearing heavy armor, you have a +1 bonus to AC.\n\t**Predatory Strikes**: You can apply your Crimson Rite feature to your Unarmed Strikes, which you treat as a weapon. You can use Dexterity instead of Strength for the attack and damage rolls of your unarmed strikes, which deal 1d6 bludgeoning or slashing damage (your choice). This damage increases to 1d8 at Blood Hunter level 11. When you use the Attack action to make an Unarmed Strike, you can make one additional Unarmed Strike as part of that action.\n\t**Bloodlust**: If you start your turn Bloodied, you must succeed on a DC 8 Wisdom saving throw or move directly toward the nearest creature and use the Attack action against that creature. If you're concentrating on a spell or are under an effect that prevents you from concentrating (such as the barbarian's Rage feature), you automatically fail this saving throw.\nIf you have your Extra Attack feature, you can choose whether to use it for this frenzied attack. If more than one creature is equally near to you, roll randomly to determine your target. Once your attack is resolved, you regain control of yourself."
+                  }
+            ],
+            "7": [
+                  {
+                        "name": "Stalker's Prowess",
+                        "description": "The lycanthropy in you strengthens your body, granting you the following benefits.\n\t**Enhanced Musculature**: Your speed is increased by 10 feet, and you add 10 feet to your long jump distance and 3 feet to your high jump distance.\n\t**Improved Predatory Strikes**: While in your hybrid form, you have a +1 bonus to attack rolls made with your unarmed strike. This bonus increases by 1 when you reach Blood Hunter level 11 (+2) and 18 (+3)."
+                  }
+            ],
+            "11": [
+                  {
+                        "name": "Advanced Transformation",
+                        "description": "You continue to progress deeper into the curse's effects, granting you the following benefits.\n\t**Hybrid Control**: You can use your Hybrid Transformation feature twice, instead of once, between rests.\n\t**Lycan Regeneration**: At the start of each of your turns when you are Bloodied and have at least 1 hit point, you gain hit points equal to 1 + your Constitution modifier (minimum of 1). If you are in hybrid form, you gain these hit points before you must make the saving throw for your Bloodlust."
+                  }
+            ],
+            "15": [
+                  {
+                        "name": "Brand of the Voracious",
+                        "description": "Your Brand of Castigation can now bind a foe to your hunter's ferocity. While in your hybrid form, you have advantage on attack rolls against a creature branded by you."
+                  },
+                  {
+                        "name": "Blood Curse of the Howl",
+                        "description": "You can expend one use of your Hemocraft to invoke a special blood curse as a Magic Action. You unleash a bloodcurdling howl. Each creature in a 30-foot Emanation from you that can hear you must succeed on a Wisdom saving throw or become Frightened of you until the end of your next turn. If a creature fails its saving throw by 5 or more, it is Stunned while Frightened in this way. A creature that succeeds on its saving throw is immune to this blood curse for the next 24 hours. You can choose any number of creatures you can see to be unaffected by the howl.\n\t**Amplify**: You instead invoke this blood curse as a Bonus Action."
+                  }
+            ],
+            "18": [
+                  {
+                        "name": "Transformation Mastery",
+                        "description": "You can use your Hybrid Transformation feature an unlimited number of times, and your hybrid form lasts until you revert to your normal form, fall unconscious, or die.\n\tAdditionally, you have advantage on the saving throw for your Bloodlust."
+                  }
+            ]
+      },
+      "Order of the Mutant": {
+            "3": [
+                  {
+                        "name": "Mutagencraft",
+                        "description": "You learn to modify your mind and body using forbidden alchemical formulas known as mutagens.\n\t**Formulae**: You learn 4 mutagen formulae from the [**Mutagen Options**](note:mutagen-options) list. You learn one additional formulae at Blood Hunter level 7, 11, 15, and 18. When you learn a new mutagen formula, you can replace one formula you already know with a new mutagen formula.\n\t**Mutagens**: You prepare mutagens using your Alchemist's Supplies for various situations. When you finish a Long Rest, you can concoct 3 mutagens from the formulae you know with your Alchemist's Supplies. You can concoct one additional mutagen after a Long Rest when you reach Blood Hunter Level 11 (concoct 4 mutagens) and 18 (concoct 5 mutagens). Each mutagen must be a different one, you can't concoct the same mutagen multiple times. When you finish a Short Rest, you can concoct one mutagen from the formulae you know with your Alchemist's Supplies. This mutagen must not be one you have currently concocted, though it can be one you have already consumed.\n\t**Consuming Mutagens**: As a Bonus Action, you can consume a mutagen you have concocted, gaining the effects of the mutagen, which lasts until you finish a Short or Long Rest. You can have one mutagen affecting you at a time. You can have an additional mutagen affecting you at one time when you reach Blood Hunter level 7 (two mutagens) and 15 (three mutagens). When you consume another mutagen past your limit, you choose a mutagen to purge, and it no longer affects you. Mutagens are concocted to your biology, and have no effect on other creatures. Mutagens you have concocted are unstable by nature, and become inert when you finish a Long Rest."
+                  }
+            ],
+            "7": [
+                  {
+                        "name": "Alchemical Metabolism",
+                        "description": "Your body adapts to the venoms and toxins injected into your body. You gain Resistance to Poison damage and have advantage on saving throws made against being Poisoned."
+                  }
+            ],
+            "11": [
+                  {
+                        "name": "Brand of the Axiom",
+                        "description": "Your mutagenic hemocraft lets your Brand of Castigation reveal a foe's true nature. Any illusion or invisibility in effect on a creature when you brand it ends, and the creature can't benefit from invisibility or illusion effects while branded by you. If a creature branded by you is in an alternative form (such as through the Polymorph spell, the Change Shape action, Shapechanger trait, the Wild Shape feature, and similar effects) or it attempts to alter its form, it must succeed on a Wisdom saving throw or revert to its true form and be Stunned until the end of your next turn."
+                  }
+            ],
+            "15": [
+                  {
+                        "name": "Blood Curse of Corrosion",
+                        "description": "You can exend one use of your Hemocraft to invoke a special blood curse. As a Bonus Action, you cause a creature within 30 feet of you to become Poisoned. The cursed creature can make a Constitution saving throw at the end of each of its turns, ending the curse on itself on a success.\n\t**Amplify**: The cursed creature takes 4d6 necrotic damage when you inflict this curse, and it takes this damage again each time it fails a Constitution saving throw to end the curse."
+                  },
+                  {
+                        "name": "Blood Curse of the Howl",
+                        "description": "You can expend one use of your Hemocraft to invoke a special blood curse as a Magic Action. You unleash a bloodcurdling howl. Each creature in a 30-foot Emanation from you that can hear you must succeed on a Wisdom saving throw or become Frightened of you until the end of your next turn. If a creature fails its saving throw by 5 or more, it is Stunned while Frightened in this way. A creature that succeeds on its saving throw is immune to this blood curse for the next 24 hours. You can choose any number of creatures you can see to be unaffected by the howl.\n\t**Amplify**: You instead invoke this blood curse as a Bonus Action."
+                  }
+            ],
+            "18": [
+                  {
+                        "name": "Exalted Mutation",
+                        "description": "Your body can produce mutagens at a whim. At the start of your turn, choose one mutagen currently affecting you. Its effects end, and you can immediately have a mutagen you know the formula for take effect in its place.\n\tYou can use this feature a number of times equal to your Intelligence modifier (minimum of once). You regain all expended uses when you finish a Long Rest.",
+                        "uses": "( intelligence - 10 ) / 2"
+                  }
+            ]
+      },
+      "Order of the Profane Soul": {
+            "3": [
+                  {
+                        "name": "Pact Magic",
+                        "description": "You have learned to cast spells. See chapter 7 for the rules on spellcasting. The information below details how you use those rules as a Profane Soul.\n\t**Cantrips**: You know two cantrips of your choice from the Warlock spell list (see that class's section for its list). Eldritch Blast and Mind Sliver are recommended.\n\tWhenever you gain a Blood Hunter level, you can replace one of these cantrips with another cantrip of your choice from the Warlock spell list. When you reach Blood Hunter level 10, you learn another Warlock cantrip of your choice.\n\t**Spell Slots**: The Profane Soul Spellcasting table shows how many spell slots you have to cast your level 1+ spells. You regain all expended Pact Magic slots when you finish a Short or Long Rest.\n\t**Prepared Spells of Level 1+. You prepare the list of level 1+ spells that are available for you to cast with this feature. To start, choose two level 1 spells from the Warlock spell list. Armor of Agathys and Hex are recommended.\n\tThe number of spells on your list increases as you gain Blood Hunter levels, as shown in the Prepared Spells column of the Profane Soul Spellcasting table. Whenever that number increases, choose additional spells from the Warlock spell list until the number of spells on your list matches the number on the table. The chosen spells must be of a level for which you have spell slots. For example, if you're a level 7 Blood Hunter, your list of prepared spells can include four Warlock spells of levels 1 and 2 in any combination\n\t**Changing your Prepared Spells**: Whenever you gain a Blood Hunter level, you can replace one spell on your list with another Warlock spell for which you have spell slots.\n\t**Spellcasting Ability** Intelligence is your spellcasting ability for your Warlock spells.\n\t**Spellcasting Focus**: You can use an Arcane Focus as a Spellcasting Focus for your Warlock spells."
+                  }
+            ],
+            "7": [
+                  {
+                        "name": "Mystic Frenzy",
+                        "description": "When you take the Attack action on your turn, you can replace one of the attacks with a casting of one of your Warlock cantrips that has a casting time of an action."
+                  },
+                  {
+                        "name": "Otherworldly Arcana",
+                        "description": "You prepare a spell related to the creature type you chose for your Otherworldly Attunement. When you change your choice, the spell you prepare wth this feature also changes. You can also cast the prepared spell once without a spell slot, and you regain the ability to cast it in this way when you finish a Long Rest.\n- **Aberration**: You have the Detect Thoughts spell prepared. \n- **Celestial**: You have the Lesser Restoration spell prepared. \n- **Elemental**: You have the Dragon's Breath spell prepared.\n- **Fey**: You have the Blur spell prepared.\n- **Fiend**: You have the Heat Metal spell prepared.\n- **Undead**: You have the Blindness/Deafness spell prepared."
+                  }
+            ],
+            "11": [
+                  {
+                        "name": "Brand of the Sapping Scar",
+                        "description": "Your Brand of Castigation feature digs dark arcane scars into your target, leaving them vulnerable to your magic. A creature branded by you has disadvantage on saving throws against your warlock spells."
+                  },
+                  {
+                        "name": "Blood Curse of Corrosion",
+                        "description": "You can exend one use of your Hemocraft to invoke a special blood curse. As a Bonus Action, you cause a creature within 30 feet of you to become Poisoned. The cursed creature can make a Constitution saving throw at the end of each of its turns, ending the curse on itself on a success.\n\t**Amplify**: The cursed creature takes 4d6 necrotic damage when you inflict this curse, and it takes this damage again each time it fails a Constitution saving throw to end the curse."
+                  }
+            ],
+            "15": [
+                  {
+                        "name": "Eldritch Arcana",
+                        "description": "You prepare another spell related to the creature type you chose for your Otherworldly Attunement. When you change your choice, the spell you prepare wth this feature also changes. You can also cast the prepared spell once without a spell slot, and you regain the ability to cast it in this way when you finish a Long Rest.\n- **Aberration**: You have the Haste spell prepared.\n- **Celestial**: You have the Revivify spell prepared. \n- **Elemental**: You have the Protection from Energy spell prepared. Fey. You have the Slow spell prepared.\n- **Fiend**: You have the Fireball spell prepared.\n- **Undead**: You have the Bestow Curse spell prepared.",
+                        "uses": [ 1, "long" ]
+                  }
+            ],
+            "18": [
+                  {
+                        "name": "Blood Curse of the Souleater",
+                        "description": "You can expend on use of your Hemocraft to invoke a special blood curse. When a creature that isn't a construct or undead is reduced to 0 hit points within 30 feet of you, you can take a Reaction to absorb their life energy and empower yourself. Until the end of your next turn, you make attacks with advantage and you have resistance to all damage.\n\t**Amplify**: Additionally, you regain an expended Pact Magic spell slot. Once you've amplified this blood curse, you must finish a Long Rest before you can amplify it again."
+                  }
+            ]
+      }
+
+}
