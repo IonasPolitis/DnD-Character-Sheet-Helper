@@ -54,6 +54,38 @@ function syncWeaponMasteriesMarkdownFile() {
 
 syncWeaponMasteriesMarkdownFile();
 
+// --- AUTO-GENERATE wand-icon.ts FROM wand.svg ---
+function syncWandIcon() {
+    const wandSvgPath = path.join(__dirname, 'wand.svg');
+    const wandTsPath = path.join(__dirname, 'wand-icon.ts');
+    if (!fs.existsSync(wandSvgPath)) return;
+    try {
+        const svg = fs.readFileSync(wandSvgPath, 'utf8');
+        const match = svg.match(/<image[\s\S]*?\/>/);
+        let innerContent = '';
+        if (match) {
+            let imageTag = match[0];
+            if (!imageTag.includes(' href=')) {
+                imageTag = imageTag.replace('xlink:href=', 'href=');
+            }
+            innerContent = `<defs><clipPath id="csh-wand-clip"><rect x="0" y="0" width="1445" height="1445"/></clipPath></defs><g transform="scale(0.06920415224913495)" clip-path="url(#csh-wand-clip)">${imageTag}</g>`;
+        } else {
+            innerContent = svg.replace(/<\?xml[\s\S]*?\?>/g, '')
+                              .replace(/<!--[\s\S]*?-->/g, '')
+                              .replace(/<svg[\s\S]*?>/g, '')
+                              .replace(/<\/svg>/g, '')
+                              .trim();
+        }
+        const tsContent = `// Auto-generated from wand.svg by generate-registry.js\nexport const WAND_ICON_SVG = ${JSON.stringify(innerContent)};\n`;
+        fs.writeFileSync(wandTsPath, tsContent, 'utf8');
+        console.log('✅ Auto-generated wand-icon.ts successfully!');
+    } catch (e) {
+        console.error('Failed to sync wand icon:', e);
+    }
+}
+
+syncWandIcon();
+
 // --- MARKDOWN NOTE SCANNER ---
 function scanMarkdownNotes() {
     const notes = [];

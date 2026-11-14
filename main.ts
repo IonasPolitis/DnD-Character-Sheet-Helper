@@ -1,7 +1,8 @@
-import { App, Plugin, PluginSettingTab, Setting, MarkdownPostProcessorContext, parseYaml, MarkdownRenderChild, MarkdownRenderer, TFile, Modal, Notice, MarkdownView, normalizePath, Platform } from 'obsidian';
+import { App, Plugin, PluginSettingTab, Setting, MarkdownPostProcessorContext, parseYaml, MarkdownRenderChild, MarkdownRenderer, TFile, Modal, Notice, MarkdownView, normalizePath, Platform, addIcon } from 'obsidian';
 import { getClassData, getSubclassData, getBackgroundData, getRaceData, getExtraFeat, getItemData, getRuleData, getSpellData, getSpellsPoolData, getClassChoiceData, getClassChoiceRouterData, classChoiceRouterRegistry, getFeatMapData, getWeaponMasteriesMap, getWeaponMasteryDescription, buildWeaponMasteriesMarkdown } from './data';
 import { MarkdownNotes, classesMap, racesMap, backgroundsMap, itemsMap } from './registry';
 import { THEMES } from './themes';
+import { WAND_ICON_SVG } from './wand-icon';
 
 // --- Item cost helpers (PP / GP / SP / CP) ---
 // Item costs are stored as "<amount> <PP|GP|SP|CP>" (e.g. "50 GP", "1 SP", "5 CP").
@@ -471,8 +472,11 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
             void this.syncWeaponMasteriesMarkdown();
         });
 
+        // Register custom wand icon from wand.svg
+        addIcon('csh-wand', WAND_ICON_SVG);
+
         // Sidebar ribbon icon to launch Character Wizard
-        this.addRibbonIcon('wand-2', 'Launch Character Creation Wizard', () => {
+        this.addRibbonIcon('csh-wand', 'Launch Character Creation Wizard', () => {
             const view = this.app.workspace.getActiveViewOfType(MarkdownView);
 
             if (!view) {
