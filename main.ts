@@ -5855,7 +5855,7 @@ class CharacterWizardModal extends Modal {
             [Number(this.wizardData.level) || 1],
             Number(this.wizardData.level) || 1,
             this.wizardData.extraFeats,
-            bgData?.feat,
+            bgDataStore?.feat,
             this.wizardData.subclass,
             this.plugin.settings
         );
