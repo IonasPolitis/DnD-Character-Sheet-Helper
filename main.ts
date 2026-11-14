@@ -3981,7 +3981,6 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
 
         // Persistent session states across frontmatter re-renders
         let tempHp = 0;
-        let hitDiceStates: boolean[] = [];
         let manualDeathSavesOpen = false;
         let manualExhaustionOpen = false;
         let deathSaveLeft: boolean[] = [false, false, false];
@@ -4016,30 +4015,37 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                 return val;
             };
 
-            // 1. Resolve health (Max HP), hitDice (DnD_hit_dice), and level (DnD_level)
+            // 1. Resolve health (Max HP), level (DnD_level), and hitDice ([HitDie, SpentCount] in DnD_hitDice)
             const rawMaxHealth = resolveValue(blockData.health ?? blockData.maxHealth);
             const maxHealth = (rawMaxHealth !== undefined && rawMaxHealth !== null && rawMaxHealth !== "" && !isNaN(Number(rawMaxHealth)))
                 ? Math.max(1, Number(rawMaxHealth))
                 : Math.max(1, Number(frontmatter["DnD_maxHealth"]) || 1);
-
-            let rawHitDice = resolveValue(blockData.hitDice ?? blockData.DnD_hit_dice) ?? frontmatter["DnD_hitDice"];
-            if (!rawHitDice && frontmatter["DnD_class"]) {
-                const primaryClass = Array.isArray(frontmatter["DnD_class"]) ? frontmatter["DnD_class"][0] : frontmatter["DnD_class"];
-                const classData = await getClassData(this.app, this.settings, primaryClass);
-                if (classData) {
-                    rawHitDice = classData.HitDice || classData.hitDice || classData.hit_dice;
-                }
-            }
-            const DnD_hit_dice = String(rawHitDice || "d8").trim().replace(/^<.*>$/, "d8") || "d8";
 
             const rawLevel = resolveValue(blockData.level ?? blockData.DnD_level);
             const DnD_level = (rawLevel !== undefined && rawLevel !== null && rawLevel !== "" && !isNaN(Number(rawLevel)))
                 ? Math.max(1, Number(rawLevel))
                 : Math.max(1, Number(frontmatter["DnD_level"]) || 1);
 
-            // Sync hitDiceStates array length with current level
-            while (hitDiceStates.length < DnD_level) hitDiceStates.push(false);
-            if (hitDiceStates.length > DnD_level) hitDiceStates.length = DnD_level;
+            let targetHitDiceKey = "DnD_hitDice";
+            const rawHitDiceConfig = blockData.hitDice ?? blockData.DnD_hit_dice;
+            if (typeof rawHitDiceConfig === "string" && rawHitDiceConfig.trim().startsWith("frontmatter.")) {
+                targetHitDiceKey = rawHitDiceConfig.trim().replace("frontmatter.", "");
+            }
+
+            let fallbackHitDie = "d8";
+            if (frontmatter["DnD_class"]) {
+                const primaryClass = Array.isArray(frontmatter["DnD_class"]) ? frontmatter["DnD_class"][0] : frontmatter["DnD_class"];
+                const classData = await getClassData(this.app, this.settings, primaryClass);
+                if (classData) {
+                    const chd = classData.HitDice || classData.hitDice || classData.hit_dice;
+                    if (chd) fallbackHitDie = String(chd).trim();
+                }
+            }
+
+            const rawHitDice = resolveValue(rawHitDiceConfig) ?? frontmatter[targetHitDiceKey];
+            const parsedHd = parseHitDiceState(rawHitDice, fallbackHitDie, DnD_level);
+            const DnD_hit_dice = parsedHd.hitDie;
+            const spentHitDice = parsedHd.spent;
 
             // Resolve DnD_current_health from frontmatter.DnD_currentHealth (or block override)
             let targetCurrentHpKey = "DnD_currentHealth";
@@ -4157,33 +4163,33 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                 renderContent();
             };
 
-            // 3. Hit Dice Section
+            // 3. Hit Dice Section (persisted in frontmatter as [HitDie, SpentCount])
             healthWindow.createDiv({ cls: "dnd-health-divider" });
 
             const hitDiceRow = healthWindow.createDiv({ cls: "dnd-health-hitdice-row" });
             hitDiceRow.createEl("span", {
-                text: `HIT DICE (${DnD_hit_dice.toUpperCase()})`,
+                text: `HIT DICE (${DnD_hit_dice.toUpperCase()} • ${DnD_level - spentHitDice}/${DnD_level})`,
                 cls: "dnd-health-hitdice-label"
             });
 
             const hdPipsContainer = hitDiceRow.createDiv({ cls: "dnd-spell-slots-pips" });
-            const applyHdPipVisual = (pipEl: HTMLElement, active: boolean) => {
-                pipEl.classList.toggle("is-used", active);
-                pipEl.setAttribute("title", active ? "Tap to restore Hit Die" : "Tap to spend Hit Die");
-            };
-
             for (let i = 0; i < DnD_level; i++) {
+                const isSpent = i < spentHitDice;
                 const pip = hdPipsContainer.createDiv({
-                    cls: `dnd-slot-pip ${hitDiceStates[i] ? "is-used" : ""}`
+                    cls: `dnd-slot-pip ${isSpent ? "is-used" : ""}`,
+                    attr: { title: isSpent ? "Tap to restore Hit Die" : "Tap to spend Hit Die" }
                 });
-                applyHdPipVisual(pip, hitDiceStates[i]);
 
-                pip.addEventListener("pointerdown", (e: PointerEvent) => {
+                pip.addEventListener("pointerdown", async (e: PointerEvent) => {
                     if (e.button !== 0 && e.pointerType === "mouse") return;
                     e.preventDefault();
                     e.stopPropagation();
-                    hitDiceStates[i] = !hitDiceStates[i];
-                    applyHdPipVisual(pip, hitDiceStates[i]);
+                    const newSpent = isSpent
+                        ? Math.max(0, spentHitDice - 1)
+                        : Math.min(DnD_level, spentHitDice + 1);
+                    await this.updateCharacterFrontmatter(ctx.sourcePath, {
+                        [targetHitDiceKey]: serializeHitDiceState(DnD_hit_dice, newSpent)
+                    });
                 });
             }
 
@@ -4286,11 +4292,20 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                 cls: "dnd-health-rest-btn",
                 attr: { value: "short-rest" }
             });
-            shortRestBtn.onclick = async () => {
-                await this.resetCharacterRestState(ctx.sourcePath, "short");
-                renderContent();
-                window.dispatchEvent(new Event("short-rest"));
-                new Notice("Short Rest taken! Short Rest feature uses restored.");
+            shortRestBtn.onclick = () => {
+                new ShortRestModal(this.app, this, ctx.sourcePath, {
+                    maxHealth,
+                    currentHealth: DnD_current_health,
+                    hitDiceStr: DnD_hit_dice,
+                    level: DnD_level,
+                    spentHitDice,
+                    targetCurrentHpKey,
+                    targetHitDiceKey,
+                    onHealAboveZero: () => {
+                        deathSaveLeft = [false, false, false];
+                        deathSaveRight = [false, false, false];
+                    }
+                }).open();
             };
 
             const longRestBtn = bottomBar.createEl("button", {
@@ -4300,24 +4315,34 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
             });
             longRestBtn.onclick = async () => {
                 tempHp = 0;
-                hitDiceStates = Array(DnD_level).fill(false);
                 manualDeathSavesOpen = false;
                 deathSaveLeft = [false, false, false];
                 deathSaveRight = [false, false, false];
                 const newExhaustion = Math.max(0, exhaustionLevel - 1);
                 if (newExhaustion === 0) manualExhaustionOpen = false;
 
+                // 2024 PHB: Long Rest restores half of total Hit Dice (minimum 1)
+                const recoveredHd = Math.max(1, Math.floor(DnD_level / 2));
+                const newSpentHd = Math.max(0, spentHitDice - recoveredHd);
+                const actualRecoveredHd = spentHitDice - newSpentHd;
+
                 await this.resetCharacterRestState(ctx.sourcePath, "long", {
                     [targetCurrentHpKey]: maxHealth,
+                    [targetHitDiceKey]: serializeHitDiceState(DnD_hit_dice, newSpentHd),
                     [targetExhaustionKey]: newExhaustion
                 });
                 renderContent();
                 window.dispatchEvent(new Event("long-rest"));
-                new Notice(
-                    exhaustionLevel > 0
-                        ? `Long Rest completed! HP, Hit Dice, Spell Slots, and Feature Uses restored. Exhaustion reduced to ${newExhaustion}.`
-                        : "Long Rest completed! HP, Hit Dice, Spell Slots, and Feature Uses restored."
-                );
+
+                const restoredItems = ["HP", "Spell Slots", "Feature Uses"];
+                if (actualRecoveredHd > 0) {
+                    restoredItems.push(`${actualRecoveredHd} Hit ${actualRecoveredHd === 1 ? "Die" : "Dice"}`);
+                }
+                let noticeMsg = `Long Rest completed! ${restoredItems.join(", ")} restored.`;
+                if (exhaustionLevel > 0) {
+                    noticeMsg += ` Exhaustion reduced to ${newExhaustion}.`;
+                }
+                new Notice(noticeMsg);
             };
 
             const deathSavesBtn = bottomBar.createEl("button", {
@@ -4476,6 +4501,13 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
             }
 
             if (restType === "long") {
+                if (extraUpdates["DnD_hitDice"] === undefined && fm["DnD_hitDice"] !== undefined) {
+                    const lvl = Math.max(1, Math.floor(Number(fm["DnD_level"]) || 1));
+                    const parsedHd = parseHitDiceState(fm["DnD_hitDice"], "d8", lvl);
+                    const recovered = Math.max(1, Math.floor(lvl / 2));
+                    const newSpent = Math.max(0, parsedHd.spent - recovered);
+                    fm["DnD_hitDice"] = serializeHitDiceState(parsedHd.hitDie, newSpent);
+                }
                 if (extraUpdates["DnD_exhaustion"] === undefined && fm["DnD_exhaustion"] !== undefined) {
                     const curEx = Math.max(0, Math.min(6, Math.floor(Number(fm["DnD_exhaustion"]) || 0)));
                     if (curEx > 0) fm["DnD_exhaustion"] = curEx - 1;
@@ -4521,6 +4553,215 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                 }
             }
         });
+    }
+}
+
+// --- HIT DICE STATE HELPERS ([HitDie, SpentCount]) ---
+function parseHitDiceState(raw: any, fallbackDie: string = "d8", maxLevel: number = 20): { hitDie: string; spent: number } {
+    const cleanFallback = String(fallbackDie || "d8").trim().replace(/^<.*>$/, "d8") || "d8";
+    let parsed = raw;
+    if (typeof parsed === "string" && parsed.trim().startsWith("[")) {
+        try { parsed = JSON.parse(parsed.trim()); } catch { parsed = null; }
+    }
+    if (Array.isArray(parsed)) {
+        const rawDie = parsed[0] !== undefined && parsed[0] !== null ? String(parsed[0]).trim() : "";
+        const hitDie = (rawDie && !rawDie.startsWith("<")) ? rawDie : cleanFallback;
+        const rawSpent = Number(parsed[1]);
+        const spent = !isNaN(rawSpent) && rawSpent > 0
+            ? Math.max(0, Math.min(maxLevel, Math.floor(rawSpent)))
+            : 0;
+        return { hitDie, spent };
+    }
+    if (typeof parsed === "string") {
+        const trimmed = parsed.trim();
+        const hitDie = (trimmed && !trimmed.startsWith("<")) ? trimmed : cleanFallback;
+        return { hitDie, spent: 0 };
+    }
+    return { hitDie: cleanFallback, spent: 0 };
+}
+
+function serializeHitDiceState(hitDie: string, spent: number): string {
+    const cleanDie = String(hitDie || "d8").trim().replace(/^<.*>$/, "d8") || "d8";
+    const cleanSpent = Math.max(0, Math.floor(Number(spent) || 0));
+    return JSON.stringify([cleanDie, cleanSpent]);
+}
+
+// --- SHORT REST MODAL UI ---
+interface ShortRestModalOptions {
+    maxHealth: number;
+    currentHealth: number;
+    hitDiceStr: string;
+    level: number;
+    spentHitDice: number;
+    targetCurrentHpKey: string;
+    targetHitDiceKey: string;
+    onHealAboveZero?: () => void;
+}
+
+class ShortRestModal extends Modal {
+    plugin: DnDCharacterSheetHelperPlugin;
+    sourcePath: string;
+    options: ShortRestModalOptions;
+    dieSize: number;
+    conMod: number = 0;
+    rollLogs: string[] = [];
+
+    constructor(app: App, plugin: DnDCharacterSheetHelperPlugin, sourcePath: string, options: ShortRestModalOptions) {
+        super(app);
+        this.plugin = plugin;
+        this.sourcePath = sourcePath;
+        this.options = { ...options };
+        const parsedDie = parseInt(String(options.hitDiceStr || "d8").replace(/\D/g, ""), 10);
+        this.dieSize = !isNaN(parsedDie) && parsedDie > 0 ? parsedDie : 8;
+    }
+
+    onOpen() {
+        const fileCache = this.app.metadataCache.getCache(this.sourcePath);
+        const frontmatter: Record<string, any> = fileCache?.frontmatter || {};
+        const conScore = Number(frontmatter["DnD_constitution"]);
+        this.conMod = !isNaN(conScore) && conScore > 0 ? Math.floor((conScore - 10) / 2) : 0;
+        this.renderModal();
+    }
+
+    renderModal() {
+        const { contentEl } = this;
+        contentEl.empty();
+        contentEl.addClass("dnd-modal");
+
+        contentEl.createEl("h3", { text: "⛺ Short Rest", cls: "dnd-modal-title" });
+        contentEl.createEl("p", {
+            text: "Spend Hit Dice to recover Hit Points, then finish your Short Rest to restore Short Rest features.",
+            cls: "dnd-modal-subtitle"
+        });
+
+        const remainingHd = Math.max(0, this.options.level - this.options.spentHitDice);
+        const conModStr = `${this.conMod >= 0 ? "+" : ""}${this.conMod}`;
+
+        // 1. Live Status Summary Card
+        const statusCard = contentEl.createDiv({ cls: "dnd-short-rest-status-card" });
+
+        const hpCol = statusCard.createDiv({ cls: "dnd-short-rest-stat" });
+        hpCol.createEl("span", { text: "HIT POINTS", cls: "dnd-short-rest-stat-label" });
+        hpCol.createEl("span", {
+            text: `${this.options.currentHealth} / ${this.options.maxHealth}`,
+            cls: "dnd-short-rest-stat-val"
+        });
+
+        const hdCol = statusCard.createDiv({ cls: "dnd-short-rest-stat" });
+        hdCol.createEl("span", { text: `HIT DICE (D${this.dieSize})`, cls: "dnd-short-rest-stat-label" });
+        hdCol.createEl("span", {
+            text: `${remainingHd} / ${this.options.level} left`,
+            cls: "dnd-short-rest-stat-val"
+        });
+
+        const conCol = statusCard.createDiv({ cls: "dnd-short-rest-stat" });
+        conCol.createEl("span", { text: "CON MODIFIER", cls: "dnd-short-rest-stat-label" });
+        conCol.createEl("span", {
+            text: conModStr,
+            cls: "dnd-short-rest-stat-val"
+        });
+
+        // 2. Spend Hit Dice Controls
+        const spendCard = contentEl.createDiv({ cls: "dnd-form-card dnd-short-rest-actions" });
+        const canSpend = remainingHd > 0 && this.options.currentHealth < this.options.maxHealth;
+
+        const rollBtn = spendCard.createEl("button", {
+            text: `🎲 Roll & Spend Hit Die (1d${this.dieSize} ${conModStr})`,
+            cls: "mod-cta dnd-short-rest-roll-btn"
+        });
+        if (!canSpend) {
+            rollBtn.disabled = true;
+            rollBtn.title = remainingHd <= 0 ? "No Hit Dice remaining" : "Already at Maximum HP";
+        }
+        rollBtn.onclick = async () => {
+            if (!canSpend) return;
+            const rolled = Math.floor(Math.random() * this.dieSize) + 1;
+            await this.applyHitDieHeal(rolled, "Digital Roll");
+        };
+
+        // Manual Physical Roll Row
+        const manualRow = spendCard.createDiv({ cls: "dnd-short-rest-manual-row" });
+        manualRow.createEl("span", {
+            text: `Or enter physical d${this.dieSize} roll:`,
+            cls: "dnd-short-rest-manual-label"
+        });
+
+        const manualInput = manualRow.createEl("input", {
+            type: "number",
+            value: String(Math.ceil(this.dieSize / 2) + 1),
+            cls: "dnd-health-input dnd-short-rest-manual-input",
+            attr: { min: "1", max: String(this.dieSize) }
+        });
+
+        const manualBtn = manualRow.createEl("button", {
+            text: `Spend (${conModStr} CON)`,
+            cls: "dnd-health-btn dnd-health-btn-heal"
+        });
+        if (!canSpend) {
+            manualInput.disabled = true;
+            manualBtn.disabled = true;
+        }
+        manualBtn.onclick = async () => {
+            if (!canSpend) return;
+            const rawVal = Math.floor(Number(manualInput.value) || 0);
+            if (rawVal < 1 || rawVal > this.dieSize) {
+                new Notice(`Please enter a roll between 1 and ${this.dieSize}.`);
+                return;
+            }
+            await this.applyHitDieHeal(rawVal, "Manual Roll");
+        };
+
+        // 3. Roll Log (if any dice spent during this rest)
+        if (this.rollLogs.length > 0) {
+            const logBox = contentEl.createDiv({ cls: "dnd-short-rest-log" });
+            for (const entry of this.rollLogs) {
+                logBox.createDiv({ text: entry, cls: "dnd-short-rest-log-item" });
+            }
+        }
+
+        // 4. Footer: Close / Finish Short Rest
+        const footer = contentEl.createDiv({ cls: "dnd-short-rest-footer" });
+        const cancelBtn = footer.createEl("button", { text: "Close" });
+        cancelBtn.onclick = () => this.close();
+
+        const finishBtn = footer.createEl("button", {
+            text: "✨ Finish Short Rest",
+            cls: "mod-cta"
+        });
+        finishBtn.onclick = async () => {
+            await this.plugin.resetCharacterRestState(this.sourcePath, "short");
+            window.dispatchEvent(new Event("short-rest"));
+            new Notice("Short Rest completed! Short Rest feature uses restored.");
+            this.close();
+        };
+    }
+
+    async applyHitDieHeal(dieRoll: number, sourceLabel: string) {
+        const healAmount = Math.max(1, dieRoll + this.conMod);
+        const oldHp = this.options.currentHealth;
+        const newHp = Math.min(this.options.maxHealth, oldHp + healAmount);
+        const newSpent = Math.min(this.options.level, this.options.spentHitDice + 1);
+
+        this.options.currentHealth = newHp;
+        this.options.spentHitDice = newSpent;
+
+        const conStr = `${this.conMod >= 0 ? "+" : ""}${this.conMod}`;
+        this.rollLogs.push(`🎲 ${sourceLabel}: d${this.dieSize} (${dieRoll}) ${conStr} CON = +${healAmount} HP (${oldHp} → ${newHp} HP)`);
+
+        const updates: Record<string, any> = {
+            [this.options.targetCurrentHpKey]: newHp,
+            [this.options.targetHitDiceKey]: serializeHitDiceState(this.options.hitDiceStr, newSpent)
+        };
+        if (oldHp <= 0 && newHp > 0 && this.options.onHealAboveZero) {
+            this.options.onHealAboveZero();
+        }
+
+        await this.plugin.updateCharacterFrontmatter(this.sourcePath, updates);
+        this.renderModal();
+    }
+
+    onClose() {
+        this.contentEl.empty();
     }
 }
 
@@ -6037,7 +6278,7 @@ class CharacterWizardModal extends Modal {
         injectYAML("DnD_maxHealth", this.wizardData.maxHealth);
         injectYAML("DnD_currentHealth", DnD_current_health);
         injectYAML("DnD_exhaustion", 0);
-        injectYAML("DnD_hitDice", DnD_hit_dice);
+        injectYAML("DnD_hitDice", `'${serializeHitDiceState(DnD_hit_dice, 0)}'`);
         injectYAML("DnD_speed", this.wizardData.speed);
         injectYAML("DnD_speedMod", initialSpeedMod);
         injectYAML("DnD_strength", wizardStatsRecord.strength);
@@ -8631,11 +8872,8 @@ class LevelUpModal extends Modal {
         }
 
         const fmHitDiceRaw = frontmatter["DnD_hitDice"] ?? frontmatter["DnD_hit_dice"] ?? frontmatter["hitDice"];
-        const fmHitDiceStr = Array.isArray(fmHitDiceRaw) ? fmHitDiceRaw[0] : fmHitDiceRaw;
         const classHitDiceStr = classData?.HitDice || classData?.hitDice || classData?.hit_dice || classData?.hitDie || classData?.hit_die;
-        const resolvedHdStr = (fmHitDiceStr !== undefined && fmHitDiceStr !== null && String(fmHitDiceStr).trim() !== "" && !String(fmHitDiceStr).trim().startsWith("<"))
-            ? String(fmHitDiceStr).trim()
-            : (classHitDiceStr ? String(classHitDiceStr).trim() : "");
+        const resolvedHdStr = parseHitDiceState(fmHitDiceRaw, classHitDiceStr ? String(classHitDiceStr).trim() : "d8", this.newLevel).hitDie;
 
         if (resolvedHdStr) {
             const parsed = parseInt(resolvedHdStr.replace(/\D/g, ''));

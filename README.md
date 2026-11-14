@@ -30,7 +30,7 @@ A Sample of the Code Block looks like this:
 ```dnd-health
 health: $num$
 currentHealth: $num$
-hitDice: $string$
+hitDice: $array$ // [ "<HitDie>", <SpentCount> ] (or $string$ "<HitDie>")
 level: $num$
 exhaustion: $num$ // <optional, 0-6>
 ```
