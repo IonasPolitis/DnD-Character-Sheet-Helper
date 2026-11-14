@@ -100,7 +100,7 @@ function syncRibbonIcon() {
     if (!base64Str) return;
 
     try {
-        const targetSize = 100.0;
+        const targetSize = 120.0;
         const maxDim = Math.max(w, h) || 1;
         const scaledW = (w / maxDim) * targetSize;
         const scaledH = (h / maxDim) * targetSize;
