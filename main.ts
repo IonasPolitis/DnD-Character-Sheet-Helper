@@ -1,5 +1,5 @@
 import { App, Plugin, PluginSettingTab, Setting, MarkdownPostProcessorContext, parseYaml, MarkdownRenderChild, MarkdownRenderer, TFile, Modal, Notice, MarkdownView, normalizePath, Platform } from 'obsidian';
-import { getClassData, getSubclassData, getBackgroundData, getRaceData, getExtraFeat, getItemData, getRuleData, getSpellData, getSpellsPoolData, getClassChoiceData, getFeatMapData, getWeaponMasteriesMap, getWeaponMasteryDescription, buildWeaponMasteriesMarkdown } from './data';
+import { getClassData, getSubclassData, getBackgroundData, getRaceData, getExtraFeat, getItemData, getRuleData, getSpellData, getSpellsPoolData, getClassChoiceData, getClassChoiceRouterData, classChoiceRouterRegistry, getFeatMapData, getWeaponMasteriesMap, getWeaponMasteryDescription, buildWeaponMasteriesMarkdown } from './data';
 import { MarkdownNotes, classesMap, racesMap, backgroundsMap, itemsMap } from './registry';
 import { THEMES } from './themes';
 
@@ -55,6 +55,102 @@ export interface SpeedModifierBreakdown {
     totalSpeedMod: number;
     totalSpeed: number;
     breakdown: { source: string; amount: number; active: boolean; reason?: string }[];
+}
+
+// --- Multi-Router Class Choices Helpers ---
+// Grouped Frontmatter Schema: [ ["<Router>", [ ["<Choice>", "<Level>"], ... ] ], ... ]
+// Backwards-compatible with legacy flat 2-element [ ["<Choice>", "<Level>"] ] and 3-element [ ["<Router>", "<Choice>", "<Level>"] ] arrays.
+export function inferRouterForChoiceKey(choiceKey: string): string | null {
+    if (!choiceKey) return null;
+    const cleanKey = String(choiceKey).trim().toLowerCase();
+    for (const [routerName, routerDict] of Object.entries(classChoiceRouterRegistry || {})) {
+        if (routerDict && typeof routerDict === "object" && !Array.isArray(routerDict)) {
+            if (Object.keys(routerDict).some(k => k.trim().toLowerCase() === cleanKey)) {
+                return routerName;
+            }
+        }
+    }
+    return null;
+}
+
+export function parseClassChoicesByRouter(raw: any): Record<string, [string, string][]> {
+    const result: Record<string, [string, string][]> = {};
+    let parsed = raw;
+    if (typeof raw === "string") {
+        const trimmed = raw.trim();
+        if (trimmed.startsWith("[")) {
+            try { parsed = JSON.parse(trimmed); } catch { parsed = []; }
+        } else {
+            parsed = [];
+        }
+    }
+    if (!Array.isArray(parsed)) return result;
+
+    for (const entry of parsed) {
+        if (!Array.isArray(entry) || entry.length === 0) continue;
+
+        // Grouped format: [ "<Router>", [ ["<Choice>", "<Level>"], ... ] ]
+        if (entry.length === 2 && typeof entry[0] === "string" && Array.isArray(entry[1])) {
+            const routerName = String(entry[0]).trim();
+            if (!routerName) continue;
+            if (!result[routerName]) result[routerName] = [];
+            for (const sub of entry[1]) {
+                if (Array.isArray(sub) && sub.length >= 2) {
+                    const cKey = String(sub[0] ?? "").trim();
+                    const cLvl = String(sub[1] ?? "1").trim();
+                    if (cKey) result[routerName].push([cKey, cLvl]);
+                }
+            }
+        }
+        // Legacy 3-element tuple: [ "<Router>", "<Choice>", "<Level>" ]
+        else if (entry.length === 3 && !Array.isArray(entry[1])) {
+            const routerName = String(entry[0] ?? "").trim() || inferRouterForChoiceKey(String(entry[1] ?? "")) || "__legacy__";
+            const cKey = String(entry[1] ?? "").trim();
+            const cLvl = String(entry[2] ?? "1").trim();
+            if (cKey) {
+                if (!result[routerName]) result[routerName] = [];
+                result[routerName].push([cKey, cLvl]);
+            }
+        }
+        // Legacy 2-element tuple: [ "<Choice>", "<Level>" ]
+        else if (entry.length === 2 && !Array.isArray(entry[1])) {
+            const cKey = String(entry[0] ?? "").trim();
+            const cLvl = String(entry[1] ?? "1").trim();
+            if (cKey) {
+                const routerName = inferRouterForChoiceKey(cKey) || "__legacy__";
+                if (!result[routerName]) result[routerName] = [];
+                result[routerName].push([cKey, cLvl]);
+            }
+        }
+    }
+    return result;
+}
+
+export function flattenClassChoices(raw: any): { router: string; key: string; level: number }[] {
+    const byRouter = parseClassChoicesByRouter(raw);
+    const flat: { router: string; key: string; level: number }[] = [];
+    for (const [router, list] of Object.entries(byRouter)) {
+        for (const [key, lvl] of list) {
+            if (key) {
+                flat.push({ router, key, level: Number(lvl) || 1 });
+            }
+        }
+    }
+    return flat;
+}
+
+export function serializeClassChoicesByRouter(map: Record<string, [string, string][]>): [string, [string, string][]][] {
+    const out: [string, [string, string][]][] = [];
+    for (const [router, tuples] of Object.entries(map)) {
+        if (!router || !Array.isArray(tuples)) continue;
+        const cleanTuples = tuples
+            .filter(t => Array.isArray(t) && String(t[0] ?? "").trim() !== "")
+            .map((t): [string, string] => [String(t[0]).trim(), String(t[1] ?? "1").trim()]);
+        if (cleanTuples.length > 0) {
+            out.push([router, cleanTuples]);
+        }
+    }
+    return out;
 }
 
 export function parseFeatAbilityImprovements(featData: any): ParsedAbilityImprovement[] {
@@ -1250,6 +1346,85 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
     }
 
     /**
+     * Scans a class and its active subclass from Level 1 up to `maxLevel`, tracking each
+     * `classChoices` router independently:
+     * - Within `classData.features`, higher levels specify the updated total slot count for that router
+     *   (e.g. Blood Hunter `blood-curses`: 2 at Lvl 1, 3 at Lvl 6, 4 at Lvl 10, 5 at Lvl 14, 6 at Lvl 18),
+     *   while other routers (`crimson-rites`, `fighting-styles`, `brand-of-castigation`, etc.) remain intact.
+     * - Within `subclassData`, subclass router slots are tracked in the same way and appended to the class slots.
+     */
+    resolveClassChoiceRoutersUpToLevel(
+        classData: any,
+        subclassData: any,
+        maxLevel: number
+    ): {
+        slotsByRouter: Record<string, { unlockedLevel: number; featureName: string }[]>;
+        activeRoutersAtTargetLevel: Set<string>;
+    } {
+        const classSlotsByRouter: Record<string, { unlockedLevel: number; featureName: string }[]> = {};
+        const subclassSlotsByRouter: Record<string, { unlockedLevel: number; featureName: string }[]> = {};
+        const activeRoutersAtTargetLevel = new Set<string>();
+
+        const processLevelFeatures = (
+            featuresAtLevel: any[],
+            lvl: number,
+            targetMap: Record<string, { unlockedLevel: number; featureName: string }[]>
+        ) => {
+            if (!Array.isArray(featuresAtLevel)) return;
+            const countsAtThisLevel: Record<string, { count: number; featureName: string }> = {};
+            for (const feature of featuresAtLevel) {
+                if (!feature || !Array.isArray(feature.classChoices)) continue;
+                for (const rawRouter of feature.classChoices) {
+                    const router = String(rawRouter || "").trim();
+                    if (!router) continue;
+                    if (!countsAtThisLevel[router]) {
+                        countsAtThisLevel[router] = { count: 0, featureName: String(feature.name || router).trim() };
+                    }
+                    countsAtThisLevel[router].count += 1;
+                    if (lvl === maxLevel) {
+                        activeRoutersAtTargetLevel.add(router);
+                    }
+                }
+            }
+
+            for (const [router, info] of Object.entries(countsAtThisLevel)) {
+                const existing = targetMap[router] || [];
+                if (info.count > existing.length) {
+                    const updated = [...existing];
+                    const toAdd = info.count - existing.length;
+                    for (let k = 0; k < toAdd; k++) {
+                        updated.push({ unlockedLevel: lvl, featureName: info.featureName });
+                    }
+                    targetMap[router] = updated;
+                } else {
+                    targetMap[router] = existing.slice(0, info.count);
+                }
+            }
+        };
+
+        for (let lvl = 1; lvl <= maxLevel; lvl++) {
+            const lvlKey = lvl.toString();
+            if (classData?.features?.[lvlKey]) {
+                processLevelFeatures(classData.features[lvlKey], lvl, classSlotsByRouter);
+            }
+            if (subclassData?.[lvlKey]) {
+                processLevelFeatures(subclassData[lvlKey], lvl, subclassSlotsByRouter);
+            }
+        }
+
+        const slotsByRouter: Record<string, { unlockedLevel: number; featureName: string }[]> = {};
+        const allRouters = new Set([...Object.keys(classSlotsByRouter), ...Object.keys(subclassSlotsByRouter)]);
+        for (const router of allRouters) {
+            slotsByRouter[router] = [
+                ...(classSlotsByRouter[router] || []),
+                ...(subclassSlotsByRouter[router] || [])
+            ];
+        }
+
+        return { slotsByRouter, activeRoutersAtTargetLevel };
+    }
+
+    /**
      * Resolves a character's Initiative modifiers from:
      * 1. Class & Subclass features (`"initiativeMod": <number | "proficiencyBonus" | AbilityKey>`, e.g. Gloom Stalker Dread Ambusher `"wisdom"`).
      * 2. Race & Lineage traits (`"initiativeMod": <number | "proficiencyBonus" | AbilityKey>`).
@@ -1529,11 +1704,8 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                 : null;
             const background = hasValidValue(rawBackground) ? rawBackground : null;
 
-            let classChoicesRaw = resolveValue(blockData['classChoices']) ?? frontmatter['DnD_classChoices'];
-            if (typeof classChoicesRaw === 'string' && classChoicesRaw.trim().startsWith('[')) {
-                try { classChoicesRaw = JSON.parse(classChoicesRaw.trim()); } catch { classChoicesRaw = []; }
-            }
-            const classChoicesArray = Array.isArray(classChoicesRaw) ? classChoicesRaw : [];
+            const classChoicesRaw = resolveValue(blockData['classChoices']) ?? frontmatter['DnD_classChoices'];
+            const classChoicesFlat = flattenClassChoices(classChoicesRaw);
             const hideRaw = resolveValue(blockData.hide) ?? frontmatter['DnD_hideFeature'];
             const edition = resolveValue(blockData.edition);
 
@@ -1957,18 +2129,9 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                                 }
                             }
 
-                            for (const choiceTuple of classChoicesArray) {
-                                let routerFile = "";
-                                let choiceKey = "";
-                                let choiceLevel = 0;
-
-                                if (Array.isArray(choiceTuple)) {
-                                    if (choiceTuple.length === 3) {
-                                        [routerFile, choiceKey, choiceLevel] = choiceTuple;
-                                    } else if (choiceTuple.length === 2) {
-                                        [choiceKey, choiceLevel] = choiceTuple;
-                                    }
-                                }
+                            for (const choiceEntry of classChoicesFlat) {
+                                const choiceKey = choiceEntry.key;
+                                const choiceLevel = choiceEntry.level;
 
                                 if (Number(choiceLevel) === i && choiceKey) {
                                     const featureData = await getClassChoiceData(this.app, fetchOptions, choiceKey);
@@ -3023,12 +3186,6 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
         const renderChild = new MarkdownRenderChild(el);
         ctx.addChild(renderChild);
 
-        // Create a single reusable hover tooltip for this block
-        const tooltipWindow = document.body.createDiv({
-            cls: "dnd-spell-tooltip"
-        });
-        renderChild.register(() => tooltipWindow.remove());
-
         let isUpdatingSlots = false;
 
         const renderContent = async () => {
@@ -3334,40 +3491,16 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                         card.onclick = () => {
                             descDrawer.classList.toggle("is-open");
                         };
-
-                        // --- D. HOVER TOOLTIP ---
-                        const X_OFFSET = 12;
-                        const Y_OFFSET = 15;
-
-                        card.addEventListener('mouseenter', async (e) => {
-                            if (descDrawer.classList.contains("is-open")) return;
-                            tooltipWindow.empty();
-
-                            tooltipWindow.createEl("h4", { text: spellData.name || fallbackName, cls: "dnd-spell-tooltip-title" });
-                            const subHeader = lvl === "0" ? `${spellData.school || ""} Cantrip` : `Level ${lvl} ${spellData.school || ""}`;
-                            tooltipWindow.createEl("div", { text: subHeader.trim().toUpperCase(), cls: "dnd-spell-tooltip-sub" });
-
-                            const tipDesc = tooltipWindow.createDiv({ cls: "dnd-spell-tooltip-desc" });
-                            await this.renderDndMarkdown(spellData.description, tipDesc, ctx.sourcePath, renderChild);
-
-                            tooltipWindow.addClass("is-visible");
-                            tooltipWindow.style.left = `${e.clientX + X_OFFSET}px`;
-                            tooltipWindow.style.top = `${e.clientY + Y_OFFSET}px`;
-                        });
-
-                        card.addEventListener('mousemove', (e) => {
-                            const xPos = e.clientX + X_OFFSET;
-                            const safeX = (xPos + 320 > window.innerWidth) ? e.clientX - 320 - X_OFFSET : xPos;
-                            tooltipWindow.style.left = `${safeX}px`;
-                            tooltipWindow.style.top = `${e.clientY + Y_OFFSET}px`;
-                        });
-
-                        card.addEventListener('mouseleave', () => {
-                            tooltipWindow.removeClass("is-visible");
-                        });
                     }
                 }
             }
+
+            await this.renderDndMarkdown(
+                "> [!TIP]\n> Click or tap on a spell card to view its full description.",
+                wrapper,
+                ctx.sourcePath,
+                renderChild
+            );
 
             el.empty();
             el.appendChild(wrapper);
@@ -4700,22 +4833,12 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
             }
         }
 
-        // 2. Class Choices (Invocations, etc.)
-        let classChoicesRaw = frontmatter["DnD_classChoices"];
-        if (typeof classChoicesRaw === "string" && classChoicesRaw.trim().startsWith("[")) {
-            try { classChoicesRaw = JSON.parse(classChoicesRaw.trim()); } catch { classChoicesRaw = []; }
-        }
-        if (Array.isArray(classChoicesRaw)) {
-            for (const choiceTuple of classChoicesRaw) {
-                let choiceKey = "";
-                if (Array.isArray(choiceTuple)) {
-                    if (choiceTuple.length === 3) choiceKey = choiceTuple[1];
-                    else if (choiceTuple.length === 2) choiceKey = choiceTuple[0];
-                }
-                if (choiceKey) {
-                    const choiceData = await getClassChoiceData(this.app, fetchOptions, String(choiceKey));
-                    if (choiceData) registerFeatureRest(choiceData);
-                }
+        // 2. Class Choices (Invocations, Blood Curses, etc.)
+        const classChoicesFlat = flattenClassChoices(frontmatter["DnD_classChoices"]);
+        for (const choiceEntry of classChoicesFlat) {
+            if (choiceEntry.key) {
+                const choiceData = await getClassChoiceData(this.app, fetchOptions, String(choiceEntry.key));
+                if (choiceData) registerFeatureRest(choiceData);
             }
         }
 
@@ -5590,60 +5713,73 @@ class CharacterWizardModal extends Modal {
             }
 
             if (classData && classData.features) {
-                // INSTEAD of looping 1 to level, we strictly read the JSON payload for the TARGET level!
-                // This perfectly matches your JSON design (e.g. Warlock Level 5 explicitly listing 5 invocations).
-                let levelFeatures: any[] = [];
-                const targetLevel = this.wizardData.level.toString();
+                const wizardLevelNum = Number(this.wizardData.level) || 1;
+                const { slotsByRouter } = this.plugin.resolveClassChoiceRoutersUpToLevel(classData, subclassData, wizardLevelNum);
 
-                if (classData.features[targetLevel]) {
-                    levelFeatures = levelFeatures.concat(classData.features[targetLevel]);
+                // Prune any stale classChoices if the user changed class or lowered level
+                if (Array.isArray(this.wizardData.classChoices)) {
+                    this.wizardData.classChoices = this.wizardData.classChoices.filter((c: any) => {
+                        if (!Array.isArray(c) || c.length < 4) return false;
+                        const rSlots = slotsByRouter[String(c[0])];
+                        return rSlots && Number(c[3]) < rSlots.length;
+                    });
                 }
-                if (subclassData && subclassData[targetLevel]) {
-                    levelFeatures = levelFeatures.concat(subclassData[targetLevel]);
-                }
 
-                if (levelFeatures.length > 0) {
-                    for (const feature of levelFeatures) {
-                        // If this feature has a dynamic Class Choices array in the JSON...
-                        if (feature.classChoices && Array.isArray(feature.classChoices)) {
-                            hasChoices = true;
+                // 1. Render all unlocked Class Choice Routers up to wizardLevelNum
+                for (const [routerName, slots] of Object.entries(slotsByRouter)) {
+                    if (!slots || slots.length === 0) continue;
+                    const routerData = await getClassChoiceRouterData(this.app, this.plugin.settings, routerName);
+                    if (!routerData) continue;
 
-                            for (let choiceIndex = 0; choiceIndex < feature.classChoices.length; choiceIndex++) {
-                                const routerName = feature.classChoices[choiceIndex];
-                                const routerData = await getClassChoiceData(this.app, this.plugin.settings, routerName);
+                    hasChoices = true;
+                    const displayName = routerName.split(/[-_]/).map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
 
-                                if (routerData) {
-                                    const choiceDiv = container.createDiv({ cls: "dnd-form-card" });
+                    for (let choiceIndex = 0; choiceIndex < slots.length; choiceIndex++) {
+                        const slotInfo = slots[choiceIndex];
+                        const slotLevelStr = slotInfo.unlockedLevel.toString();
 
-                                    const displayName = routerName.split(/[-_]/).map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-                                    choiceDiv.createEl("label", {
-                                        text: `Level ${targetLevel}: ${feature.name} (${displayName} ${choiceIndex + 1})`,
-                                        cls: "dnd-form-label-bold"
-                                    });
+                        const choiceDiv = container.createDiv({ cls: "dnd-form-card" });
+                        choiceDiv.createEl("label", {
+                            text: `Level ${slotLevelStr}: ${slotInfo.featureName} (${displayName} ${choiceIndex + 1})`,
+                            cls: "dnd-form-label-bold"
+                        });
 
-                                    const selectEl = choiceDiv.createEl("select", { cls: "dnd-modal-form-input" });
-                                    selectEl.createEl("option", { text: `-- Select Option --`, value: "" });
+                        const selectEl = choiceDiv.createEl("select", { cls: "dnd-modal-form-input" });
+                        selectEl.createEl("option", { text: `-- Select Option --`, value: "" });
 
-                                    Object.entries(routerData).forEach(([key, val]) => {
-                                        selectEl.createEl("option", { text: val as string, value: key });
-                                    });
+                        Object.entries(routerData).forEach(([key, val]) => {
+                            selectEl.createEl("option", { text: val as string, value: key });
+                        });
 
-                                    const existingChoice = this.wizardData.classChoices.find((c: any) => c[0] === routerName && c[2] === targetLevel && c[3] === choiceIndex);
-                                    if (existingChoice) selectEl.value = existingChoice[1];
-
-                                    selectEl.onchange = (e) => {
-                                        const selectedVal = (e.target as HTMLSelectElement).value;
-                                        this.wizardData.classChoices = this.wizardData.classChoices.filter((c: any) => !(c[0] === routerName && c[2] === targetLevel && c[3] === choiceIndex));
-
-                                        if (selectedVal) {
-                                            this.wizardData.classChoices.push([routerName, selectedVal, targetLevel, choiceIndex]);
-                                        }
-                                    };
-                                }
-                            }
+                        const existingChoice = this.wizardData.classChoices.find((c: any) => c[0] === routerName && c[3] === choiceIndex);
+                        if (existingChoice) {
+                            existingChoice[2] = slotLevelStr;
+                            selectEl.value = existingChoice[1];
                         }
 
-                        // --- EXPERTISE ENGINE (grantedExpertise) ---
+                        selectEl.onchange = (e) => {
+                            const selectedVal = (e.target as HTMLSelectElement).value;
+                            this.wizardData.classChoices = this.wizardData.classChoices.filter((c: any) => !(c[0] === routerName && c[3] === choiceIndex));
+
+                            if (selectedVal) {
+                                this.wizardData.classChoices.push([routerName, selectedVal, slotLevelStr, choiceIndex]);
+                            }
+                        };
+                    }
+                }
+
+                // 2. Render Expertise Engine (grantedExpertise) across levels 1..wizardLevelNum
+                for (let lvl = 1; lvl <= wizardLevelNum; lvl++) {
+                    const targetLevel = lvl.toString();
+                    let levelFeatures: any[] = [];
+                    if (classData.features[targetLevel]) {
+                        levelFeatures = levelFeatures.concat(classData.features[targetLevel]);
+                    }
+                    if (subclassData && subclassData[targetLevel]) {
+                        levelFeatures = levelFeatures.concat(subclassData[targetLevel]);
+                    }
+
+                    for (const feature of levelFeatures) {
                         if (feature.grantedExpertise && Array.isArray(feature.grantedExpertise) && feature.grantedExpertise.length === 2) {
                             hasChoices = true;
                             const expPool = feature.grantedExpertise[0] as string[];
@@ -6398,7 +6534,18 @@ class CharacterWizardModal extends Modal {
         injectYAML("DnD_spellcastingAbility", this.wizardData.DnD_spellcasting_ability);
         injectYAML("DnD_classEquipment", this.wizardData.classEquipment);
         injectYAML("DnD_backgroundEquipment", this.wizardData.backgroundEquipment);
-        const finalClassChoices = this.wizardData.classChoices.map((c: any[]) => [String(c[1]), String(c[2])]);
+        const groupedWizardChoices: Record<string, [string, string][]> = {};
+        const sortedWizardChoices = [...(this.wizardData.classChoices || [])].sort(
+            (a: any[], b: any[]) => (Number(a[3]) || 0) - (Number(b[3]) || 0)
+        );
+        for (const c of sortedWizardChoices) {
+            if (Array.isArray(c) && c.length >= 3 && c[0] && c[1]) {
+                const rName = String(c[0]).trim();
+                if (!groupedWizardChoices[rName]) groupedWizardChoices[rName] = [];
+                groupedWizardChoices[rName].push([String(c[1]).trim(), String(c[2]).trim()]);
+            }
+        }
+        const finalClassChoices = serializeClassChoicesByRouter(groupedWizardChoices);
         // Wrapping in single quotes forces Obsidian's UI to accept it as a clean text string!
         injectYAML("DnD_classChoices", `'${JSON.stringify(finalClassChoices)}'`);
 
@@ -8497,11 +8644,7 @@ class ManageCharacterModal extends Modal {
         const background = frontmatter["DnD_background"];
         const extraFeats = frontmatter["DnD_extraFeats"];
 
-        let classChoicesRaw = frontmatter["DnD_classChoices"];
-        if (typeof classChoicesRaw === "string" && classChoicesRaw.trim().startsWith("[")) {
-            try { classChoicesRaw = JSON.parse(classChoicesRaw.trim()); } catch { classChoicesRaw = []; }
-        }
-        const classChoicesArray = Array.isArray(classChoicesRaw) ? classChoicesRaw : [];
+        const classChoicesFlat = flattenClassChoices(frontmatter["DnD_classChoices"]);
 
         const classArray = Array.isArray(dndClass) ? dndClass : (dndClass ? [dndClass] : []);
         const rawSubclassArray = Array.isArray(subclass) ? subclass : (subclass ? [subclass] : []);
@@ -8543,13 +8686,9 @@ class ManageCharacterModal extends Modal {
                 }
 
                 // Class Choices at this level
-                for (const choiceTuple of classChoicesArray) {
-                    let choiceKey = "";
-                    let choiceLevel = 0;
-                    if (Array.isArray(choiceTuple)) {
-                        if (choiceTuple.length === 3) [, choiceKey, choiceLevel] = choiceTuple;
-                        else if (choiceTuple.length === 2) [choiceKey, choiceLevel] = choiceTuple;
-                    }
+                for (const choiceEntry of classChoicesFlat) {
+                    const choiceKey = choiceEntry.key;
+                    const choiceLevel = choiceEntry.level;
                     if (Number(choiceLevel) === i && choiceKey) {
                         const featureData = await getClassChoiceData(this.app, this.plugin.settings, choiceKey);
                         if (featureData && featureData.name && featureData.hide !== true) {
@@ -9300,6 +9439,7 @@ class LevelUpModal extends Modal {
     currentMasterySlots: number = 0;
 
     classChoicesState: { router: string, key: string, level: number, domIndex: number }[] = [];
+    classChoicesByRouter: Record<string, [string, string][]> = {};
     // Tracks purely additive Expertise gained at this specific level
     newExpertiseChoices: string[] = [];
     newGrantedExpertiseCount: number = 0;
@@ -9612,10 +9752,12 @@ class LevelUpModal extends Modal {
         this.newGrantedExpertiseCount = 0;
         this.expertisePool = [];
         this.classChoicesState = [];
+        this.classChoicesByRouter = {};
         this.newExpertiseChoices = [];
 
         const statsList = ["strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"];
-        const slotsByRouter: Record<string, number> = {};
+        let slotsByRouter: Record<string, { unlockedLevel: number; featureName: string }[]> = {};
+        let activeRoutersAtTargetLevel = new Set<string>();
         const grantedFeatMilestones: { featureName: string; grantedFeats: string[] }[] = [];
         const targetLevel = this.newLevel.toString();
 
@@ -9625,6 +9767,10 @@ class LevelUpModal extends Modal {
             if (this.currentSubclass && activeSubclassFile) {
                 subclassData = await getSubclassData(this.app, this.plugin.settings, activeSubclassFile, this.currentSubclass);
             }
+
+            const resolvedRouters = this.plugin.resolveClassChoiceRoutersUpToLevel(classData, subclassData, this.newLevel);
+            slotsByRouter = resolvedRouters.slotsByRouter;
+            activeRoutersAtTargetLevel = resolvedRouters.activeRoutersAtTargetLevel;
 
             let levelFeatures: any[] = [];
             if (classData?.features?.[targetLevel]) levelFeatures = levelFeatures.concat(classData.features[targetLevel]);
@@ -9638,13 +9784,6 @@ class LevelUpModal extends Modal {
                     });
                 }
 
-                if (feature.classChoices && Array.isArray(feature.classChoices)) {
-                    for (const router of feature.classChoices) {
-                        if (!slotsByRouter[router]) slotsByRouter[router] = 0;
-                        slotsByRouter[router] += 1;
-                    }
-                }
-
                 if (feature.grantedExpertise && Array.isArray(feature.grantedExpertise) && feature.grantedExpertise.length === 2) {
                     this.expertisePool = [...new Set([...this.expertisePool, ...feature.grantedExpertise[0]])];
                     this.newGrantedExpertiseCount += feature.grantedExpertise[1] as number;
@@ -9652,44 +9791,60 @@ class LevelUpModal extends Modal {
             }
         }
 
-        // 1. Class Choices Snapshot Engine
-        let existingChoicesRaw = frontmatter["DnD_classChoices"] || [];
-        if (typeof existingChoicesRaw === 'string') {
-            try { existingChoicesRaw = JSON.parse(existingChoicesRaw); } catch { existingChoicesRaw = []; }
-        }
-        const existingChoices: { router: string | null; key: string; level: number }[] = [];
-        for (const c of (Array.isArray(existingChoicesRaw) ? existingChoicesRaw : [])) {
-            if (Array.isArray(c) && c.length === 3) {
-                existingChoices.push({ router: String(c[0]), key: String(c[1]), level: Number(c[2]) });
-            } else if (Array.isArray(c) && c.length === 2) {
-                existingChoices.push({ router: null, key: String(c[0]), level: Number(c[1]) });
+        // 1. Class Choices Snapshot Engine (Grouped by Router)
+        this.classChoicesByRouter = parseClassChoicesByRouter(frontmatter["DnD_classChoices"]);
+
+        // Resolve any unmapped legacy flat choices against custom homebrew routers if needed
+        if (this.classChoicesByRouter["__legacy__"] && this.classChoicesByRouter["__legacy__"].length > 0) {
+            const remainingLegacy: [string, string][] = [];
+            for (const [legacyKey, legacyLvl] of this.classChoicesByRouter["__legacy__"]) {
+                let matchedRouter: string | null = null;
+                for (const routerCandidate of Object.keys(slotsByRouter)) {
+                    const rData = await getClassChoiceRouterData(this.app, this.plugin.settings, routerCandidate);
+                    if (rData && rData[legacyKey] !== undefined) {
+                        matchedRouter = routerCandidate;
+                        break;
+                    }
+                }
+                if (matchedRouter) {
+                    if (!this.classChoicesByRouter[matchedRouter]) this.classChoicesByRouter[matchedRouter] = [];
+                    this.classChoicesByRouter[matchedRouter].push([legacyKey, legacyLvl]);
+                } else {
+                    remainingLegacy.push([legacyKey, legacyLvl]);
+                }
+            }
+            if (remainingLegacy.length > 0) {
+                this.classChoicesByRouter["__legacy__"] = remainingLegacy;
+            } else {
+                delete this.classChoicesByRouter["__legacy__"];
             }
         }
 
-        for (const [routerName, slotCount] of Object.entries(slotsByRouter)) {
-            const routerData = await getClassChoiceData(this.app, this.plugin.settings, routerName);
+        for (const [routerName, slots] of Object.entries(slotsByRouter)) {
+            if (!activeRoutersAtTargetLevel.has(routerName)) continue;
 
-            if (routerData) {
+            const routerData = await getClassChoiceRouterData(this.app, this.plugin.settings, routerName);
+            const slotCount = slots.length;
+
+            if (routerData && slotCount > 0) {
                 const routerDiv = this.milestonesContainer.createDiv({ cls: "dnd-form-card" });
                 const displayName = routerName.split(/[-_]/).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
 
                 routerDiv.createEl("label", { text: `Manage ${displayName} (${slotCount} Slots)`, cls: "dnd-form-label-bold" });
                 routerDiv.createEl("small", { text: "Review your choices. If you wish to swap an old choice, select a new one.", cls: "dnd-form-hint-block" });
 
-                const pastChoicesForRouter = existingChoices.filter((c) =>
-                    c.router === routerName || (c.router === null && routerData[c.key])
-                );
+                const pastChoicesForRouter = this.classChoicesByRouter[routerName] || [];
 
                 for (let slotIndex = 0; slotIndex < slotCount; slotIndex++) {
                     const selectDiv = routerDiv.createDiv({ cls: "dnd-form-slot-row" });
 
                     let assignedKey = "";
-                    let originalLevel = this.newLevel;
+                    let originalLevel = slots[slotIndex]?.unlockedLevel || this.newLevel;
 
                     const pastChoice = pastChoicesForRouter[slotIndex];
                     if (pastChoice) {
-                        assignedKey = pastChoice.key;
-                        originalLevel = pastChoice.level;
+                        assignedKey = pastChoice[0];
+                        originalLevel = Number(pastChoice[1]) || originalLevel;
                     }
 
                     selectDiv.createEl("small", { text: `Lvl ${originalLevel} Slot:`, cls: "dnd-form-slot-label" });
@@ -10175,13 +10330,18 @@ class LevelUpModal extends Modal {
 
         updates["DnD_proficiencyBonus"] = DnD_proficiency_bonus;
 
-        // Snapshot Output: Map down to [Key, Level] strictly as strings (2-part tuple)
-        const finalClassChoices = this.classChoicesState
-            .filter(c => c.key !== "")
-            .map(c => [String(c.key), String(c.level)]);
+        // Grouped-by-Router Snapshot Output: [ ["<Router>", [ ["<Choice>", "<Level>"], ... ] ], ... ]
+        const updatedByRouter: Record<string, [string, string][]> = { ...this.classChoicesByRouter };
+        const activeRoutersInState = new Set(this.classChoicesState.map(c => c.router));
+        for (const routerName of activeRoutersInState) {
+            updatedByRouter[routerName] = this.classChoicesState
+                .filter(c => c.router === routerName && c.key !== "")
+                .map(c => [String(c.key), String(c.level)]);
+        }
 
-        if (this.classChoicesState.length > 0) {
-            updates["DnD_classChoices"] = JSON.stringify(finalClassChoices);
+        const serializedClassChoices = serializeClassChoicesByRouter(updatedByRouter);
+        if (serializedClassChoices.length > 0 || frontmatter["DnD_classChoices"] !== undefined) {
+            updates["DnD_classChoices"] = JSON.stringify(serializedClassChoices);
         }
 
         // Purely Additive Expertise Output (using strings in arrays)

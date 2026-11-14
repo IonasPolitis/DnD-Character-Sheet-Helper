@@ -84,20 +84,20 @@
                     2,
                     "short"
                 ]
+            },
+            {
+                "name": "Weapon Mastery",
+                "description": "Your training with weapons allows you to use the [mastery properties](note:weapon-masteries) of two kinds of weapons of your choice with which you have proficiency, such as Shortswords and Light Crossbows.\n\tWhenever you finish a Long Rest, you can change the kinds of weapons you chose. For example, you could switch to using the mastery properties of Whips and Handaxes.",
+                "weaponMastery": 2
             }
         ],
         "2": [
             {
-                "name": "Weapon Mastery",
-                "description": "You learn a rite that allows you to draw elemental power from your own blood, enhancing your weapons' attacks. Choose one Crimson Rite from the list below. You choose another crimson rite at Blood Hunter level 7 and 14. Whenever you gain a Crimson Rite, you can replace one of your Crimson Rite options with another. As a bonus action, you can activate a crimson rite you know onto any number of weapons you are holding. When you do so, you lose hit points equal to one roll of your hemocraft die.\n\tWhile the rite is activated and you wield the weapon, the weapon's attacks deal extra damage equal to your hemocraft die. The damage type is determined by the rite you choose to activate. Each weapon can only have one rite active, and the rite lasts until the end of a Short or Long Rest, if you choose to activate a different rite on a weapon with the rite active, or if you dismiss the rite."
-            },
-            {
                 "name": "Crimson Rite",
-                "description": "As a bonus action, you can activate a crimson rite you know onto any number of weapons you are holding. When you do so, you lose hit points equal to one roll of your hemocraft die.",
+                "description": "You learn a rite that allows you to draw elemental power from your own blood, enhancing your weapons' attacks. Choose one Crimson Rite from the list below. You choose another crimson rite at Blood Hunter level 7 and 14. Whenever you gain a Crimson Rite, you can replace one of your Crimson Rite options with another. As a bonus action, you can activate a crimson rite you know onto any number of weapons you are holding. When you do so, you lose hit points equal to one roll of your hemocraft die.\n\tWhile the rite is activated and you wield the weapon, the weapon's attacks deal extra damage equal to your hemocraft die. The damage type is determined by the rite you choose to activate. Each weapon can only have one rite active, and the rite lasts until the end of a Short or Long Rest, if you choose to activate a different rite on a weapon with the rite active, or if you dismiss the rite.",
                 "classChoices": [
                     "crimson-rites"
-                ],
-                "hide": true
+                ]
             },
             {
                 "name": "Fighting Style",
@@ -105,6 +105,13 @@
                 "classChoices": [
                     "fighting-styles"
                 ]
+            }
+        ],
+        "3": [
+            {
+                "name": "Blood Hunter Subclass",
+                "grantedSubclasses": "blood-hunter-subclasses",
+                "hide": true
             }
         ],
         "4": [
@@ -193,7 +200,8 @@
             },
             {
                 "name": "Dark Augmentation",
-                "description": "Your speed increases by 10 feet, and you have a bonus to Strength, Dexterity, and Constitution saving throws equal to your Intelligence modifier (minimum +1)."
+                "description": "Your speed increases by 10 feet, and you have a bonus to Strength, Dexterity, and Constitution saving throws equal to your Intelligence modifier (minimum +1).",
+                "speedMod": 10
             }
         ],
         "12": [

@@ -2,6 +2,7 @@ import {
     classRegistry, 
     subclassRegistry, 
     classChoiceRegistry,
+    classChoiceRouterRegistry,
     featRegistry, 
     raceRegistry,
     itemRegistry,
@@ -18,6 +19,8 @@ import {
     spellsMap,
     pastEditionsRegistry
 } from './registry';
+
+export { classChoiceRouterRegistry };
 
 import { App, normalizePath } from 'obsidian';
 
@@ -461,7 +464,36 @@ export async function getSpellData(app: App, settings: FetchSettings, spellName:
     return resolveByPriority(settings, fetchNative, fetchCustom);
 }
 
-// --- Logic for Fetching Class Choice Data (Routers & Individual Choices) ---
+// --- Logic for Fetching Class Choice Router Maps (rulebook/classes/classChoices/classRouterFiles/*.json) ---
+export async function getClassChoiceRouterData(app: App, settings: FetchSettings, routerFileName: string) {
+    if (!routerFileName) return null;
+    const cleanFile = routerFileName.trim().replace(/\.json$/i, '');
+
+    const fetchNative = () => {
+        if (settings.edition && pastEditionsRegistry[settings.edition]?.classChoiceRouterRegistry) {
+            const edRouter = getIgnoreCase(pastEditionsRegistry[settings.edition].classChoiceRouterRegistry, cleanFile)
+                || getIgnoreCase(pastEditionsRegistry[settings.edition].classChoiceRegistry, cleanFile);
+            if (edRouter) return edRouter;
+        }
+        return getIgnoreCase(classChoiceRouterRegistry, cleanFile) || getIgnoreCase(classChoiceRegistry, cleanFile);
+    };
+
+    const fetchCustom = async (basePath: string) => {
+        return (await readCustomJson(app, `${basePath}/classes/classChoices/classRouterFiles/${cleanFile}.json`))
+            ?? (await readCustomJson(app, `${basePath}/classes/classChoices/${cleanFile}.json`))
+            ?? (await readCustomJson(app, `${basePath}/classes/${cleanFile}.json`));
+    };
+
+    const basePath = getCleanCustomBasePath(settings);
+    if (basePath) {
+        const nativeData = fetchNative();
+        const customData = await fetchCustom(basePath);
+        return mergeDictionaries(nativeData, customData, settings.customRulebookPriority);
+    }
+    return fetchNative();
+}
+
+// --- Logic for Fetching Individual Class Choice Data (rulebook/classes/classChoices/*.json) ---
 export async function getClassChoiceData(app: App, settings: FetchSettings, choiceFileName: string) {
     if (!choiceFileName) return null;
     const cleanFile = choiceFileName.trim().replace(/\.json$/i, '');
@@ -469,14 +501,18 @@ export async function getClassChoiceData(app: App, settings: FetchSettings, choi
     const fetchNative = () => {
         if (settings.edition && pastEditionsRegistry[settings.edition]?.classChoiceRegistry) {
             const edChoice = getIgnoreCase(pastEditionsRegistry[settings.edition].classChoiceRegistry, cleanFile)
+                || getIgnoreCase(pastEditionsRegistry[settings.edition].classChoiceRouterRegistry, cleanFile)
                 || getIgnoreCase(pastEditionsRegistry[settings.edition].classRegistry, cleanFile);
             if (edChoice) return edChoice;
         }
-        return getIgnoreCase(classChoiceRegistry, cleanFile) || getIgnoreCase(classRegistry, cleanFile);
+        return getIgnoreCase(classChoiceRegistry, cleanFile)
+            || getIgnoreCase(classChoiceRouterRegistry, cleanFile)
+            || getIgnoreCase(classRegistry, cleanFile);
     };
 
     const fetchCustom = async (basePath: string) => {
         return (await readCustomJson(app, `${basePath}/classes/classChoices/${cleanFile}.json`))
+            ?? (await readCustomJson(app, `${basePath}/classes/classChoices/classRouterFiles/${cleanFile}.json`))
             ?? (await readCustomJson(app, `${basePath}/classes/${cleanFile}.json`));
     };
 

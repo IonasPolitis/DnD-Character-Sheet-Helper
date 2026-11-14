@@ -144,7 +144,7 @@ Any of the variables (except for `level`) can be omitted and only the variables 
 
 The variable `classLevels` is used when you have multiple classes on your character and the plugin needs to know how many levels each class has. *The order of the levels should be the same as the class order*.
 
-The variable `classChoices` stores class-specific feature selections (such as Warlock Eldritch Invocations, Fighter Fighting Styles, or Sorcerer Metamagic) using the structure: `[ ["<Choice-Filename>", "<Level-Gained>"], ... ]`.
+The variable `classChoices` stores class-specific feature selections (such as Warlock Eldritch Invocations, Fighter Fighting Styles, Sorcerer Metamagic, or Blood Hunter Blood Curses & Crimson Rites) grouped by router using the structure: `[ [ "<Router-Filename>", [ [ "<Choice-Filename>", "<Level-Gained>" ], ... ] ], ... ]`.
 
 Write down a Feature's name as it appears on the screen inside the variable `hide` (or manage it via the **Manage Character** button) to hide it from view.
 
@@ -165,7 +165,10 @@ preparedSpells: $array$
 spellSlots: $array$
 ```
 ````
-The *spells* and *preparedSpells* variabel has this certain structure: `[ [["<Cantrip-1>", "<Cantrip-2>"],"0"], [["<Level-1-Spell>", "<Level-2-Spell>"],"1"] ]`, while *spellSlots* follows this strcuture: `[ ["<Max-Slots>", "<Used-Slots>"], ... ]`
+The `spells` and `preparedSpells` variabel has this certain structure: `[ [["<Cantrip-1>", "<Cantrip-2>"],"0"], [["<Level-1-Spell>", "<Level-2-Spell>"],"1"] ]`, while *spellSlots* follows this strcuture: `[ ["<Max-Slots>", "<Used-Slots>"], ... ]`
+
+> [!TIP]
+> Click or tap on a spell card to view its full description.
 
 ### DnD Character Inventory:
 
@@ -196,11 +199,11 @@ Weapons and Amor related varibales are optional and when not set that section wi
 
 The Gold section is always visible and will have as base rate the gold provided by the class + background. There after, you can use the `Add` and `Spend` buttons that will change the Gold amount displayed. When using the aforementioned buttons the ammount added/spent will be as  properties inside your character's note that then will be used to calculate the Total Gold you currently have.
 
-The Backpack section is also always visible and wil be automatically populated with the items given to your character from their class and background. If given the choice between items from your class or background you will have to use the *class-chosen-items* and *background-chosen-items*. You can get more information on each item by hovering your cursor over it.
+The Backpack section is also always visible and wil be automatically populated with the items given to your character from their class and background. If given the choice between items from your class or background you will have to use the `class-chosen-items` and `background-chosen-items`. You can get more information on each item by hovering your cursor over it.
 
-*starterEquipment*/*inventoryItems* structure: `[ ["<item-filename>", "<quantity>", "<show: true/false>"], ... ]`
-*customItems* structure: `[ ["<Name>", "<quantity>", "<show: true/false>", "<weight>", "<cost>", "<type>", "<description>"], ... ]`
-*customItems* `<cost>` is written with its currency, e.g. `"50 GP"`, `"5 SP"`, `"2 PP"` or `"5 CP"` (a bare number is treated as GP).
+`starterEquipment`/`inventoryItems` structure: `[ ["<item-filename>", "<quantity>", "<show: true/false>"], ... ]`
+`customItems` structure: `[ ["<Name>", "<quantity>", "<show: true/false>", "<weight>", "<cost>", "<type>", "<description>"], ... ]`
+`customItems` `<cost>` is written with its currency, e.g. `"50 GP"`, `"5 SP"`, `"2 PP"` or `"5 CP"` (a bare number is treated as GP).
 
 > [!TIP]
 > The aforementioned variables are used to select an Artisan's Tool, a Musical Instrument, or a Gaming Set depeding on what's provided by the class or background. For more information on your choices always look through the actual DnD Player's Handbook.
@@ -241,6 +244,8 @@ rulebook/
 ├── classes/
 │   └── <add your custom classes & subclasses>
 ├────── classChoices/
+│       ├── classRouterFiles/
+│       │   └── <add your custom class choice routers>
 │       └── <add your custom class choices>
 ├── feats/
 │   └── <add your custom feats>

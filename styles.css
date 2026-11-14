@@ -622,42 +622,6 @@
     margin: 0 0 12px 0;
 }
 
-.dnd-spell-tooltip {
-    position: fixed;
-    display: none;
-    z-index: 9999;
-    background-color: var(--dnd-ui-color-bg-secondary);
-    border: 1px solid var(--dnd-ui-color-border-primary);
-    border-radius: 6px;
-    padding: 12px;
-    width: 320px;
-    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.6);
-    pointer-events: none;
-}
-
-.dnd-spell-tooltip.is-visible {
-    display: block;
-}
-
-.dnd-spell-tooltip-title {
-    margin: 0 0 4px 0;
-    color: var(--dnd-ui-color-text-bright);
-    font-size: 1.05em;
-}
-
-.dnd-spell-tooltip-sub {
-    font-size: 0.75em;
-    color: var(--dnd-ui-color-text-secondary);
-    letter-spacing: 1px;
-    margin-bottom: 8px;
-}
-
-.dnd-spell-tooltip-desc {
-    font-size: 0.9em;
-    line-height: 1.4;
-    color: var(--dnd-ui-color-text-primary);
-}
-
 /* ==========================================
    11. NATIVE DND-SKILLS TABLE
    ========================================== */
