@@ -25,9 +25,9 @@ const spells = scanFolder('spells');
 function scanMarkdownNotes() {
     const notes = [];
 
-    // 1. Scan Root directory (ignoring README.md)
+    // 1. Scan Root directory (ignoring README.md and bucketlist.md)
     fs.readdirSync(__dirname)
-        .filter(file => file.endsWith('.md') && file.toLowerCase() !== 'readme.md')
+        .filter(file => file.endsWith('.md') && !['readme.md', 'bucketlist.md'].includes(file.toLowerCase()))
         .forEach(file => {
             notes.push({
                 // ADDED .toLowerCase() HERE

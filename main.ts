@@ -47,6 +47,16 @@ export interface ParsedAbilityImprovement {
     isChoice: boolean;
 }
 
+export interface SpeedModifierBreakdown {
+    baseSpeed: number;
+    classSpeedBonus: number;
+    featSpeedBonus: number;
+    customSpeedMod: number;
+    totalSpeedMod: number;
+    totalSpeed: number;
+    breakdown: { source: string; amount: number; active: boolean; reason?: string }[];
+}
+
 export function parseFeatAbilityImprovements(featData: any): ParsedAbilityImprovement[] {
     if (!featData || !Array.isArray(featData.improveAbility)) return [];
     const results: ParsedAbilityImprovement[] = [];
@@ -803,6 +813,202 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
             return `${basePart} - ${Math.abs(chosenMod)} Bludgeoning`;
         }
         return `${basePart} Bludgeoning`;
+    }
+
+    // --- Helper: Deterministic Speed & Speed Modifier Calculator adhering to D&D 5.5e ---
+    async resolveCharacterSpeedModifiers(
+        classInput: any,
+        classLevelsInput: any,
+        totalLevel: number,
+        extraFeatsInput: any,
+        backgroundFeatInput: any,
+        equippedArmor: string,
+        baseSpeedInput: number = 30,
+        customSpeedModInput: number = 0,
+        subclassInput?: any,
+        fetchOptions?: any
+    ): Promise<SpeedModifierBreakdown> {
+        const options = fetchOptions || this.settings;
+        const parsedTotalLevel = Math.max(1, Number(totalLevel) || 1);
+        const baseSpeed = Math.max(0, Number(baseSpeedInput) || 30);
+        const customSpeedMod = Number(customSpeedModInput) || 0;
+
+        const breakdown: { source: string; amount: number; active: boolean; reason?: string }[] = [];
+
+        // 1. Determine Armor State
+        const safeArmorName = String(equippedArmor || "").toLowerCase().replace(/['"]/g, '').trim().replace(/\s+/g, '-');
+        let isUnarmored = true;
+        let isHeavyArmor = false;
+
+        if (safeArmorName && safeArmorName !== "none" && safeArmorName !== "unarmored-defense") {
+            const armorData = await getItemData(this.app, options, safeArmorName);
+            if (armorData && armorData.category) {
+                const category = String(armorData.category).toLowerCase();
+                if (!category.includes("unarmored") && safeArmorName !== "unarmored-defense") {
+                    isUnarmored = false;
+                    if (category.includes("heavy")) {
+                        isHeavyArmor = true;
+                    }
+                }
+            } else {
+                isUnarmored = false;
+            }
+        }
+
+        // 2. Class & Subclass Speed Bonuses
+        const classArray = Array.isArray(classInput)
+            ? classInput.map(c => String(c || "").trim()).filter(Boolean)
+            : (classInput ? [String(classInput).trim()].filter(Boolean) : []);
+
+        const rawSubclassArray = Array.isArray(subclassInput) ? subclassInput : (subclassInput ? [subclassInput] : []);
+        const subclassArray = classArray.map((_, i) => rawSubclassArray[i] || null);
+
+        let classSpeedBonus = 0;
+
+        for (let idx = 0; idx < classArray.length; idx++) {
+            const className = classArray[idx];
+            const currentClassLevel = (classArray.length > 1 && Array.isArray(classLevelsInput) && classLevelsInput.length > idx)
+                ? (Number(classLevelsInput[idx]) || 1)
+                : parsedTotalLevel;
+
+            const classData = await getClassData(this.app, options, className);
+            if (!classData) continue;
+
+            let subclassData: any = null;
+            const grantedSubclassFile = this.findGrantedSubclass(classData, currentClassLevel);
+            if (grantedSubclassFile && subclassArray[idx]) {
+                subclassData = await getSubclassData(this.app, options, grantedSubclassFile, String(subclassArray[idx]));
+            }
+
+            // Track highest speedMod by feature name so scaling features replace earlier tiers
+            const featuresByName: Record<string, { speedMod: number; displayName: string }> = {};
+
+            for (let lvl = 1; lvl <= currentClassLevel; lvl++) {
+                const lvlFeatures = classData.features?.[lvl.toString()];
+                if (Array.isArray(lvlFeatures)) {
+                    for (const feature of lvlFeatures) {
+                        if (feature && feature.speedMod !== undefined && !isNaN(Number(feature.speedMod))) {
+                            const featKey = String(feature.name || "Speed Feature").trim().toLowerCase();
+                            const val = Number(feature.speedMod);
+                            if (!featuresByName[featKey] || val > featuresByName[featKey].speedMod) {
+                                featuresByName[featKey] = {
+                                    speedMod: val,
+                                    displayName: String(feature.name || formatFeatureOrSlug(featKey))
+                                };
+                            }
+                        }
+                    }
+                }
+
+                if (subclassData) {
+                    const subLvlFeatures = subclassData[lvl.toString()];
+                    if (Array.isArray(subLvlFeatures)) {
+                        for (const feature of subLvlFeatures) {
+                            if (feature && feature.speedMod !== undefined && !isNaN(Number(feature.speedMod))) {
+                                const featKey = String(feature.name || "Speed Feature").trim().toLowerCase();
+                                const val = Number(feature.speedMod);
+                                if (!featuresByName[featKey] || val > featuresByName[featKey].speedMod) {
+                                    featuresByName[featKey] = {
+                                        speedMod: val,
+                                        displayName: String(feature.name || formatFeatureOrSlug(featKey))
+                                    };
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            for (const [featKey, featInfo] of Object.entries(featuresByName)) {
+                let active = true;
+                let reason: string | undefined = undefined;
+
+                if (featKey.includes("unarmored movement")) {
+                    if (!isUnarmored) {
+                        active = false;
+                        reason = "Disabled by Armor";
+                    }
+                } else if (featKey.includes("fast movement") || featKey.includes("roving")) {
+                    if (isHeavyArmor) {
+                        active = false;
+                        reason = "Disabled by Heavy Armor";
+                    }
+                }
+
+                if (active) {
+                    classSpeedBonus += featInfo.speedMod;
+                }
+
+                breakdown.push({
+                    source: `${featInfo.displayName} (${formatFeatureOrSlug(className)})`,
+                    amount: featInfo.speedMod,
+                    active,
+                    reason
+                });
+            }
+        }
+
+        // 3. Feat Speed Bonuses
+        let featSpeedBonus = 0;
+        const allFeatIds: string[] = [];
+        if (Array.isArray(extraFeatsInput)) {
+            allFeatIds.push(...extraFeatsInput.map(String));
+        } else if (typeof extraFeatsInput === "string" && extraFeatsInput.trim()) {
+            const trimmed = extraFeatsInput.trim();
+            if (trimmed.startsWith("[")) {
+                try {
+                    const parsed = JSON.parse(trimmed);
+                    if (Array.isArray(parsed)) allFeatIds.push(...parsed.map(String));
+                } catch {
+                    allFeatIds.push(...trimmed.split(",").map(s => s.trim()));
+                }
+            } else {
+                allFeatIds.push(...trimmed.split(",").map(s => s.trim()));
+            }
+        }
+
+        if (backgroundFeatInput) {
+            const bgStr = String(backgroundFeatInput).trim();
+            if (bgStr && !bgStr.startsWith("<")) allFeatIds.push(bgStr);
+        }
+
+        const uniqueFeatIds = [...new Set(allFeatIds.map(f => f.trim()).filter(f => f && !f.startsWith("<")))];
+
+        for (const featId of uniqueFeatIds) {
+            if (featId === "ability-score-improvement") continue;
+            const featData = await getExtraFeat(this.app, options, featId);
+            if (featData && featData.speedMod !== undefined && !isNaN(Number(featData.speedMod))) {
+                const val = Number(featData.speedMod);
+                featSpeedBonus += val;
+                breakdown.push({
+                    source: `${featData.name || formatFeatureOrSlug(featId)} (Feat)`,
+                    amount: val,
+                    active: true
+                });
+            }
+        }
+
+        // 4. Custom Speed Modifier
+        if (customSpeedMod !== 0) {
+            breakdown.push({
+                source: "Custom / Miscellaneous Modifier",
+                amount: customSpeedMod,
+                active: true
+            });
+        }
+
+        const totalSpeedMod = classSpeedBonus + featSpeedBonus + customSpeedMod;
+        const totalSpeed = baseSpeed + totalSpeedMod;
+
+        return {
+            baseSpeed,
+            classSpeedBonus,
+            featSpeedBonus,
+            customSpeedMod,
+            totalSpeedMod,
+            totalSpeed,
+            breakdown
+        };
     }
 
     async processDnDFeaturesBlock(source: string, el: HTMLElement, ctx: MarkdownPostProcessorContext) {
@@ -4927,34 +5133,6 @@ class CharacterWizardModal extends Modal {
                 // Extract Spellcasting Engine Data
                 if (classData.spellcasting) spellcastingData = classData.spellcasting;
                 if (classData.pactMagic) pactMagicData = classData.pactMagic;
-
-                // Check Class & Subclass Features for speedMod up to wizardLvlNum
-                let subclassData: any = null;
-                const grantedSubclassFile = this.plugin.findGrantedSubclass(classData, wizardLvlNum);
-                if (grantedSubclassFile && this.wizardData.subclass) {
-                    const subName = Array.isArray(this.wizardData.subclass) ? this.wizardData.subclass[0] : this.wizardData.subclass;
-                    if (subName) {
-                        subclassData = await getSubclassData(this.app, this.plugin.settings, grantedSubclassFile, subName);
-                    }
-                }
-                for (let lvl = 1; lvl <= wizardLvlNum; lvl++) {
-                    const lvlFeatures = classData.features?.[lvl.toString()];
-                    if (Array.isArray(lvlFeatures)) {
-                        for (const feat of lvlFeatures) {
-                            if (feat && feat.speedMod !== undefined && !isNaN(Number(feat.speedMod))) {
-                                initialSpeedMod = Number(feat.speedMod);
-                            }
-                        }
-                    }
-                    const subFeatures = subclassData?.[lvl.toString()];
-                    if (Array.isArray(subFeatures)) {
-                        for (const feat of subFeatures) {
-                            if (feat && feat.speedMod !== undefined && !isNaN(Number(feat.speedMod))) {
-                                initialSpeedMod = Number(feat.speedMod);
-                            }
-                        }
-                    }
-                }
             }
         }
 
@@ -4962,10 +5140,6 @@ class CharacterWizardModal extends Modal {
             bgDataStore = await getBackgroundData(this.app, this.plugin.settings, this.wizardData.background);
             if (bgDataStore && bgDataStore.feat) {
                 bgFeat = bgDataStore.feat.split('-').map((word: string) => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
-                const bgFeatData = await getExtraFeat(this.app, this.plugin.settings, bgDataStore.feat);
-                if (bgFeatData && bgFeatData.speedMod !== undefined && !isNaN(Number(bgFeatData.speedMod))) {
-                    initialSpeedMod = Number(bgFeatData.speedMod);
-                }
             }
         }
 
@@ -5005,9 +5179,6 @@ class CharacterWizardModal extends Modal {
             if (!fKey) continue;
             const fData = await getExtraFeat(this.app, this.plugin.settings, String(fKey));
             if (fData) {
-                if (fData.speedMod !== undefined && !isNaN(Number(fData.speedMod))) {
-                    initialSpeedMod = Number(fData.speedMod);
-                }
                 const improvements = parseFeatAbilityImprovements(fData);
                 for (const imp of improvements) {
                     if (!imp.isChoice && imp.options.length === 1) {
@@ -5018,6 +5189,21 @@ class CharacterWizardModal extends Modal {
                 }
             }
         }
+
+        // Resolve Speed Modifier deterministically adhering to D&D 5.5e
+        const speedCalc = await this.plugin.resolveCharacterSpeedModifiers(
+            this.wizardData.dndClass,
+            this.wizardData.classLevels,
+            wizardLvlNum,
+            wizardExtraFeats,
+            bgDataStore?.feat,
+            this.wizardData.armor,
+            this.wizardData.speed || 30,
+            0,
+            this.wizardData.subclass,
+            this.plugin.settings
+        );
+        initialSpeedMod = speedCalc.totalSpeedMod;
 
         // If "Unarmed Strike" was chosen as the weapon, compute its dynamic scaling damage
         const safeWizardWeapon = String(this.wizardData.weapon || "").toLowerCase().replace(/['"]/g, '').trim().replace(/\s+/g, '-');
@@ -6007,6 +6193,21 @@ class EquipItemsModal extends Modal {
                     updates["DnD_armorAcBonus"] = 0;
                 }
             }
+
+            // Recalculate Speed Modifier in case Unarmored Movement, Fast Movement, or Roving is affected by armor
+            const speedCalc = await this.plugin.resolveCharacterSpeedModifiers(
+                dndClass,
+                classLevels,
+                level,
+                frontmatter["DnD_extraFeats"],
+                frontmatter["DnD_backgroundFeat"],
+                updates["DnD_armor"] || this.armorName,
+                frontmatter["DnD_speed"],
+                frontmatter["DnD_customSpeedMod"],
+                frontmatter["DnD_subclass"] ?? frontmatter["DnD_Subclass"],
+                this.plugin.settings
+            );
+            updates["DnD_speedMod"] = speedCalc.totalSpeedMod;
         }
 
         if (Object.keys(updates).length > 0) {
@@ -6752,6 +6953,8 @@ class ManageCharacterModal extends Modal {
     // 2b. Speed State
     currentSpeed: number = 30;
     currentSpeedMod: number = 0;
+    currentCustomSpeedMod: number = 0;
+    speedBreakdown: SpeedModifierBreakdown | null = null;
     // 3. Attack State
     currentAttackStat: string = "strength";
     addAttackProficiency: boolean = true;
@@ -6804,6 +7007,28 @@ class ManageCharacterModal extends Modal {
             ? Number(frontmatter["DnD_speed"])
             : 30;
         this.currentSpeedMod = Number(frontmatter["DnD_speedMod"]) || 0;
+
+        // Fetch Speed Breakdown & Custom Modifier adhering to D&D 5.5e
+        this.speedBreakdown = await this.plugin.resolveCharacterSpeedModifiers(
+            frontmatter["DnD_class"],
+            frontmatter["DnD_classLevels"],
+            Number(frontmatter["DnD_level"]) || 1,
+            frontmatter["DnD_extraFeats"],
+            frontmatter["DnD_backgroundFeat"],
+            frontmatter["DnD_armor"],
+            this.currentSpeed,
+            0,
+            frontmatter["DnD_subclass"] ?? frontmatter["DnD_Subclass"],
+            this.plugin.settings
+        );
+        const autoBonus = (this.speedBreakdown?.classSpeedBonus || 0) + (this.speedBreakdown?.featSpeedBonus || 0);
+        if (frontmatter["DnD_customSpeedMod"] !== undefined && frontmatter["DnD_customSpeedMod"] !== null && frontmatter["DnD_customSpeedMod"] !== "") {
+            this.currentCustomSpeedMod = Number(frontmatter["DnD_customSpeedMod"]) || 0;
+        } else {
+            const legacyMod = Number(frontmatter["DnD_speedMod"]) || 0;
+            this.currentCustomSpeedMod = legacyMod - autoBonus;
+        }
+        this.currentSpeedMod = autoBonus + this.currentCustomSpeedMod;
 
         // Fetch Attack
         this.extraAttackMod = Number(frontmatter["DnD_attackRollMod"]) || 0;
@@ -7125,25 +7350,79 @@ class ManageCharacterModal extends Modal {
             this.contentContainer.createEl("h4", { text: "Speed Adjustments", cls: "dnd-manage-section-title" });
 
             const baseSpeedDiv = this.contentContainer.createDiv({ cls: "dnd-form-group" });
-            baseSpeedDiv.createEl("label", { text: "Base Speed (ft.):", cls: "dnd-form-label-sub" });
+            baseSpeedDiv.createEl("label", { text: "Base Walking Speed (ft.):", cls: "dnd-form-label-sub" });
             const baseSpeedInput = baseSpeedDiv.createEl("input", {
                 type: "number",
                 value: String(this.currentSpeed),
                 cls: "dnd-modal-form-input"
             });
-            baseSpeedInput.oninput = (e) => this.currentSpeed = Number((e.target as HTMLInputElement).value);
 
-            const speedModDiv = this.contentContainer.createDiv({ cls: "dnd-form-group" });
-            speedModDiv.createEl("label", { text: "Speed Modifier (Unarmored Movement, Feats, Buffs):", cls: "dnd-form-label-sub" });
-            const speedModInput = speedModDiv.createEl("input", {
+            // Feature & Feat Speed Bonuses Card
+            const autoBonus = (this.speedBreakdown?.classSpeedBonus || 0) + (this.speedBreakdown?.featSpeedBonus || 0);
+            const breakdownCard = this.contentContainer.createDiv({ cls: "dnd-form-card" });
+            breakdownCard.createEl("label", { text: "Class & Feat Speed Bonuses (Automatic):", cls: "dnd-form-label-bold" });
+
+            const autoItems = (this.speedBreakdown?.breakdown || []).filter(b => b.source !== "Custom / Miscellaneous Modifier");
+            if (autoItems.length === 0) {
+                breakdownCard.createEl("p", {
+                    text: "No class features or feats currently grant speed bonuses.",
+                    cls: "dnd-form-hint"
+                });
+            } else {
+                autoItems.forEach(b => {
+                    const row = breakdownCard.createDiv({ cls: "dnd-modal-list-row" });
+                    const nameSpan = row.createEl("span", {
+                        text: `${b.source}: +${b.amount} ft.`,
+                        cls: "dnd-modal-row-name"
+                    });
+                    if (!b.active) {
+                        nameSpan.classList.add("dnd-text-muted");
+                        row.createEl("small", {
+                            text: b.reason ? `(${b.reason})` : "(Inactive)",
+                            cls: "dnd-error-text"
+                        });
+                    }
+                });
+            }
+
+            // Custom / Misc Modifier input
+            const customSpeedDiv = this.contentContainer.createDiv({ cls: "dnd-form-group" });
+            customSpeedDiv.createEl("label", { text: "Miscellaneous / Gear Speed Modifier (Magic Items, Buffs):", cls: "dnd-form-label-sub" });
+            const customSpeedInput = customSpeedDiv.createEl("input", {
                 type: "number",
-                value: String(this.currentSpeedMod),
+                value: String(this.currentCustomSpeedMod),
                 cls: "dnd-modal-form-input"
             });
-            speedModInput.oninput = (e) => this.currentSpeedMod = Number((e.target as HTMLInputElement).value);
+
+            // Total Speed Preview Display
+            const previewCard = this.contentContainer.createDiv({ cls: "dnd-form-card-active" });
+            const updatePreview = () => {
+                this.currentSpeedMod = autoBonus + this.currentCustomSpeedMod;
+                const total = this.currentSpeed + this.currentSpeedMod;
+                previewCard.empty();
+                previewCard.createEl("strong", {
+                    text: `Total Walking Speed: ${total} ft.`
+                });
+                const modText = this.currentSpeedMod !== 0
+                    ? ` (Base ${this.currentSpeed} ft. + ${this.currentSpeedMod > 0 ? '+' : ''}${this.currentSpeedMod} ft. Modifier)`
+                    : ` (Base ${this.currentSpeed} ft.)`;
+                previewCard.createSpan({ text: modText });
+            };
+
+            baseSpeedInput.oninput = (e) => {
+                this.currentSpeed = Number((e.target as HTMLInputElement).value) || 0;
+                updatePreview();
+            };
+
+            customSpeedInput.oninput = (e) => {
+                this.currentCustomSpeedMod = Number((e.target as HTMLInputElement).value) || 0;
+                updatePreview();
+            };
+
+            updatePreview();
 
             this.contentContainer.createEl("p", {
-                text: "Note: Your total displayed Speed on the combat info bar equals Base Speed + Speed Modifier.",
+                text: "Note: In D&D 5.5e, Monk Unarmored Movement scales automatically and replaces earlier tiers. Speedy and other feats stack additively with class speed.",
                 cls: "dnd-form-note"
             });
         }
@@ -7351,6 +7630,7 @@ class ManageCharacterModal extends Modal {
         updates["DnD_armorAcBonus"] = armorAcBonus;
         updates["DnD_armorAcMod"] = this.currentAcMod;
         updates["DnD_speed"] = this.currentSpeed;
+        updates["DnD_customSpeedMod"] = this.currentCustomSpeedMod;
         updates["DnD_speedMod"] = this.currentSpeedMod;
         updates["DnD_attackRollMod"] = this.extraAttackMod;
         updates["DnD_attackStat"] = this.currentAttackStat;
@@ -7446,6 +7726,8 @@ class LevelUpModal extends Modal {
     conHpBonus: number = 0;
     hpInputEl: HTMLInputElement | null = null;
     retroactiveConHpBadge: HTMLElement | null = null;
+    speedMilestoneBadge: HTMLElement | null = null;
+    currentSpeedCalc: SpeedModifierBreakdown | null = null;
 
     classChoicesState: { router: string, key: string, level: number, domIndex: number }[] = [];
     // Tracks purely additive Expertise gained at this specific level
@@ -7494,6 +7776,20 @@ class LevelUpModal extends Modal {
             this.currentStats[s] = Number(frontmatter[`DnD_${s}`]) || 10;
         });
 
+        // Fetch current speed breakdown at this.currentLevel for live milestone comparison
+        this.currentSpeedCalc = await this.plugin.resolveCharacterSpeedModifiers(
+            frontmatter["DnD_class"] || this.dndClass,
+            frontmatter["DnD_classLevels"],
+            this.currentLevel,
+            frontmatter["DnD_extraFeats"],
+            frontmatter["DnD_backgroundFeat"],
+            frontmatter["DnD_armor"],
+            frontmatter["DnD_speed"],
+            frontmatter["DnD_customSpeedMod"],
+            frontmatter["DnD_subclass"] ?? frontmatter["DnD_Subclass"],
+            this.plugin.settings
+        );
+
         // 2. Fetch the Hit Die from frontmatter (DnD_hitDice) or dynamically from the rulebook JSON
         let classData: any = null;
         if (this.dndClass) {
@@ -7517,6 +7813,7 @@ class LevelUpModal extends Modal {
             text: `Advancing from Level ${this.currentLevel} to Level ${this.newLevel}.`,
             cls: "dnd-levelup-intro"
         });
+        this.speedMilestoneBadge = contentEl.createDiv({ cls: "dnd-asi-hidden" });
 
         // A. Hit Points Section
         const hpDiv = contentEl.createDiv({ cls: "dnd-form-card" });
@@ -7650,6 +7947,50 @@ class LevelUpModal extends Modal {
             } else {
                 this.retroactiveConHpBadge.className = "dnd-asi-hidden";
                 this.retroactiveConHpBadge.empty();
+            }
+        }
+    }
+
+    async updateSpeedMilestoneBadge() {
+        const fileCache = this.app.metadataCache.getCache(this.sourcePath);
+        const frontmatter = fileCache?.frontmatter || {};
+
+        let existingFeats = frontmatter["DnD_extraFeats"];
+        const currentFeats: string[] = Array.isArray(existingFeats)
+            ? [...existingFeats]
+            : (existingFeats ? [existingFeats] : []);
+
+        for (const gf of this.grantedFeatsState) {
+            if (gf.chosenFeatKey && !currentFeats.includes(gf.chosenFeatKey)) {
+                currentFeats.push(gf.chosenFeatKey);
+            }
+        }
+
+        const projectedSpeed = await this.plugin.resolveCharacterSpeedModifiers(
+            frontmatter["DnD_class"] || this.dndClass,
+            frontmatter["DnD_classLevels"],
+            this.newLevel,
+            currentFeats,
+            frontmatter["DnD_backgroundFeat"],
+            frontmatter["DnD_armor"],
+            frontmatter["DnD_speed"],
+            frontmatter["DnD_customSpeedMod"],
+            this.currentSubclass ? [this.currentSubclass] : (frontmatter["DnD_subclass"] ?? frontmatter["DnD_Subclass"]),
+            this.plugin.settings
+        );
+
+        if (this.speedMilestoneBadge && this.currentSpeedCalc) {
+            if (projectedSpeed.totalSpeed > this.currentSpeedCalc.totalSpeed) {
+                const diff = projectedSpeed.totalSpeed - this.currentSpeedCalc.totalSpeed;
+                this.speedMilestoneBadge.className = "dnd-form-hint";
+                this.speedMilestoneBadge.empty();
+                this.speedMilestoneBadge.createEl("strong", { text: `⚡ Speed Increase: ` });
+                this.speedMilestoneBadge.createSpan({
+                    text: `${this.currentSpeedCalc.totalSpeed} ft. → ${projectedSpeed.totalSpeed} ft. (+${diff} ft.)`
+                });
+            } else {
+                this.speedMilestoneBadge.className = "dnd-asi-hidden";
+                this.speedMilestoneBadge.empty();
             }
         }
     }
@@ -8039,6 +8380,7 @@ class LevelUpModal extends Modal {
                 }
 
                 await this.updateRetroactiveConHp();
+                await this.updateSpeedMilestoneBadge();
             };
 
             const renderActiveOption = async (opt: ClassifiedOption) => {
@@ -8116,6 +8458,7 @@ class LevelUpModal extends Modal {
                     featSelect.onchange = async (e) => {
                         state.chosenFeatKey = (e.target as HTMLSelectElement).value;
                         await renderImproveAbilitySub(abilityContainer, state.chosenFeatKey);
+                        await this.updateSpeedMilestoneBadge();
                     };
                 } else if (opt.type === "feat") {
                     state.chosenFeatKey = opt.key;
@@ -8129,6 +8472,7 @@ class LevelUpModal extends Modal {
                 }
 
                 await this.updateRetroactiveConHp();
+                await this.updateSpeedMilestoneBadge();
             };
 
             if (classifiedOptions.length > 1) {
@@ -8154,6 +8498,8 @@ class LevelUpModal extends Modal {
                 cls: "dnd-form-note"
             });
         }
+
+        await this.updateSpeedMilestoneBadge();
     }
 
     onClose() {
@@ -8214,29 +8560,6 @@ class LevelUpModal extends Modal {
                         updates[slotKey] = JSON.stringify(updatedSlots);
                     }
                 }
-
-                // Check newly unlocked Class & Subclass Features at this.newLevel for speedMod
-                const newLvlFeatures = classData.features?.[this.newLevel.toString()];
-                if (Array.isArray(newLvlFeatures)) {
-                    for (const feat of newLvlFeatures) {
-                        if (feat && feat.speedMod !== undefined && !isNaN(Number(feat.speedMod))) {
-                            updates["DnD_speedMod"] = Number(feat.speedMod);
-                        }
-                    }
-                }
-
-                const grantedSubclassFile = this.plugin.findGrantedSubclass(classData, this.newLevel);
-                if (grantedSubclassFile && this.currentSubclass) {
-                    const subclassData = await getSubclassData(this.app, this.plugin.settings, grantedSubclassFile, this.currentSubclass);
-                    const subLvlFeatures = subclassData?.[this.newLevel.toString()];
-                    if (Array.isArray(subLvlFeatures)) {
-                        for (const feat of subLvlFeatures) {
-                            if (feat && feat.speedMod !== undefined && !isNaN(Number(feat.speedMod))) {
-                                updates["DnD_speedMod"] = Number(feat.speedMod);
-                            }
-                        }
-                    }
-                }
             }
         }
 
@@ -8293,10 +8616,6 @@ class LevelUpModal extends Modal {
 
                 const chosenFeatData = await getExtraFeat(this.app, this.plugin.settings, gfState.chosenFeatKey);
                 if (chosenFeatData) {
-                    if (chosenFeatData.speedMod !== undefined && !isNaN(Number(chosenFeatData.speedMod))) {
-                        updates["DnD_speedMod"] = Number(chosenFeatData.speedMod);
-                    }
-
                     const improvements = parseFeatAbilityImprovements(chosenFeatData);
                     improvements.forEach((entry, idx) => {
                         let targetStat: AbilityKey | null = null;
@@ -8391,6 +8710,21 @@ class LevelUpModal extends Modal {
             armorAcBonus = unarmoredCalc.acBonus;
         }
         updates["DnD_armorAcBonus"] = armorAcBonus;
+
+        // Recalculate deterministic Speed Modifier
+        const speedCalc = await this.plugin.resolveCharacterSpeedModifiers(
+            frontmatter["DnD_class"] || this.dndClass,
+            frontmatter["DnD_classLevels"],
+            this.newLevel,
+            existingFeats,
+            frontmatter["DnD_backgroundFeat"],
+            frontmatter["DnD_armor"],
+            frontmatter["DnD_speed"],
+            frontmatter["DnD_customSpeedMod"],
+            this.currentSubclass ? [this.currentSubclass] : (frontmatter["DnD_subclass"] ?? frontmatter["DnD_Subclass"]),
+            this.plugin.settings
+        );
+        updates["DnD_speedMod"] = speedCalc.totalSpeedMod;
 
         // 1. Thread-safe Frontmatter Update
         await this.plugin.updateCharacterFrontmatter(this.sourcePath, updates);

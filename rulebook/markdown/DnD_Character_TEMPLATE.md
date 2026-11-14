@@ -28,6 +28,7 @@ DnD_maxHealth:
 DnD_currentHealth:
 DnD_speed:
 DnD_speedMod:
+DnD_customSpeedMod:
 DnD_speedSublabel: 
 DnD_attackStat:
 DnD_attackProficiency:

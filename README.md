@@ -360,7 +360,11 @@ The `scalingDice` array stores level-scaling dice for a class (such as a Monk's 
 
 To give a class a custom **Unarmored Defense** AC calculation, include a hidden feature named `"Unarmored Defense"` (`"hide": true`) at the level it is unlocked with its `"description"` set to the AC formula (for example, `"10+dexterity+wisdom"` for Monk or `"10+dexterity+constitution"` for Barbarian).
 
-The `speedMod` variable on a class/subclass feature or feat sets `DnD_speedMod` when that level or feat is gained, adding to the character's base `speed` in `dnd-info` (`mode: combat`).
+The `speedMod` variable on a class/subclass feature or feat defines bonus movement speed (in feet) that contributes to the character's total walking speed. Speed bonuses are resolved deterministically:
+- **Scaling Features (e.g. Monk Unarmored Movement):** Features sharing the same feature name scale by replacement—reaching a higher level tier replaces earlier values rather than stacking cumulatively (e.g., Monk Level 2: +10 ft, Level 6: +15 ft, Level 10: +20 ft, Level 14: +25 ft, Level 18: +30 ft).
+- **Armor Condition Enforcement:** Unarmored Movement bonuses automatically disable when armor is worn; Barbarian Fast Movement or Ranger Roving bonuses automatically disable if heavy armor is worn. Feat speed bonuses apply regardless of armor.
+- **Multiclassing & Feats:** Different class features (e.g. Barbarian Fast Movement + Ranger Roving) and Feats (e.g. *Speedy* +10 ft, *Epic Boon of Speed* +30 ft) stack additively.
+- **Custom & Gear Modifiers:** Manual adjustments or magic item bonuses can be managed in the "Speed" tab of **Manage Character** or directly in the note's `DnD_customSpeedMod` frontmatter property. The overall combined bonus is saved to `DnD_speedMod` and displayed alongside base speed in `dnd-info` (`mode: combat`).
 
 - $class-subclasses.json:
 ```json
