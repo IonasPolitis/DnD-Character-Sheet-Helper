@@ -109,6 +109,102 @@
             ]
       },
       "Order of the Profane Soul": {
+            "spellcastingAbilities": [
+                  "Intelligence"
+            ],
+            "spellsPool": "warlock-spells",
+            "spellcasting": {
+                  "3": {
+                        "cantrips": 2,
+                        "preparedSpells": 2,
+                        "slots": [ 1, 0, 0, 0, 0, 0, 0, 0, 0 ]
+                  },
+                  "4": {
+                        "cantrips": 2,
+                        "preparedSpells": 2,
+                        "slots": [ 1, 0, 0, 0, 0, 0, 0, 0, 0 ]
+                  },
+                  "5": {
+                        "cantrips": 2,
+                        "preparedSpells": 3,
+                        "slots": [ 1, 0, 0, 0, 0, 0, 0, 0, 0 ]
+                  },
+                  "6": {
+                        "cantrips": 2,
+                        "preparedSpells": 3,
+                        "slots": [ 2, 0, 0, 0, 0, 0, 0, 0, 0 ]
+                  },
+                  "7": {
+                        "cantrips": 2,
+                        "preparedSpells": 4,
+                        "slots": [ 0, 2, 0, 0, 0, 0, 0, 0, 0 ]
+                  },
+                  "8": {
+                        "cantrips": 2,
+                        "preparedSpells": 4,
+                        "slots": [ 0, 2, 0, 0, 0, 0, 0, 0, 0 ]
+                  },
+                  "9": {
+                        "cantrips": 2,
+                        "preparedSpells": 5,
+                        "slots": [ 0, 2, 0, 0, 0, 0, 0, 0, 0 ]
+                  },
+                  "10": {
+                        "cantrips": 3,
+                        "preparedSpells": 5,
+                        "slots": [ 0, 2, 0, 0, 0, 0, 0, 0, 0 ]
+                  },
+                  "11": {
+                        "cantrips": 3,
+                        "preparedSpells": 5,
+                        "slots": [ 0, 2, 0, 0, 0, 0, 0, 0, 0 ]
+                  },
+                  "12": {
+                        "cantrips": 3,
+                        "preparedSpells": 6,
+                        "slots": [ 0, 2, 0, 0, 0, 0, 0, 0, 0 ]
+                  },
+                  "13": {
+                        "cantrips": 3,
+                        "preparedSpells": 6,
+                        "slots": [ 0, 0, 2, 0, 0, 0, 0, 0, 0 ]
+                  },
+                  "14": {
+                        "cantrips": 3,
+                        "preparedSpells": 7,
+                        "slots": [ 0, 0, 2, 0, 0, 0, 0, 0, 0 ]
+                  },
+                  "15": {
+                        "cantrips": 3,
+                        "preparedSpells": 7,
+                        "slots": [ 0, 0, 2, 0, 0, 0, 0, 0, 0 ]
+                  },
+                  "16": {
+                        "cantrips": 3,
+                        "preparedSpells": 8,
+                        "slots": [ 0, 0, 2, 0, 0, 0, 0, 0, 0 ]
+                  },
+                  "17": {
+                        "cantrips": 3,
+                        "preparedSpells": 9,
+                        "slots": [ 0, 0, 2, 0, 0, 0, 0, 0, 0 ]
+                  },
+                  "18": {
+                        "cantrips": 3,
+                        "preparedSpells": 9,
+                        "slots": [ 0, 0, 2, 0, 0, 0, 0, 0, 0 ]
+                  },
+                  "19": {
+                        "cantrips": 3,
+                        "preparedSpells": 10,
+                        "slots": [ 0, 0, 0, 2, 0, 0, 0, 0, 0 ]
+                  },
+                  "20": {
+                        "cantrips": 3,
+                        "preparedSpells": 11,
+                        "slots": [ 0, 0, 0, 2, 0, 0, 0, 0, 0 ]
+                  }
+            },
             "3": [
                   {
                         "name": "Pact Magic",

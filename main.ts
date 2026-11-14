@@ -1443,6 +1443,76 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
     }
 
     /**
+     * Resolves spellcasting abilities, spellsPool router filename, and progression table
+     * from classData and/or subclassData (supporting top-level properties and feature-level definitions).
+     */
+    resolveSpellcastingMetadata(classData: any, subclassData: any, level?: number): {
+        spellcastingAbilities: string[];
+        spellsPool: string | null;
+        spellcastingTable: Record<string, any> | null;
+    } {
+        let abilities: string[] = [];
+        let spellsPool: string | null = null;
+        let spellcastingTable: Record<string, any> | null = null;
+
+        // 1. Resolve from classData
+        if (classData) {
+            if (Array.isArray(classData.spellcastingAbilities) && classData.spellcastingAbilities.length > 0) {
+                abilities = [...classData.spellcastingAbilities];
+            }
+            if (classData.spellsPool) {
+                spellsPool = String(classData.spellsPool).trim();
+            }
+            if (classData.spellcasting || classData.pactMagic) {
+                spellcastingTable = classData.spellcasting || classData.pactMagic;
+            }
+        }
+
+        // 2. Resolve / Fallback to subclassData (top-level properties)
+        if (subclassData && typeof subclassData === "object") {
+            if (abilities.length === 0 && Array.isArray(subclassData.spellcastingAbilities) && subclassData.spellcastingAbilities.length > 0) {
+                abilities = [...subclassData.spellcastingAbilities];
+            }
+            if (!spellsPool && subclassData.spellsPool) {
+                spellsPool = String(subclassData.spellsPool).trim();
+            }
+            if (!spellcastingTable && (subclassData.spellcasting || subclassData.pactMagic)) {
+                spellcastingTable = subclassData.spellcasting || subclassData.pactMagic;
+            }
+
+            // 3. Scan features in subclassData (and classData features) for embedded spellcasting configs
+            const scanFeatures = (featuresList: any[]) => {
+                if (!Array.isArray(featuresList)) return;
+                for (const feat of featuresList) {
+                    if (!feat || typeof feat !== "object") continue;
+                    if (abilities.length === 0 && Array.isArray(feat.spellcastingAbilities) && feat.spellcastingAbilities.length > 0) {
+                        abilities = [...feat.spellcastingAbilities];
+                    }
+                    if (!spellsPool && feat.spellsPool) {
+                        spellsPool = String(feat.spellsPool).trim();
+                    }
+                    if (!spellcastingTable && (feat.spellcasting || feat.pactMagic)) {
+                        spellcastingTable = feat.spellcasting || feat.pactMagic;
+                    }
+                }
+            };
+
+            const maxLvl = level ?? 20;
+            for (let lvl = 1; lvl <= maxLvl; lvl++) {
+                const lvlKey = lvl.toString();
+                if (subclassData[lvlKey]) scanFeatures(subclassData[lvlKey]);
+                if (classData?.features?.[lvlKey]) scanFeatures(classData.features[lvlKey]);
+            }
+        }
+
+        return {
+            spellcastingAbilities: abilities,
+            spellsPool: spellsPool ? spellsPool.replace(/\.json$/i, '') : null,
+            spellcastingTable
+        };
+    }
+
+    /**
      * Resolves a character's Initiative modifiers from:
      * 1. Class & Subclass features (`"initiativeMod": <number | "proficiencyBonus" | AbilityKey>`, e.g. Gloom Stalker Dread Ambusher `"wisdom"`).
      * 2. Race & Lineage traits (`"initiativeMod": <number | "proficiencyBonus" | AbilityKey>`).
@@ -5467,7 +5537,10 @@ class CharacterWizardModal extends Modal {
                         subSelect.createEl("option", { text: "-- Select a Subclass --", value: "" });
                         subclassNames.forEach(s => subSelect.createEl("option", { text: s, value: s }));
                         subSelect.value = this.wizardData.subclass || "";
-                        subSelect.onchange = (e) => this.wizardData.subclass = (e.target as HTMLSelectElement).value;
+                        subSelect.onchange = async (e) => {
+                            this.wizardData.subclass = (e.target as HTMLSelectElement).value;
+                            await this.renderStep();
+                        };
                     }
                 }
             } else {
@@ -5563,20 +5636,28 @@ class CharacterWizardModal extends Modal {
 
         // 3. Spellcasting Dropdown
         if (this.wizardData.dndClass) {
-            if (classData && classData.spellcastingAbilities && Array.isArray(classData.spellcastingAbilities)) {
+            let subclassDataForSpell: any = null;
+            if (this.wizardData.subclass && grantedSubclassFile) {
+                subclassDataForSpell = await getSubclassData(this.app, this.plugin.settings, grantedSubclassFile, this.wizardData.subclass);
+            }
+            const spellMeta = this.plugin.resolveSpellcastingMetadata(classData, subclassDataForSpell, wizardLevel);
+
+            if (spellMeta.spellcastingAbilities.length > 0) {
                 const spellDiv = container.createDiv({ cls: "dnd-form-group" });
                 spellDiv.createEl("label", { text: "Primary Spellcasting Ability: ", cls: "dnd-form-label-sub" });
                 const spellSelect = spellDiv.createEl("select", { cls: "dnd-modal-form-input" });
                 spellSelect.createEl("option", { text: "-- Select Ability --", value: "" });
 
-                classData.spellcastingAbilities.forEach((ability: string) => spellSelect.createEl("option", { text: ability, value: ability }));
+                spellMeta.spellcastingAbilities.forEach((ability: string) => spellSelect.createEl("option", { text: ability, value: ability }));
 
-                if (classData.spellcastingAbilities.length === 1) {
-                    this.wizardData.DnD_spellcasting_ability = classData.spellcastingAbilities[0];
+                if (spellMeta.spellcastingAbilities.length === 1) {
+                    this.wizardData.DnD_spellcasting_ability = spellMeta.spellcastingAbilities[0];
                 }
 
                 spellSelect.value = this.wizardData.DnD_spellcasting_ability || "";
                 spellSelect.onchange = (e) => this.wizardData.DnD_spellcasting_ability = (e.target as HTMLSelectElement).value;
+            } else {
+                this.wizardData.DnD_spellcasting_ability = "";
             }
         }
 
@@ -6346,8 +6427,17 @@ class CharacterWizardModal extends Modal {
                 if (classData.defaultAttackStat) attackStat = String(classData.defaultAttackStat).toLowerCase().trim();
 
                 // Extract Spellcasting Engine Data
-                if (classData.spellcasting) spellcastingData = classData.spellcasting;
-                if (classData.pactMagic) pactMagicData = classData.pactMagic;
+                let subclassDataForWizard: any = null;
+                if (this.wizardData.subclass) {
+                    const grantedSub = this.plugin.findGrantedSubclass(classData, Number(this.wizardData.level) || 1);
+                    if (grantedSub) {
+                        subclassDataForWizard = await getSubclassData(this.app, this.plugin.settings, grantedSub, this.wizardData.subclass);
+                    }
+                }
+                const spellMeta = this.plugin.resolveSpellcastingMetadata(classData, subclassDataForWizard, Number(this.wizardData.level) || 1);
+                if (spellMeta.spellcastingTable) {
+                    spellcastingData = spellMeta.spellcastingTable;
+                }
             }
         }
 
@@ -6542,7 +6632,11 @@ class CharacterWizardModal extends Modal {
         injectYAML("DnD_raceLineage", this.wizardData.raceLineage);
         injectYAML("DnD_background", this.wizardData.background);
         injectYAML("DnD_backgroundFeat", bgFeat);
-        injectYAML("DnD_spellcastingAbility", this.wizardData.DnD_spellcasting_ability);
+        if (this.wizardData.DnD_spellcasting_ability) {
+            injectYAML("DnD_spellcastingAbility", this.wizardData.DnD_spellcasting_ability);
+        } else {
+            finalContent = finalContent.replace(/^DnD_spellcastingAbility:.*$\r?\n?/m, "");
+        }
         injectYAML("DnD_classEquipment", this.wizardData.classEquipment);
         injectYAML("DnD_backgroundEquipment", this.wizardData.backgroundEquipment);
         const groupedWizardChoices: Record<string, [string, string][]> = {};
@@ -9455,6 +9549,7 @@ class LevelUpModal extends Modal {
     newExpertiseChoices: string[] = [];
     newGrantedExpertiseCount: number = 0;
     expertisePool: string[] = []; // Tracks the allowed JSON pool
+    newSpellcastingAbility: string = "";
 
     constructor(app: App, plugin: DnDCharacterSheetHelperPlugin, sourcePath: string) {
         super(app);
@@ -9765,6 +9860,7 @@ class LevelUpModal extends Modal {
         this.classChoicesState = [];
         this.classChoicesByRouter = {};
         this.newExpertiseChoices = [];
+        this.newSpellcastingAbility = "";
 
         const statsList = ["strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"];
         let slotsByRouter: Record<string, { unlockedLevel: number; featureName: string }[]> = {};
@@ -9777,6 +9873,34 @@ class LevelUpModal extends Modal {
             const activeSubclassFile = this.plugin.findGrantedSubclass(classData, this.newLevel);
             if (this.currentSubclass && activeSubclassFile) {
                 subclassData = await getSubclassData(this.app, this.plugin.settings, activeSubclassFile, this.currentSubclass);
+            }
+
+            // Spellcasting Ability Milestone (if character has none yet and class/subclass grants one)
+            const existingSpellcastingAbility = frontmatter["DnD_spellcastingAbility"];
+            if (!existingSpellcastingAbility || String(existingSpellcastingAbility).trim().startsWith("<")) {
+                const spellMeta = this.plugin.resolveSpellcastingMetadata(classData, subclassData, this.newLevel);
+                if (spellMeta.spellcastingAbilities.length > 0) {
+                    const spellCard = this.milestonesContainer.createDiv({ cls: "dnd-form-card-active" });
+                    spellCard.createEl("label", {
+                        text: `✨ Spellcasting Ability Unlocked (${this.currentSubclass || this.dndClass}):`,
+                        cls: "dnd-form-label-bold"
+                    });
+
+                    const spellSelect = spellCard.createEl("select", { cls: "dnd-modal-form-input" });
+                    spellSelect.createEl("option", { text: "-- Select Spellcasting Ability --", value: "" });
+                    spellMeta.spellcastingAbilities.forEach((ability: string) => {
+                        spellSelect.createEl("option", { text: ability, value: ability });
+                    });
+
+                    if (spellMeta.spellcastingAbilities.length === 1) {
+                        this.newSpellcastingAbility = spellMeta.spellcastingAbilities[0];
+                        spellSelect.value = this.newSpellcastingAbility;
+                    }
+
+                    spellSelect.onchange = (e) => {
+                        this.newSpellcastingAbility = (e.target as HTMLSelectElement).value;
+                    };
+                }
             }
 
             const resolvedRouters = this.plugin.resolveClassChoiceRoutersUpToLevel(classData, subclassData, this.newLevel);
@@ -10300,6 +10424,10 @@ class LevelUpModal extends Modal {
             [this.subclassFmKey]: this.currentSubclass ? [this.currentSubclass] : []
         };
 
+        if (this.newSpellcastingAbility) {
+            updates["DnD_spellcastingAbility"] = this.newSpellcastingAbility;
+        }
+
         // Fetch Class JSON for Proficiency Bonus Progression & Spell Slot Progression
         if (this.dndClass) {
             const classData = await getClassData(this.app, this.plugin.settings, this.dndClass);
@@ -10309,8 +10437,16 @@ class LevelUpModal extends Modal {
                     DnD_proficiency_bonus = Number(classData.proficiencyBonus[lvlIdx]) || DnD_proficiency_bonus;
                 }
 
-                if (classData.spellcasting) {
-                    const newSpellData = classData.spellcasting[this.newLevel.toString()];
+                let subclassDataForSlots: any = null;
+                const activeSubclassFile = this.plugin.findGrantedSubclass(classData, this.newLevel);
+                if (this.currentSubclass && activeSubclassFile) {
+                    subclassDataForSlots = await getSubclassData(this.app, this.plugin.settings, activeSubclassFile, this.currentSubclass);
+                }
+                const spellMeta = this.plugin.resolveSpellcastingMetadata(classData, subclassDataForSlots, this.newLevel);
+                const castingTable = spellMeta.spellcastingTable;
+
+                if (castingTable) {
+                    const newSpellData = castingTable[this.newLevel.toString()];
                     if (newSpellData && Array.isArray(newSpellData.slots)) {
                         const slotKey = frontmatter["DnD_spellsSlots"] !== undefined && frontmatter["DnD_spellSlots"] === undefined
                             ? "DnD_spellsSlots"
@@ -10656,26 +10792,37 @@ class SpellbookModal extends Modal {
         this.knownSpellsByLevel = this.parseSpellTuples(frontmatter["DnD_spells"]);
         this.preparedSpellsByLevel = this.parseSpellTuples(frontmatter["DnD_preparedSpells"]);
 
-        // 2. Fetch Class Data to find "spellsPool" and "spellcasting" / "pactMagic" limits
+        // 2. Fetch Class Data and Subclass Data to find "spellsPool" and "spellcasting" / "pactMagic" limits
+        let subclassData: any = null;
+        let subclassName = "";
+        const subclassVal = frontmatter["DnD_subclass"] ?? frontmatter["DnD_Subclass"];
+        subclassName = (Array.isArray(subclassVal) ? subclassVal[0] : subclassVal) || "";
+
         if (this.dndClass) {
             const classData = await getClassData(this.app, this.plugin.settings, this.dndClass);
-            if (classData) {
-                if (classData.spellsPool) {
-                    this.spellsPoolFile = String(classData.spellsPool).trim();
+            if (classData && subclassName) {
+                const grantedSubclassFile = this.plugin.findGrantedSubclass(classData, this.characterLevel);
+                if (grantedSubclassFile) {
+                    subclassData = await getSubclassData(this.app, this.plugin.settings, grantedSubclassFile, subclassName);
                 }
+            }
 
-                const lvlStr = this.characterLevel.toString();
-                const castingTable = classData.spellcasting?.[lvlStr] || classData.pactMagic?.[lvlStr];
-                if (castingTable) {
-                    this.maxCantrips = Number(castingTable.cantrips) || 0;
-                    this.maxPreparedSpells = Number(castingTable.preparedSpells) || 0;
-                }
+            const spellMeta = this.plugin.resolveSpellcastingMetadata(classData, subclassData, this.characterLevel);
+            if (spellMeta.spellsPool) {
+                this.spellsPoolFile = spellMeta.spellsPool;
+            }
+
+            const lvlStr = this.characterLevel.toString();
+            const castingTable = spellMeta.spellcastingTable?.[lvlStr];
+            if (castingTable) {
+                this.maxCantrips = Number(castingTable.cantrips) || 0;
+                this.maxPreparedSpells = Number(castingTable.preparedSpells) || 0;
             }
         }
 
         if (!this.spellsPoolFile) {
             contentEl.createEl("p", {
-                text: `No "spellsPool" property found in ${this.dndClass || "class"} JSON. Add "spellsPool": "<router-filename>" to your class JSON to enable the Spellbook.`,
+                text: `No "spellsPool" property found in ${this.dndClass || "class"}${subclassName ? " or " + subclassName : ""} JSON. Add "spellsPool": "<router-filename>" to your class or subclass JSON to enable the Spellbook.`,
                 cls: "dnd-error-text"
             });
             return;
@@ -10685,7 +10832,7 @@ class SpellbookModal extends Modal {
         const loadedRouter = await getSpellsPoolData(this.app, this.plugin.settings, this.spellsPoolFile);
         if (!loadedRouter || typeof loadedRouter !== "object") {
             contentEl.createEl("p", {
-                text: `Could not load spell router file: /rulebook/spells/${this.spellsPoolFile}.json`,
+                text: `Could not load spell router file: /rulebook/spells/spellPools/${this.spellsPoolFile}.json`,
                 cls: "dnd-error-text"
             });
             return;

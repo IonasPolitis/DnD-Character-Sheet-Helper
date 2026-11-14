@@ -417,7 +417,8 @@ export async function getSpellsPoolData(app: App, settings: FetchSettings, spell
     };
 
     const fetchCustom = async (basePath: string) => {
-        return (await readCustomJson(app, `${basePath}/spells/${cleanFile}.json`))
+        return (await readCustomJson(app, `${basePath}/spells/spellPools/${cleanFile}.json`))
+            ?? (await readCustomJson(app, `${basePath}/spells/${cleanFile}.json`))
             ?? (await readCustomJson(app, `${basePath}/${cleanFile}.json`));
     };
 

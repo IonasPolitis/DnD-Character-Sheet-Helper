@@ -258,6 +258,8 @@ rulebook/
 ├── rules/
 │   └── <add your custom rules>
 ├── spells/
+│   ├── spellPools/
+│   │   └── <add your custom spell pool routers>
 │   └── <add your custom spells>
 ├── backgrounds.json
 ├── classes.json
@@ -353,6 +355,26 @@ Cantrips are on "Level 0" and the rest of the Spell Levels are as normal.
                         "initiativeMod": "<num | proficiencyBonus | Ability-Name>", // <optional>
                         "weaponMastery": <num>, // <optional>
                         "hide": true // <optional>
+                  }
+            ]
+      }
+}
+```
+
+- `<class>-subclasses.json`:
+Subclasses can also define spellcasting independently from their base class (e.g. Eldritch Knight, Arcane Trickster, or Order of the Profane Soul), unlocking the Spellbook only for characters who pick that archetype:
+```json
+{
+      "<Subclass-Name>": {
+            "spellcastingAbilities": [ "<Spellcasting-Ability>" ], // <optional>
+            "spellsPool": "<Spell-Pool-Router-Filename>", // <optional>
+            "spellcasting": {
+                  "<Level>": { "cantrips": <num>, "preparedSpells": <num>, "slots": [0, 0, 0, 0, 0, 0, 0, 0, 0] }
+            }, // <optional>
+            "<Level>": [
+                  {
+                        "name": "<Feature_Name>",
+                        "description": "<Feature_Description>"
                   }
             ]
       }

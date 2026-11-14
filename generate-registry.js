@@ -21,6 +21,7 @@ const races = scanFolder('races');
 const items = scanFolder('items');
 const rules = scanFolder('rules');
 const spells = scanFolder('spells');
+const spellPools = scanFolder(path.join('spells', 'spellPools'));
 
 // --- AUTO-GENERATE weapon-masteries.md FROM weapon-masteries.json ---
 function syncWeaponMasteriesMarkdownFile() {
@@ -232,11 +233,15 @@ spells.forEach(s => {
     const safeName = s.replace(/[^a-zA-Z0-9]/g, '');
     out += `import spell_${safeName} from './rulebook/spells/${s}.json';\n`;
 });
+spellPools.forEach(sp => {
+    const safeName = sp.replace(/[^a-zA-Z0-9]/g, '');
+    out += `import spellPool_${safeName} from './rulebook/spells/spellPools/${sp}.json';\n`;
+});
 
 // Spell Pool Routers (e.g. warlock-spells.json, wizard-spells.json)
 out += `\nexport const spellsMap: Record<string, any> = {\n`;
-spells.forEach(s => {
-    if (s.includes('spells')) out += `    "${s}": spell_${s.replace(/[^a-zA-Z0-9]/g, '')},\n`;
+spellPools.forEach(sp => {
+    out += `    "${sp}": spellPool_${sp.replace(/[^a-zA-Z0-9]/g, '')},\n`;
 });
 out += `};\n`;
 
@@ -293,7 +298,7 @@ out += `};\n\n`;
 
 out += `export const spellRegistry: Record<string, any> = {\n`;
 spells.forEach(s => {
-    if (!s.includes('spells')) out += `    "${s}": spell_${s.replace(/[^a-zA-Z0-9]/g, '')},\n`;
+    out += `    "${s}": spell_${s.replace(/[^a-zA-Z0-9]/g, '')},\n`;
 });
 out += `};\n`;
 
@@ -368,6 +373,13 @@ if (fs.existsSync(pastEditionsDir)) {
             const ccrFiles = fs.readdirSync(ccrPath).filter(file => file.endsWith('.json')).map(file => file.replace('.json', ''));
             ccrFiles.forEach(file => {
                 out += `pastEditionsRegistry["${edition}"].classChoiceRouterRegistry["${file}"] = require('./rulebook/#past-editions/${edition}/classes/classChoices/classRouterFiles/${file}.json');\n`;
+            });
+        }
+        const spPath = path.join(pastEditionsDir, edition, 'spells', 'spellPools');
+        if (fs.existsSync(spPath)) {
+            const spFiles = fs.readdirSync(spPath).filter(file => file.endsWith('.json')).map(file => file.replace('.json', ''));
+            spFiles.forEach(file => {
+                out += `pastEditionsRegistry["${edition}"].spellsMap["${file}"] = require('./rulebook/#past-editions/${edition}/spells/spellPools/${file}.json');\n`;
             });
         }
     });
