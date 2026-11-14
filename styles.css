@@ -1435,6 +1435,46 @@
     margin: 0;
 }
 
+/* E. Slim 1-Use Heroic Inspiration Pane at Bottom of dnd-inventory */
+.dnd-features-window.dnd-heroic-inspiration-pane {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 14px;
+    margin: 10px 0 0 0;
+    gap: 12px;
+}
+
+.dnd-features-window.dnd-heroic-inspiration-pane > div {
+    border-bottom: none;
+    padding-bottom: 0;
+    margin: 0;
+}
+
+.dnd-heroic-inspiration-left {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.dnd-heroic-inspiration-icon {
+    font-size: 1em;
+    line-height: 1;
+}
+
+.dnd-heroic-inspiration-title {
+    color: var(--dnd-ui-color-text-bright);
+    font-size: 0.95em;
+    letter-spacing: 0.3px;
+}
+
+.dnd-heroic-inspiration-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
 /* ==========================================
    16. NATIVE DND-HEALTH CARD & REST BAR
    ========================================== */
@@ -1608,6 +1648,36 @@
 .dnd-spell-slots-pips .dnd-slot-pip.dnd-deathsave-success.is-used {
     border-color: var(--dnd-ui-color-accent-teal);
     background-color: var(--dnd-ui-color-accent-teal);
+}
+
+.dnd-health-exhaustion-row {
+    justify-content: space-between;
+}
+
+.dnd-health-exhaustion-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.dnd-health-exhaustion-sub {
+    font-size: 0.8em;
+    color: var(--dnd-ui-color-text-muted);
+}
+
+.dnd-health-exhaustion-sub.is-active {
+    color: var(--dnd-ui-color-accent-red);
+    font-weight: 500;
+}
+
+.dnd-spell-slots-pips .dnd-slot-pip.dnd-exhaustion-pip {
+    border-color: var(--dnd-ui-color-accent-red);
+    background-color: transparent;
+}
+
+.dnd-spell-slots-pips .dnd-slot-pip.dnd-exhaustion-pip.is-used {
+    border-color: var(--dnd-ui-color-accent-red);
+    background-color: var(--dnd-ui-color-accent-red);
 }
 
 .dnd-health-rest-bar {

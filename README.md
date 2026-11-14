@@ -23,7 +23,7 @@ Everything will be placed in appropriate frontmatter variuables (file properties
 
 ### DnD Healthbar:
 
-A Health-bar widget with integrated Hit Dice, Saving Throws, and the ability to add Temporary Hit Points.
+A Health-bar widget with integrated Hit Dice, Saving Throws, Exhaustion (1–6), and the ability to add Temporary Hit Points.
 
 A Sample of the Code Block looks like this:
 ````makrdown
@@ -32,6 +32,7 @@ health: $num$
 currentHealth: $num$
 hitDice: $string$
 level: $num$
+exhaustion: $num$ // <optional, 0-6>
 ```
 ````
 

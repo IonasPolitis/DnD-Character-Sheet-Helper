@@ -26,6 +26,7 @@ DnD_skillHalfProficiencies:
 DnD_skillBonuses:
 DnD_maxHealth:
 DnD_currentHealth:
+DnD_exhaustion:
 DnD_speed:
 DnD_speedMod:
 DnD_customSpeedMod:
@@ -65,6 +66,7 @@ health: frontmatter.DnD_maxHealth
 currentHealth: frontmatter.DnD_currentHealth
 hitDice: frontmatter.DnD_hitDice
 level: frontmatter.DnD_level
+exhaustion: frontmatter.DnD_exhaustion
 ```
 <font size=5>Info:</font>
 ```dnd-info

@@ -6,7 +6,8 @@
             },
             {
                   "name": "Heroic Inspiration",
-                  "description": "You can reroll any die immediately after rolling it, and you must use the new roll. You can never have more than one instance of Heroic Inspiration. If something gives you Heroic Inspiration and you already have it, you can give it to a player character in your group who lacks it."
+                  "description": "You can reroll any die immediately after rolling it, and you must use the new roll. You can never have more than one instance of Heroic Inspiration. If something gives you Heroic Inspiration and you already have it, you can give it to a player character in your group who lacks it.",
+                  "uses": [1, "long"]
             },
             {
                   "name": "Skillful",

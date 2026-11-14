@@ -281,6 +281,13 @@ interface CharacterSheetVariables {
 export default class DnDCharacterSheetHelperPlugin extends Plugin {
     settings: DnDPluginSettings;
     featureRestTypes: Map<string, "short" | "long"> = new Map();
+    activeHeroicInspiration: Set<string> = new Set();
+
+    setHeroicInspiration(sourcePath: string, active: boolean) {
+        if (active) this.activeHeroicInspiration.add(sourcePath);
+        else this.activeHeroicInspiration.delete(sourcePath);
+        window.dispatchEvent(new CustomEvent("dnd-heroic-inspiration-changed", { detail: { sourcePath } }));
+    }
 
     private touchGuardWindows = new WeakSet<Window>();
     async onload() {
@@ -2592,6 +2599,56 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
             }
 
             recalculateTotalWeight();
+
+            // -----------------------------------------------------------
+            // D. CONSUMABLE 1-USE HEROIC INSPIRATION SLIM PANE (In-Memory)
+            // -----------------------------------------------------------
+            if (this.activeHeroicInspiration.has(ctx.sourcePath)) {
+                const hiPane = wrapper.createDiv({ cls: "dnd-features-window dnd-heroic-inspiration-pane" });
+
+                const leftSide = hiPane.createDiv({ cls: "dnd-heroic-inspiration-left" });
+                leftSide.createEl("span", { text: "✨", cls: "dnd-heroic-inspiration-icon" });
+                leftSide.createEl("strong", { text: "Heroic Inspiration", cls: "dnd-heroic-inspiration-title" });
+
+                const hiInfoBtn = leftSide.createEl("button", {
+                    cls: "dnd-inventory-icon-btn",
+                    attr: { title: "Heroic Inspiration Details" }
+                });
+                setSvgIcon(hiInfoBtn, "info");
+                hiInfoBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    new ItemInfoModal(
+                        this.app,
+                        this,
+                        {
+                            name: "Heroic Inspiration",
+                            type: "Rule",
+                            description: "You can reroll any die immediately after rolling it, and you must use the new roll. You can never have more than one instance of Heroic Inspiration. If something gives you Heroic Inspiration and you already have it, you can give it to a player character in your group who lacks it."
+                        },
+                        ctx.sourcePath
+                    ).open();
+                };
+
+                const rightSide = hiPane.createDiv({ cls: "dnd-heroic-inspiration-right" });
+                rightSide.createEl("span", { text: "Use:", cls: "dnd-spell-slots-label" });
+                const pipsContainer = rightSide.createDiv({ cls: "dnd-spell-slots-pips" });
+                const pip = pipsContainer.createDiv({
+                    cls: "dnd-slot-pip",
+                    attr: { title: "Tap to expend Heroic Inspiration" }
+                });
+
+                pip.addEventListener("pointerdown", (e: PointerEvent) => {
+                    if (e.button !== 0 && e.pointerType === "mouse") return;
+                    e.preventDefault();
+                    e.stopPropagation();
+                    pip.classList.add("is-used");
+                    new Notice("Heroic Inspiration used!");
+                    setTimeout(() => {
+                        this.setHeroicInspiration(ctx.sourcePath, false);
+                    }, 180);
+                });
+            }
+
             el.empty();
             el.appendChild(wrapper);
             requestAnimationFrame(() => updateWealthGridCols());
@@ -2604,6 +2661,13 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                 if (file.path === ctx.sourcePath && !isUpdatingInventory) renderContent();
             })
         );
+
+        renderChild.registerDomEvent(window, "dnd-heroic-inspiration-changed" as any, (ev: Event) => {
+            const detail = (ev as CustomEvent)?.detail;
+            if (!detail || detail.sourcePath === ctx.sourcePath) {
+                renderContent();
+            }
+        });
     }
 
     async processDnDRulesBlock(source: string, el: HTMLElement, ctx: MarkdownPostProcessorContext) {
@@ -3919,6 +3983,7 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
         let tempHp = 0;
         let hitDiceStates: boolean[] = [];
         let manualDeathSavesOpen = false;
+        let manualExhaustionOpen = false;
         let deathSaveLeft: boolean[] = [false, false, false];
         let deathSaveRight: boolean[] = [false, false, false];
 
@@ -3986,6 +4051,16 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
             const DnD_current_health = (rawCurrentHealth !== undefined && rawCurrentHealth !== null && rawCurrentHealth !== "" && !isNaN(Number(rawCurrentHealth)))
                 ? Math.max(0, Math.min(maxHealth, Number(rawCurrentHealth)))
                 : maxHealth;
+
+            // Resolve DnD_exhaustion (0..6) from frontmatter.DnD_exhaustion (or block override)
+            let targetExhaustionKey = "DnD_exhaustion";
+            if (typeof blockData.exhaustion === "string" && blockData.exhaustion.trim().startsWith("frontmatter.")) {
+                targetExhaustionKey = blockData.exhaustion.trim().replace("frontmatter.", "");
+            }
+            const rawExhaustion = resolveValue(blockData.exhaustion) ?? frontmatter[targetExhaustionKey];
+            const exhaustionLevel = (rawExhaustion !== undefined && rawExhaustion !== null && rawExhaustion !== "" && !isNaN(Number(rawExhaustion)))
+                ? Math.max(0, Math.min(6, Math.floor(Number(rawExhaustion))))
+                : 0;
 
             // 2. Build Main Health Card Window
             const healthWindow = wrapper.createDiv({ cls: "dnd-health-window" });
@@ -4157,7 +4232,53 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                 }
             }
 
-            // 5. Bottom Action Buttons: Short Rest, Long Rest, Death Saves
+            // 4.5. Exhaustion Section (2024 Unified Scale 1–6; shows automatically when Exhaustion > 0 or manually toggled)
+            const showExhaustion = exhaustionLevel > 0 || manualExhaustionOpen;
+            if (showExhaustion) {
+                healthWindow.createDiv({ cls: "dnd-health-divider" });
+
+                const exhaustionRow = healthWindow.createDiv({ cls: "dnd-health-hitdice-row dnd-health-exhaustion-row" });
+                const exInfo = exhaustionRow.createDiv({ cls: "dnd-health-exhaustion-info" });
+                exInfo.createEl("span", {
+                    text: `EXHAUSTION (${exhaustionLevel}/6)`,
+                    cls: "dnd-health-hitdice-label"
+                });
+
+                let penaltyText = "No penalties (-2 D20 Tests & -5 ft. Speed per level)";
+                if (exhaustionLevel >= 6) {
+                    penaltyText = "💀 Death (-12 D20 Tests • -30 ft. Speed)";
+                } else if (exhaustionLevel > 0) {
+                    penaltyText = `-${exhaustionLevel * 2} to all D20 Tests • -${exhaustionLevel * 5} ft. Speed`;
+                }
+                exInfo.createEl("span", {
+                    text: penaltyText,
+                    cls: `dnd-health-exhaustion-sub ${exhaustionLevel > 0 ? "is-active" : ""}`
+                });
+
+                const exPips = exhaustionRow.createDiv({ cls: "dnd-spell-slots-pips" });
+                for (let lvl = 1; lvl <= 6; lvl++) {
+                    const isActive = lvl <= exhaustionLevel;
+                    const pip = exPips.createDiv({
+                        cls: `dnd-slot-pip dnd-exhaustion-pip ${isActive ? "is-used" : ""}`,
+                        attr: {
+                            title: lvl === 6
+                                ? "Exhaustion Level 6: Death"
+                                : `Exhaustion Level ${lvl}: -${lvl * 2} D20 Tests, -${lvl * 5} ft. Speed`
+                        }
+                    });
+                    pip.addEventListener("pointerdown", async (e: PointerEvent) => {
+                        if (e.button !== 0 && e.pointerType === "mouse") return;
+                        e.preventDefault();
+                        e.stopPropagation();
+                        const newExhaustion = exhaustionLevel === lvl ? lvl - 1 : lvl;
+                        await this.updateCharacterFrontmatter(ctx.sourcePath, {
+                            [targetExhaustionKey]: newExhaustion
+                        });
+                    });
+                }
+            }
+
+            // 5. Bottom Action Buttons: Short Rest, Long Rest, Death Saves, Exhaustion
             const bottomBar = wrapper.createDiv({ cls: "dnd-health-rest-bar" });
 
             const shortRestBtn = bottomBar.createEl("button", {
@@ -4183,13 +4304,20 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                 manualDeathSavesOpen = false;
                 deathSaveLeft = [false, false, false];
                 deathSaveRight = [false, false, false];
+                const newExhaustion = Math.max(0, exhaustionLevel - 1);
+                if (newExhaustion === 0) manualExhaustionOpen = false;
 
                 await this.resetCharacterRestState(ctx.sourcePath, "long", {
-                    [targetCurrentHpKey]: maxHealth
+                    [targetCurrentHpKey]: maxHealth,
+                    [targetExhaustionKey]: newExhaustion
                 });
                 renderContent();
                 window.dispatchEvent(new Event("long-rest"));
-                new Notice("Long Rest completed! HP, Hit Dice, Spell Slots, and Feature Uses restored.");
+                new Notice(
+                    exhaustionLevel > 0
+                        ? `Long Rest completed! HP, Hit Dice, Spell Slots, and Feature Uses restored. Exhaustion reduced to ${newExhaustion}.`
+                        : "Long Rest completed! HP, Hit Dice, Spell Slots, and Feature Uses restored."
+                );
             };
 
             const deathSavesBtn = bottomBar.createEl("button", {
@@ -4198,6 +4326,15 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
             });
             deathSavesBtn.onclick = () => {
                 manualDeathSavesOpen = !manualDeathSavesOpen;
+                renderContent();
+            };
+
+            const exhaustionBtn = bottomBar.createEl("button", {
+                text: exhaustionLevel > 0 ? `Exhaustion (${exhaustionLevel})` : "Exhaustion",
+                cls: `dnd-health-rest-btn ${showExhaustion ? "is-active" : ""}`
+            });
+            exhaustionBtn.onclick = () => {
+                manualExhaustionOpen = !manualExhaustionOpen;
                 renderContent();
             };
 
@@ -4339,6 +4476,10 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
             }
 
             if (restType === "long") {
+                if (extraUpdates["DnD_exhaustion"] === undefined && fm["DnD_exhaustion"] !== undefined) {
+                    const curEx = Math.max(0, Math.min(6, Math.floor(Number(fm["DnD_exhaustion"]) || 0)));
+                    if (curEx > 0) fm["DnD_exhaustion"] = curEx - 1;
+                }
                 const slotKey = fm["DnD_spellSlots"] !== undefined ? "DnD_spellSlots" : (fm["DnD_spellsSlots"] !== undefined ? "DnD_spellsSlots" : null);
                 if (slotKey) {
                     let rawSlots = fm[slotKey];
@@ -5895,6 +6036,7 @@ class CharacterWizardModal extends Modal {
         const DnD_current_health = this.wizardData.maxHealth;
         injectYAML("DnD_maxHealth", this.wizardData.maxHealth);
         injectYAML("DnD_currentHealth", DnD_current_health);
+        injectYAML("DnD_exhaustion", 0);
         injectYAML("DnD_hitDice", DnD_hit_dice);
         injectYAML("DnD_speed", this.wizardData.speed);
         injectYAML("DnD_speedMod", initialSpeedMod);
@@ -6889,6 +7031,20 @@ class InventoryModal extends Modal {
         // 4. Footer Buttons
         const footerDiv = contentEl.createDiv({ cls: "dnd-modal-footer" });
 
+        const hiBtn = footerDiv.createEl("button", {
+            text: this.plugin.activeHeroicInspiration.has(this.sourcePath)
+                ? "✨ Heroic Inspiration: ON"
+                : "✨ Grant Heroic Inspiration",
+            cls: this.plugin.activeHeroicInspiration.has(this.sourcePath) ? "is-active" : ""
+        });
+        hiBtn.onclick = () => {
+            const nextState = !this.plugin.activeHeroicInspiration.has(this.sourcePath);
+            this.plugin.setHeroicInspiration(this.sourcePath, nextState);
+            hiBtn.setText(nextState ? "✨ Heroic Inspiration: ON" : "✨ Grant Heroic Inspiration");
+            hiBtn.classList.toggle("is-active", nextState);
+            new Notice(nextState ? "Heroic Inspiration added to Inventory!" : "Heroic Inspiration removed.");
+        };
+
         const cancelBtn = footerDiv.createEl("button", { text: "Cancel" });
         cancelBtn.onclick = () => this.close();
 
@@ -7675,6 +7831,21 @@ class ManageCharacterModal extends Modal {
 
         // --- FOOTER BUTTONS ---
         const btnDiv = contentEl.createDiv({ cls: "dnd-modal-footer" });
+
+        const hiBtn = btnDiv.createEl("button", {
+            text: this.plugin.activeHeroicInspiration.has(this.sourcePath)
+                ? "✨ Heroic Inspiration: ON"
+                : "✨ Grant Heroic Inspiration",
+            cls: this.plugin.activeHeroicInspiration.has(this.sourcePath) ? "is-active" : ""
+        });
+        hiBtn.onclick = () => {
+            const nextState = !this.plugin.activeHeroicInspiration.has(this.sourcePath);
+            this.plugin.setHeroicInspiration(this.sourcePath, nextState);
+            hiBtn.setText(nextState ? "✨ Heroic Inspiration: ON" : "✨ Grant Heroic Inspiration");
+            hiBtn.classList.toggle("is-active", nextState);
+            new Notice(nextState ? "Heroic Inspiration added to Inventory!" : "Heroic Inspiration removed.");
+        };
+
         const cancelBtn = btnDiv.createEl("button", { text: "Cancel" });
         cancelBtn.onclick = () => this.close();
 
