@@ -2036,10 +2036,39 @@
     gap: 8px;
     align-items: center;
     margin-bottom: 6px;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+body .modal-container .modal .dnd-modal-add-bar > input,
+body .modal-container .modal .dnd-modal-add-bar > select,
+.dnd-modal-add-bar > input,
+.dnd-modal-add-bar > select {
+    flex: 1 1 0%;
+    width: 0;
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+body .modal-container .modal .dnd-modal-add-bar > .dnd-flex-2,
+.dnd-modal-add-bar > .dnd-flex-2 {
+    flex: 2 1 0%;
+}
+
+body .modal-container .modal .dnd-modal-add-bar > button,
+.dnd-modal-add-bar > button {
+    flex: 0 0 auto;
+    width: auto;
+    margin-left: auto;
+    white-space: nowrap;
+    max-width: 100%;
+    box-sizing: border-box;
 }
 
 .dnd-modal-add-select {
-    flex: 1;
+    flex: 1 1 0%;
     min-width: 0;
 }
 
@@ -2346,6 +2375,8 @@
     background-color: var(--dnd-ui-color-bg-tertiary);
     border-radius: 6px;
     border: 1px solid var(--dnd-ui-color-border-primary);
+    max-width: 100%;
+    box-sizing: border-box;
 }
 
 .dnd-form-card-active {
@@ -2354,6 +2385,8 @@
     background-color: var(--dnd-ui-color-bg-tertiary);
     border-radius: 6px;
     border: 1px solid var(--dnd-ui-color-border-active);
+    max-width: 100%;
+    box-sizing: border-box;
 }
 
 .dnd-form-grid-name-lvl {
@@ -2453,11 +2486,13 @@
 }
 
 .dnd-flex-1 {
-    flex: 1;
+    flex: 1 1 0%;
+    min-width: 0;
 }
 
 .dnd-flex-2 {
-    flex: 2;
+    flex: 2 1 0%;
+    min-width: 0;
 }
 
 /* Custom Ribbon Button - Theme Color Sync */
