@@ -109,7 +109,7 @@ The `proficiencies` variable array structure looks like this: `[ ["<Skill>", "<c
 
 ### DnD Controls:
 
-This is an array of buttons that control various parts of the character sheet, mainly changing frontmatter (file properties) values that then correspond to changes in the character sheet. The buttons are: Level Up, Equip Items, Inventory, Manage Character, and Spellbook (which will only appear if the `DnD_spellcastingAbility` frontmatter variable is populated).
+This is an array of buttons that control various parts of the character sheet, mainly changing frontmatter (file properties) values that then correspond to changes in the character sheet. The buttons are: Level Up, Equip Items, Inventory, Manage Character, and Spellbook (which will only appear if the `DnD_spellcastingAbility` frontmatter variable is populated, and updates automatically whenever `DnD_spellcastingAbility` is added or changed via Level Up or Manage Character).
 
 A Sample of the Code Block looks like this:
 ````markdown
@@ -160,13 +160,13 @@ A Sample of the Code Block looks like this:
 ````markdown
 ```dnd-spells
 spellcastingAbility: $string$
-spellPools: $array$
+spellPools: $array$ // <optional>
 spells: $array$
 preparedSpells: $array$
 spellSlots: $array$
 ```
 ````
-The `spells` and `preparedSpells` variabel has this certain structure: `[ [["<Cantrip-1>", "<Cantrip-2>"],"0"], [["<Level-1-Spell>", "<Level-2-Spell>"],"1"] ]`, `spellPools` accepts an array of spell pool router filenames (e.g. `["druid-spells", "elf-cantrips"]`, synced via `frontmatter.DnD_spellPools` on character sheets so Spellbook opens all granted pools), while *spellSlots* follows this strcuture: `[ ["<Max-Slots>", "<Used-Slots>"], ... ]`
+The `spells` and `preparedSpells` variables follow this structure: `[ [["<Cantrip-1>", "<Cantrip-2>"],"0"], [["<Level-1-Spell>", "<Level-2-Spell>"],"1"] ]`, `spellPools` accepts an array of spell pool router filenames (e.g. `["druid-spells", "elf-cantrips"]`, synced via `frontmatter.DnD_spellPools` on character sheets so Spellbook opens all granted pools with a pool switcher), and `spellSlots` follows `[ ["<Max-Slots>", "<Used-Slots>"], ... ]`. Class/Subclass spellcasting ability takes priority over Race/Lineage traits, can be overridden anytime in **Manage Character -> Attack & Weapons**, and racial spells are tagged **`Innate`** (excluded from class cantrip and prepared spell limits). The Spellbook preview also shows which **Classes** can cast each spell.
 
 > [!TIP]
 > Click or tap on a spell card to view its full description.
@@ -307,7 +307,7 @@ The structure of each JSON file is as follows:
 }
 ```
 
-- spells-list.json:
+- `<spell-pool-name>.json` (inside `rulebook/spells/spellPools/`):
 ```json
 {
   "<Spell-Slot-Level>": {
