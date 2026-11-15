@@ -1,4 +1,4 @@
-import { App, Plugin, PluginSettingTab, Setting, MarkdownPostProcessorContext, parseYaml, MarkdownRenderChild, MarkdownRenderer, TFile, Modal, Notice, MarkdownView, normalizePath, Platform, addIcon } from 'obsidian';
+import { App, CachedMetadata, Plugin, PluginSettingTab, Setting, MarkdownPostProcessorContext, parseYaml, MarkdownRenderChild, MarkdownRenderer, TFile, Modal, Notice, MarkdownView, normalizePath, Platform, addIcon } from 'obsidian';
 import { getClassData, getSubclassData, getBackgroundData, getRaceData, getExtraFeat, getItemData, getRuleData, getSpellData, getSpellsPoolData, getClassChoiceData, getClassChoiceRouterData, classChoiceRouterRegistry, getFeatMapData, getWeaponMasteriesMap, getWeaponMasteryDescription, buildWeaponMasteriesMarkdown } from './data';
 import { MarkdownNotes, classesMap, racesMap, backgroundsMap, itemsMap } from './registry';
 import { THEMES } from './themes';
@@ -3230,6 +3230,9 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
     }
 
     async processDnDControlsBlock(source: string, el: HTMLElement, ctx: MarkdownPostProcessorContext) {
+        const renderChild = new MarkdownRenderChild(el);
+        ctx.addChild(renderChild);
+
         // 1. Parse the YAML options (e.g., align: right-up)
         let blockData: Record<string, any> = {};
         try {
@@ -3237,15 +3240,12 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                 blockData = parseYaml(source) || {};
             }
         } catch (error) {
+            el.empty();
             el.createEl("p", { text: "Error: Invalid YAML in dnd-controls block.", cls: "dnd-error-text" });
             return;
         }
 
-        // 2. Fetch the frontmatter for the active file to check for spellcasting
-        const fileCache = this.app.metadataCache.getCache(ctx.sourcePath);
-        const frontmatter = fileCache?.frontmatter || {};
-
-        // 3. Determine Alignment & Line Shifting via CSS Modifier Classes
+        // 2. Determine Alignment & Line Shifting via CSS Modifier Classes
         const alignClassMap: Record<string, string> = {
             "right": "align-right",
             "center": "align-center",
@@ -3254,39 +3254,69 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
         };
         const alignCls = alignClassMap[String(blockData.align || "").toLowerCase()] || "";
 
-        // 4. Create the Button Container
-        const container = el.createDiv({
-            cls: `dnd-controls ${alignCls}`.trim()
-        });
+        let lastHasSpellcasting: boolean | null = null;
 
-        // 5. Create the Buttons
-        const addExpBtn = container.createEl("button", { text: "🗡️ Level Up", cls: "mod-cta" });
-        addExpBtn.onclick = () => {
-            new LevelUpModal(this.app, this, ctx.sourcePath).open();
-        };
+        const renderContent = (updatedCache?: CachedMetadata | null) => {
+            // 3. Fetch the frontmatter for the active file to check for spellcasting
+            const fileCache = updatedCache ?? this.app.metadataCache.getCache(ctx.sourcePath);
+            const frontmatter = fileCache?.frontmatter || {};
+            const rawSpellAbility = frontmatter["DnD_spellcastingAbility"];
+            const hasSpellcasting = Boolean(
+                rawSpellAbility &&
+                String(rawSpellAbility).trim() !== "" &&
+                !String(rawSpellAbility).trim().startsWith("<")
+            );
 
-        const equipItemsBtn = container.createEl("button", { text: "⚔️ Equip Items" });
-        equipItemsBtn.onclick = () => {
-            new EquipItemsModal(this.app, this, ctx.sourcePath).open();
-        };
+            // Avoid unnecessary DOM rebuilds when unrelated frontmatter fields change
+            if (lastHasSpellcasting === hasSpellcasting) return;
+            lastHasSpellcasting = hasSpellcasting;
 
-        const inventoryBtn = container.createEl("button", { text: "🎒 Inventory" });
-        inventoryBtn.onclick = () => {
-            new InventoryModal(this.app, this, ctx.sourcePath).open();
-        };
+            // 4. Create the Button Container
+            const container = document.createElement("div");
+            container.className = `dnd-controls ${alignCls}`.trim();
 
-        const manageCharBtn = container.createEl("button", { text: "⚙️ Manage Character" });
-        manageCharBtn.onclick = () => {
-            new ManageCharacterModal(this.app, this, ctx.sourcePath).open();
-        };
-
-        // Conditionally render the Spellbook button ONLY if DnD_spellcastingAbility exists in frontmatter
-        if (frontmatter["DnD_spellcastingAbility"]) {
-            const spellbookBtn = container.createEl("button", { text: "📖 Spellbook" });
-            spellbookBtn.onclick = () => {
-                new SpellbookModal(this.app, this, ctx.sourcePath).open();
+            // 5. Create the Buttons
+            const addExpBtn = container.createEl("button", { text: "🗡️ Level Up", cls: "mod-cta" });
+            addExpBtn.onclick = () => {
+                new LevelUpModal(this.app, this, ctx.sourcePath).open();
             };
-        }
+
+            const equipItemsBtn = container.createEl("button", { text: "⚔️ Equip Items" });
+            equipItemsBtn.onclick = () => {
+                new EquipItemsModal(this.app, this, ctx.sourcePath).open();
+            };
+
+            const inventoryBtn = container.createEl("button", { text: "🎒 Inventory" });
+            inventoryBtn.onclick = () => {
+                new InventoryModal(this.app, this, ctx.sourcePath).open();
+            };
+
+            const manageCharBtn = container.createEl("button", { text: "⚙️ Manage Character" });
+            manageCharBtn.onclick = () => {
+                new ManageCharacterModal(this.app, this, ctx.sourcePath).open();
+            };
+
+            // Conditionally render the Spellbook button ONLY if DnD_spellcastingAbility exists in frontmatter
+            if (hasSpellcasting) {
+                const spellbookBtn = container.createEl("button", { text: "📖 Spellbook" });
+                spellbookBtn.onclick = () => {
+                    new SpellbookModal(this.app, this, ctx.sourcePath).open();
+                };
+            }
+
+            el.empty();
+            el.appendChild(container);
+        };
+
+        renderContent();
+
+        renderChild.registerEvent(
+            this.app.metadataCache.on("changed", (file, _data, cache) => {
+                if (file.path === ctx.sourcePath) {
+                    renderContent(cache);
+                }
+            })
+        );
     }
 
     // Helper: Reads a spell or spell router from the bundled registry (or customRulebookPath)
