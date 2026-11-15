@@ -105,7 +105,7 @@
       },
       {
         "name": "Primal Knowledge",
-        "description": "while your Rage is active, you can channel primal power when you attempt certain tasks; whenever you make an ability check using one of the following skills, you can make it as a Strength check even if it normally uses a different ability: Acrobatics, Intimidation, Perception, Stealth, or Survival."
+        "description": "You gain proficiency in another skill of your choice from the skill list available to Barbarians at level 1.\n\tIn addition, while your Rage is active, you can channel primal power when you attempt certain tasks; whenever you make an ability check using one of the following skills, you can make it as a Strength check even if it normally uses a different ability: Acrobatics, Intimidation, Perception, Stealth, or Survival. When you use this ability, your Strength represents primal power coursing through you, honing your agility, bearing, and senses."
       }
     ],
     "4": [
@@ -224,8 +224,9 @@
     "19": [
       {
         "name": "Epic Boon Feat",
-        "description": "You gain an Epic Boon feat (see chapter 5) or another feat of your choice for which you qualify. Boon of Fate is recommended.",
+        "description": "You gain an Epic Boon feat (see chapter 5) or another feat of your choice for which you qualify. Boon of Irresistible Offense is recommended.",
         "grantedFeats": [
+          "boon-of-irresistible-offense",
           "epic-boon-feats",
           "general-feats"
         ],

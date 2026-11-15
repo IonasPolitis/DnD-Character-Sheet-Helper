@@ -50,6 +50,14 @@
       {
         "name": "Improved Warding Flare",
         "description": "You regain all expended uses of Warding Flare when you finish a Short or Long Rest.\n  In addition, whenever you use Warding Flare, you can give the target of the triggering attack a number of Temporary Hit Points equal to 2d6 plus your Wisdom modifier."
+      },
+      {
+        "name": "Warding Flare",
+        "uses": [
+          "(wisdom - 10) / 2",
+          "short"
+        ],
+        "hide": true
       }
     ],
     "17": [

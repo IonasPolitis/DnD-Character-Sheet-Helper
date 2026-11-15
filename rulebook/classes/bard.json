@@ -148,7 +148,16 @@
         "5": [
             {
                 "name": "Font of Inspiration",
-                "description": "You can expend a spell slot (no action required) to regain one expended use of Bardic Inspiration."
+                "description": "You now regain all expended uses of your Bardic Inspiration when you finish a Short or Long Rest. In addition, you can expend a spell slot (no action required) to regain one expended use of your Bardic Inspiration.",
+                "uses": [ 1, "short" ]
+            },
+            {
+                "name": "Bardic Inspiration",
+                "uses": [
+                    "(charisma - 10) / 2",
+                    "short"
+                ],
+                "hide": true
             }
         ],
         "7": [
@@ -234,8 +243,9 @@
         "19": [
             {
                 "name": "Epic Boon Feat",
-                "description": "You gain an Epic Boon feat (see chapter 5) or another feat of your choice for which you qualify. Boon of Fate is recommended.",
+                "description": "You gain an Epic Boon feat (see chapter 5) or another feat of your choice for which you qualify. Boon of Spell Recall is recommended.",
                 "grantedFeats": [
+                    "boon-of-spell-recall",
                     "epic-boon-feats",
                     "general-feats"
                 ],

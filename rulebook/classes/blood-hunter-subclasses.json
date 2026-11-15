@@ -13,7 +13,11 @@
             "7": [
                   {
                         "name": "Aether Walk",
-                        "description": "At the start of your turn, you can step into the veil between the planes. For 1 minute, you can move through other creatures and objects as if they were difficult terrain, as well as see and affect creatures and objects on the Ethereal Plane. You take 1d10 force damage if you end your turn inside an object. If you are inside an object when this feature ends, you are immediately shunted to the nearest unoccupied space and you take force damage equal to twice the number of feet you moved.\n\tYou can use this feature twice. You regain one of its expended uses when you finish a Short Rest, and you regain all expended uses when you finish a Long Rest. You gain another use when you reach Blood Hunter level 15."
+                        "description": "At the start of your turn, you can step into the veil between the planes. For 1 minute, you can move through other creatures and objects as if they were difficult terrain, as well as see and affect creatures and objects on the Ethereal Plane. You take 1d10 force damage if you end your turn inside an object. If you are inside an object when this feature ends, you are immediately shunted to the nearest unoccupied space and you take force damage equal to twice the number of feet you moved.\n\tYou can use this feature twice. You regain one of its expended uses when you finish a Short Rest, and you regain all expended uses when you finish a Long Rest. You gain another use when you reach Blood Hunter level 15.",
+                        "uses": [
+                              2,
+                              "short"
+                        ]
                   }
             ],
             "11": [
@@ -38,8 +42,12 @@
       "Order of the Lycan": {
             "3": [
                   {
-                        "name": "Hybrid Transformastion",
-                        "description": "You have the curse of lycanthropy in your veins, and you control it to the best of your ability. As a Bonus Action, you can transform into a hybrid form for up to 1 hour. You can speak, use equipment, and wear armor while in this form, and can revert to your normal form as a Bonus Action. You automatically revert to your normal form if you fall unconscious or die. Once you use this feature, you can't do so again until you finish a Short or Long Rest. While you are transformed, you gain the following features:\n\t**Feral Might**: You have advantage on Strength checks and Strength saving throws, and you have a +1 bonus to melee damage rolls. This bonus increases by 1 when you reach Blood Hunter level 11 (+2) and 18 (+3).\n\t**Resilient Hide**: You have resistance to bludgeoning, piercing, and slashing damage not made with silvered weapons. Additionally, while you are not wearing heavy armor, you have a +1 bonus to AC.\n\t**Predatory Strikes**: You can apply your Crimson Rite feature to your Unarmed Strikes, which you treat as a weapon. You can use Dexterity instead of Strength for the attack and damage rolls of your unarmed strikes, which deal 1d6 bludgeoning or slashing damage (your choice). This damage increases to 1d8 at Blood Hunter level 11. When you use the Attack action to make an Unarmed Strike, you can make one additional Unarmed Strike as part of that action.\n\t**Bloodlust**: If you start your turn Bloodied, you must succeed on a DC 8 Wisdom saving throw or move directly toward the nearest creature and use the Attack action against that creature. If you're concentrating on a spell or are under an effect that prevents you from concentrating (such as the barbarian's Rage feature), you automatically fail this saving throw.\nIf you have your Extra Attack feature, you can choose whether to use it for this frenzied attack. If more than one creature is equally near to you, roll randomly to determine your target. Once your attack is resolved, you regain control of yourself."
+                        "name": "Hybrid Transformation",
+                        "description": "You have the curse of lycanthropy in your veins, and you control it to the best of your ability. As a Bonus Action, you can transform into a hybrid form for up to 1 hour. You can speak, use equipment, and wear armor while in this form, and can revert to your normal form as a Bonus Action. You automatically revert to your normal form if you fall unconscious or die. Once you use this feature, you can't do so again until you finish a Short or Long Rest. While you are transformed, you gain the following features:\n\t**Feral Might**: You have advantage on Strength checks and Strength saving throws, and you have a +1 bonus to melee damage rolls. This bonus increases by 1 when you reach Blood Hunter level 11 (+2) and 18 (+3).\n\t**Resilient Hide**: You have resistance to bludgeoning, piercing, and slashing damage not made with silvered weapons. Additionally, while you are not wearing heavy armor, you have a +1 bonus to AC.\n\t**Predatory Strikes**: You can apply your Crimson Rite feature to your Unarmed Strikes, which you treat as a weapon. You can use Dexterity instead of Strength for the attack and damage rolls of your unarmed strikes, which deal 1d6 bludgeoning or slashing damage (your choice). This damage increases to 1d8 at Blood Hunter level 11. When you use the Attack action to make an Unarmed Strike, you can make one additional Unarmed Strike as part of that action.\n\t**Bloodlust**: If you start your turn Bloodied, you must succeed on a DC 8 Wisdom saving throw or move directly toward the nearest creature and use the Attack action against that creature. If you're concentrating on a spell or are under an effect that prevents you from concentrating (such as the barbarian's Rage feature), you automatically fail this saving throw.\nIf you have your Extra Attack feature, you can choose whether to use it for this frenzied attack. If more than one creature is equally near to you, roll randomly to determine your target. Once your attack is resolved, you regain control of yourself.",
+                        "uses": [
+                              1,
+                              "short"
+                        ]
                   }
             ],
             "7": [
@@ -104,7 +112,10 @@
                   {
                         "name": "Exalted Mutation",
                         "description": "Your body can produce mutagens at a whim. At the start of your turn, choose one mutagen currently affecting you. Its effects end, and you can immediately have a mutagen you know the formula for take effect in its place.\n\tYou can use this feature a number of times equal to your Intelligence modifier (minimum of once). You regain all expended uses when you finish a Long Rest.",
-                        "uses": "( intelligence - 10 ) / 2"
+                        "uses": [
+                              "(intelligence - 10) / 2",
+                              "long"
+                        ]
                   }
             ]
       },

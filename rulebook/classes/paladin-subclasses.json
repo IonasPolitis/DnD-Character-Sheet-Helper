@@ -51,7 +51,8 @@
     "7": [
       {
         "name": "Aura of Alacrity",
-        "description": "Whenever an ally enters your Aura of Protection for the first time on a turn or starts their turn there, the ally's Speed increases by 10 feet until the end of their next turn."
+        "description": "Your Speed increases by 10 feet.\n\tIn addition, whenever an ally enters your Aura of Protection for the first time on a turn or starts their turn there, the ally's Speed increases by 10 feet until the end of their next turn.",
+        "speedMod": 10
       }
     ],
     "15": [

@@ -516,8 +516,9 @@
     "19": [
       {
         "name": "Epic Boon Feat",
-        "description": "You gain an Epic Boon feat (see chapter 5) or another feat of your choice for which you qualify. Boon of Fate is recommended.",
+        "description": "You gain an Epic Boon feat (see chapter 5) or another feat of your choice for which you qualify. Boon of Truesight is recommended.",
         "grantedFeats": [
+          "boon-of-truesight",
           "epic-boon-feats",
           "general-feats"
         ],

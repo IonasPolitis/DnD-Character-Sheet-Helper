@@ -398,7 +398,30 @@
     "2": [
       {
         "name": "Deft Explorer",
-        "description": "You are an unsurpassed explorer and survivor. You gain Expertise in one of your skill proficiencies of your choice. You also know two additional languages of your choice."
+        "description": "You are an unsurpassed explorer and survivor. You gain Expertise in one of your skill proficiencies of your choice. You also know two additional languages of your choice.",
+        "grantedExpertise": [
+          [
+            "acrobatics",
+            "animal handling",
+            "arcana",
+            "athletics",
+            "deception",
+            "history",
+            "insight",
+            "intimidation",
+            "investigation",
+            "medicine",
+            "nature",
+            "perception",
+            "performance",
+            "persuasion",
+            "religion",
+            "sleight of hand",
+            "stealth",
+            "survival"
+          ],
+          1
+        ]
       },
       {
         "name": "Fighting Style",
@@ -453,7 +476,30 @@
     "9": [
       {
         "name": "Expertise",
-        "description": "You gain Expertise in two of your skill proficiencies of your choice."
+        "description": "You gain Expertise in two of your skill proficiencies of your choice.",
+        "grantedExpertise": [
+          [
+            "acrobatics",
+            "animal handling",
+            "arcana",
+            "athletics",
+            "deception",
+            "history",
+            "insight",
+            "intimidation",
+            "investigation",
+            "medicine",
+            "nature",
+            "perception",
+            "performance",
+            "persuasion",
+            "religion",
+            "sleight of hand",
+            "stealth",
+            "survival"
+          ],
+          2
+        ]
       }
     ],
     "10": [
@@ -519,8 +565,9 @@
     "19": [
       {
         "name": "Epic Boon Feat",
-        "description": "You gain an Epic Boon feat (see chapter 5) or another feat of your choice for which you qualify. Boon of Fate is recommended.",
+        "description": "You gain an Epic Boon feat (see chapter 5) or another feat of your choice for which you qualify. Boon of Dimensional Travel is recommended.",
         "grantedFeats": [
+          "boon-of-dimensional-travel",
           "epic-boon-feats",
           "general-feats"
         ],

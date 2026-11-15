@@ -405,8 +405,9 @@
       },
       {
         "name": "Epic Boon Feat",
-        "description": "You gain an Epic Boon feat (see chapter 5) or another feat of your choice for which you qualify. Boon of Fate is recommended.",
+        "description": "You gain an Epic Boon feat (see chapter 5) or another feat of your choice for which you qualify. Boon of Combat Prowess is recommended.",
         "grantedFeats": [
+          "boon-of-combat-prowess",
           "epic-boon-feats",
           "general-feats"
         ],

@@ -855,13 +855,14 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
         return null;
     }
 
-    // --- Helper: Scan Class Features (Lvl 1..currentLevel) for Hidden "Unarmored Defense" Formula ---
+    // --- Helper: Scan Class & Subclass Features (Lvl 1..currentLevel) for Hidden "Unarmored Defense" Formula ---
     async resolveUnarmoredDefense(
         classInput: any,
         classLevelsInput: any,
         totalLevel: number,
         statsRecord: Record<string, number>,
-        fetchOptions?: any
+        fetchOptions?: any,
+        subclassInput?: any
     ): Promise<{ baseAc: number; acBonus: number; totalAc: number; formula: string }> {
         const options = fetchOptions || this.settings;
         const parsedTotalLevel = Math.max(1, Number(totalLevel) || 1);
@@ -871,6 +872,9 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
         const classArray = Array.isArray(classInput)
             ? classInput.map(c => String(c || "").trim()).filter(Boolean)
             : (classInput ? [String(classInput).trim()].filter(Boolean) : []);
+
+        const rawSubclassArray = Array.isArray(subclassInput) ? subclassInput : (subclassInput ? [subclassInput] : []);
+        const subclassArray = classArray.map((_, i) => rawSubclassArray[i] || null);
 
         const statAbbrMap: Record<string, string> = {
             str: "strength", strength: "strength",
@@ -892,11 +896,31 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
             const classData = await getClassData(this.app, options, className);
             if (!classData) continue;
 
-            if (classData.features) {
-                for (let lvl = 1; lvl <= currentClassLevel; lvl++) {
-                    const levelFeatures = classData.features[lvl.toString()];
-                    if (Array.isArray(levelFeatures)) {
-                        for (const feature of levelFeatures) {
+            let subclassData: any = null;
+            const grantedSubclassFile = this.findGrantedSubclass(classData, currentClassLevel);
+            if (grantedSubclassFile && subclassArray[idx]) {
+                subclassData = await getSubclassData(this.app, options, grantedSubclassFile, String(subclassArray[idx]));
+            }
+
+            for (let lvl = 1; lvl <= currentClassLevel; lvl++) {
+                const lvlFeatures = classData.features?.[lvl.toString()];
+                if (Array.isArray(lvlFeatures)) {
+                    for (const feature of lvlFeatures) {
+                        if (
+                            feature &&
+                            feature.hide === true &&
+                            String(feature.name || "").trim().toLowerCase() === "unarmored defense" &&
+                            feature.description
+                        ) {
+                            foundFormula = String(feature.description).trim();
+                        }
+                    }
+                }
+
+                if (subclassData) {
+                    const subLvlFeatures = subclassData[lvl.toString()];
+                    if (Array.isArray(subLvlFeatures)) {
+                        for (const feature of subLvlFeatures) {
                             if (
                                 feature &&
                                 feature.hide === true &&
@@ -2639,7 +2663,7 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                     if (expectedType === "Weapon" && (safeName === "unarmed-strike" || safeName === "unarmed-strikes")) {
                         displayStat = await this.resolveUnarmedStrikeDamage(dndClass, classLevels, level, statsRecord, attackStat, fetchOptions);
                     } else if (expectedType === "Armor" && safeName === "unarmored-defense") {
-                        const unarmoredCalc = await this.resolveUnarmoredDefense(dndClass, classLevels, level, statsRecord, fetchOptions);
+                        const unarmoredCalc = await this.resolveUnarmoredDefense(dndClass, classLevels, level, statsRecord, fetchOptions, subclassArray);
                         displayStat = String(unarmoredCalc.totalAc);
                     }
 
@@ -6567,7 +6591,8 @@ class CharacterWizardModal extends Modal {
                 null,
                 Number(this.wizardData.level) || 1,
                 wizardStatsRecord,
-                this.plugin.settings
+                this.plugin.settings,
+                this.wizardData.subclass
             );
             this.wizardData.armorAc = unarmoredCalc.baseAc;
             armorAcBonus = unarmoredCalc.acBonus;
@@ -7591,7 +7616,8 @@ class EquipItemsModal extends Modal {
                 classLevels,
                 level,
                 statsRecord,
-                this.plugin.settings
+                this.plugin.settings,
+                frontmatter["DnD_subclass"] ?? frontmatter["DnD_Subclass"]
             );
 
             if (!this.isArmorCustom) {
@@ -9405,7 +9431,8 @@ class ManageCharacterModal extends Modal {
                 classLevels,
                 level,
                 this.currentStats,
-                this.plugin.settings
+                this.plugin.settings,
+                frontmatter["DnD_subclass"] ?? frontmatter["DnD_Subclass"]
             );
             updates["DnD_armorAc"] = unarmoredCalc.baseAc;
             armorAcBonus = unarmoredCalc.acBonus;
@@ -10621,7 +10648,8 @@ class LevelUpModal extends Modal {
                 frontmatter["DnD_classLevels"],
                 this.newLevel,
                 this.currentStats,
-                this.plugin.settings
+                this.plugin.settings,
+                frontmatter["DnD_subclass"] ?? frontmatter["DnD_Subclass"]
             );
             updates["DnD_armorAc"] = unarmoredCalc.baseAc;
             armorAcBonus = unarmoredCalc.acBonus;

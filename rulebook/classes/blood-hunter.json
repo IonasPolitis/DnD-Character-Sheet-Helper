@@ -1,6 +1,5 @@
 {
     "class": "Blood Hunter",
-    "subclassFile": "blood-hunter-subclasses",
     "hitDice": "D10",
     "savingThroughProf": [
         "dexterity",
@@ -58,6 +57,7 @@
                 "shortsword": 1,
                 "light-crossbow": 1,
                 "bolt": 20,
+                "bolt-case": 1,
                 "alchemists-supplies": 1,
                 "explorers-pack": 1
             },
@@ -214,7 +214,7 @@
         ],
         "13": [
             {
-                "name": " Improved Brand of Castigation",
+                "name": "Improved Brand of Castigation",
                 "description": "The psychic damage from your Brand of Castigation increases to twice your Intelligence modifier (minimum of 2) and the branded creature now suffers the damage from the brand if it deals damage to you or a creature you can see within 30 feet of you.",
                 "classChoices": [
                     "improved-brand-of-castigation"
@@ -223,7 +223,7 @@
         ],
         "14": [
             {
-                "name": " Hardened Soul",
+                "name": "Hardened Soul",
                 "description": "Your will resists manipulation. You are immune to being charmed or frightened."
             },
             {
@@ -284,8 +284,9 @@
         "19": [
             {
                 "name": "Epic Boon Feat",
-                "description": "You gain an Epic Boon feat (see chapter 5) or another feat of your choice for which you qualify. Boon of Fate is recommended.",
+                "description": "You gain an Epic Boon feat (see chapter 5) or another feat of your choice for which you qualify. Boon of Truesight is recommended.",
                 "grantedFeats": [
+                    "boon-of-truesight",
                     "epic-boon-feats",
                     "general-feats"
                 ],
