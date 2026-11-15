@@ -9939,7 +9939,7 @@ class LevelUpModal extends Modal {
                 if (spellMeta.spellcastingAbilities.length > 0) {
                     const spellCard = this.milestonesContainer.createDiv({ cls: "dnd-form-card-active" });
                     spellCard.createEl("label", {
-                        text: `✨ Spellcasting Ability Unlocked (${this.currentSubclass || this.dndClass}):`,
+                        text: `Spellcasting Ability Unlocked (${this.currentSubclass || this.dndClass}):`,
                         cls: "dnd-form-label-bold"
                     });
 
