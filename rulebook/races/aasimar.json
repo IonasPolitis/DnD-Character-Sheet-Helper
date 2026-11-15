@@ -15,7 +15,9 @@
             },
             {
                   "name": "Light Bearer",
-                  "description": "You know the _Light_ cantrip. Charisma is your spellcasting ability for it."
+                  "description": "You know the _Light_ cantrip. Charisma is your spellcasting ability for it.",
+                  "spellcastingAbilities": ["Charisma"],
+                  "racialSpells": "aasimar-spells"
             },
             {
                   "name": "Celestial Revelation",

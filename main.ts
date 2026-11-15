@@ -1,5 +1,5 @@
 import { App, CachedMetadata, Plugin, PluginSettingTab, Setting, MarkdownPostProcessorContext, parseYaml, MarkdownRenderChild, MarkdownRenderer, TFile, Modal, Notice, MarkdownView, normalizePath, Platform, addIcon } from 'obsidian';
-import { getClassData, getSubclassData, getBackgroundData, getRaceData, getExtraFeat, getItemData, getRuleData, getSpellData, getSpellsPoolData, getClassChoiceData, getClassChoiceRouterData, classChoiceRouterRegistry, getFeatMapData, getWeaponMasteriesMap, getWeaponMasteryDescription, buildWeaponMasteriesMarkdown } from './data';
+import { getClassData, getSubclassData, getBackgroundData, getRaceData, getRacialSpellsData, getExtraFeat, getItemData, getRuleData, getSpellData, getSpellsPoolData, getClassChoiceData, getClassChoiceRouterData, classChoiceRouterRegistry, getFeatMapData, getWeaponMasteriesMap, getWeaponMasteryDescription, buildWeaponMasteriesMarkdown } from './data';
 import { MarkdownNotes, classesMap, racesMap, backgroundsMap, itemsMap } from './registry';
 import { THEMES } from './themes';
 import { RIBBON_ICON_SVG } from './ribbon-icon';
@@ -56,6 +56,120 @@ export interface SpeedModifierBreakdown {
     totalSpeedMod: number;
     totalSpeed: number;
     breakdown: { source: string; amount: number; active: boolean; reason?: string }[];
+}
+
+// --- Shared Spellcasting, Spell Pool & Racial Spell Helpers ---
+export interface RaceSpellcastingMetadata {
+    spellcastingAbilities: string[];
+    spellsPools: string[];
+    grantedSpellsByLevel: Record<string, string[]>;
+    innateSlugs: Set<string>;
+    replaceableCantripPools: string[];
+    defaultReplaceableCantrips: Set<string>;
+}
+
+/** Normalizes string[], JSON array string, or comma-delimited string into a deduplicated string list. */
+export function parseStringArray(raw: any, stripJsonExt = false): string[] {
+    if (raw === undefined || raw === null) return [];
+    let list: any[] = [];
+    if (Array.isArray(raw)) {
+        list = raw;
+    } else if (typeof raw === "string") {
+        const trimmed = raw.trim();
+        if (!trimmed || trimmed.startsWith("<")) return [];
+        if (trimmed.startsWith("[")) {
+            try {
+                const parsed = JSON.parse(trimmed);
+                if (Array.isArray(parsed)) list = parsed;
+            } catch {
+                list = [];
+            }
+        } else {
+            list = trimmed.split(",");
+        }
+    }
+    const seen = new Set<string>();
+    const out: string[] = [];
+    for (const entry of list) {
+        let val = String(entry ?? "").trim();
+        if (!val || val.startsWith("<")) continue;
+        if (stripJsonExt) val = val.replace(/\.json$/i, "");
+        const norm = val.toLowerCase();
+        if (!seen.has(norm)) {
+            seen.add(norm);
+            out.push(val);
+        }
+    }
+    return out;
+}
+
+/** Parses `[ [ ["spell1", "spell2"], "level" ], ... ]` into a cloned `Record<string, string[]>`. */
+export function parseSpellTuples(raw: any, resolver?: (val: any) => any): Record<string, string[]> {
+    const result: Record<string, string[]> = {};
+    if (raw === undefined || raw === null) return result;
+    let parsed = resolver ? resolver(raw) : raw;
+    if (typeof parsed === "string") {
+        const trimmed = parsed.trim();
+        if (trimmed.startsWith("[")) {
+            try { parsed = JSON.parse(trimmed); } catch { parsed = []; }
+        } else {
+            parsed = [];
+        }
+    }
+    if (Array.isArray(parsed)) {
+        for (const rawEntry of parsed) {
+            const entry = resolver ? resolver(rawEntry) : rawEntry;
+            if (Array.isArray(entry) && entry.length === 2 && Array.isArray(entry[0])) {
+                const lvlKey = String(entry[1]);
+                const deduped: string[] = [];
+                for (const s of entry[0]) {
+                    const slug = String(s ?? "").trim();
+                    if (slug && !deduped.includes(slug)) deduped.push(slug);
+                }
+                result[lvlKey] = deduped;
+            }
+        }
+    }
+    return result;
+}
+
+/** Serializes `Record<string, string[]>` back to sorted `[ [ ["spell1"], "level" ], ... ]` tuples. */
+export function formatSpellTuples(map: Record<string, string[]>): [string[], string][] {
+    const output: [string[], string][] = [];
+    const sortedLevels = Object.keys(map).sort((a, b) => Number(a) - Number(b));
+    for (const lvl of sortedLevels) {
+        const spells = map[lvl];
+        if (Array.isArray(spells) && spells.length > 0) {
+            output.push([[...spells], String(lvl)]);
+        }
+    }
+    return output;
+}
+
+/** Merges incoming spells by level into `target` without duplicates; returns true if anything was added. */
+export function mergeSpellTuples(target: Record<string, string[]>, incoming: Record<string, string[]>): boolean {
+    let changed = false;
+    for (const [lvlKey, slugs] of Object.entries(incoming || {})) {
+        if (!Array.isArray(slugs) || slugs.length === 0) continue;
+        if (!Array.isArray(target[lvlKey])) target[lvlKey] = [];
+        for (const slug of slugs) {
+            const cleanSlug = String(slug ?? "").trim();
+            if (cleanSlug && !target[lvlKey].includes(cleanSlug)) {
+                target[lvlKey].push(cleanSlug);
+                changed = true;
+            }
+        }
+    }
+    return changed;
+}
+
+/** Formats a pool filename slug (e.g. `"elf-cantrips"`) into a clean display label (`"Elf Cantrips"`). */
+export function formatPoolDisplayName(poolKey: string): string {
+    return String(poolKey || "")
+        .trim()
+        .replace(/\.json$/i, "")
+        .replace(/[-_]+/g, " ")
+        .replace(/\b\w/g, c => c.toUpperCase());
 }
 
 // --- Multi-Router Class Choices Helpers ---
@@ -720,7 +834,11 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
         if (file instanceof TFile) {
             await this.app.fileManager.processFrontMatter(file, (frontmatter: Record<string, any>) => {
                 for (const [key, value] of Object.entries(updates)) {
-                    frontmatter[key] = value;
+                    if (value === undefined) {
+                        delete frontmatter[key];
+                    } else {
+                        frontmatter[key] = value;
+                    }
                 }
             });
         }
@@ -1534,6 +1652,161 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
             spellsPool: spellsPool ? spellsPool.replace(/\.json$/i, '') : null,
             spellcastingTable
         };
+    }
+
+    /**
+     * Resolves spellcasting abilities, extra spell pools (e.g. `elf-cantrips`), and innate spells
+     * granted by matching Race / Lineage traits up to `maxLevel` (collecting newly unlocked spells
+     * in `[minLevel..maxLevel]` when specified for level-up transitions).
+     */
+    async resolveRaceSpellcastingMetadata(
+        raceData: any,
+        raceLineageInput: any,
+        maxLevel: number,
+        minLevel = 1
+    ): Promise<RaceSpellcastingMetadata> {
+        const abilities: string[] = [];
+        const pools: string[] = [];
+        const grantedSpellsByLevel: Record<string, string[]> = {};
+        const innateSlugs = new Set<string>();
+        const replaceableCantripPools: string[] = [];
+        const defaultReplaceableCantrips = new Set<string>();
+
+        const rawLineage = Array.isArray(raceLineageInput) ? raceLineageInput[0] : raceLineageInput;
+        const lineageNorm = typeof rawLineage === "string" ? rawLineage.trim().toLowerCase() : "";
+
+        const traits = raceData?.traits;
+        if (!Array.isArray(traits)) {
+            return {
+                spellcastingAbilities: abilities,
+                spellsPools: pools,
+                grantedSpellsByLevel,
+                innateSlugs,
+                replaceableCantripPools,
+                defaultReplaceableCantrips
+            };
+        }
+
+        for (const trait of traits) {
+            if (!trait || typeof trait !== "object") continue;
+
+            const traitLineage = typeof trait.lineage === "string" ? trait.lineage.trim() : "";
+            const isBaseTrait = !traitLineage;
+            if (!isBaseTrait && traitLineage.toLowerCase() !== lineageNorm) continue;
+
+            if (Array.isArray(trait.spellcastingAbilities)) {
+                for (const ab of trait.spellcastingAbilities) {
+                    const cleanAb = String(ab ?? "").trim();
+                    if (cleanAb && !abilities.some(existing => existing.toLowerCase() === cleanAb.toLowerCase())) {
+                        abilities.push(cleanAb);
+                    }
+                }
+            }
+
+            let traitPoolClean = "";
+            if (trait.spellsPool) {
+                traitPoolClean = String(trait.spellsPool).trim().replace(/\.json$/i, "");
+                if (traitPoolClean && !pools.some(p => p.toLowerCase() === traitPoolClean.toLowerCase())) {
+                    pools.push(traitPoolClean);
+                }
+            }
+
+            if (trait.racialSpells) {
+                const racialSpellsData = await getRacialSpellsData(this.app, this.settings, String(trait.racialSpells));
+                if (!racialSpellsData || typeof racialSpellsData !== "object") continue;
+
+                let scopeObj: any = null;
+                if (traitLineage) {
+                    const matchedKey = Object.keys(racialSpellsData).find(
+                        k => k.trim().toLowerCase() === traitLineage.toLowerCase()
+                    );
+                    if (matchedKey) scopeObj = racialSpellsData[matchedKey];
+                } else {
+                    const baseKey = Object.keys(racialSpellsData).find(
+                        k => k.trim().toLowerCase() === "base" || k.trim().toLowerCase() === "default"
+                    );
+                    if (baseKey) {
+                        scopeObj = racialSpellsData[baseKey];
+                    } else if (Object.keys(racialSpellsData).some(k => !isNaN(Number(k)))) {
+                        scopeObj = racialSpellsData;
+                    }
+                }
+
+                if (!scopeObj || typeof scopeObj !== "object") continue;
+
+                for (const [charLvlStr, spellLevelsObj] of Object.entries(scopeObj)) {
+                    const unlockLvl = Number(charLvlStr);
+                    if (isNaN(unlockLvl) || unlockLvl > maxLevel || !spellLevelsObj || typeof spellLevelsObj !== "object") continue;
+
+                    for (const [spellLvlKey, spellsDict] of Object.entries(spellLevelsObj as Record<string, any>)) {
+                        if (!spellsDict || typeof spellsDict !== "object") continue;
+                        const cleanSpellLvl = String(spellLvlKey).trim();
+                        for (const rawSlug of Object.keys(spellsDict)) {
+                            const slug = String(rawSlug).trim();
+                            if (!slug) continue;
+
+                            if (unlockLvl >= 1 && unlockLvl <= maxLevel) {
+                                innateSlugs.add(slug);
+                                if (traitPoolClean && cleanSpellLvl === "0") {
+                                    defaultReplaceableCantrips.add(slug);
+                                    if (!replaceableCantripPools.includes(traitPoolClean)) {
+                                        replaceableCantripPools.push(traitPoolClean);
+                                    }
+                                }
+                            }
+
+                            if (unlockLvl >= minLevel && unlockLvl <= maxLevel) {
+                                if (!grantedSpellsByLevel[cleanSpellLvl]) grantedSpellsByLevel[cleanSpellLvl] = [];
+                                if (!grantedSpellsByLevel[cleanSpellLvl].includes(slug)) {
+                                    grantedSpellsByLevel[cleanSpellLvl].push(slug);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        return {
+            spellcastingAbilities: abilities,
+            spellsPools: pools,
+            grantedSpellsByLevel,
+            innateSlugs,
+            replaceableCantripPools,
+            defaultReplaceableCantrips
+        };
+    }
+
+    /**
+     * Reads `DnD_spellPools` from frontmatter, falling back to inline `spellPools` declared
+     * inside any `dnd-spells` code block for standalone notes.
+     */
+    extractSpellPoolsFromContent(content: string, frontmatter: Record<string, any>): string[] {
+        const fmPools = parseStringArray(frontmatter?.["DnD_spellPools"], true);
+        if (fmPools.length > 0) return fmPools;
+
+        if (!content) return [];
+        const blockMatches = content.match(/```dnd-spells\s*\r?\n([\s\S]*?)```/gi);
+        if (!blockMatches) return [];
+
+        for (const rawBlock of blockMatches) {
+            const inner = rawBlock.replace(/^```dnd-spells\s*\r?\n/i, "").replace(/```$/, "");
+            try {
+                const parsed = parseYaml(inner);
+                if (!parsed || parsed.spellPools === undefined) continue;
+                if (typeof parsed.spellPools === "string" && parsed.spellPools.trim().startsWith("frontmatter.")) {
+                    const key = parsed.spellPools.trim().replace("frontmatter.", "");
+                    const resolved = parseStringArray(frontmatter?.[key], true);
+                    if (resolved.length > 0) return resolved;
+                } else {
+                    const inlinePools = parseStringArray(parsed.spellPools, true);
+                    if (inlinePools.length > 0) return inlinePools;
+                }
+            } catch {
+                // Ignore malformed standalone YAML blocks cleanly
+            }
+        }
+        return [];
     }
 
     /**
@@ -3381,32 +3654,14 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
             const spellAttackMod = DnD_proficiency_bonus + abilityMod;
             const spellAttackStr = spellAttackMod >= 0 ? `+${spellAttackMod}` : `${spellAttackMod}`;
 
-            // 2. Parse Known & Prepared Spells Tuples strictly from blockData.spells & blockData.preparedSpells
-            const parseTuples = (raw: any): Record<string, string[]> => {
-                const map: Record<string, string[]> = {};
-                if (raw === undefined || raw === null) return map;
-                let parsed = resolveValue(raw);
-                if (typeof parsed === "string") {
-                    const trimmed = parsed.trim();
-                    if (trimmed.startsWith("[")) {
-                        try { parsed = JSON.parse(trimmed); } catch { parsed = []; }
-                    } else {
-                        parsed = [];
-                    }
-                }
-                if (Array.isArray(parsed)) {
-                    for (const rawEntry of parsed) {
-                        const entry = resolveValue(rawEntry);
-                        if (Array.isArray(entry) && entry.length === 2 && Array.isArray(entry[0])) {
-                            map[String(entry[1])] = entry[0].map((s: any) => String(s));
-                        }
-                    }
-                }
-                return map;
-            };
+            // 2. Parse Known & Prepared Spells Tuples and optional standalone spellPools array
+            const resolvedSpellPools = parseStringArray(resolveValue(blockData.spellPools), true);
+            if (resolvedSpellPools.length > 0) {
+                wrapper.dataset.spellPools = JSON.stringify(resolvedSpellPools);
+            }
 
-            const knownMap = parseTuples(blockData.spells);
-            const preparedMap = parseTuples(blockData.preparedSpells);
+            const knownMap = parseSpellTuples(blockData.spells, resolveValue);
+            const preparedMap = parseSpellTuples(blockData.preparedSpells, resolveValue);
 
             const hasAnyPrepared = Object.values(preparedMap).some(list => list.length > 0);
             const showAll = String(blockData.show || "").toLowerCase() === "all" || !hasAnyPrepared;
@@ -5688,31 +5943,50 @@ class CharacterWizardModal extends Modal {
             await this.renderStep();
         };
 
-        // 3. Spellcasting Dropdown
-        if (this.wizardData.dndClass) {
+        // 3. Spellcasting Dropdown (Class/Subclass takes priority; falls back to Race/Lineage traits)
+        let classSpellAbilities: string[] = [];
+        if (classData) {
             let subclassDataForSpell: any = null;
-            if (this.wizardData.subclass && grantedSubclassFile) {
-                subclassDataForSpell = await getSubclassData(this.app, this.plugin.settings, grantedSubclassFile, this.wizardData.subclass);
+            const grantedSubclassFileForSpell = this.plugin.findGrantedSubclass(classData, wizardLevel);
+            if (this.wizardData.subclass && grantedSubclassFileForSpell) {
+                subclassDataForSpell = await getSubclassData(this.app, this.plugin.settings, grantedSubclassFileForSpell, this.wizardData.subclass);
             }
             const spellMeta = this.plugin.resolveSpellcastingMetadata(classData, subclassDataForSpell, wizardLevel);
+            classSpellAbilities = spellMeta.spellcastingAbilities;
+        }
 
-            if (spellMeta.spellcastingAbilities.length > 0) {
-                const spellDiv = container.createDiv({ cls: "dnd-form-group" });
-                spellDiv.createEl("label", { text: "Primary Spellcasting Ability: ", cls: "dnd-form-label-sub" });
-                const spellSelect = spellDiv.createEl("select", { cls: "dnd-modal-form-input" });
-                spellSelect.createEl("option", { text: "-- Select Ability --", value: "" });
+        let effectiveSpellAbilities = classSpellAbilities;
+        let spellAbilitySourceLabel = "";
+        if (effectiveSpellAbilities.length === 0 && this.wizardData.race) {
+            const raceDataForSpell = await getRaceData(this.app, this.plugin.settings, this.wizardData.race);
+            const raceSpellMeta = await this.plugin.resolveRaceSpellcastingMetadata(raceDataForSpell, this.wizardData.raceLineage, wizardLevel);
+            if (raceSpellMeta.spellcastingAbilities.length > 0) {
+                effectiveSpellAbilities = raceSpellMeta.spellcastingAbilities;
+                spellAbilitySourceLabel = ` (from ${this.wizardData.raceLineage || this.wizardData.race})`;
+            }
+        }
 
-                spellMeta.spellcastingAbilities.forEach((ability: string) => spellSelect.createEl("option", { text: ability, value: ability }));
+        if (effectiveSpellAbilities.length > 0) {
+            const spellDiv = container.createDiv({ cls: "dnd-form-group" });
+            spellDiv.createEl("label", {
+                text: `Primary Spellcasting Ability${spellAbilitySourceLabel}: `,
+                cls: "dnd-form-label-sub"
+            });
+            const spellSelect = spellDiv.createEl("select", { cls: "dnd-modal-form-input" });
+            spellSelect.createEl("option", { text: "-- Select Ability --", value: "" });
 
-                if (spellMeta.spellcastingAbilities.length === 1) {
-                    this.wizardData.DnD_spellcasting_ability = spellMeta.spellcastingAbilities[0];
-                }
+            effectiveSpellAbilities.forEach((ability: string) => spellSelect.createEl("option", { text: ability, value: ability }));
 
-                spellSelect.value = this.wizardData.DnD_spellcasting_ability || "";
-                spellSelect.onchange = (e) => this.wizardData.DnD_spellcasting_ability = (e.target as HTMLSelectElement).value;
-            } else {
+            if (effectiveSpellAbilities.length === 1) {
+                this.wizardData.DnD_spellcasting_ability = effectiveSpellAbilities[0];
+            } else if (!effectiveSpellAbilities.includes(this.wizardData.DnD_spellcasting_ability)) {
                 this.wizardData.DnD_spellcasting_ability = "";
             }
+
+            spellSelect.value = this.wizardData.DnD_spellcasting_ability || "";
+            spellSelect.onchange = (e) => this.wizardData.DnD_spellcasting_ability = (e.target as HTMLSelectElement).value;
+        } else {
+            this.wizardData.DnD_spellcasting_ability = "";
         }
 
         // 4. Class Skills Pool (Dynamic Dropdowns)
@@ -6461,6 +6735,8 @@ class CharacterWizardModal extends Modal {
         let pactMagicData: any = null;
         let initialSpeedMod = 0;
         const wizardLvlNum = Number(this.wizardData.level) || 1;
+        let classSpellsPool: string | null = null;
+        let classSpellAbilitiesForWizard: string[] = [];
 
         if (this.wizardData.dndClass) {
             const classData = await getClassData(this.app, this.plugin.settings, this.wizardData.dndClass);
@@ -6488,12 +6764,34 @@ class CharacterWizardModal extends Modal {
                         subclassDataForWizard = await getSubclassData(this.app, this.plugin.settings, grantedSub, this.wizardData.subclass);
                     }
                 }
-                const spellMeta = this.plugin.resolveSpellcastingMetadata(classData, subclassDataForWizard, Number(this.wizardData.level) || 1);
+                const spellMeta = this.plugin.resolveSpellcastingMetadata(classData, subclassDataForWizard, wizardLvlNum);
                 if (spellMeta.spellcastingTable) {
                     spellcastingData = spellMeta.spellcastingTable;
                 }
+                classSpellsPool = spellMeta.spellsPool;
+                classSpellAbilitiesForWizard = spellMeta.spellcastingAbilities;
             }
         }
+
+        const raceDataForWizard = this.wizardData.race
+            ? await getRaceData(this.app, this.plugin.settings, this.wizardData.race)
+            : null;
+        const raceSpellMetaForWizard = await this.plugin.resolveRaceSpellcastingMetadata(
+            raceDataForWizard,
+            this.wizardData.raceLineage,
+            wizardLvlNum
+        );
+        if (!this.wizardData.DnD_spellcasting_ability) {
+            if (classSpellAbilitiesForWizard.length === 1) {
+                this.wizardData.DnD_spellcasting_ability = classSpellAbilitiesForWizard[0];
+            } else if (classSpellAbilitiesForWizard.length === 0 && raceSpellMetaForWizard.spellcastingAbilities.length === 1) {
+                this.wizardData.DnD_spellcasting_ability = raceSpellMetaForWizard.spellcastingAbilities[0];
+            }
+        }
+        const compiledSpellPools = Array.from(new Set([
+            ...(classSpellsPool ? [classSpellsPool] : []),
+            ...raceSpellMetaForWizard.spellsPools
+        ]));
 
         if (this.wizardData.background) {
             bgDataStore = await getBackgroundData(this.app, this.plugin.settings, this.wizardData.background);
@@ -6796,6 +7094,12 @@ class CharacterWizardModal extends Modal {
             `starterEquipment: frontmatter.DnD_starterEquipment\ninventoryItems: frontmatter.DnD_inventoryItems\ncustomItems: frontmatter.DnD_customItems\nwealthAdded: frontmatter.DnD_wealthAdded\nwealthSpent: frontmatter.DnD_wealthSpent`
         );
         finalContent = finalContent.replace(/^DnD_spellcasting_ability:/m, "spellcastingAbility:");
+        if (/(```dnd-spells\r?\n[\s\S]*?)^spellcastingAbility:.*$/m.test(finalContent) && !/^spellPools:/m.test(finalContent)) {
+            finalContent = finalContent.replace(
+                /(```dnd-spells\r?\n[\s\S]*?^spellcastingAbility:.*)$/m,
+                `$1\nspellPools: frontmatter.DnD_spellPools`
+            );
+        }
 
         // Upgrade legacy gold frontmatter lines to 4-Currency Wealth arrays
         finalContent = finalContent.replace(/^dnd_gold_added:/m, "DnD_wealthAdded:");
@@ -6803,9 +7107,15 @@ class CharacterWizardModal extends Modal {
         injectYAML("DnD_wealthAdded", `'["0","0","0","0"]'`);
         injectYAML("DnD_wealthSpent", `'["0","0","0","0"]'`);
 
-        // Initialize Empty Spells Arrays
-        injectYAML("DnD_spells", `'[]'`);
-        injectYAML("DnD_preparedSpells", `'[]'`);
+        // Populate Spell Pools and Auto-Granted Racial Spells (both Known & Prepared)
+        if (compiledSpellPools.length > 0) {
+            injectListYAML("DnD_spellPools", compiledSpellPools);
+        } else {
+            injectYAML("DnD_spellPools", "[]");
+        }
+        const initialRacialSpellsJson = JSON.stringify(formatSpellTuples(raceSpellMetaForWizard.grantedSpellsByLevel));
+        injectYAML("DnD_spells", `'${initialRacialSpellsJson}'`);
+        injectYAML("DnD_preparedSpells", `'${initialRacialSpellsJson}'`);
 
         // Dynamically Build Consolidated 9-Element Spell Slots Array: '[["<Spell-Slots>","<Used-Spell-Slots>"], ...]'
         const targetLvl = this.wizardData.level.toString();
@@ -8500,6 +8810,7 @@ class ManageCharacterModal extends Modal {
     initiativeBreakdown: { source: string; amount: number }[] = [];
     // 3. Attack State
     currentAttackStat: string = "strength";
+    currentSpellcastingAbility: string = "";
     addAttackProficiency: boolean = true;
     extraAttackMod: number = 0;
     weaponMasteryState: WeaponMasteryState = { available: 0, mastered: [] };
@@ -8608,10 +8919,19 @@ class ManageCharacterModal extends Modal {
         }
         this.currentInitiativeMod = initCalc.autoBonus + this.currentCustomInitiativeMod;
 
-        // Fetch Attack
+        // Fetch Attack & Spellcasting Ability
         this.extraAttackMod = Number(frontmatter["DnD_attackRollMod"]) || 0;
         if (frontmatter["DnD_attackStat"]) {
             this.currentAttackStat = String(frontmatter["DnD_attackStat"]).toLowerCase().trim();
+        }
+        const rawSpellAb = Array.isArray(frontmatter["DnD_spellcastingAbility"])
+            ? frontmatter["DnD_spellcastingAbility"][0]
+            : frontmatter["DnD_spellcastingAbility"];
+        if (rawSpellAb && !String(rawSpellAb).trim().startsWith("<")) {
+            const cleanSpellAb = String(rawSpellAb).trim();
+            if (cleanSpellAb) {
+                this.currentSpellcastingAbility = cleanSpellAb.charAt(0).toUpperCase() + cleanSpellAb.slice(1).toLowerCase();
+            }
         }
 
         // Fetch Weapon Mastery State & Available Weapons with Valid Masteries
@@ -8990,6 +9310,24 @@ class ManageCharacterModal extends Modal {
                 cls: "dnd-modal-form-input"
             });
             modInput.oninput = (e) => this.extraAttackMod = Number((e.target as HTMLInputElement).value);
+
+            // Spellcasting Ability Override Section
+            this.contentContainer.createEl("h4", { text: "Spellcasting Ability", cls: "dnd-manage-section-title dnd-mt-15" });
+            const spellAbDiv = this.contentContainer.createDiv({ cls: "dnd-form-group" });
+            spellAbDiv.createEl("label", { text: "Primary Spellcasting Ability:", cls: "dnd-form-label-sub" });
+            const spellAbSelect = spellAbDiv.createEl("select", { cls: "dnd-modal-form-input" });
+            spellAbSelect.createEl("option", { text: "-- None --", value: "" });
+            const spellAbilities = ["Intelligence", "Wisdom", "Charisma", "Strength", "Dexterity", "Constitution"];
+            spellAbilities.forEach(ab => spellAbSelect.createEl("option", { text: ab, value: ab }));
+            if (this.currentSpellcastingAbility && !spellAbilities.includes(this.currentSpellcastingAbility)) {
+                spellAbSelect.createEl("option", { text: this.currentSpellcastingAbility, value: this.currentSpellcastingAbility });
+            }
+            spellAbSelect.value = this.currentSpellcastingAbility || "";
+            spellAbSelect.onchange = (e) => this.currentSpellcastingAbility = (e.target as HTMLSelectElement).value;
+            spellAbDiv.createEl("small", {
+                text: "Overrides the automatic Class/Subclass or Race spellcasting ability and controls your Spell Save DC & Spellbook access.",
+                cls: "dnd-form-hint"
+            });
 
             // Weapon Masteries Management Section
             const masteryHeaderRow = this.contentContainer.createDiv({ cls: "dnd-flex-between dnd-mt-15" });
@@ -9499,6 +9837,7 @@ class ManageCharacterModal extends Modal {
         updates["DnD_attackRollMod"] = this.extraAttackMod;
         updates["DnD_attackStat"] = this.currentAttackStat;
         updates["DnD_attackProficiency"] = this.addAttackProficiency;
+        updates["DnD_spellcastingAbility"] = this.currentSpellcastingAbility || undefined;
         updates["DnD_weaponMastery"] = serializeWeaponMasteryState(
             this.weaponMasteryState.available,
             this.weaponMasteryState.mastered
@@ -9932,31 +10271,75 @@ class LevelUpModal extends Modal {
                 subclassData = await getSubclassData(this.app, this.plugin.settings, activeSubclassFile, this.currentSubclass);
             }
 
-            // Spellcasting Ability Milestone (if character has none yet and class/subclass grants one)
-            const existingSpellcastingAbility = frontmatter["DnD_spellcastingAbility"];
-            if (!existingSpellcastingAbility || String(existingSpellcastingAbility).trim().startsWith("<")) {
-                const spellMeta = this.plugin.resolveSpellcastingMetadata(classData, subclassData, this.newLevel);
-                if (spellMeta.spellcastingAbilities.length > 0) {
-                    const spellCard = this.milestonesContainer.createDiv({ cls: "dnd-form-card-active" });
-                    spellCard.createEl("label", {
-                        text: `Spellcasting Ability Unlocked (${this.currentSubclass || this.dndClass}):`,
-                        cls: "dnd-form-label-bold"
+            // Spellcasting Ability Milestone (Class/Subclass takes priority over existing Racial ability when newly unlocked)
+            let prevSubclassData: any = null;
+            const prevSubVal = frontmatter[this.subclassFmKey] ?? frontmatter["DnD_Subclass"] ?? frontmatter["DnD_subclass"];
+            const prevSubclassName = (Array.isArray(prevSubVal) ? prevSubVal[0] : prevSubVal) || "";
+            const prevSubclassFile = this.plugin.findGrantedSubclass(classData, this.currentLevel);
+            if (prevSubclassName && prevSubclassFile) {
+                prevSubclassData = await getSubclassData(this.app, this.plugin.settings, prevSubclassFile, prevSubclassName);
+            }
+
+            const prevClassMeta = this.plugin.resolveSpellcastingMetadata(classData, prevSubclassData, this.currentLevel);
+            const spellMeta = this.plugin.resolveSpellcastingMetadata(classData, subclassData, this.newLevel);
+
+            const existingRaw = frontmatter["DnD_spellcastingAbility"];
+            const existingSpellStr = Array.isArray(existingRaw) ? String(existingRaw[0] || "") : String(existingRaw || "");
+            const hasExistingAbility = Boolean(existingSpellStr.trim() && !existingSpellStr.trim().startsWith("<"));
+            const unlockedClassCasting = prevClassMeta.spellcastingAbilities.length === 0 && spellMeta.spellcastingAbilities.length > 0;
+
+            let promptAbilities: string[] = [];
+            let promptSourceLabel = this.currentSubclass || this.dndClass;
+            let isClassOverride = false;
+
+            if (unlockedClassCasting || (!hasExistingAbility && spellMeta.spellcastingAbilities.length > 0)) {
+                promptAbilities = [...spellMeta.spellcastingAbilities];
+                isClassOverride = unlockedClassCasting && hasExistingAbility;
+            } else if (!hasExistingAbility && frontmatter["DnD_race"]) {
+                const raceData = await getRaceData(this.app, this.plugin.settings, frontmatter["DnD_race"]);
+                const raceMeta = await this.plugin.resolveRaceSpellcastingMetadata(raceData, frontmatter["DnD_raceLineage"], this.newLevel);
+                if (raceMeta.spellcastingAbilities.length > 0) {
+                    promptAbilities = [...raceMeta.spellcastingAbilities];
+                    const linVal = frontmatter["DnD_raceLineage"];
+                    const raceVal = frontmatter["DnD_race"];
+                    promptSourceLabel = String((Array.isArray(linVal) ? linVal[0] : linVal) || (Array.isArray(raceVal) ? raceVal[0] : raceVal) || "Race");
+                }
+            }
+
+            if (promptAbilities.length > 0) {
+                const spellCard = this.milestonesContainer.createDiv({ cls: "dnd-form-card-active" });
+                spellCard.createEl("label", {
+                    text: `Spellcasting Ability Unlocked (${promptSourceLabel}):`,
+                    cls: "dnd-form-label-bold"
+                });
+
+                const spellSelect = spellCard.createEl("select", { cls: "dnd-modal-form-input" });
+                spellSelect.createEl("option", { text: "-- Select Spellcasting Ability --", value: "" });
+                promptAbilities.forEach((ability: string) => {
+                    spellSelect.createEl("option", { text: ability, value: ability });
+                });
+
+                const existingCap = existingSpellStr.trim()
+                    ? existingSpellStr.trim().charAt(0).toUpperCase() + existingSpellStr.trim().slice(1).toLowerCase()
+                    : "";
+                if (isClassOverride && existingCap && !promptAbilities.some(a => a.toLowerCase() === existingCap.toLowerCase())) {
+                    spellSelect.createEl("option", { text: `${existingCap} (Keep Current)`, value: existingCap });
+                }
+
+                if (promptAbilities.length === 1) {
+                    this.newSpellcastingAbility = promptAbilities[0];
+                    spellSelect.value = this.newSpellcastingAbility;
+                }
+
+                spellSelect.onchange = (e) => {
+                    this.newSpellcastingAbility = (e.target as HTMLSelectElement).value;
+                };
+
+                if (isClassOverride) {
+                    spellCard.createEl("small", {
+                        text: `Class/Subclass spellcasting takes priority over your existing ability (${existingSpellStr.trim()}). You can switch it anytime in Manage Character.`,
+                        cls: "dnd-form-hint"
                     });
-
-                    const spellSelect = spellCard.createEl("select", { cls: "dnd-modal-form-input" });
-                    spellSelect.createEl("option", { text: "-- Select Spellcasting Ability --", value: "" });
-                    spellMeta.spellcastingAbilities.forEach((ability: string) => {
-                        spellSelect.createEl("option", { text: ability, value: ability });
-                    });
-
-                    if (spellMeta.spellcastingAbilities.length === 1) {
-                        this.newSpellcastingAbility = spellMeta.spellcastingAbilities[0];
-                        spellSelect.value = this.newSpellcastingAbility;
-                    }
-
-                    spellSelect.onchange = (e) => {
-                        this.newSpellcastingAbility = (e.target as HTMLSelectElement).value;
-                    };
                 }
             }
 
@@ -10486,6 +10869,7 @@ class LevelUpModal extends Modal {
         }
 
         // Fetch Class JSON for Proficiency Bonus Progression & Spell Slot Progression
+        let classSpellsPoolForLvl: string | null = null;
         if (this.dndClass) {
             const classData = await getClassData(this.app, this.plugin.settings, this.dndClass);
             if (classData) {
@@ -10500,6 +10884,7 @@ class LevelUpModal extends Modal {
                     subclassDataForSlots = await getSubclassData(this.app, this.plugin.settings, activeSubclassFile, this.currentSubclass);
                 }
                 const spellMeta = this.plugin.resolveSpellcastingMetadata(classData, subclassDataForSlots, this.newLevel);
+                classSpellsPoolForLvl = spellMeta.spellsPool;
                 const castingTable = spellMeta.spellcastingTable;
 
                 if (castingTable) {
@@ -10530,6 +10915,47 @@ class LevelUpModal extends Modal {
                     }
                 }
             }
+        }
+
+        // Grant newly unlocked Racial/Lineage spells in (currentLevel..newLevel] and sync DnD_spellPools
+        const raceDataForLvl = frontmatter["DnD_race"]
+            ? await getRaceData(this.app, this.plugin.settings, frontmatter["DnD_race"])
+            : null;
+        const raceIncrementalMeta = await this.plugin.resolveRaceSpellcastingMetadata(
+            raceDataForLvl,
+            frontmatter["DnD_raceLineage"],
+            this.newLevel,
+            this.currentLevel + 1
+        );
+        const raceFullMeta = await this.plugin.resolveRaceSpellcastingMetadata(
+            raceDataForLvl,
+            frontmatter["DnD_raceLineage"],
+            this.newLevel
+        );
+
+        if (Object.keys(raceIncrementalMeta.grantedSpellsByLevel).length > 0) {
+            const knownMap = parseSpellTuples(frontmatter["DnD_spells"]);
+            const preparedMap = parseSpellTuples(frontmatter["DnD_preparedSpells"]);
+            const knownChanged = mergeSpellTuples(knownMap, raceIncrementalMeta.grantedSpellsByLevel);
+            const preparedChanged = mergeSpellTuples(preparedMap, raceIncrementalMeta.grantedSpellsByLevel);
+            if (knownChanged) updates["DnD_spells"] = JSON.stringify(formatSpellTuples(knownMap));
+            if (preparedChanged) updates["DnD_preparedSpells"] = JSON.stringify(formatSpellTuples(preparedMap));
+        }
+
+        const existingSpellPools = parseStringArray(frontmatter["DnD_spellPools"], true);
+        const hasClassPoolAlready = Boolean(
+            classSpellsPoolForLvl && existingSpellPools.some(p => p.toLowerCase() === classSpellsPoolForLvl!.toLowerCase())
+        );
+        const combinedPoolCandidates = [
+            ...(classSpellsPoolForLvl && !hasClassPoolAlready ? [classSpellsPoolForLvl] : []),
+            ...existingSpellPools,
+            ...raceFullMeta.spellsPools
+        ];
+        const mergedSpellPools = parseStringArray(combinedPoolCandidates, true);
+        const poolsDiffer = mergedSpellPools.length !== existingSpellPools.length
+            || mergedSpellPools.some((p, idx) => p !== existingSpellPools[idx]);
+        if (poolsDiffer && (mergedSpellPools.length > 0 || frontmatter["DnD_spellPools"] !== undefined)) {
+            updates["DnD_spellPools"] = mergedSpellPools;
         }
 
         updates["DnD_proficiencyBonus"] = DnD_proficiency_bonus;
@@ -10760,14 +11186,21 @@ class SpellbookModal extends Modal {
 
     dndClass: string = "";
     characterLevel: number = 1;
-    spellsPoolFile: string = "";
+    spellPoolNames: string[] = [];
+    activePoolName: string = "";
+    loadedPools: Record<string, Record<string, Record<string, string>>> = {};
 
     // Progression limits from class JSON ("spellcasting" or "pactMagic")
     maxCantrips: number = 0;
     maxPreparedSpells: number = 0;
 
-    // Router data: { "0": { "mage-hand": "Mage Hand" }, "1": { "magic-missile": "Magic Missile" } }
+    // Active router data: { "0": { "mage-hand": "Mage Hand" }, "1": { "magic-missile": "Magic Missile" } }
     routerData: Record<string, Record<string, string>> = {};
+
+    // Innate racial spells excluded from class preparation caps (5.5e Always Prepared)
+    innateRacialSlugs: Set<string> = new Set();
+    replaceableCantripPools: string[] = [];
+    defaultReplaceableCantrips: Set<string> = new Set();
 
     // Internal state mapped by string level ("0", "1", ..., "9") -> array of spell keys
     knownSpellsByLevel: Record<string, string[]> = {};
@@ -10775,6 +11208,7 @@ class SpellbookModal extends Modal {
 
     // UI Elements for live re-rendering
     activeLevelTab: string = "0";
+    poolBarContainer!: HTMLElement;
     trackerContainer!: HTMLElement;
     tabsContainer!: HTMLElement;
     listContainer!: HTMLElement;
@@ -10790,43 +11224,6 @@ class SpellbookModal extends Modal {
     // Helper: Reads a spell or spell router from the bundled registry (or customRulebookPath)
     async loadSpellJson(fileNameWithoutExt: string): Promise<any | null> {
         return await getSpellData(this.app, this.plugin.settings, fileNameWithoutExt);
-    }
-
-    // Helper: Parses frontmatter tuple array [ [ ["spell1", "spell2"], "1" ] ] into Record<string, string[]>
-    parseSpellTuples(raw: any): Record<string, string[]> {
-        const result: Record<string, string[]> = {};
-        let parsed = raw;
-
-        if (typeof raw === "string") {
-            try { parsed = JSON.parse(raw); } catch { parsed = []; }
-        }
-
-        if (Array.isArray(parsed)) {
-            for (const entry of parsed) {
-                if (Array.isArray(entry) && entry.length === 2) {
-                    const [spellsList, lvlKey] = entry;
-                    const safeLvl = String(lvlKey);
-                    if (Array.isArray(spellsList)) {
-                        result[safeLvl] = spellsList.map(s => String(s));
-                    }
-                }
-            }
-        }
-        return result;
-    }
-
-    // Helper: Formats Record<string, string[]> back into [ [ ["spell1", "spell2"], "1" ] ]
-    formatSpellTuples(map: Record<string, string[]>): [string[], string][] {
-        const output: [string[], string][] = [];
-        const sortedLevels = Object.keys(map).sort((a, b) => Number(a) - Number(b));
-
-        for (const lvl of sortedLevels) {
-            const spells = map[lvl];
-            if (Array.isArray(spells) && spells.length > 0) {
-                output.push([spells, String(lvl)]);
-            }
-        }
-        return output;
     }
 
     async onOpen() {
@@ -10847,15 +11244,16 @@ class SpellbookModal extends Modal {
         this.dndClass = (Array.isArray(classVal) ? classVal[0] : classVal) || "";
 
         // Parse Known Spells (DnD_spells) and Prepared Spells (DnD_preparedSpells)
-        this.knownSpellsByLevel = this.parseSpellTuples(frontmatter["DnD_spells"]);
-        this.preparedSpellsByLevel = this.parseSpellTuples(frontmatter["DnD_preparedSpells"]);
+        this.knownSpellsByLevel = parseSpellTuples(frontmatter["DnD_spells"]);
+        this.preparedSpellsByLevel = parseSpellTuples(frontmatter["DnD_preparedSpells"]);
 
-        // 2. Fetch Class Data and Subclass Data to find "spellsPool" and "spellcasting" / "pactMagic" limits
+        // 2. Fetch Class/Subclass Data (for limits & fallback pool) + Race Data (for innate spell exclusions & fallback pools)
         let subclassData: any = null;
         let subclassName = "";
         const subclassVal = frontmatter["DnD_subclass"] ?? frontmatter["DnD_Subclass"];
         subclassName = (Array.isArray(subclassVal) ? subclassVal[0] : subclassVal) || "";
 
+        let classSpellsPoolFallback: string | null = null;
         if (this.dndClass) {
             const classData = await getClassData(this.app, this.plugin.settings, this.dndClass);
             if (classData && subclassName) {
@@ -10866,9 +11264,7 @@ class SpellbookModal extends Modal {
             }
 
             const spellMeta = this.plugin.resolveSpellcastingMetadata(classData, subclassData, this.characterLevel);
-            if (spellMeta.spellsPool) {
-                this.spellsPoolFile = spellMeta.spellsPool;
-            }
+            classSpellsPoolFallback = spellMeta.spellsPool;
 
             const lvlStr = this.characterLevel.toString();
             const castingTable = spellMeta.spellcastingTable?.[lvlStr];
@@ -10878,32 +11274,66 @@ class SpellbookModal extends Modal {
             }
         }
 
-        if (!this.spellsPoolFile) {
+        const raceData = frontmatter["DnD_race"]
+            ? await getRaceData(this.app, this.plugin.settings, frontmatter["DnD_race"])
+            : null;
+        const raceMeta = await this.plugin.resolveRaceSpellcastingMetadata(
+            raceData,
+            frontmatter["DnD_raceLineage"],
+            this.characterLevel
+        );
+        this.innateRacialSlugs = raceMeta.innateSlugs;
+        this.replaceableCantripPools = raceMeta.replaceableCantripPools;
+        this.defaultReplaceableCantrips = raceMeta.defaultReplaceableCantrips;
+
+        // 3. Resolve Spell Pools (DnD_spellPools frontmatter -> inline dnd-spells block -> Class/Race fallback)
+        let candidatePools = parseStringArray(frontmatter["DnD_spellPools"], true);
+        if (candidatePools.length === 0) {
+            const activeFile = this.app.vault.getAbstractFileByPath(this.sourcePath);
+            if (activeFile instanceof TFile) {
+                const fileText = await this.app.vault.cachedRead(activeFile);
+                candidatePools = this.plugin.extractSpellPoolsFromContent(fileText, frontmatter);
+            }
+        }
+        if (candidatePools.length === 0) {
+            candidatePools = parseStringArray([
+                ...(classSpellsPoolFallback ? [classSpellsPoolFallback] : []),
+                ...raceMeta.spellsPools
+            ], true);
+        }
+
+        this.loadedPools = {};
+        this.spellPoolNames = [];
+        for (const poolKey of candidatePools) {
+            const loaded = await getSpellsPoolData(this.app, this.plugin.settings, poolKey);
+            if (loaded && typeof loaded === "object") {
+                this.loadedPools[poolKey] = loaded;
+                this.spellPoolNames.push(poolKey);
+            }
+        }
+
+        const hasAnyExistingSpells = Object.values(this.knownSpellsByLevel).some(arr => arr.length > 0)
+            || Object.values(this.preparedSpellsByLevel).some(arr => arr.length > 0);
+
+        if (this.spellPoolNames.length === 0 && !hasAnyExistingSpells) {
             contentEl.createEl("p", {
-                text: `No "spellsPool" property found in ${this.dndClass || "class"}${subclassName ? " or " + subclassName : ""} JSON. Add "spellsPool": "<router-filename>" to your class or subclass JSON to enable the Spellbook.`,
+                text: `No spell pools found. Assign DnD_spellPools in frontmatter (e.g. ["wizard-spells", "elf-cantrips"]) or pick a spellcasting class/race to enable the Spellbook.`,
                 cls: "dnd-error-text"
             });
             return;
         }
 
-        // 3. Load Spell Pool Router Map from spellsMap (or customRulebookPath)
-        const loadedRouter = await getSpellsPoolData(this.app, this.plugin.settings, this.spellsPoolFile);
-        if (!loadedRouter || typeof loadedRouter !== "object") {
-            contentEl.createEl("p", {
-                text: `Could not load spell router file: /rulebook/spells/spellPools/${this.spellsPoolFile}.json`,
-                cls: "dnd-error-text"
-            });
-            return;
-        }
-        this.routerData = loadedRouter;
+        this.activePoolName = this.spellPoolNames[0] || "";
+        this.routerData = this.activePoolName ? this.loadedPools[this.activePoolName] : {};
 
-        // Ensure default active tab exists in routerData
-        const availableLevels = Object.keys(this.routerData).sort((a, b) => Number(a) - Number(b));
+        // Ensure default active tab exists across active pool or existing spells
+        const availableLevels = this.getAvailableLevels();
         if (availableLevels.length > 0 && !availableLevels.includes(this.activeLevelTab)) {
             this.activeLevelTab = availableLevels[0];
         }
 
         // 4. Build Layout Containers
+        this.poolBarContainer = contentEl.createDiv({ cls: "dnd-spellbook-pool-bar" });
         this.trackerContainer = contentEl.createDiv({ cls: "dnd-modal-tracker" });
         this.tabsContainer = contentEl.createDiv({ cls: "dnd-modal-tabs" });
 
@@ -10924,37 +11354,135 @@ class SpellbookModal extends Modal {
         };
 
         // Initial Render
+        this.renderPoolSelector();
         this.renderTracker();
         this.renderLevelTabs();
         this.renderSpellList();
     }
 
-    // Counts total prepared cantrips (level "0") and leveled spells ("1"-"9")
-    getPreparedCounts(): { cantrips: number; leveled: number } {
-        const cantrips = (this.preparedSpellsByLevel["0"] || []).length;
-        let leveled = 0;
+    getAvailableLevels(): string[] {
+        const lvlSet = new Set<string>(Object.keys(this.routerData || {}));
+        for (const [lvl, list] of Object.entries(this.knownSpellsByLevel)) {
+            if (Array.isArray(list) && list.length > 0) lvlSet.add(lvl);
+        }
         for (const [lvl, list] of Object.entries(this.preparedSpellsByLevel)) {
-            if (lvl !== "0" && Array.isArray(list)) {
-                leveled += list.length;
+            if (Array.isArray(list) && list.length > 0) lvlSet.add(lvl);
+        }
+        return Array.from(lvlSet).sort((a, b) => Number(a) - Number(b));
+    }
+
+    findSpellDisplayName(lvl: string, spellKey: string): string {
+        if (this.routerData?.[lvl]?.[spellKey]) return this.routerData[lvl][spellKey];
+        for (const poolObj of Object.values(this.loadedPools)) {
+            if (poolObj?.[lvl]?.[spellKey]) return poolObj[lvl][spellKey];
+        }
+        return spellKey.replace(/-/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+    }
+
+    renderPoolSelector() {
+        this.poolBarContainer.empty();
+        if (this.spellPoolNames.length === 0) return;
+
+        this.poolBarContainer.createEl("label", {
+            text: "Spell Pool:",
+            cls: "dnd-spellbook-pool-label"
+        });
+        const selectEl = this.poolBarContainer.createEl("select", {
+            cls: "dnd-modal-form-input dnd-spellbook-pool-select"
+        });
+        for (const poolKey of this.spellPoolNames) {
+            selectEl.createEl("option", {
+                text: formatPoolDisplayName(poolKey),
+                value: poolKey
+            });
+        }
+        selectEl.value = this.activePoolName;
+        selectEl.onchange = () => {
+            this.activePoolName = selectEl.value;
+            this.routerData = this.loadedPools[this.activePoolName] || {};
+            const availableLevels = this.getAvailableLevels();
+            if (availableLevels.length > 0 && !availableLevels.includes(this.activeLevelTab)) {
+                this.activeLevelTab = availableLevels[0];
+            }
+            this.renderLevelTabs();
+            this.renderSpellList();
+            this.renderEmptyPreview();
+        };
+    }
+
+    // Counts prepared cantrips/spells toward class limits, excluding Always-Prepared racial spells
+    getPreparedCounts(): {
+        cantrips: number;
+        leveled: number;
+        innateCantrips: number;
+        innateLeveled: number;
+        excludedKeys: Set<string>;
+    } {
+        const excludedKeys = new Set<string>();
+        const prepCantrips = this.preparedSpellsByLevel["0"] || [];
+
+        for (const slug of this.innateRacialSlugs) {
+            excludedKeys.add(slug);
+        }
+
+        // If a replaceable racial cantrip (e.g. High Elf Prestidigitation) was swapped out, exempt 1 replacement cantrip from that pool
+        const hasDefaultCantripPrepared = prepCantrips.some(s => this.defaultReplaceableCantrips.has(s));
+        if (!hasDefaultCantripPrepared && this.defaultReplaceableCantrips.size > 0 && this.replaceableCantripPools.length > 0) {
+            const primaryPoolCantrips = this.spellPoolNames.length > 1
+                ? (this.loadedPools[this.spellPoolNames[0]]?.["0"] || {})
+                : {};
+            let candidateNonClass: string | null = null;
+            let candidateAny: string | null = null;
+
+            for (const slug of prepCantrips) {
+                if (excludedKeys.has(slug)) continue;
+                const inRacialPool = this.replaceableCantripPools.some(p => Boolean(this.loadedPools[p]?.["0"]?.[slug]));
+                if (!inRacialPool) continue;
+                if (!primaryPoolCantrips[slug] && !candidateNonClass) {
+                    candidateNonClass = slug;
+                }
+                if (!candidateAny) candidateAny = slug;
+            }
+            const swappedSlug = candidateNonClass || candidateAny;
+            if (swappedSlug) excludedKeys.add(swappedSlug);
+        }
+
+        let cantrips = 0;
+        let innateCantrips = 0;
+        for (const slug of prepCantrips) {
+            if (excludedKeys.has(slug)) innateCantrips++;
+            else cantrips++;
+        }
+
+        let leveled = 0;
+        let innateLeveled = 0;
+        for (const [lvl, list] of Object.entries(this.preparedSpellsByLevel)) {
+            if (lvl === "0" || !Array.isArray(list)) continue;
+            for (const slug of list) {
+                if (excludedKeys.has(slug)) innateLeveled++;
+                else leveled++;
             }
         }
-        return { cantrips, leveled };
+
+        return { cantrips, leveled, innateCantrips, innateLeveled, excludedKeys };
     }
 
     renderTracker() {
         this.trackerContainer.empty();
-        const { cantrips, leveled } = this.getPreparedCounts();
+        const { cantrips, leveled, innateCantrips, innateLeveled } = this.getPreparedCounts();
 
         const leftInfo = this.trackerContainer.createDiv();
         leftInfo.createEl("strong", {
-            text: `${this.dndClass} (Level ${this.characterLevel})`,
+            text: `${this.dndClass || "Character"} (Level ${this.characterLevel})`,
             cls: "dnd-modal-tracker-title"
         });
 
         const rightCounters = this.trackerContainer.createDiv({ cls: "dnd-modal-tracker-counters" });
 
-        const cantripText = this.maxCantrips > 0 ? `${cantrips} / ${this.maxCantrips}` : `${cantrips}`;
-        const prepText = this.maxPreparedSpells > 0 ? `${leveled} / ${this.maxPreparedSpells}` : `${leveled}`;
+        const baseCantripText = this.maxCantrips > 0 ? `${cantrips} / ${this.maxCantrips}` : `${cantrips}`;
+        const cantripText = innateCantrips > 0 ? `${baseCantripText} (+${innateCantrips} innate)` : baseCantripText;
+        const basePrepText = this.maxPreparedSpells > 0 ? `${leveled} / ${this.maxPreparedSpells}` : `${leveled}`;
+        const prepText = innateLeveled > 0 ? `${basePrepText} (+${innateLeveled} innate)` : basePrepText;
 
         const cSpan = rightCounters.createEl("span", { cls: "dnd-modal-tracker-stat" });
         cSpan.createEl("strong", { text: "Cantrips Prepared: " });
@@ -10967,7 +11495,7 @@ class SpellbookModal extends Modal {
 
     renderLevelTabs() {
         this.tabsContainer.empty();
-        const availableLevels = Object.keys(this.routerData).sort((a, b) => Number(a) - Number(b));
+        const availableLevels = this.getAvailableLevels();
 
         for (const lvl of availableLevels) {
             const label = lvl === "0" ? "Cantrips" : `Lvl ${lvl}`;
@@ -10986,49 +11514,71 @@ class SpellbookModal extends Modal {
         }
     }
 
+    isSpellExemptFromPrepLimit(
+        lvl: string,
+        spellKey: string,
+        counts: ReturnType<SpellbookModal["getPreparedCounts"]>
+    ): boolean {
+        if (this.innateRacialSlugs.has(spellKey)) return true;
+        if (lvl === "0" && this.defaultReplaceableCantrips.size > 0 && counts.innateCantrips === 0) {
+            return this.replaceableCantripPools.some(p => Boolean(this.loadedPools[p]?.["0"]?.[spellKey]));
+        }
+        return false;
+    }
+
     renderSpellList() {
         this.listContainer.empty();
 
         const lvl = this.activeLevelTab;
-        const levelPool = this.routerData[lvl] || {};
+        const levelPool = this.routerData?.[lvl] || {};
+        const counts = this.getPreparedCounts();
 
         if (!this.knownSpellsByLevel[lvl]) this.knownSpellsByLevel[lvl] = [];
         if (!this.preparedSpellsByLevel[lvl]) this.preparedSpellsByLevel[lvl] = [];
 
         const knownList = this.knownSpellsByLevel[lvl];
         const preparedList = this.preparedSpellsByLevel[lvl];
+        const poolEntries = Object.entries(levelPool);
 
-        const addBar = this.listContainer.createDiv({ cls: "dnd-modal-add-bar" });
+        if (poolEntries.length > 0) {
+            const addBar = this.listContainer.createDiv({ cls: "dnd-modal-add-bar" });
 
-        const selectEl = addBar.createEl("select", { cls: "dnd-modal-add-select" });
-        selectEl.createEl("option", { text: `-- Add ${lvl === "0" ? "Cantrip" : `Level ${lvl} Spell`} --`, value: "" });
+            const selectEl = addBar.createEl("select", { cls: "dnd-modal-add-select" });
+            selectEl.createEl("option", { text: `-- Add ${lvl === "0" ? "Cantrip" : `Level ${lvl} Spell`} --`, value: "" });
 
-        Object.entries(levelPool)
-            .sort((a, b) => a[1].localeCompare(b[1]))
-            .forEach(([spellKey, spellName]) => {
-                if (!knownList.includes(spellKey)) {
-                    selectEl.createEl("option", { text: spellName, value: spellKey });
+            poolEntries
+                .sort((a, b) => a[1].localeCompare(b[1]))
+                .forEach(([spellKey, spellName]) => {
+                    if (!knownList.includes(spellKey)) {
+                        selectEl.createEl("option", { text: spellName, value: spellKey });
+                    }
+                });
+
+            selectEl.onchange = async () => {
+                const chosenKey = selectEl.value;
+                if (chosenKey) {
+                    await this.renderSpellPreview(chosenKey, levelPool[chosenKey]);
+                } else {
+                    this.renderEmptyPreview();
                 }
-            });
+            };
 
-        selectEl.onchange = async () => {
-            const chosenKey = selectEl.value;
-            if (chosenKey) {
+            const addBtn = addBar.createEl("button", { text: "Add" });
+            addBtn.onclick = async () => {
+                const chosenKey = selectEl.value;
+                if (!chosenKey) return;
+
+                knownList.push(chosenKey);
+                this.renderTracker();
+                this.renderSpellList();
                 await this.renderSpellPreview(chosenKey, levelPool[chosenKey]);
-            } else {
-                this.renderEmptyPreview();
-            }
-        };
-
-        const addBtn = addBar.createEl("button", { text: "Add" });
-        addBtn.onclick = async () => {
-            const chosenKey = selectEl.value;
-            if (!chosenKey) return;
-
-            knownList.push(chosenKey);
-            this.renderSpellList();
-            await this.renderSpellPreview(chosenKey, levelPool[chosenKey]);
-        };
+            };
+        } else if (this.activePoolName) {
+            this.listContainer.createEl("p", {
+                text: `${formatPoolDisplayName(this.activePoolName)} has no ${lvl === "0" ? "cantrips" : `level ${lvl} spells`} to add.`,
+                cls: "dnd-modal-empty-text"
+            });
+        }
 
         if (knownList.length === 0) {
             this.listContainer.createEl("p", {
@@ -11039,8 +11589,9 @@ class SpellbookModal extends Modal {
         }
 
         for (const spellKey of knownList) {
-            const displayName = levelPool[spellKey] || spellKey.replace(/-/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+            const displayName = this.findSpellDisplayName(lvl, spellKey);
             const isPrepared = preparedList.includes(spellKey);
+            const isInnate = this.innateRacialSlugs.has(spellKey) || counts.excludedKeys.has(spellKey);
 
             const row = this.listContainer.createDiv({
                 cls: `dnd-modal-list-row ${isPrepared ? "is-active" : ""}`.trim()
@@ -11056,15 +11607,16 @@ class SpellbookModal extends Modal {
 
             prepCheckbox.onclick = (e) => {
                 e.stopPropagation();
-                const { cantrips, leveled } = this.getPreparedCounts();
+                const currentCounts = this.getPreparedCounts();
+                const isExempt = this.isSpellExemptFromPrepLimit(lvl, spellKey, currentCounts);
 
                 if (prepCheckbox.checked) {
-                    if (lvl === "0" && this.maxCantrips > 0 && cantrips >= this.maxCantrips) {
+                    if (!isExempt && lvl === "0" && this.maxCantrips > 0 && currentCounts.cantrips >= this.maxCantrips) {
                         prepCheckbox.checked = false;
                         new Notice(`Cantrip limit reached (${this.maxCantrips} max). Unprepare a cantrip first!`);
                         return;
                     }
-                    if (lvl !== "0" && this.maxPreparedSpells > 0 && leveled >= this.maxPreparedSpells) {
+                    if (!isExempt && lvl !== "0" && this.maxPreparedSpells > 0 && currentCounts.leveled >= this.maxPreparedSpells) {
                         prepCheckbox.checked = false;
                         new Notice(`Prepared spells limit reached (${this.maxPreparedSpells} max). Unprepare a spell first!`);
                         return;
@@ -11080,6 +11632,13 @@ class SpellbookModal extends Modal {
 
             leftGroup.createEl("span", { text: displayName, cls: "dnd-modal-row-name" });
             const badgesSpan = leftGroup.createSpan({ cls: "dnd-modal-row-badges" });
+            if (isInnate) {
+                badgesSpan.createEl("span", {
+                    text: "Innate",
+                    cls: "dnd-level-badge dnd-modal-badge-sm",
+                    attr: { title: "Racial / Lineage Spell (Always Prepared)" }
+                });
+            }
             this.loadSpellJson(spellKey).then((spellData) => {
                 if (!spellData || !badgesSpan.isConnected) return;
                 if (spellData.concentration) {
@@ -11102,6 +11661,7 @@ class SpellbookModal extends Modal {
                 this.knownSpellsByLevel[lvl] = knownList.filter(k => k !== spellKey);
                 this.preparedSpellsByLevel[lvl] = this.preparedSpellsByLevel[lvl].filter(k => k !== spellKey);
                 this.renderTracker();
+                this.renderLevelTabs();
                 this.renderSpellList();
             };
         }
@@ -11155,6 +11715,12 @@ class SpellbookModal extends Modal {
             metaDiv.createEl("div", { text: `Components: ${compStr}${matStr}` });
         }
         if (spellData.duration) metaDiv.createEl("div", { text: `Duration: ${spellData.duration}` });
+        if (spellData.classes) {
+            const classesStr = Array.isArray(spellData.classes) ? spellData.classes.join(", ") : String(spellData.classes);
+            if (classesStr.trim()) {
+                metaDiv.createEl("div", { text: `Classes: ${classesStr}` });
+            }
+        }
 
         if (spellData.description) {
             const descDiv = this.previewContainer.createDiv({ cls: "dnd-modal-preview-desc" });
@@ -11163,8 +11729,8 @@ class SpellbookModal extends Modal {
     }
 
     async saveSpellbook() {
-        const formattedKnown = this.formatSpellTuples(this.knownSpellsByLevel);
-        const formattedPrepared = this.formatSpellTuples(this.preparedSpellsByLevel);
+        const formattedKnown = formatSpellTuples(this.knownSpellsByLevel);
+        const formattedPrepared = formatSpellTuples(this.preparedSpellsByLevel);
 
         await this.plugin.updateCharacterFrontmatter(this.sourcePath, {
             "DnD_spells": JSON.stringify(formattedKnown),

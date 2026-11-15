@@ -1,0 +1,53 @@
+{
+  "Drow": {
+    "1": {
+      "0": {
+        "dancing-lights": "Dancing Lights"
+      }
+    },
+    "3": {
+      "1": {
+        "faerie-fire": "Faerie Fire"
+      }
+    },
+    "5": {
+      "2": {
+        "darkness": "Darkness"
+      }
+    }
+  },
+  "High Elf": {
+    "1": {
+      "0": {
+        "prestidigitation": "Prestidigitation"
+      }
+    },
+    "3": {
+      "1": {
+        "detect-magic": "Detect Magic"
+      }
+    },
+    "5": {
+      "2": {
+        "misty-step": "Misty Step"
+      }
+    }
+  },
+  "Wood Elf": {
+    "1": {
+      "0": {
+        "druidcraft": "Druidcraft"
+      }
+    },
+    "3": {
+      "1": {
+        "longstrider": "Longstrider"
+      }
+    },
+    "5": {
+      "2": {
+        "pass-without-trace": "Pass without Trace"
+      }
+    }
+  }
+}

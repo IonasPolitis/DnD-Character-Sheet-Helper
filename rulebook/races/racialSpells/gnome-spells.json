@@ -1,0 +1,20 @@
+{
+  "Forest Gnome": {
+    "1": {
+      "0": {
+        "minor-illusion": "Minor Illusion"
+      },
+      "1": {
+        "speak-with-animals": "Speak with Animals"
+      }
+    }
+  },
+  "Rock Gnome": {
+    "1": {
+      "0": {
+        "mending": "Mending",
+        "prestidigitation": "Prestidigitation"
+      }
+    }
+  }
+}

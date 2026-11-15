@@ -8,19 +8,26 @@
             "name": "Elven Lineage",
             "description": "You are part of a lineage that grants you supernatural abilities. You gain the level 1 benefit of that lineage. When you reach character levels 3 and 5, you learn a higher-level spell. You always have that spell prepared. You can cast it once without a spell slot, and you regain the ability to cast it in that way when you finish a Long Rest. You can also cast the spell using any spell slots you have of the appropriate level. Intelligence, Wisdom, or Charisma is your spellcasting ability for the spells you cast with this trait (choose the ability when you select the lineage).\n\n| Level 1 | Level 3 | Level 5 |\n| ------------- | ------------- | ------------- |\n| The range of your Darkvision increases to 120 feet.<br>You also know the _Dancing Lights_ cantrip. | _Faerie Fire_ | _Darkness_ |",
             "lineage": "Drow",
-            "uses": [1, "long"]
+            "uses": [1, "long"],
+            "spellcastingAbilities": ["Intelligence", "Wisdom", "Charisma"],
+            "racialSpells": "elf-spells"
         },
         {
             "name": "Elven Lineage",
             "description": "You are part of a lineage that grants you supernatural abilities. You gain the level 1 benefit of that lineage. When you reach character levels 3 and 5, you learn a higher-level spell. You always have that spell prepared. You can cast it once without a spell slot, and you regain the ability to cast it in that way when you finish a Long Rest. You can also cast the spell using any spell slots you have of the appropriate level. Intelligence, Wisdom, or Charisma is your spellcasting ability for the spells you cast with this trait (choose the ability when you select the lineage).\n\n| Level 1 | Level 3 | Level 5 |\n| ------------- | ------------- | ------------- |\n| You know the _Prestidigitation_ cantrip.<br>Whenever you finish a Long Rest, you can replace that cantrip with a different cantrip from the Wizard spell list. | _Detect Magic_ | _Misty Step_ |",
             "lineage": "High Elf",
-            "uses": [1, "long"]
+            "uses": [1, "long"],
+            "spellcastingAbilities": ["Intelligence", "Wisdom", "Charisma"],
+            "racialSpells": "elf-spells",
+            "spellsPool": "elf-cantrips"
         },
         {
             "name": "Elven Lineage",
             "description": "You are part of a lineage that grants you supernatural abilities. You gain the level 1 benefit of that lineage. When you reach character levels 3 and 5, you learn a higher-level spell. You always have that spell prepared. You can cast it once without a spell slot, and you regain the ability to cast it in that way when you finish a Long Rest. You can also cast the spell using any spell slots you have of the appropriate level. Intelligence, Wisdom, or Charisma is your spellcasting ability for the spells you cast with this trait (choose the ability when you select the lineage).\n\n| Level 1 | Level 3 | Level 5 |\n| ------------- | ------------- | ------------- |\n| Your Speed increases to 35 feet.<br>You also know the _Druidcraft_ cantrip. | _Longstrider_ | _Pass without Trace_ |",
             "lineage": "Wood Elf",
-            "uses": [1, "long"]
+            "uses": [1, "long"],
+            "spellcastingAbilities": ["Intelligence", "Wisdom", "Charisma"],
+            "racialSpells": "elf-spells"
         },
         {
             "name": "Fey Ancestry",

@@ -1,0 +1,60 @@
+{
+  "base": {
+    "1": {
+      "0": {
+        "thaumaturgy": "Thaumaturgy"
+      }
+    }
+  },
+  "Abyssal": {
+    "1": {
+      "0": {
+        "poison-spray": "Poison Spray"
+      }
+    },
+    "3": {
+      "1": {
+        "ray-of-sickness": "Ray of Sickness"
+      }
+    },
+    "5": {
+      "2": {
+        "hold-person": "Hold Person"
+      }
+    }
+  },
+  "Chthonic": {
+    "1": {
+      "0": {
+        "chill-touch": "Chill Touch"
+      }
+    },
+    "3": {
+      "1": {
+        "false-life": "False Life"
+      }
+    },
+    "5": {
+      "2": {
+        "ray-of-enfeeblement": "Ray of Enfeeblement"
+      }
+    }
+  },
+  "Infernal": {
+    "1": {
+      "0": {
+        "fire-bolt": "Fire Bolt"
+      }
+    },
+    "3": {
+      "1": {
+        "hellish-rebuke": "Hellish Rebuke"
+      }
+    },
+    "5": {
+      "2": {
+        "darkness": "Darkness"
+      }
+    }
+  }
+}

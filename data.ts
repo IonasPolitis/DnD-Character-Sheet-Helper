@@ -5,6 +5,7 @@ import {
     classChoiceRouterRegistry,
     featRegistry, 
     raceRegistry,
+    racialSpellsRegistry,
     itemRegistry,
     ruleRegistry,
     spellRegistry,
@@ -263,6 +264,28 @@ export async function getRaceData(app: App, settings: FetchSettings, raceInput: 
             if (data) return data;
         }
         return null;
+    };
+
+    return resolveByPriority(settings, fetchNative, fetchCustom);
+}
+
+// --- Logic for Fetching Racial Spells Router Maps (e.g., elf-spells.json) ---
+export async function getRacialSpellsData(app: App, settings: FetchSettings, racialSpellsFile: string) {
+    if (!racialSpellsFile || typeof racialSpellsFile !== 'string') return null;
+    const cleanFile = racialSpellsFile.trim().replace(/\.json$/i, '');
+
+    const fetchNative = () => {
+        if (settings.edition && pastEditionsRegistry[settings.edition]) {
+            const edData = pastEditionsRegistry[settings.edition];
+            const edSpells = getIgnoreCase(edData.racialSpellsRegistry, cleanFile);
+            if (edSpells) return edSpells;
+        }
+        return getIgnoreCase(racialSpellsRegistry, cleanFile);
+    };
+
+    const fetchCustom = async (basePath: string) => {
+        return (await readCustomJson(app, `${basePath}/races/racialSpells/${cleanFile}.json`))
+            ?? (await readCustomJson(app, `${basePath}/races/${cleanFile}.json`));
     };
 
     return resolveByPriority(settings, fetchNative, fetchCustom);

@@ -18,6 +18,7 @@ const classChoices = scanFolder(path.join('classes', 'classChoices'));
 const classChoiceRouters = scanFolder(path.join('classes', 'classChoices', 'classRouterFiles'));
 const feats = scanFolder('feats');
 const races = scanFolder('races');
+const racialSpells = scanFolder(path.join('races', 'racialSpells'));
 const items = scanFolder('items');
 const rules = scanFolder('rules');
 const spells = scanFolder('spells');
@@ -221,6 +222,10 @@ races.forEach(r => {
     const safeName = r.replace(/[^a-zA-Z0-9]/g, '');
     out += `import race_${safeName} from './rulebook/races/${r}.json';\n`;
 });
+racialSpells.forEach(rs => {
+    const safeName = rs.replace(/[^a-zA-Z0-9]/g, '');
+    out += `import racialSpell_${safeName} from './rulebook/races/racialSpells/${rs}.json';\n`;
+});
 items.forEach(i => {
     const safeName = i.replace(/[^a-zA-Z0-9]/g, '');
     out += `import item_${safeName} from './rulebook/items/${i}.json';\n`;
@@ -284,6 +289,12 @@ races.forEach(r => {
 });
 out += `};\n\n`;
 
+out += `export const racialSpellsRegistry: Record<string, any> = {\n`;
+racialSpells.forEach(rs => {
+    out += `    "${rs}": racialSpell_${rs.replace(/[^a-zA-Z0-9]/g, '')},\n`;
+});
+out += `};\n\n`;
+
 out += `export const itemRegistry: Record<string, any> = {\n`;
 items.forEach(i => {
     out += `    "${i}": item_${i.replace(/[^a-zA-Z0-9]/g, '')},\n`;
@@ -323,7 +334,7 @@ if (fs.existsSync(pastEditionsDir)) {
     editions.forEach(edition => {
         out += `pastEditionsRegistry["${edition}"] = {\n`;
         out += `    classesMap: {}, backgroundsMap: {}, racesMap: {}, itemsMap: {}, rulesMap: {}, generalFeatsMap: {}, epicBoonFeatsMap: {}, spellsMap: {},\n`;
-        out += `    classRegistry: {}, subclassRegistry: {}, classChoiceRegistry: {}, classChoiceRouterRegistry: {}, featRegistry: {}, raceRegistry: {}, itemRegistry: {}, ruleRegistry: {}, spellRegistry: {}\n`;
+        out += `    classRegistry: {}, subclassRegistry: {}, classChoiceRegistry: {}, classChoiceRouterRegistry: {}, featRegistry: {}, raceRegistry: {}, racialSpellsRegistry: {}, itemRegistry: {}, ruleRegistry: {}, spellRegistry: {}\n`;
         out += `};\n`;
 
         // Bundle the maps
@@ -380,6 +391,13 @@ if (fs.existsSync(pastEditionsDir)) {
             const spFiles = fs.readdirSync(spPath).filter(file => file.endsWith('.json')).map(file => file.replace('.json', ''));
             spFiles.forEach(file => {
                 out += `pastEditionsRegistry["${edition}"].spellsMap["${file}"] = require('./rulebook/#past-editions/${edition}/spells/spellPools/${file}.json');\n`;
+            });
+        }
+        const rsPath = path.join(pastEditionsDir, edition, 'races', 'racialSpells');
+        if (fs.existsSync(rsPath)) {
+            const rsFiles = fs.readdirSync(rsPath).filter(file => file.endsWith('.json')).map(file => file.replace('.json', ''));
+            rsFiles.forEach(file => {
+                out += `pastEditionsRegistry["${edition}"].racialSpellsRegistry["${file}"] = require('./rulebook/#past-editions/${edition}/races/racialSpells/${file}.json');\n`;
             });
         }
     });

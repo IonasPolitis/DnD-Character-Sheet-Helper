@@ -53,6 +53,7 @@ DnD_attackRollMod:
 DnD_starterEquipment:
 DnD_inventoryItems:
 DnD_customItems:
+DnD_spellPools:
 DnD_spells:
 DnD_preparedSpells:
 DnD_spellSlots:
@@ -141,6 +142,7 @@ wealthSpent: frontmatter.DnD_wealthSpent
 
 ```dnd-spells
 spellcastingAbility: frontmatter.DnD_spellcastingAbility
+spellPools: frontmatter.DnD_spellPools
 spells: frontmatter.DnD_spells
 preparedSpells: frontmatter.DnD_preparedSpells
 spellSlots: frontmatter.DnD_spellSlots

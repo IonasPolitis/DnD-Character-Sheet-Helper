@@ -160,12 +160,13 @@ A Sample of the Code Block looks like this:
 ````markdown
 ```dnd-spells
 spellcastingAbility: $string$
+spellPools: $array$
 spells: $array$
 preparedSpells: $array$
 spellSlots: $array$
 ```
 ````
-The `spells` and `preparedSpells` variabel has this certain structure: `[ [["<Cantrip-1>", "<Cantrip-2>"],"0"], [["<Level-1-Spell>", "<Level-2-Spell>"],"1"] ]`, while *spellSlots* follows this strcuture: `[ ["<Max-Slots>", "<Used-Slots>"], ... ]`
+The `spells` and `preparedSpells` variabel has this certain structure: `[ [["<Cantrip-1>", "<Cantrip-2>"],"0"], [["<Level-1-Spell>", "<Level-2-Spell>"],"1"] ]`, `spellPools` accepts an array of spell pool router filenames (e.g. `["druid-spells", "elf-cantrips"]`, synced via `frontmatter.DnD_spellPools` on character sheets so Spellbook opens all granted pools), while *spellSlots* follows this strcuture: `[ ["<Max-Slots>", "<Used-Slots>"], ... ]`
 
 > [!TIP]
 > Click or tap on a spell card to view its full description.
@@ -254,6 +255,8 @@ rulebook/
 ├── markdown/
 │   └── <add your custom markdown>
 ├── races/
+│   ├── racialSpells/
+│   │   └── <add your custom racial spell routers>
 │   └── <add your custom races>
 ├── rules/
 │   └── <add your custom rules>
@@ -451,7 +454,10 @@ The `uses` variable sets how many uses this feature has, and when used checkboxe
                   "name": "<Trait_Name>",
                   "description": "<Trait_Description>",
                   "lineage": "Lineage_Name", // <optional>
-                  "uses": ["<Number-of-Uses>", "<short/long>" ] // <optional>
+                  "uses": ["<Number-of-Uses>", "<short/long>" ], // <optional>
+                  "spellcastingAbilities": ["Intelligence", "Wisdom", "Charisma"], // <optional>
+                  "racialSpells": "<racial-spells-router-filename>", // <optional, inside races/racialSpells/>
+                  "spellsPool": "<extra-spell-pool-filename>" // <optional, inside spells/spellPools/>
             }
       ]
 }
@@ -459,6 +465,8 @@ The `uses` variable sets how many uses this feature has, and when used checkboxe
 The `lineage` variable in the race.json is a Flag, making it so that this trait will appear if that and the *race-lineage* variable in the code block have the same value, while also swapping out the "Trait" badge for a "Lineage" badge.
 
 The `uses` variable sets how many uses this feature has, and when used checkboxes will appear at the top right of that feature's line acording to the value it was set. For the amount of uses it accepts single numbers and in string it accepts math (+, -,, *, /) and will also automatically imput the value of a core DnD ability.
+
+Racial spell traits can specify `spellcastingAbilities` (used as fallback if the character's class/subclass grants no spellcasting ability), `racialSpells` pointing to a router in `rulebook/races/racialSpells/<file>.json` (`{ "<Lineage or base>": { "<CharLevel>": { "<SpellLevel>": { "<spell-slug>": "<Spell Name>" } } } }`), and an optional `spellsPool` router filename added to `DnD_spellPools` (such as `elf-cantrips` for High Elf's Wizard cantrip list).
 
 - item.json:
 ```json
