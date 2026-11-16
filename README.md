@@ -457,6 +457,8 @@ The `uses` variable sets how many uses this feature has, and when used checkboxe
                   "description": "<Trait_Description>",
                   "lineage": "Lineage_Name", // <optional>
                   "uses": ["<Number-of-Uses>", "<short/long>" ], // <optional>
+                  "grantedFeats": ["<Feat_Filename>", "<Feat_Router_Filename>"], // <optional>
+                  "initiativeMod": "<num | proficiencyBonus | Ability-Name>", // <optional>
                   "spellcastingAbilities": ["Intelligence", "Wisdom", "Charisma"], // <optional>
                   "racialSpells": "<racial-spells-router-filename>", // <optional, inside races/racialSpells/>
                   "spellsPool": "<extra-spell-pool-filename>" // <optional, inside spells/spellPools/>
@@ -465,6 +467,8 @@ The `uses` variable sets how many uses this feature has, and when used checkboxe
 }
 ```
 The `lineage` variable in the race.json is a Flag, making it so that this trait will appear if that and the *race-lineage* variable in the code block have the same value, while also swapping out the "Trait" badge for a "Lineage" badge.
+
+The `grantedFeats` variable works the same as on Class Features: a single feat filename directly grants that feat automatically, while multiple entries and/or feat router filenames from `feats/featRouters/` (such as `["skilled", "origin-feats"]` on Human's **Versatile** trait) prompt the player to pick their feat during **Step 3: Features Options** of Character Creation.
 
 The `uses` variable sets how many uses this feature has, and when used checkboxes will appear at the top right of that feature's line acording to the value it was set. For the amount of uses it accepts single numbers and in string it accepts math (+, -,, *, /) and will also automatically imput the value of a core DnD ability.
 

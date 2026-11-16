@@ -365,6 +365,419 @@ export function parseFeatSavingThrowProficiencies(featData: any, chosenAbility?:
     return results;
 }
 
+export interface GrantedFeatMilestoneState {
+    featureName: string;
+    options: string[];
+    chosenOptionType: "asi" | "router" | "feat";
+    chosenOptionKey: string;
+    chosenFeatKey: string;
+    asiStat1: string;
+    asiStat2: string;
+    abilityChoices: Record<number, AbilityKey>;
+    featExpertiseChoices: string[];
+}
+
+export function createEmptyGrantedFeatState(featureName: string, options: string[]): GrantedFeatMilestoneState {
+    return {
+        featureName,
+        options: [...options],
+        chosenOptionType: "feat",
+        chosenOptionKey: "",
+        chosenFeatKey: "",
+        asiStat1: "",
+        asiStat2: "",
+        abilityChoices: {},
+        featExpertiseChoices: []
+    };
+}
+
+/** Populates a grouped Feat dropdown (`Origin Feats`, `General Feats`, `Epic Boons`, Homebrew) excluding owned slugs. */
+export function populateGroupedFeatSelect(
+    selectEl: HTMLSelectElement,
+    availableFeats: FeatPoolEntry[],
+    excludeFeatSlugs: Set<string>,
+    placeholderText: string = "-- Select Feat to Add --"
+) {
+    selectEl.empty();
+    selectEl.createEl("option", { text: placeholderText, value: "" });
+
+    const categoryGroups: Record<string, FeatPoolEntry[]> = {
+        "Origin Feats": [],
+        "General Feats": [],
+        "Epic Boons": [],
+        "Other / Homebrew Feats": []
+    };
+    const categoryBucketMap: Record<string, string> = {
+        "origin feat": "Origin Feats",
+        "general feat": "General Feats",
+        "epic boon": "Epic Boons"
+    };
+
+    availableFeats.forEach(feat => {
+        if (excludeFeatSlugs.has(normalizeFeatKey(feat.id))) return;
+        const bucketKey = categoryBucketMap[feat.category.toLowerCase()] || "Other / Homebrew Feats";
+        categoryGroups[bucketKey].push(feat);
+    });
+
+    Object.entries(categoryGroups).forEach(([groupLabel, entries]) => {
+        if (entries.length === 0) return;
+        const optGroup = selectEl.createEl("optgroup", { attr: { label: groupLabel } });
+        entries.forEach(feat => {
+            optGroup.createEl("option", { text: feat.name, value: feat.id });
+        });
+    });
+}
+
+async function renderGrantedFeatMilestoneCard(opts: {
+    app: App;
+    settings: DnDPluginSettings;
+    parentEl: HTMLElement;
+    headerLabel: string;
+    cardCls?: string;
+    descriptionHint?: string;
+    state: GrantedFeatMilestoneState;
+    getCurrentStats: () => Record<string, number>;
+    existingSavingThrows: AbilityKey[];
+    knownSkillsForExpertise: string[];
+    getAlreadyUsedExpertise: () => string[];
+    onStateChange?: () => void | Promise<void>;
+}): Promise<boolean> {
+    const {
+        app,
+        settings,
+        parentEl,
+        headerLabel,
+        cardCls = "dnd-form-card",
+        descriptionHint,
+        state,
+        getCurrentStats,
+        existingSavingThrows,
+        knownSkillsForExpertise,
+        getAlreadyUsedExpertise,
+        onStateChange
+    } = opts;
+
+    interface ClassifiedOption {
+        key: string;
+        type: "asi" | "router" | "feat";
+        label: string;
+        routerMap?: Record<string, string>;
+        featData?: any;
+    }
+
+    const classifiedOptions: ClassifiedOption[] = [];
+    for (const optKey of state.options) {
+        if (optKey === "ability-score-improvement") {
+            classifiedOptions.push({
+                key: optKey,
+                type: "asi",
+                label: "Ability Score Improvement (+2 / +1 & +1)"
+            });
+        } else {
+            const routerMap = await getFeatMapData(app, settings, optKey);
+            if (routerMap && typeof routerMap === "object") {
+                classifiedOptions.push({
+                    key: optKey,
+                    type: "router",
+                    label: formatFeatureOrSlug(optKey),
+                    routerMap
+                });
+            } else {
+                const featData = await getExtraFeat(app, settings, optKey);
+                classifiedOptions.push({
+                    key: optKey,
+                    type: "feat",
+                    label: featData?.name || formatFeatureOrSlug(optKey),
+                    featData
+                });
+            }
+        }
+    }
+
+    if (classifiedOptions.length === 0) return false;
+
+    const cardDiv = parentEl.createDiv({ cls: cardCls });
+    cardDiv.createEl("label", { text: headerLabel, cls: "dnd-form-label-bold" });
+    if (descriptionHint && descriptionHint.trim()) {
+        cardDiv.createEl("small", { text: descriptionHint.trim(), cls: "dnd-form-hint-block" });
+    }
+
+    const optionContainer = cardDiv.createDiv();
+
+    const renderFeatSubControls = async (targetEl: HTMLElement, featKey: string, preserveSubState: boolean) => {
+        targetEl.empty();
+        if (!preserveSubState) {
+            state.abilityChoices = {};
+            state.featExpertiseChoices = [];
+        }
+        if (!featKey) {
+            await onStateChange?.();
+            return;
+        }
+
+        const featData = await getExtraFeat(app, settings, featKey);
+        if (!featData) {
+            await onStateChange?.();
+            return;
+        }
+
+        const currentStats = getCurrentStats();
+        const improvements = parseFeatAbilityImprovements(featData);
+        const hasImprovedAbilitySave = featData.proficiencySavingThrow && (
+            featData.proficiencySavingThrow === "improvedAbility" ||
+            featData.proficiencySavingThrow === "improveAbility" ||
+            featData.proficiencySavingThrow === "chosen" ||
+            (Array.isArray(featData.proficiencySavingThrow) && featData.proficiencySavingThrow.some((s: string) => {
+                const lower = String(s).toLowerCase();
+                return lower === "improvedability" || lower === "improveability" || lower === "chosen";
+            }))
+        );
+
+        if (improvements.length > 0) {
+            const improveDiv = targetEl.createDiv({ cls: "dnd-form-group" });
+            for (let impIdx = 0; impIdx < improvements.length; impIdx++) {
+                const imp = improvements[impIdx];
+                if (!imp.isChoice) {
+                    const stat = imp.options[0];
+                    const curr = currentStats[stat] || 10;
+                    const newVal = Math.min(imp.maxCap, curr + imp.amount);
+                    const isCapped = curr >= imp.maxCap;
+                    const badge = improveDiv.createDiv({ cls: "dnd-form-hint" });
+                    badge.createEl("strong", { text: `+${imp.amount} ${formatFeatureOrSlug(stat)}: ` });
+                    badge.createSpan({ text: `Current: ${curr} → New: ${newVal}${isCapped ? ` (Capped at ${imp.maxCap})` : ""}` });
+                } else {
+                    const choiceGroup = improveDiv.createDiv({ cls: "dnd-form-group" });
+                    choiceGroup.createEl("label", {
+                        text: `Choose Ability Score (+${imp.amount}, max ${imp.maxCap}):`,
+                        cls: "dnd-form-label-sm"
+                    });
+                    const selectEl = choiceGroup.createEl("select", { cls: "dnd-modal-form-input" });
+                    selectEl.createEl("option", { text: "-- Select an Ability to Improve --", value: "" });
+                    imp.options.forEach(ab => {
+                        const curr = currentStats[ab] || 10;
+                        const newVal = Math.min(imp.maxCap, curr + imp.amount);
+                        const isCapped = curr >= imp.maxCap;
+                        const isAlreadyProficient = hasImprovedAbilitySave && existingSavingThrows.includes(ab);
+
+                        const tags: string[] = [];
+                        if (isCapped) tags.push("Maxed");
+                        if (isAlreadyProficient) tags.push("Already Proficient");
+                        const tagStr = tags.length > 0 ? ` (${tags.join(', ')})` : "";
+
+                        const optEl = selectEl.createEl("option", {
+                            text: `${formatFeatureOrSlug(ab)} (${curr} → ${newVal})${tagStr}`,
+                            value: ab
+                        });
+                        if (isCapped || isAlreadyProficient) optEl.disabled = true;
+                    });
+                    if (preserveSubState && state.abilityChoices[impIdx]) {
+                        selectEl.value = state.abilityChoices[impIdx];
+                    }
+                    selectEl.onchange = async (e) => {
+                        const val = (e.target as HTMLSelectElement).value as AbilityKey;
+                        if (val && ALL_ABILITIES.includes(val)) {
+                            state.abilityChoices[impIdx] = val;
+                        } else {
+                            delete state.abilityChoices[impIdx];
+                        }
+                        await onStateChange?.();
+                    };
+                }
+            }
+
+            if (hasImprovedAbilitySave) {
+                const saveNote = improveDiv.createDiv({ cls: "dnd-form-hint" });
+                saveNote.createEl("small", { text: "Granted Saving Throw: You gain saving throw proficiency in the chosen ability." });
+            }
+        }
+
+        const explicitSaves = parseFeatSavingThrowProficiencies(featData);
+        if (explicitSaves.length > 0) {
+            const saveDiv = targetEl.createDiv({ cls: "dnd-form-hint" });
+            saveDiv.createEl("strong", { text: "Granted Saving Throw Proficiency: " });
+            saveDiv.createSpan({ text: explicitSaves.map(s => formatFeatureOrSlug(s)).join(', ') });
+        }
+
+        if (featData.grantedExpertise && Array.isArray(featData.grantedExpertise) && featData.grantedExpertise.length === 2) {
+            const featPool: string[] = Array.isArray(featData.grantedExpertise[0]) ? featData.grantedExpertise[0] : [];
+            const featExpCount: number = Number(featData.grantedExpertise[1]) || 0;
+
+            if (featExpCount > 0) {
+                if (!preserveSubState || !Array.isArray(state.featExpertiseChoices) || state.featExpertiseChoices.length !== featExpCount) {
+                    state.featExpertiseChoices = Array(featExpCount).fill("");
+                }
+
+                const expDiv = targetEl.createDiv({ cls: "dnd-form-group" });
+                expDiv.createEl("label", {
+                    text: `Granted Expertise (${featExpCount} ${featExpCount === 1 ? 'Choice' : 'Choices'}):`,
+                    cls: "dnd-form-label-sm"
+                });
+
+                let eligibleSkills = [...new Set(knownSkillsForExpertise.map(s => String(s).trim()).filter(Boolean))];
+                if (featPool.length > 0) {
+                    const lowerPool = featPool.map(e => String(e).toLowerCase());
+                    eligibleSkills = eligibleSkills.filter(s => lowerPool.includes(String(s).toLowerCase()));
+                }
+
+                const usedSet = new Set(getAlreadyUsedExpertise().map(u => String(u).toLowerCase()));
+                eligibleSkills = eligibleSkills.filter(s => !usedSet.has(String(s).toLowerCase()));
+
+                if (eligibleSkills.length === 0) {
+                    expDiv.createEl("p", {
+                        text: "You have no eligible skill proficiencies available to gain Expertise in.",
+                        cls: "dnd-error-text dnd-form-note"
+                    });
+                } else {
+                    for (let i = 0; i < featExpCount; i++) {
+                        const row = expDiv.createDiv({ cls: "dnd-form-slot-row" });
+                        row.createEl("small", { text: `Choice ${i + 1}:`, cls: "dnd-form-slot-label-sm" });
+                        const selectEl = row.createEl("select", { cls: "dnd-flex-1" });
+                        selectEl.createEl("option", { text: "-- Select Expertise --", value: "" });
+
+                        eligibleSkills.forEach(skill => {
+                            selectEl.createEl("option", {
+                                text: skill.replace(/\b\w/g, c => c.toUpperCase()),
+                                value: skill
+                            });
+                        });
+
+                        if (preserveSubState && state.featExpertiseChoices[i]) {
+                            selectEl.value = state.featExpertiseChoices[i];
+                        }
+
+                        selectEl.onchange = async (e) => {
+                            state.featExpertiseChoices[i] = (e.target as HTMLSelectElement).value;
+                            await onStateChange?.();
+                        };
+                    }
+                }
+            }
+        }
+
+        await onStateChange?.();
+    };
+
+    const renderActiveOption = async (opt: ClassifiedOption, preserveState: boolean) => {
+        optionContainer.empty();
+        state.chosenOptionKey = opt.key;
+        state.chosenOptionType = opt.type;
+        if (!preserveState) {
+            state.chosenFeatKey = "";
+            state.asiStat1 = "";
+            state.asiStat2 = "";
+            state.abilityChoices = {};
+            state.featExpertiseChoices = [];
+        }
+
+        if (opt.type === "asi") {
+            const asiContainer = optionContainer.createDiv({ cls: "dnd-form-grid-2" });
+            const statSelect1 = asiContainer.createEl("select", { cls: "dnd-modal-form-input" });
+            const statSelect2 = asiContainer.createEl("select", { cls: "dnd-modal-form-input" });
+            const currentStats = getCurrentStats();
+
+            const updateAsiOptions = () => {
+                const val1 = statSelect1.value || state.asiStat1;
+                const val2 = statSelect2.value || state.asiStat2;
+
+                statSelect1.empty();
+                statSelect2.empty();
+
+                statSelect1.createEl("option", { text: "-- +1 Stat --", value: "" });
+                statSelect2.createEl("option", { text: "-- +1 Stat --", value: "" });
+
+                ALL_ABILITIES.forEach(s => {
+                    const base = currentStats[s] || 10;
+
+                    const new1 = Math.min(20, base + 1);
+                    const capped1 = base >= 20;
+                    const label1 = `${formatFeatureOrSlug(s)} (${base} → ${new1})${capped1 ? " (Maxed)" : ""}`;
+                    const opt1 = statSelect1.createEl("option", { text: label1, value: s });
+                    if (capped1) opt1.disabled = true;
+
+                    const effectiveBase2 = (val1 === s) ? base + 1 : base;
+                    const new2 = Math.min(20, effectiveBase2 + 1);
+                    const capped2 = effectiveBase2 >= 20;
+                    const label2 = `${formatFeatureOrSlug(s)} (${effectiveBase2} → ${new2})${capped2 ? " (Maxed)" : ""}`;
+                    const opt2 = statSelect2.createEl("option", { text: label2, value: s });
+                    if (capped2) opt2.disabled = true;
+                });
+
+                statSelect1.value = val1 || "";
+                statSelect2.value = val2 || "";
+            };
+
+            updateAsiOptions();
+
+            statSelect1.onchange = async (e) => {
+                state.asiStat1 = (e.target as HTMLSelectElement).value;
+                updateAsiOptions();
+                await onStateChange?.();
+            };
+            statSelect2.onchange = async (e) => {
+                state.asiStat2 = (e.target as HTMLSelectElement).value;
+                updateAsiOptions();
+                await onStateChange?.();
+            };
+
+            optionContainer.createEl("small", {
+                text: "Select two +1 ability increases (or pick the same stat twice for +2, max 20).",
+                cls: "dnd-form-hint"
+            });
+        } else if (opt.type === "router") {
+            const featSelect = optionContainer.createEl("select", { cls: "dnd-modal-form-input dnd-form-group" });
+            featSelect.createEl("option", { text: `-- Select ${opt.label} --`, value: "" });
+            if (opt.routerMap) {
+                Object.entries(opt.routerMap).forEach(([key, name]) => {
+                    featSelect.createEl("option", { text: String(name), value: key });
+                });
+            }
+            const abilityContainer = optionContainer.createDiv();
+            if (preserveState && state.chosenFeatKey) {
+                featSelect.value = state.chosenFeatKey;
+                await renderFeatSubControls(abilityContainer, state.chosenFeatKey, true);
+            }
+            featSelect.onchange = async (e) => {
+                state.chosenFeatKey = (e.target as HTMLSelectElement).value;
+                await renderFeatSubControls(abilityContainer, state.chosenFeatKey, false);
+            };
+        } else if (opt.type === "feat") {
+            state.chosenFeatKey = opt.key;
+            const infoDiv = optionContainer.createDiv({ cls: "dnd-form-group" });
+            infoDiv.createEl("span", {
+                text: `Granted Feat: ${opt.label}`,
+                cls: "dnd-form-label-bold"
+            });
+            const abilityContainer = optionContainer.createDiv();
+            await renderFeatSubControls(abilityContainer, state.chosenFeatKey, preserveState);
+        }
+
+        await onStateChange?.();
+    };
+
+    const matchedSaved = state.chosenOptionKey
+        ? classifiedOptions.find(o => o.key === state.chosenOptionKey)
+        : undefined;
+    const initialOpt = matchedSaved || classifiedOptions[0];
+    const shouldPreserve = Boolean(matchedSaved);
+
+    if (classifiedOptions.length > 1) {
+        const choiceSelect = cardDiv.createEl("select", { cls: "dnd-modal-form-input dnd-form-group" });
+        classifiedOptions.forEach((opt) => {
+            choiceSelect.createEl("option", { text: opt.label, value: opt.key });
+        });
+        choiceSelect.value = initialOpt.key;
+        choiceSelect.onchange = async (e) => {
+            const selectedKey = (e.target as HTMLSelectElement).value;
+            const foundOpt = classifiedOptions.find(o => o.key === selectedKey) || classifiedOptions[0];
+            await renderActiveOption(foundOpt, false);
+        };
+        cardDiv.insertBefore(choiceSelect, optionContainer);
+    }
+
+    await renderActiveOption(initialOpt, shouldPreserve);
+    return true;
+}
+
 // --- Weapon Mastery State Helpers ---
 // Structure in frontmatter: DnD_weaponMastery: '[ "<AvailableSlots>", [ "<WeaponSlug>", ... ] ]'
 export interface WeaponMasteryState {
@@ -1334,6 +1747,131 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
         return `${basePart} Bludgeoning`;
     }
 
+    /**
+     * Extracts a feat slug from `feature.grantedFeats` only when it is a single
+     * unconditional feat (length === 1 and neither ASI nor a feat router).
+     * Multi-option arrays (e.g. `["skilled", "origin-feats"]`) represent user choices stored in `DnD_extraFeats`.
+     */
+    async extractSingleAutoGrantedFeat(
+        grantedFeats: any,
+        fetchOptions?: any,
+        routerCache?: Map<string, boolean>
+    ): Promise<string | null> {
+        if (!Array.isArray(grantedFeats) || grantedFeats.length !== 1) return null;
+        const cleanKey = String(grantedFeats[0] ?? "").trim();
+        if (!cleanKey || cleanKey.startsWith("<") || cleanKey.toLowerCase().endsWith(".json")) return null;
+        const slug = normalizeFeatKey(cleanKey);
+        if (!slug || slug === "ability-score-improvement") return null;
+
+        if (routerCache?.has(slug)) {
+            return routerCache.get(slug) ? null : cleanKey;
+        }
+        const routerData = await getFeatMapData(this.app, fetchOptions || this.settings, cleanKey);
+        const isRouter = !!routerData;
+        routerCache?.set(slug, isRouter);
+        return isRouter ? null : cleanKey;
+    }
+
+    /** Collects single unconditional `grantedFeats` from active Race & Lineage traits. */
+    async collectRaceAutoGrantedFeats(
+        raceInput: any,
+        raceLineageInput: any,
+        fetchOptions?: any,
+        routerCache?: Map<string, boolean>
+    ): Promise<string[]> {
+        const opts = fetchOptions || this.settings;
+        const cache = routerCache || new Map<string, boolean>();
+        const hasValid = (val: any): boolean => {
+            if (val === undefined || val === null) return false;
+            const s = String(val).trim();
+            return s !== "" && !s.startsWith("<");
+        };
+        const raceArray = raceInput
+            ? (Array.isArray(raceInput) ? raceInput.filter(hasValid) : (hasValid(raceInput) ? [raceInput] : []))
+            : [];
+        const lineageClean = hasValid(raceLineageInput) ? String(raceLineageInput).trim().toLowerCase() : "";
+
+        const out: string[] = [];
+        for (const raceName of raceArray) {
+            const raceData = await getRaceData(this.app, opts, raceName);
+            const raceTraits = raceData?.traits || raceData?.features;
+            if (!Array.isArray(raceTraits)) continue;
+            for (const trait of raceTraits) {
+                if (!trait) continue;
+                if (trait.lineage && String(trait.lineage).trim().toLowerCase() !== lineageClean) continue;
+                const autoFeat = await this.extractSingleAutoGrantedFeat(trait.grantedFeats, opts, cache);
+                if (autoFeat && !out.some(f => normalizeFeatKey(f) === normalizeFeatKey(autoFeat))) {
+                    out.push(autoFeat);
+                }
+            }
+        }
+        return out;
+    }
+
+    /** Collects single unconditional `grantedFeats` across Class/Subclass features (1..level) and Race/Lineage traits. */
+    async collectAutoGrantedFeats(params: {
+        classInput: any;
+        classLevelsInput?: any;
+        totalLevel: number;
+        subclassInput?: any;
+        raceInput?: any;
+        raceLineageInput?: any;
+        fetchOptions?: any;
+    }): Promise<string[]> {
+        const opts = params.fetchOptions || this.settings;
+        const routerCache = new Map<string, boolean>();
+        const hasValid = (val: any): boolean => {
+            if (val === undefined || val === null) return false;
+            const s = String(val).trim();
+            return s !== "" && !s.startsWith("<");
+        };
+        const out: string[] = [];
+        const pushUnique = (f: string | null) => {
+            if (f && !out.some(existing => normalizeFeatKey(existing) === normalizeFeatKey(f))) {
+                out.push(f);
+            }
+        };
+
+        const classArray = params.classInput
+            ? (Array.isArray(params.classInput) ? params.classInput.filter(hasValid) : (hasValid(params.classInput) ? [params.classInput] : []))
+            : [];
+        const rawSubclassArray = params.subclassInput
+            ? (Array.isArray(params.subclassInput) ? params.subclassInput.filter(hasValid) : (hasValid(params.subclassInput) ? [params.subclassInput] : []))
+            : [];
+
+        for (let idx = 0; idx < classArray.length; idx++) {
+            const className = classArray[idx];
+            const currentClassLevel = (classArray.length > 1 && Array.isArray(params.classLevelsInput) && params.classLevelsInput.length > idx)
+                ? (Number(params.classLevelsInput[idx]) || 1)
+                : (Number(params.totalLevel) || 1);
+
+            const classData = await getClassData(this.app, opts, className);
+            if (!classData?.features) continue;
+
+            let subclassData: any = null;
+            const subName = rawSubclassArray[idx] || null;
+            const grantedSubFile = this.findGrantedSubclass(classData, currentClassLevel);
+            if (subName && grantedSubFile) {
+                subclassData = await getSubclassData(this.app, opts, grantedSubFile, subName);
+            }
+
+            for (let lvl = 1; lvl <= currentClassLevel; lvl++) {
+                const lvlFeatures: any[] = [
+                    ...(classData.features[lvl.toString()] || []),
+                    ...(subclassData?.[lvl.toString()] || [])
+                ];
+                for (const feature of lvlFeatures) {
+                    if (!feature) continue;
+                    pushUnique(await this.extractSingleAutoGrantedFeat(feature.grantedFeats, opts, routerCache));
+                }
+            }
+        }
+
+        const raceAutoFeats = await this.collectRaceAutoGrantedFeats(params.raceInput, params.raceLineageInput, opts, routerCache);
+        raceAutoFeats.forEach(pushUnique);
+        return out;
+    }
+
     // --- Helper: Deterministic Speed & Speed Modifier Calculator adhering to D&D 5.5e ---
     async resolveCharacterSpeedModifiers(
         classInput: any,
@@ -1345,7 +1883,9 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
         baseSpeedInput: number = 30,
         customSpeedModInput: number = 0,
         subclassInput?: any,
-        fetchOptions?: any
+        fetchOptions?: any,
+        raceInput?: any,
+        raceLineageInput?: any
     ): Promise<SpeedModifierBreakdown> {
         const options = fetchOptions || this.settings;
         const parsedTotalLevel = Math.max(1, Number(totalLevel) || 1);
@@ -1491,6 +2031,17 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
             if (bgStr && !bgStr.startsWith("<")) allFeatIds.push(bgStr);
         }
 
+        const autoGrantedForSpeed = await this.collectAutoGrantedFeats({
+            classInput,
+            classLevelsInput,
+            totalLevel: parsedTotalLevel,
+            subclassInput,
+            raceInput,
+            raceLineageInput,
+            fetchOptions: options
+        });
+        allFeatIds.push(...autoGrantedForSpeed);
+
         const uniqueFeatIds = [...new Set(allFeatIds.map(f => f.trim()).filter(f => f && !f.startsWith("<")))];
 
         for (const featId of uniqueFeatIds) {
@@ -1546,9 +2097,12 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
         extraFeatsInput: any,
         backgroundFeatInput: any,
         subclassInput?: any,
-        fetchOptions?: any
+        fetchOptions?: any,
+        raceInput?: any,
+        raceLineageInput?: any
     ): Promise<{ totalSlots: number; breakdown: { source: string; count: number }[] }> {
         const opts = fetchOptions || this.settings;
+        const routerCache = new Map<string, boolean>();
         const hasValid = (val: any): boolean => {
             if (val === undefined || val === null) return false;
             const s = String(val).trim();
@@ -1598,14 +2152,8 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                         }
                     }
 
-                    if (Array.isArray(feature.grantedFeats)) {
-                        for (const gf of feature.grantedFeats) {
-                            const gfStr = String(gf).trim();
-                            if (gfStr && !gfStr.endsWith(".json") && gfStr.toLowerCase() !== "ability-score-improvement") {
-                                autoGrantedFeats.push(gfStr);
-                            }
-                        }
-                    }
+                    const autoFeat = await this.extractSingleAutoGrantedFeat(feature.grantedFeats, opts, routerCache);
+                    if (autoFeat) autoGrantedFeats.push(autoFeat);
                 }
             }
 
@@ -1615,6 +2163,9 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                 }
             }
         }
+
+        const raceAutoFeats = await this.collectRaceAutoGrantedFeats(raceInput, raceLineageInput, opts, routerCache);
+        autoGrantedFeats.push(...raceAutoFeats);
 
         // Gather all feats (extraFeats + backgroundFeat + auto-granted feats)
         const featList: string[] = [];
@@ -2013,6 +2564,7 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
             return 0;
         };
 
+        const routerCache = new Map<string, boolean>();
         const breakdown: { source: string; amount: number }[] = [];
         let autoBonus = 0;
 
@@ -2052,14 +2604,8 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                         });
                         autoBonus += val;
                     }
-                    if (Array.isArray(feature.grantedFeats)) {
-                        for (const gf of feature.grantedFeats) {
-                            const gfStr = String(gf).trim();
-                            if (gfStr && !gfStr.endsWith(".json") && gfStr.toLowerCase() !== "ability-score-improvement") {
-                                autoGrantedFeats.push(gfStr);
-                            }
-                        }
-                    }
+                    const autoFeat = await this.extractSingleAutoGrantedFeat(feature.grantedFeats, opts, routerCache);
+                    if (autoFeat) autoGrantedFeats.push(autoFeat);
                 }
             }
         }
@@ -2082,14 +2628,8 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                     });
                     autoBonus += val;
                 }
-                if (Array.isArray(feature.grantedFeats)) {
-                    for (const gf of feature.grantedFeats) {
-                        const gfStr = String(gf).trim();
-                        if (gfStr && !gfStr.endsWith(".json") && gfStr.toLowerCase() !== "ability-score-improvement") {
-                            autoGrantedFeats.push(gfStr);
-                        }
-                    }
-                }
+                const autoFeat = await this.extractSingleAutoGrantedFeat(feature.grantedFeats, opts, routerCache);
+                if (autoFeat) autoGrantedFeats.push(autoFeat);
             }
         }
 
@@ -2600,6 +3140,7 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
             let finalExtraFeats = parseExtraFeatsList(extraFeats);
             let hasActiveSubclass = false;
 
+            const autoGrantedRouterCache = new Map<string, boolean>();
             if (classArray.length > 0) {
                 for (let index = 0; index < classArray.length; index++) {
                     const className = classArray[index];
@@ -2627,26 +3168,29 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                         for (let i = 1; i <= currentClassLevel; i++) {
                             const levelFeatures = classData.features[i.toString()];
                             if (levelFeatures) {
-                                levelFeatures.forEach((feature: any) => {
-                                    if (feature.grantedFeats && Array.isArray(feature.grantedFeats)) {
-                                        finalExtraFeats.push(...feature.grantedFeats);
-                                    }
-                                });
+                                for (const feature of levelFeatures) {
+                                    const autoFeat = await this.extractSingleAutoGrantedFeat(feature.grantedFeats, fetchOptions, autoGrantedRouterCache);
+                                    if (autoFeat) finalExtraFeats.push(autoFeat);
+                                }
                             }
 
                             if (subclassData) {
                                 const subLevelFeatures = subclassData[i.toString()];
                                 if (subLevelFeatures) {
-                                    subLevelFeatures.forEach((feature: any) => {
-                                        if (feature.grantedFeats && Array.isArray(feature.grantedFeats)) {
-                                            finalExtraFeats.push(...feature.grantedFeats);
-                                        }
-                                    });
+                                    for (const feature of subLevelFeatures) {
+                                        const autoFeat = await this.extractSingleAutoGrantedFeat(feature.grantedFeats, fetchOptions, autoGrantedRouterCache);
+                                        if (autoFeat) finalExtraFeats.push(autoFeat);
+                                    }
                                 }
                             }
                         }
                     }
                 }
+            }
+
+            if (race) {
+                const raceAutoFeats = await this.collectRaceAutoGrantedFeats(race, raceLineage, fetchOptions, autoGrantedRouterCache);
+                finalExtraFeats.push(...raceAutoFeats);
             }
 
             // Clean up the gathered feats to remove engine mechanics and router files
@@ -2914,7 +3458,9 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                 finalExtraFeats,
                 bgFeatForMastery,
                 subclass,
-                fetchOptions
+                fetchOptions,
+                race,
+                raceLineage
             );
             if (isUnloaded || myRenderId !== activeRenderId) return;
 
@@ -5413,6 +5959,7 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
         const rawSubclass = frontmatter["DnD_subclass"] ?? frontmatter["DnD_Subclass"];
         const subclassArray = rawSubclass ? (Array.isArray(rawSubclass) ? rawSubclass : [rawSubclass]) : [];
         const extraFeatIds: string[] = [];
+        const restRouterCache = new Map<string, boolean>();
 
         for (let i = 0; i < classArray.length; i++) {
             const className = String(classArray[i] || "").trim();
@@ -5424,7 +5971,8 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                     if (Array.isArray(feats)) {
                         for (const f of feats) {
                             registerFeatureRest(f);
-                            if (Array.isArray(f.grantedFeats)) extraFeatIds.push(...f.grantedFeats);
+                            const autoFeat = await this.extractSingleAutoGrantedFeat(f.grantedFeats, fetchOptions, restRouterCache);
+                            if (autoFeat) extraFeatIds.push(autoFeat);
                         }
                     }
                 }
@@ -5438,7 +5986,8 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                             if (Array.isArray(subFeats)) {
                                 for (const sf of subFeats) {
                                     registerFeatureRest(sf);
-                                    if (Array.isArray(sf.grantedFeats)) extraFeatIds.push(...sf.grantedFeats);
+                                    const autoFeat = await this.extractSingleAutoGrantedFeat(sf.grantedFeats, fetchOptions, restRouterCache);
+                                    if (autoFeat) extraFeatIds.push(autoFeat);
                                 }
                             }
                         }
@@ -5456,13 +6005,21 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
             }
         }
 
-        // 3. Race Traits
+        // 3. Race & Lineage Traits
         const rawRace = frontmatter["DnD_race"];
         const raceName = Array.isArray(rawRace) ? rawRace[0] : rawRace;
+        const rawRaceLineage = frontmatter["DnD_raceLineage"];
+        const cleanRaceLineage = rawRaceLineage && typeof rawRaceLineage === "string" ? rawRaceLineage.trim().toLowerCase() : "";
         if (raceName && typeof raceName === "string" && !raceName.trim().startsWith("<")) {
             const raceData = await getRaceData(this.app, fetchOptions, raceName.trim());
-            if (raceData && Array.isArray(raceData.traits)) {
-                for (const t of raceData.traits) registerFeatureRest(t);
+            const raceTraits = raceData?.traits || raceData?.features;
+            if (raceData && Array.isArray(raceTraits)) {
+                for (const t of raceTraits) {
+                    if (t.lineage && String(t.lineage).trim().toLowerCase() !== cleanRaceLineage) continue;
+                    registerFeatureRest(t);
+                    const autoFeat = await this.extractSingleAutoGrantedFeat(t.grantedFeats, fetchOptions, restRouterCache);
+                    if (autoFeat) extraFeatIds.push(autoFeat);
+                }
             }
         }
 
@@ -5762,6 +6319,7 @@ class CharacterWizardModal extends Modal {
     availableClasses: string[] = [];
     availableRaces: string[] = [];
     availableBackgrounds: string[] = [];
+    availableFeats: FeatPoolEntry[] = [];
     availableItems: { id: string; name: string; type: string }[] = [];
     availableWeapons: { id: string; name: string; damage: string; mastery: string }[] = [];
     availableArmors: { id: string; name: string; ac: string; category: string }[] = [];
@@ -5775,13 +6333,41 @@ class CharacterWizardModal extends Modal {
         weapon: "", weaponDamage: "", armor: "", armorAc: "",
         isWeaponCustom: false, isArmorCustom: false,
         weaponMasteries: [] as string[],
-        languages: "", extraFeats: "", toolProficiencies: "", speed: 30, maxHealth: 0,
+        languages: "", extraFeats: [] as string[], toolProficiencies: "", speed: 30, maxHealth: 0,
         chosenSkills: [],
         chosenBgSkills: [],
         chosenAbilityBonuses: [],
         classChoices: [], // Stores the dynamic Class Choices [Router, Key, Level, ChoiceIndex]
         expertiseChoices: [],
+        grantedFeatSelections: {} as Record<string, GrantedFeatMilestoneState>,
     };
+
+    private pruneGrantedFeatSelectionsByPrefix(prefix: string) {
+        if (!this.wizardData.grantedFeatSelections || typeof this.wizardData.grantedFeatSelections !== "object") return;
+        for (const key of Object.keys(this.wizardData.grantedFeatSelections)) {
+            if (key.startsWith(prefix)) {
+                delete this.wizardData.grantedFeatSelections[key];
+            }
+        }
+    }
+
+    getWizardGrantedFeatKeys(): string[] {
+        const out: string[] = [];
+        const selections = this.wizardData.grantedFeatSelections || {};
+        for (const sel of Object.values(selections) as GrantedFeatMilestoneState[]) {
+            if (sel && sel.chosenOptionType !== "asi" && sel.chosenFeatKey) {
+                out.push(sel.chosenFeatKey);
+            }
+        }
+        return out;
+    }
+
+    getCompiledExtraFeats(): string[] {
+        return parseExtraFeatsList([
+            ...this.getWizardGrantedFeatKeys(),
+            ...parseExtraFeatsList(this.wizardData.extraFeats)
+        ]);
+    }
 
     // Incremented on every renderStep() call so stale (slower) async renders are discarded
     private renderToken = 0;
@@ -5859,6 +6445,7 @@ class CharacterWizardModal extends Modal {
         this.availableClasses = await getRouterDisplayNames("classes.json", classesMap);
         this.availableRaces = await getRouterDisplayNames("races.json", racesMap);
         this.availableBackgrounds = await getObjectKeys("backgrounds.json", backgroundsMap);
+        this.availableFeats = await getAvailableFeats(this.app, this.plugin.settings);
 
         // Populate Weapon & Armor pools from native + custom rulebook items.json
         const itemLookupKeys = new Set<string>(Object.keys(itemsMap || {}));
@@ -5936,7 +6523,7 @@ class CharacterWizardModal extends Modal {
         } else if (this.currentStep === 2) {
             await this.renderStepTwo(stepContainer);
         } else if (this.currentStep === 3) {
-            await this.renderStepThree(stepContainer); // NEW Class Options Step
+            await this.renderStepThree(stepContainer); // Features Options Step
         } else if (this.currentStep === 4) {
             await this.renderStepFour(stepContainer); // Equipment Step
         } else if (this.currentStep === 5) {
@@ -6001,6 +6588,13 @@ class CharacterWizardModal extends Modal {
         levelInput.min = "1"; levelInput.max = "20";
         levelInput.onchange = async (e) => {
             this.wizardData.level = Number((e.target as HTMLInputElement).value) || 1;
+            const newLvl = Number(this.wizardData.level) || 1;
+            for (const key of Object.keys(this.wizardData.grantedFeatSelections || {})) {
+                const lvlMatch = key.match(/:lvl(\d+):/);
+                if (lvlMatch && Number(lvlMatch[1]) > newLvl) {
+                    delete this.wizardData.grantedFeatSelections[key];
+                }
+            }
             await this.renderStep();
         };
 
@@ -6015,6 +6609,7 @@ class CharacterWizardModal extends Modal {
         raceSelect.onchange = async (e) => {
             this.wizardData.race = (e.target as HTMLSelectElement).value;
             this.wizardData.raceLineage = "";
+            this.pruneGrantedFeatSelectionsByPrefix("race:");
             await this.renderStep();
         };
 
@@ -6030,7 +6625,10 @@ class CharacterWizardModal extends Modal {
                     linSelect.createEl("option", { text: "-- Select a Lineage --", value: "" });
                     Array.from(lineages).forEach((l: any) => linSelect.createEl("option", { text: l, value: l }));
                     linSelect.value = this.wizardData.raceLineage || "";
-                    linSelect.onchange = (e) => this.wizardData.raceLineage = (e.target as HTMLSelectElement).value;
+                    linSelect.onchange = (e) => {
+                        this.wizardData.raceLineage = (e.target as HTMLSelectElement).value;
+                        this.pruneGrantedFeatSelectionsByPrefix("race:");
+                    };
                 }
             }
         }
@@ -6046,6 +6644,9 @@ class CharacterWizardModal extends Modal {
         classSelect.onchange = async (e) => {
             this.wizardData.dndClass = (e.target as HTMLSelectElement).value;
             this.wizardData.subclass = "";
+            this.wizardData.classChoices = [];
+            this.pruneGrantedFeatSelectionsByPrefix("class:");
+            this.pruneGrantedFeatSelectionsByPrefix("subclass:");
             await this.renderStep();
         };
 
@@ -6067,6 +6668,7 @@ class CharacterWizardModal extends Modal {
                         subSelect.value = this.wizardData.subclass || "";
                         subSelect.onchange = async (e) => {
                             this.wizardData.subclass = (e.target as HTMLSelectElement).value;
+                            this.pruneGrantedFeatSelectionsByPrefix("subclass:");
                             await this.renderStep();
                         };
                     }
@@ -6324,12 +6926,19 @@ class CharacterWizardModal extends Modal {
     }
 
     async renderStepThree(container: HTMLElement) {
-        container.createEl("h3", { text: "Class Options", cls: "dnd-class-header" });
-        container.createEl("p", { text: "Select your specialized class features.", cls: "dnd-form-hint-block" });
+        container.createEl("h3", { text: "Features Options", cls: "dnd-class-header" });
+        container.createEl("p", {
+            text: "Configure your feature choices, race/class granted feats, and optional extra feats.",
+            cls: "dnd-form-hint-block"
+        });
 
         let hasChoices = false;
+        const wizardLevelNum = Number(this.wizardData.level) || 1;
+        if (!this.wizardData.grantedFeatSelections || typeof this.wizardData.grantedFeatSelections !== "object") {
+            this.wizardData.grantedFeatSelections = {};
+        }
 
-        // NEW: Fetch Background Skills so we know what they are proficient in for Expertise!
+        // Gather Skills from Step 2 & Background so Expertise selectors know eligible proficiencies
         let availableProficiencies: string[] = [];
         availableProficiencies.push(...(this.wizardData.chosenSkills || []));
         availableProficiencies.push(...(this.wizardData.chosenBgSkills || []));
@@ -6338,21 +6947,18 @@ class CharacterWizardModal extends Modal {
             const bgData = await getBackgroundData(this.app, this.plugin.settings, this.wizardData.background);
             if (bgData?.skills) availableProficiencies.push(...bgData.skills);
         }
-        // Clean and lowercase the pool for clean dropdowns
         availableProficiencies = [...new Set(availableProficiencies.filter(s => s !== "").map(s => s.toLowerCase()))];
 
+        let classData: any = null;
+        let subclassData: any = null;
         if (this.wizardData.dndClass) {
-            const classData = await getClassData(this.app, this.plugin.settings, this.wizardData.dndClass);
-
-            // NEW: Fetch Subclass data if granted at or before this level!
-            let subclassData: any = null;
-            const grantedSubclassFile = this.plugin.findGrantedSubclass(classData, Number(this.wizardData.level) || 1);
+            classData = await getClassData(this.app, this.plugin.settings, this.wizardData.dndClass);
+            const grantedSubclassFile = this.plugin.findGrantedSubclass(classData, wizardLevelNum);
             if (this.wizardData.subclass && grantedSubclassFile) {
                 subclassData = await getSubclassData(this.app, this.plugin.settings, grantedSubclassFile, this.wizardData.subclass);
             }
 
             if (classData && classData.features) {
-                const wizardLevelNum = Number(this.wizardData.level) || 1;
                 const { slotsByRouter } = this.plugin.resolveClassChoiceRoutersUpToLevel(classData, subclassData, wizardLevelNum);
 
                 // Prune any stale classChoices if the user changed class or lowered level
@@ -6407,7 +7013,7 @@ class CharacterWizardModal extends Modal {
                     }
                 }
 
-                // 2. Render Expertise Engine (grantedExpertise) across levels 1..wizardLevelNum
+                // 2. Render Class/Subclass Expertise Engine (grantedExpertise) across levels 1..wizardLevelNum
                 for (let lvl = 1; lvl <= wizardLevelNum; lvl++) {
                     const targetLevel = lvl.toString();
                     let levelFeatures: any[] = [];
@@ -6477,32 +7083,217 @@ class CharacterWizardModal extends Modal {
             }
         }
 
+        // 3. Gather Race Trait & Class/Subclass Granted Feats Milestones
+        interface WizardFeatMilestone {
+            slotKey: string;
+            featureName: string;
+            headerLabel: string;
+            descriptionHint?: string;
+            grantedFeats: string[];
+        }
+        const featMilestones: WizardFeatMilestone[] = [];
+
+        if (this.wizardData.race) {
+            const raceData = await getRaceData(this.app, this.plugin.settings, this.wizardData.race);
+            const raceTraits = raceData?.traits || raceData?.features;
+            const lineageClean = String(this.wizardData.raceLineage || "").trim().toLowerCase();
+            if (Array.isArray(raceTraits)) {
+                raceTraits.forEach((trait: any, tIdx: number) => {
+                    if (!trait) return;
+                    if (trait.lineage && String(trait.lineage).trim().toLowerCase() !== lineageClean) return;
+                    if (Array.isArray(trait.grantedFeats) && trait.grantedFeats.length > 0) {
+                        const raceSlug = toSlug(this.wizardData.race) || "race";
+                        const traitName = trait.name || "Trait";
+                        const traitSlug = toSlug(trait.name || `trait-${tIdx}`) || `trait-${tIdx}`;
+                        featMilestones.push({
+                            slotKey: `race:${raceSlug}:${traitSlug}:${tIdx}`,
+                            featureName: traitName,
+                            headerLabel: `Race Trait: ${traitName}`,
+                            descriptionHint: typeof trait.description === "string" ? trait.description : undefined,
+                            grantedFeats: trait.grantedFeats
+                        });
+                    }
+                });
+            }
+        }
+
+        if (classData?.features) {
+            const classSlug = toSlug(this.wizardData.dndClass) || "class";
+            for (let lvl = 1; lvl <= wizardLevelNum; lvl++) {
+                const lvlKey = lvl.toString();
+                const classLvlFeatures = classData.features[lvlKey];
+                if (Array.isArray(classLvlFeatures)) {
+                    classLvlFeatures.forEach((feature: any, fIdx: number) => {
+                        if (feature && Array.isArray(feature.grantedFeats) && feature.grantedFeats.length > 0) {
+                            const featureName = feature.name || "Granted Feats";
+                            const fSlug = toSlug(feature.name || `feat-${fIdx}`) || `feat-${fIdx}`;
+                            featMilestones.push({
+                                slotKey: `class:${classSlug}:lvl${lvl}:${fSlug}:${fIdx}`,
+                                featureName,
+                                headerLabel: `Level ${lvl}: ${featureName}`,
+                                grantedFeats: feature.grantedFeats
+                            });
+                        }
+                    });
+                }
+
+                const subLvlFeatures = subclassData?.[lvlKey];
+                if (Array.isArray(subLvlFeatures)) {
+                    subLvlFeatures.forEach((feature: any, fIdx: number) => {
+                        if (feature && Array.isArray(feature.grantedFeats) && feature.grantedFeats.length > 0) {
+                            const featureName = feature.name || "Granted Feats";
+                            const fSlug = toSlug(feature.name || `subfeat-${fIdx}`) || `subfeat-${fIdx}`;
+                            featMilestones.push({
+                                slotKey: `subclass:${classSlug}:lvl${lvl}:${fSlug}:${fIdx}`,
+                                featureName,
+                                headerLabel: `Level ${lvl} (${this.wizardData.subclass}): ${featureName}`,
+                                grantedFeats: feature.grantedFeats
+                            });
+                        }
+                    });
+                }
+            }
+        }
+
+        // Prune stale selections that no longer match active Race/Lineage/Class/Subclass/Level
+        const validSlotKeys = new Set(featMilestones.map(m => m.slotKey));
+        for (const existingKey of Object.keys(this.wizardData.grantedFeatSelections)) {
+            if (!validSlotKeys.has(existingKey)) {
+                delete this.wizardData.grantedFeatSelections[existingKey];
+            }
+        }
+
+        const existingSavingThrows = parseSavingThrows(classData?.savingThroughProf || []);
+        const getBaselineStats = (): Record<string, number> => {
+            const base: Record<string, number> = {};
+            for (const stat of ALL_ABILITIES) {
+                const rawBase = Number(this.wizardData[stat]) || 10;
+                const bgBonus = Array.isArray(this.wizardData.chosenAbilityBonuses)
+                    ? this.wizardData.chosenAbilityBonuses.filter((b: string) => String(b).toLowerCase() === stat).length
+                    : 0;
+                base[stat] = rawBase + bgBonus;
+            }
+            return base;
+        };
+
+        let renderOptionalExtraFeatsSection = () => {};
+
+        for (const milestone of featMilestones) {
+            let state = this.wizardData.grantedFeatSelections[milestone.slotKey] as GrantedFeatMilestoneState | undefined;
+            if (!state) {
+                state = createEmptyGrantedFeatState(milestone.featureName, milestone.grantedFeats);
+                this.wizardData.grantedFeatSelections[milestone.slotKey] = state;
+            } else {
+                state.options = [...milestone.grantedFeats];
+                state.featureName = milestone.featureName;
+            }
+
+            const rendered = await renderGrantedFeatMilestoneCard({
+                app: this.app,
+                settings: this.plugin.settings,
+                parentEl: container,
+                headerLabel: milestone.headerLabel,
+                cardCls: "dnd-form-card",
+                descriptionHint: milestone.descriptionHint,
+                state,
+                getCurrentStats: getBaselineStats,
+                existingSavingThrows,
+                knownSkillsForExpertise: availableProficiencies,
+                getAlreadyUsedExpertise: () => (this.wizardData.expertiseChoices || [])
+                    .map((c: any[]) => String(c?.[0] || "").toLowerCase())
+                    .filter(Boolean),
+                onStateChange: () => {
+                    renderOptionalExtraFeatsSection();
+                }
+            });
+            if (rendered) hasChoices = true;
+        }
+
         if (!hasChoices) {
             container.createEl("p", {
-                text: "No additional class choices available for this level.",
+                text: "No automatic race or class feature choices available for this level.",
                 cls: "dnd-form-note"
             });
         }
+
+        // 4. Optional Extra Feats Section (moved from Step 4)
+        if (!this.availableFeats || this.availableFeats.length === 0) {
+            this.availableFeats = await getAvailableFeats(this.app, this.plugin.settings);
+        }
+        const featDisplayMap: Record<string, FeatPoolEntry> = {};
+        for (const f of this.availableFeats) {
+            featDisplayMap[normalizeFeatKey(f.id)] = f;
+        }
+
+        const optionalSectionDiv = container.createDiv({ cls: "dnd-form-divider-section" });
+        renderOptionalExtraFeatsSection = () => {
+            optionalSectionDiv.empty();
+            optionalSectionDiv.createEl("h4", { text: "Extra Feats (Optional)", cls: "dnd-wizard-subhead" });
+            optionalSectionDiv.createEl("small", {
+                text: "Optionally add any extra bonus or homebrew feats (saved to DnD_extraFeats).",
+                cls: "dnd-form-hint-block"
+            });
+
+            const currentOptional = parseExtraFeatsList(this.wizardData.extraFeats);
+            this.wizardData.extraFeats = currentOptional;
+
+            const listDiv = optionalSectionDiv.createDiv({ cls: "dnd-manage-scroll-list" });
+            if (currentOptional.length === 0) {
+                listDiv.createEl("p", { text: "No optional extra feats added.", cls: "dnd-manage-empty-box" });
+            } else {
+                currentOptional.forEach((featEntry, idx) => {
+                    const row = listDiv.createDiv({ cls: "dnd-modal-list-row" });
+                    const meta = featDisplayMap[normalizeFeatKey(featEntry)];
+                    const labelWrap = row.createEl("span", { cls: "dnd-modal-row-name dnd-feat-row-label" });
+                    labelWrap.createSpan({ text: meta?.name || formatFeatureOrSlug(featEntry) });
+                    if (meta?.category) {
+                        labelWrap.createSpan({ text: meta.category, cls: "dnd-level-badge dnd-feat-cat-badge" });
+                    }
+
+                    const delBtn = row.createEl("button", { text: "✕", cls: "dnd-modal-del-btn" });
+                    delBtn.onclick = () => {
+                        const updated = parseExtraFeatsList(this.wizardData.extraFeats);
+                        updated.splice(idx, 1);
+                        this.wizardData.extraFeats = updated;
+                        renderOptionalExtraFeatsSection();
+                    };
+                });
+            }
+
+            const addDiv = optionalSectionDiv.createDiv({ cls: "dnd-modal-add-bar" });
+            const selectEl = addDiv.createEl("select", { cls: "dnd-modal-add-select" });
+            const excludedSlugs = new Set<string>(
+                [...currentOptional, ...this.getWizardGrantedFeatKeys()]
+                    .map(f => normalizeFeatKey(f))
+                    .filter(Boolean)
+            );
+            populateGroupedFeatSelect(selectEl, this.availableFeats, excludedSlugs, "-- Select Optional Extra Feat --");
+
+            const addBtn = addDiv.createEl("button", { text: "Add Feat" });
+            addBtn.onclick = () => {
+                const chosenId = selectEl.value;
+                if (!chosenId) return;
+                const chosenSlug = normalizeFeatKey(chosenId);
+                const updated = parseExtraFeatsList(this.wizardData.extraFeats);
+                if (!updated.some(f => normalizeFeatKey(f) === chosenSlug)) {
+                    updated.push(chosenId);
+                    this.wizardData.extraFeats = updated;
+                    renderOptionalExtraFeatsSection();
+                }
+            };
+        };
+        renderOptionalExtraFeatsSection();
     }
 
     async renderStepFour(container: HTMLElement) {
-        // Changed the header text slightly since Background is now in Step 1
-        container.createEl("h3", { text: "Equipment & Feats", cls: "dnd-class-header" });
+        container.createEl("h3", { text: "Equipment", cls: "dnd-class-header" });
 
-        // Languages & Feats Grid
-        const extraGrid = container.createDiv({ cls: "dnd-form-grid-2" });
-
-        const langDiv = extraGrid.createDiv();
+        // Languages Input
+        const langDiv = container.createDiv({ cls: "dnd-form-group" });
         langDiv.createEl("label", { text: "Languages: ", cls: "dnd-form-label-sm" });
         const langInput = langDiv.createEl("input", { type: "text", value: this.wizardData.languages, cls: "dnd-modal-form-input" });
         langInput.placeholder = "Common, Elvish...";
         langInput.onchange = (e) => this.wizardData.languages = (e.target as HTMLInputElement).value;
-
-        const featDiv = extraGrid.createDiv();
-        featDiv.createEl("label", { text: "Extra Feats: ", cls: "dnd-form-label-sm" });
-        const featInput = featDiv.createEl("input", { type: "text", value: this.wizardData.extraFeats, cls: "dnd-modal-form-input" });
-        featInput.placeholder = "Tough, Alert...";
-        featInput.onchange = (e) => this.wizardData.extraFeats = (e.target as HTMLInputElement).value;
 
         // Tool Proficiencies Row (Comma-separated input + Quick-Add Rulebook Tool Dropdown)
         const toolsGrid = container.createDiv({ cls: "dnd-form-grid-2" });
@@ -6735,10 +7526,12 @@ class CharacterWizardModal extends Modal {
             this.wizardData.dndClass,
             [Number(this.wizardData.level) || 1],
             Number(this.wizardData.level) || 1,
-            this.wizardData.extraFeats,
+            this.getCompiledExtraFeats(),
             bgDataForMastery?.feat,
             this.wizardData.subclass,
-            this.plugin.settings
+            this.plugin.settings,
+            this.wizardData.race,
+            this.wizardData.raceLineage
         );
         const availableMasterySlots = wizardMasteryCalc.totalSlots;
         if (!Array.isArray(this.wizardData.weaponMasteries)) {
@@ -7045,12 +7838,50 @@ class CharacterWizardModal extends Modal {
             charisma: chaStats.final
         };
 
-        const wizardExtraFeats = Array.isArray(this.wizardData.extraFeats)
-            ? this.wizardData.extraFeats
-            : (typeof this.wizardData.extraFeats === "string"
-                ? this.wizardData.extraFeats.split(',').map((s: string) => s.trim()).filter((s: string) => s !== "")
-                : (this.wizardData.extraFeats ? [this.wizardData.extraFeats] : []));
+        const preFeatureConMod = Math.floor((wizardStatsRecord.constitution - 10) / 2);
+        const wizardExtraFeats = this.getCompiledExtraFeats();
+        const extraFeatSavingThrows: AbilityKey[] = [];
+        const featGrantedExpertise: [string, string][] = [];
 
+        // Apply ASI, choice-based improveAbility, saving throws & expertise from Step 3 grantedFeatSelections
+        for (const [slotKey, sel] of Object.entries(this.wizardData.grantedFeatSelections || {}) as [string, GrantedFeatMilestoneState][]) {
+            if (!sel) continue;
+            if (sel.chosenOptionType === "asi") {
+                if (sel.asiStat1 && ALL_ABILITIES.includes(sel.asiStat1 as AbilityKey)) {
+                    wizardStatsRecord[sel.asiStat1] = Math.min(20, (wizardStatsRecord[sel.asiStat1] || 10) + 1);
+                }
+                if (sel.asiStat2 && ALL_ABILITIES.includes(sel.asiStat2 as AbilityKey)) {
+                    wizardStatsRecord[sel.asiStat2] = Math.min(20, (wizardStatsRecord[sel.asiStat2] || 10) + 1);
+                }
+            } else if (sel.chosenFeatKey) {
+                const fData = await getExtraFeat(this.app, this.plugin.settings, sel.chosenFeatKey);
+                if (fData) {
+                    const improvements = parseFeatAbilityImprovements(fData);
+                    improvements.forEach((imp, impIdx) => {
+                        if (imp.isChoice && sel.abilityChoices?.[impIdx]) {
+                            const targetStat = sel.abilityChoices[impIdx];
+                            if (ALL_ABILITIES.includes(targetStat)) {
+                                wizardStatsRecord[targetStat] = Math.min(imp.maxCap, (wizardStatsRecord[targetStat] || 10) + imp.amount);
+                            }
+                        }
+                    });
+                    const chosenAbilities = Object.values(sel.abilityChoices || {});
+                    const gainedSaves = parseFeatSavingThrowProficiencies(fData, chosenAbilities[0]);
+                    gainedSaves.forEach(s => {
+                        if (!extraFeatSavingThrows.includes(s)) extraFeatSavingThrows.push(s);
+                    });
+                }
+                const lvlMatch = slotKey.match(/:lvl(\d+):/);
+                const grantedLevelStr = lvlMatch ? lvlMatch[1] : "1";
+                if (Array.isArray(sel.featExpertiseChoices)) {
+                    for (const expSkill of sel.featExpertiseChoices) {
+                        if (expSkill) featGrantedExpertise.push([String(expSkill), grantedLevelStr]);
+                    }
+                }
+            }
+        }
+
+        // Apply fixed (!isChoice) improveAbility & explicit saving throws once across all compiled extra feats
         for (const fKey of wizardExtraFeats) {
             if (!fKey) continue;
             const fData = await getExtraFeat(this.app, this.plugin.settings, String(fKey));
@@ -7063,8 +7894,18 @@ class CharacterWizardModal extends Modal {
                         wizardStatsRecord[targetStat] = Math.min(imp.maxCap, curr + imp.amount);
                     }
                 }
+                const explicitSaves = parseFeatSavingThrowProficiencies(fData);
+                explicitSaves.forEach(s => {
+                    if (!extraFeatSavingThrows.includes(s)) extraFeatSavingThrows.push(s);
+                });
             }
         }
+
+        const postFeatureConMod = Math.floor((wizardStatsRecord.constitution - 10) / 2);
+        const featureConDelta = Math.max(0, postFeatureConMod - preFeatureConMod);
+        const finalWizardMaxHealth = (Number(this.wizardData.maxHealth) > 0)
+            ? Number(this.wizardData.maxHealth) + (featureConDelta * wizardLvlNum)
+            : this.wizardData.maxHealth;
 
         // Resolve Speed Modifier deterministically adhering to D&D 5.5e
         const speedCalc = await this.plugin.resolveCharacterSpeedModifiers(
@@ -7077,7 +7918,9 @@ class CharacterWizardModal extends Modal {
             this.wizardData.speed || 30,
             0,
             this.wizardData.subclass,
-            this.plugin.settings
+            this.plugin.settings,
+            this.wizardData.race,
+            this.wizardData.raceLineage
         );
         initialSpeedMod = speedCalc.totalSpeedMod;
 
@@ -7364,14 +8207,22 @@ class CharacterWizardModal extends Modal {
         injectYAML("DnD_skillProficiencies", `'${JSON.stringify(compiledProficiencies)}'`);
 
         // Compile Expertise: [["stealth", "1"]] (using strings in arrays)
-        const finalExpertise = (this.wizardData.expertiseChoices || [])
+        const finalExpertise: [string, string][] = (this.wizardData.expertiseChoices || [])
             .filter((c: any[]) => c[0] !== "")
-            .map((c: any[]) => [String(c[0]), String(c[1])]);
+            .map((c: any[]): [string, string] => [String(c[0]), String(c[1])]);
+        for (const [expSkill, expLvl] of featGrantedExpertise) {
+            if (!finalExpertise.some(e => e[0].toLowerCase() === expSkill.toLowerCase())) {
+                finalExpertise.push([expSkill, expLvl]);
+            }
+        }
         // Wrapping in single quotes prevents Obsidian UI warnings
         injectYAML("DnD_skillExpertise", `'${JSON.stringify(finalExpertise)}'`);
 
-        // Map Class Saving Throw Proficiencies ("savingThroughProf") into DnD_classProficiencies
-        const formattedClassProfs = savingThrows.map((st: string) => String(st).toLowerCase());
+        // Map Class + Feat Saving Throw Proficiencies into DnD_classProficiencies
+        const formattedClassProfs = Array.from(new Set([
+            ...savingThrows.map((st: string) => String(st).toLowerCase()),
+            ...extraFeatSavingThrows
+        ]));
         injectYAML("DnD_classProficiencies", `'${JSON.stringify(formattedClassProfs)}'`);
 
         // --- Core List Variables ---
@@ -7380,7 +8231,7 @@ class CharacterWizardModal extends Modal {
         injectListYAML("DnD_subclass", this.wizardData.subclass);
         injectListYAML("DnD_languages", this.wizardData.languages);
         injectListYAML("DnD_toolProficiencies", this.wizardData.toolProficiencies);
-        injectListYAML("DnD_extraFeats", this.wizardData.extraFeats);
+        injectListYAML("DnD_extraFeats", wizardExtraFeats);
         injectListYAML("DnD_classChosenItems", this.wizardData.classChosenItems);
         injectListYAML("DnD_backgroundChosenItems", this.wizardData.backgroundChosenItems);
         injectYAML("DnD_featureUses", `'[]'`);
@@ -7406,10 +8257,12 @@ class CharacterWizardModal extends Modal {
             this.wizardData.dndClass,
             [Number(this.wizardData.level) || 1],
             Number(this.wizardData.level) || 1,
-            this.wizardData.extraFeats,
+            wizardExtraFeats,
             bgDataStore?.feat,
             this.wizardData.subclass,
-            this.plugin.settings
+            this.plugin.settings,
+            this.wizardData.race,
+            this.wizardData.raceLineage
         );
         const validMastered = Array.isArray(this.wizardData.weaponMasteries)
             ? this.wizardData.weaponMasteries.slice(0, finalMasteryCalc.totalSlots)
@@ -7428,8 +8281,8 @@ class CharacterWizardModal extends Modal {
         injectYAML("DnD_attackStat", attackStat);
 
         // --- Stat variables ---
-        const DnD_current_health = this.wizardData.maxHealth;
-        injectYAML("DnD_maxHealth", this.wizardData.maxHealth);
+        const DnD_current_health = finalWizardMaxHealth;
+        injectYAML("DnD_maxHealth", finalWizardMaxHealth);
         injectYAML("DnD_currentHealth", DnD_current_health);
         injectYAML("DnD_exhaustion", 0);
         injectYAML("DnD_hitDice", `'${serializeHitDiceState(DnD_hit_dice, 0)}'`);
@@ -7787,7 +8640,9 @@ class EquipItemsModal extends Modal {
             frontmatter["DnD_extraFeats"],
             bgData?.feat || frontmatter["DnD_backgroundFeat"],
             frontmatter["DnD_subclass"] ?? frontmatter["DnD_Subclass"],
-            this.plugin.settings
+            this.plugin.settings,
+            frontmatter["DnD_race"],
+            frontmatter["DnD_raceLineage"]
         );
         this.weaponMasteryState.available = masteryCalc.totalSlots;
         this.originalWeaponMasterySerialized = serializeWeaponMasteryState(
@@ -8230,7 +9085,9 @@ class EquipItemsModal extends Modal {
                 frontmatter["DnD_speed"],
                 frontmatter["DnD_customSpeedMod"],
                 frontmatter["DnD_subclass"] ?? frontmatter["DnD_Subclass"],
-                this.plugin.settings
+                this.plugin.settings,
+                frontmatter["DnD_race"],
+                frontmatter["DnD_raceLineage"]
             );
             updates["DnD_speedMod"] = speedCalc.totalSpeedMod;
         }
@@ -9313,6 +10170,7 @@ class ManageCharacterModal extends Modal {
         const subclassArray = classArray.map((_, i) => rawSubclassArray[i] || null);
 
         let finalExtraFeats = parseExtraFeatsList(extraFeats);
+        const modalFeatRouterCache = new Map<string, boolean>();
 
         // 1. Class, Subclass & Class Choices Features
         for (let index = 0; index < classArray.length; index++) {
@@ -9338,9 +10196,8 @@ class ManageCharacterModal extends Modal {
                 const levelFeatures = classData.features[i.toString()];
                 if (Array.isArray(levelFeatures)) {
                     for (const feature of levelFeatures) {
-                        if (feature.grantedFeats && Array.isArray(feature.grantedFeats)) {
-                            finalExtraFeats.push(...feature.grantedFeats);
-                        }
+                        const autoFeat = await this.plugin.extractSingleAutoGrantedFeat(feature.grantedFeats, this.plugin.settings, modalFeatRouterCache);
+                        if (autoFeat) finalExtraFeats.push(autoFeat);
                         if (feature.hide !== true && feature.name) {
                             discovered.add(String(feature.name).trim());
                         }
@@ -9364,9 +10221,8 @@ class ManageCharacterModal extends Modal {
                     const subLevelFeatures = subclassData[i.toString()];
                     if (Array.isArray(subLevelFeatures)) {
                         for (const feature of subLevelFeatures) {
-                            if (feature.grantedFeats && Array.isArray(feature.grantedFeats)) {
-                                finalExtraFeats.push(...feature.grantedFeats);
-                            }
+                            const autoFeat = await this.plugin.extractSingleAutoGrantedFeat(feature.grantedFeats, this.plugin.settings, modalFeatRouterCache);
+                            if (autoFeat) finalExtraFeats.push(autoFeat);
                             if (feature.hide !== true && feature.name) {
                                 discovered.add(String(feature.name).trim());
                             }
@@ -9379,13 +10235,17 @@ class ManageCharacterModal extends Modal {
         // 2. Race Traits
         if (race) {
             const raceData = await getRaceData(this.app, this.plugin.settings, race);
-            if (raceData && Array.isArray(raceData.traits)) {
-                for (const trait of raceData.traits) {
-                    if (trait.hide === true || !trait.name) continue;
+            const raceTraits = raceData?.traits || raceData?.features;
+            if (Array.isArray(raceTraits)) {
+                for (const trait of raceTraits) {
                     if (trait.lineage) {
                         if (!raceLineage || trait.lineage.toLowerCase() !== String(raceLineage).toLowerCase()) continue;
                     }
-                    discovered.add(String(trait.name).trim());
+                    const autoFeat = await this.plugin.extractSingleAutoGrantedFeat(trait.grantedFeats, this.plugin.settings, modalFeatRouterCache);
+                    if (autoFeat) finalExtraFeats.push(autoFeat);
+                    if (trait.hide !== true && trait.name) {
+                        discovered.add(String(trait.name).trim());
+                    }
                 }
             }
         }
@@ -9437,7 +10297,9 @@ class ManageCharacterModal extends Modal {
             this.currentSpeed,
             0,
             subclassVal,
-            this.plugin.settings
+            this.plugin.settings,
+            frontmatter["DnD_race"],
+            frontmatter["DnD_raceLineage"]
         );
         const autoSpeedBonus = (this.speedBreakdown?.classSpeedBonus || 0) + (this.speedBreakdown?.featSpeedBonus || 0);
         if (isInitialLoad) {
@@ -9483,7 +10345,9 @@ class ManageCharacterModal extends Modal {
             this.currentExtraFeats,
             bgFeat,
             subclassVal,
-            this.plugin.settings
+            this.plugin.settings,
+            frontmatter["DnD_race"],
+            frontmatter["DnD_raceLineage"]
         );
         this.weaponMasteryState.available = masteryCalc.totalSlots;
         this.weaponMasteryBreakdown = masteryCalc.breakdown;
@@ -9927,34 +10791,8 @@ class ManageCharacterModal extends Modal {
 
             const addDiv = this.contentContainer.createDiv({ cls: "dnd-modal-add-bar" });
             const selectEl = addDiv.createEl("select", { cls: "dnd-modal-add-select" });
-            selectEl.createEl("option", { text: "-- Select Feat to Add --", value: "" });
-
             const ownedFeatSlugs = new Set(this.currentExtraFeats.map(f => normalizeFeatKey(f)).filter(Boolean));
-            const categoryGroups: Record<string, FeatPoolEntry[]> = {
-                "Origin Feats": [],
-                "General Feats": [],
-                "Epic Boons": [],
-                "Other / Homebrew Feats": []
-            };
-            const categoryBucketMap: Record<string, string> = {
-                "origin feat": "Origin Feats",
-                "general feat": "General Feats",
-                "epic boon": "Epic Boons"
-            };
-
-            this.availableFeats.forEach(feat => {
-                if (ownedFeatSlugs.has(normalizeFeatKey(feat.id))) return;
-                const bucketKey = categoryBucketMap[feat.category.toLowerCase()] || "Other / Homebrew Feats";
-                categoryGroups[bucketKey].push(feat);
-            });
-
-            Object.entries(categoryGroups).forEach(([groupLabel, entries]) => {
-                if (entries.length === 0) return;
-                const optGroup = selectEl.createEl("optgroup", { attr: { label: groupLabel } });
-                entries.forEach(feat => {
-                    optGroup.createEl("option", { text: feat.name, value: feat.id });
-                });
-            });
+            populateGroupedFeatSelect(selectEl, this.availableFeats, ownedFeatSlugs);
 
             const addBtn = addDiv.createEl("button", { text: "Add Feat" });
             addBtn.onclick = async () => {
@@ -10160,7 +10998,9 @@ class ManageCharacterModal extends Modal {
             this.currentSpeed,
             this.currentCustomSpeedMod,
             subclassForSave,
-            this.plugin.settings
+            this.plugin.settings,
+            frontmatter["DnD_race"],
+            frontmatter["DnD_raceLineage"]
         );
         updates["DnD_speedMod"] = speedCalcSave.totalSpeedMod;
 
@@ -10188,7 +11028,9 @@ class ManageCharacterModal extends Modal {
             this.currentExtraFeats,
             bgFeatForSave,
             subclassForSave,
-            this.plugin.settings
+            this.plugin.settings,
+            frontmatter["DnD_race"],
+            frontmatter["DnD_raceLineage"]
         );
         this.weaponMasteryState.available = masteryCalcSave.totalSlots;
 
@@ -10279,17 +11121,7 @@ class LevelUpModal extends Modal {
     milestonesContainer!: HTMLElement;
 
     // Data-Driven Granted Feats & ASI Tracking
-    grantedFeatsState: {
-        featureName: string;
-        options: string[];
-        chosenOptionType: "asi" | "router" | "feat";
-        chosenOptionKey: string;
-        chosenFeatKey: string;
-        asiStat1: string;
-        asiStat2: string;
-        abilityChoices: Record<number, AbilityKey>;
-        featExpertiseChoices: string[];
-    }[] = [];
+    grantedFeatsState: GrantedFeatMilestoneState[] = [];
     currentStats: Record<string, number> = { strength: 10, dexterity: 10, constitution: 10, intelligence: 10, wisdom: 10, charisma: 10 };
     originalConMod: number = 0;
     baseMaxHealthChosen: number = 0;
@@ -10562,7 +11394,9 @@ class LevelUpModal extends Modal {
             frontmatter["DnD_speed"],
             frontmatter["DnD_customSpeedMod"],
             this.currentSubclass ? [this.currentSubclass] : (frontmatter["DnD_subclass"] ?? frontmatter["DnD_Subclass"]),
-            this.plugin.settings
+            this.plugin.settings,
+            frontmatter["DnD_race"],
+            frontmatter["DnD_raceLineage"]
         );
 
         if (this.speedMilestoneBadge && this.currentSpeedCalc) {
@@ -10590,7 +11424,9 @@ class LevelUpModal extends Modal {
             currentFeats,
             bgDataForMastery?.feat || frontmatter["DnD_backgroundFeat"],
             this.currentSubclass ? [this.currentSubclass] : (frontmatter["DnD_subclass"] ?? frontmatter["DnD_Subclass"]),
-            this.plugin.settings
+            this.plugin.settings,
+            frontmatter["DnD_race"],
+            frontmatter["DnD_raceLineage"]
         );
 
         if (this.weaponMasteryMilestoneBadge) {
@@ -10857,341 +11693,48 @@ class LevelUpModal extends Modal {
         }
 
         // 3. Render Data-Driven Granted Feats / ASI Milestones
+        let existingProfsForFeatsRaw = frontmatter["DnD_skillProficiencies"] || [];
+        if (typeof existingProfsForFeatsRaw === "string") {
+            try { existingProfsForFeatsRaw = JSON.parse(existingProfsForFeatsRaw); } catch { existingProfsForFeatsRaw = []; }
+        }
+        const knownSkillsForFeats: string[] = [];
+        (Array.isArray(existingProfsForFeatsRaw) ? existingProfsForFeatsRaw : []).forEach((p: any) => {
+            if (Array.isArray(p) && p.length > 0) knownSkillsForFeats.push(String(p[0]));
+            else if (typeof p === "string") knownSkillsForFeats.push(p);
+        });
+        let existingExpForFeatsRaw = frontmatter["DnD_skillExpertise"] || [];
+        if (typeof existingExpForFeatsRaw === "string") {
+            try { existingExpForFeatsRaw = JSON.parse(existingExpForFeatsRaw); } catch { existingExpForFeatsRaw = []; }
+        }
+        const existingExpForFeats = (Array.isArray(existingExpForFeatsRaw) ? existingExpForFeatsRaw : []).map((e: any) =>
+            Array.isArray(e) ? String(e[0]).toLowerCase() : String(e).toLowerCase()
+        );
+        const existingSavesForFeats = parseSavingThrows(frontmatter["DnD_classProficiencies"]);
+
         for (let mIdx = 0; mIdx < grantedFeatMilestones.length; mIdx++) {
             const milestone = grantedFeatMilestones[mIdx];
-            const state = {
-                featureName: milestone.featureName,
-                options: milestone.grantedFeats,
-                chosenOptionType: "feat" as "asi" | "router" | "feat",
-                chosenOptionKey: "",
-                chosenFeatKey: "",
-                asiStat1: "",
-                asiStat2: "",
-                abilityChoices: {} as Record<number, AbilityKey>,
-                featExpertiseChoices: [] as string[]
-            };
+            const state = createEmptyGrantedFeatState(milestone.featureName, milestone.grantedFeats);
             this.grantedFeatsState.push(state);
 
-            interface ClassifiedOption {
-                key: string;
-                type: "asi" | "router" | "feat";
-                label: string;
-                routerMap?: Record<string, string>;
-                featData?: any;
-            }
-            const classifiedOptions: ClassifiedOption[] = [];
-            for (const optKey of milestone.grantedFeats) {
-                if (optKey === "ability-score-improvement") {
-                    classifiedOptions.push({
-                        key: optKey,
-                        type: "asi",
-                        label: "Ability Score Improvement (+2 / +1 & +1)"
-                    });
-                } else {
-                    const routerMap = await getFeatMapData(this.app, this.plugin.settings, optKey);
-                    if (routerMap && typeof routerMap === "object") {
-                        classifiedOptions.push({
-                            key: optKey,
-                            type: "router",
-                            label: formatFeatureOrSlug(optKey),
-                            routerMap
-                        });
-                    } else {
-                        const featData = await getExtraFeat(this.app, this.plugin.settings, optKey);
-                        classifiedOptions.push({
-                            key: optKey,
-                            type: "feat",
-                            label: featData?.name || formatFeatureOrSlug(optKey),
-                            featData
-                        });
-                    }
+            await renderGrantedFeatMilestoneCard({
+                app: this.app,
+                settings: this.plugin.settings,
+                parentEl: this.milestonesContainer,
+                headerLabel: `Level ${this.newLevel} Milestone: ${milestone.featureName}`,
+                cardCls: "dnd-form-card-active",
+                state,
+                getCurrentStats: () => this.currentStats,
+                existingSavingThrows: existingSavesForFeats,
+                knownSkillsForExpertise: knownSkillsForFeats,
+                getAlreadyUsedExpertise: () => [
+                    ...existingExpForFeats,
+                    ...this.newExpertiseChoices.map(c => c.toLowerCase())
+                ],
+                onStateChange: async () => {
+                    await this.updateRetroactiveConHp();
+                    await this.updateSpeedMilestoneBadge();
                 }
-            }
-
-            if (classifiedOptions.length === 0) continue;
-
-            const cardDiv = this.milestonesContainer.createDiv({ cls: "dnd-form-card-active" });
-            cardDiv.createEl("label", {
-                text: `Level ${this.newLevel} Milestone: ${milestone.featureName}`,
-                cls: "dnd-form-label-bold"
             });
-
-            const optionContainer = cardDiv.createDiv();
-
-            const renderImproveAbilitySub = async (targetEl: HTMLElement, featKey: string) => {
-                targetEl.empty();
-                state.abilityChoices = {};
-                state.featExpertiseChoices = [];
-                if (!featKey) {
-                    await this.updateRetroactiveConHp();
-                    return;
-                }
-
-                const featData = await getExtraFeat(this.app, this.plugin.settings, featKey);
-                if (!featData) {
-                    await this.updateRetroactiveConHp();
-                    return;
-                }
-
-                const improvements = parseFeatAbilityImprovements(featData);
-                const hasImprovedAbilitySave = featData.proficiencySavingThrow && (
-                    featData.proficiencySavingThrow === "improvedAbility" ||
-                    featData.proficiencySavingThrow === "improveAbility" ||
-                    featData.proficiencySavingThrow === "chosen" ||
-                    (Array.isArray(featData.proficiencySavingThrow) && featData.proficiencySavingThrow.some((s: string) => {
-                        const lower = String(s).toLowerCase();
-                        return lower === "improvedability" || lower === "improveability" || lower === "chosen";
-                    }))
-                );
-
-                const existingSavingThrows = hasImprovedAbilitySave
-                    ? parseSavingThrows(frontmatter["DnD_classProficiencies"])
-                    : [];
-
-                if (improvements.length > 0) {
-                    const improveDiv = targetEl.createDiv({ cls: "dnd-form-group" });
-                    for (let impIdx = 0; impIdx < improvements.length; impIdx++) {
-                        const imp = improvements[impIdx];
-                        if (!imp.isChoice) {
-                            const stat = imp.options[0];
-                            const curr = this.currentStats[stat] || 10;
-                            const newVal = Math.min(imp.maxCap, curr + imp.amount);
-                            const isCapped = curr >= imp.maxCap;
-                            const badge = improveDiv.createDiv({ cls: "dnd-form-hint" });
-                            badge.createEl("strong", { text: `+${imp.amount} ${formatFeatureOrSlug(stat)}: ` });
-                            badge.createSpan({ text: `Current: ${curr} → New: ${newVal}${isCapped ? ` (Capped at ${imp.maxCap})` : ""}` });
-                        } else {
-                            const choiceGroup = improveDiv.createDiv({ cls: "dnd-form-group" });
-                            choiceGroup.createEl("label", {
-                                text: `Choose Ability Score (+${imp.amount}, max ${imp.maxCap}):`,
-                                cls: "dnd-form-label-sm"
-                            });
-                            const selectEl = choiceGroup.createEl("select", { cls: "dnd-modal-form-input" });
-                            selectEl.createEl("option", { text: "-- Select an Ability to Improve --", value: "" });
-                            imp.options.forEach(ab => {
-                                const curr = this.currentStats[ab] || 10;
-                                const newVal = Math.min(imp.maxCap, curr + imp.amount);
-                                const isCapped = curr >= imp.maxCap;
-                                const isAlreadyProficient = hasImprovedAbilitySave && existingSavingThrows.includes(ab);
-
-                                const tags: string[] = [];
-                                if (isCapped) tags.push("Maxed");
-                                if (isAlreadyProficient) tags.push("Already Proficient");
-                                const tagStr = tags.length > 0 ? ` (${tags.join(', ')})` : "";
-
-                                const optEl = selectEl.createEl("option", {
-                                    text: `${formatFeatureOrSlug(ab)} (${curr} → ${newVal})${tagStr}`,
-                                    value: ab
-                                });
-                                if (isCapped || isAlreadyProficient) optEl.disabled = true;
-                            });
-                            selectEl.onchange = async (e) => {
-                                const val = (e.target as HTMLSelectElement).value as AbilityKey;
-                                if (val && ALL_ABILITIES.includes(val)) {
-                                    state.abilityChoices[impIdx] = val;
-                                } else {
-                                    delete state.abilityChoices[impIdx];
-                                }
-                                await this.updateRetroactiveConHp();
-                            };
-                        }
-                    }
-
-                    if (hasImprovedAbilitySave) {
-                        const saveNote = improveDiv.createDiv({ cls: "dnd-form-hint" });
-                        saveNote.createEl("small", { text: "Granted Saving Throw: You gain saving throw proficiency in the chosen ability." });
-                    }
-                }
-
-                // Explicit saving throws from feat not tied to improvedAbility
-                const explicitSaves = parseFeatSavingThrowProficiencies(featData);
-                if (explicitSaves.length > 0) {
-                    const saveDiv = targetEl.createDiv({ cls: "dnd-form-hint" });
-                    saveDiv.createEl("strong", { text: "Granted Saving Throw Proficiency: " });
-                    saveDiv.createSpan({ text: explicitSaves.map(s => formatFeatureOrSlug(s)).join(', ') });
-                }
-
-                // Granted Expertise from feat
-                if (featData.grantedExpertise && Array.isArray(featData.grantedExpertise) && featData.grantedExpertise.length === 2) {
-                    const featPool: string[] = Array.isArray(featData.grantedExpertise[0]) ? featData.grantedExpertise[0] : [];
-                    const featExpCount: number = Number(featData.grantedExpertise[1]) || 0;
-
-                    if (featExpCount > 0) {
-                        state.featExpertiseChoices = Array(featExpCount).fill("");
-
-                        const expDiv = targetEl.createDiv({ cls: "dnd-form-group" });
-                        expDiv.createEl("label", {
-                            text: `Granted Expertise (${featExpCount} ${featExpCount === 1 ? 'Choice' : 'Choices'}):`,
-                            cls: "dnd-form-label-sm"
-                        });
-
-                        let existingProfsRaw = frontmatter["DnD_skillProficiencies"] || [];
-                        if (typeof existingProfsRaw === 'string') {
-                            try { existingProfsRaw = JSON.parse(existingProfsRaw); } catch { existingProfsRaw = []; }
-                        }
-
-                        let knownSkills: string[] = [];
-                        (Array.isArray(existingProfsRaw) ? existingProfsRaw : []).forEach((p: any) => {
-                            if (Array.isArray(p) && p.length > 0) knownSkills.push(p[0]);
-                            else if (typeof p === 'string') knownSkills.push(p);
-                        });
-
-                        if (featPool.length > 0) {
-                            const lowerPool = featPool.map(e => String(e).toLowerCase());
-                            knownSkills = knownSkills.filter(s => lowerPool.includes(String(s).toLowerCase()));
-                        }
-
-                        let existingExpRaw = frontmatter["DnD_skillExpertise"] || [];
-                        if (typeof existingExpRaw === 'string') {
-                            try { existingExpRaw = JSON.parse(existingExpRaw); } catch { existingExpRaw = []; }
-                        }
-                        const currentExp = (Array.isArray(existingExpRaw) ? existingExpRaw : []).map((e: any) =>
-                            Array.isArray(e) ? String(e[0]).toLowerCase() : String(e).toLowerCase()
-                        );
-
-                        knownSkills = knownSkills.filter(s =>
-                            !currentExp.includes(String(s).toLowerCase()) &&
-                            !this.newExpertiseChoices.map(c => c.toLowerCase()).includes(String(s).toLowerCase())
-                        );
-
-                        if (knownSkills.length === 0) {
-                            expDiv.createEl("p", {
-                                text: "You have no eligible skill proficiencies available to gain Expertise in.",
-                                cls: "dnd-error-text dnd-form-note"
-                            });
-                        } else {
-                            for (let i = 0; i < featExpCount; i++) {
-                                const row = expDiv.createDiv({ cls: "dnd-form-slot-row" });
-                                row.createEl("small", { text: `Choice ${i + 1}:`, cls: "dnd-form-slot-label-sm" });
-                                const selectEl = row.createEl("select", { cls: "dnd-flex-1" });
-                                selectEl.createEl("option", { text: "-- Select Expertise --", value: "" });
-
-                                knownSkills.forEach(skill => {
-                                    selectEl.createEl("option", {
-                                        text: skill.replace(/\b\w/g, c => c.toUpperCase()),
-                                        value: skill
-                                    });
-                                });
-
-                                selectEl.onchange = (e) => {
-                                    state.featExpertiseChoices[i] = (e.target as HTMLSelectElement).value;
-                                };
-                            }
-                        }
-                    }
-                }
-
-                await this.updateRetroactiveConHp();
-                await this.updateSpeedMilestoneBadge();
-            };
-
-            const renderActiveOption = async (opt: ClassifiedOption) => {
-                optionContainer.empty();
-                state.chosenOptionKey = opt.key;
-                state.chosenOptionType = opt.type;
-                state.chosenFeatKey = "";
-                state.asiStat1 = "";
-                state.asiStat2 = "";
-                state.abilityChoices = {};
-                state.featExpertiseChoices = [];
-
-                if (opt.type === "asi") {
-                    const asiContainer = optionContainer.createDiv({ cls: "dnd-form-grid-2" });
-                    const statSelect1 = asiContainer.createEl("select", { cls: "dnd-modal-form-input" });
-                    const statSelect2 = asiContainer.createEl("select", { cls: "dnd-modal-form-input" });
-
-                    const updateAsiOptions = () => {
-                        const val1 = statSelect1.value;
-                        const val2 = statSelect2.value;
-
-                        statSelect1.empty();
-                        statSelect2.empty();
-
-                        statSelect1.createEl("option", { text: "-- +1 Stat --", value: "" });
-                        statSelect2.createEl("option", { text: "-- +1 Stat --", value: "" });
-
-                        statsList.forEach(s => {
-                            const base = this.currentStats[s] || 10;
-
-                            const new1 = Math.min(20, base + 1);
-                            const capped1 = base >= 20;
-                            const label1 = `${formatFeatureOrSlug(s)} (${base} → ${new1})${capped1 ? " (Maxed)" : ""}`;
-                            const opt1 = statSelect1.createEl("option", { text: label1, value: s });
-                            if (capped1) opt1.disabled = true;
-
-                            const effectiveBase2 = (val1 === s) ? base + 1 : base;
-                            const new2 = Math.min(20, effectiveBase2 + 1);
-                            const capped2 = effectiveBase2 >= 20;
-                            const label2 = `${formatFeatureOrSlug(s)} (${effectiveBase2} → ${new2})${capped2 ? " (Maxed)" : ""}`;
-                            const opt2 = statSelect2.createEl("option", { text: label2, value: s });
-                            if (capped2) opt2.disabled = true;
-                        });
-
-                        statSelect1.value = val1;
-                        statSelect2.value = val2;
-                    };
-
-                    updateAsiOptions();
-
-                    statSelect1.onchange = async (e) => {
-                        state.asiStat1 = (e.target as HTMLSelectElement).value;
-                        updateAsiOptions();
-                        await this.updateRetroactiveConHp();
-                    };
-                    statSelect2.onchange = async (e) => {
-                        state.asiStat2 = (e.target as HTMLSelectElement).value;
-                        updateAsiOptions();
-                        await this.updateRetroactiveConHp();
-                    };
-
-                    optionContainer.createEl("small", {
-                        text: "Constitution increases automatically calculate and apply retroactive Max HP (+1 HP per level) above!",
-                        cls: "dnd-form-hint"
-                    });
-                } else if (opt.type === "router") {
-                    const featSelect = optionContainer.createEl("select", { cls: "dnd-modal-form-input dnd-form-group" });
-                    featSelect.createEl("option", { text: "-- Select a Feat --", value: "" });
-                    if (opt.routerMap) {
-                        Object.entries(opt.routerMap).forEach(([key, name]) => {
-                            featSelect.createEl("option", { text: name as string, value: key });
-                        });
-                    }
-                    const abilityContainer = optionContainer.createDiv();
-                    featSelect.onchange = async (e) => {
-                        state.chosenFeatKey = (e.target as HTMLSelectElement).value;
-                        await renderImproveAbilitySub(abilityContainer, state.chosenFeatKey);
-                        await this.updateSpeedMilestoneBadge();
-                    };
-                } else if (opt.type === "feat") {
-                    state.chosenFeatKey = opt.key;
-                    const infoDiv = optionContainer.createDiv({ cls: "dnd-form-group" });
-                    infoDiv.createEl("span", {
-                        text: `Granted Feat: ${opt.label}`,
-                        cls: "dnd-form-label-bold"
-                    });
-                    const abilityContainer = optionContainer.createDiv();
-                    await renderImproveAbilitySub(abilityContainer, state.chosenFeatKey);
-                }
-
-                await this.updateRetroactiveConHp();
-                await this.updateSpeedMilestoneBadge();
-            };
-
-            if (classifiedOptions.length > 1) {
-                const choiceSelect = cardDiv.createEl("select", { cls: "dnd-modal-form-input dnd-form-group" });
-                classifiedOptions.forEach((opt) => {
-                    choiceSelect.createEl("option", { text: opt.label, value: opt.key });
-                });
-                choiceSelect.onchange = async (e) => {
-                    const selectedKey = (e.target as HTMLSelectElement).value;
-                    const foundOpt = classifiedOptions.find(o => o.key === selectedKey) || classifiedOptions[0];
-                    await renderActiveOption(foundOpt);
-                };
-                cardDiv.insertBefore(choiceSelect, optionContainer);
-                await renderActiveOption(classifiedOptions[0]);
-            } else {
-                await renderActiveOption(classifiedOptions[0]);
-            }
         }
 
         if (this.classChoicesState.length > 0 || this.newGrantedExpertiseCount > 0) {
@@ -11485,7 +12028,9 @@ class LevelUpModal extends Modal {
             frontmatter["DnD_speed"],
             frontmatter["DnD_customSpeedMod"],
             this.currentSubclass ? [this.currentSubclass] : (frontmatter["DnD_subclass"] ?? frontmatter["DnD_Subclass"]),
-            this.plugin.settings
+            this.plugin.settings,
+            frontmatter["DnD_race"],
+            frontmatter["DnD_raceLineage"]
         );
         updates["DnD_speedMod"] = speedCalc.totalSpeedMod;
 
@@ -11499,7 +12044,9 @@ class LevelUpModal extends Modal {
             existingFeats,
             bgDataForMastery?.feat || frontmatter["DnD_backgroundFeat"],
             this.currentSubclass ? [this.currentSubclass] : (frontmatter["DnD_subclass"] ?? frontmatter["DnD_Subclass"]),
-            this.plugin.settings
+            this.plugin.settings,
+            frontmatter["DnD_race"],
+            frontmatter["DnD_raceLineage"]
         );
         const existingMasteryState = parseWeaponMasteryState(frontmatter["DnD_weaponMastery"]);
         updates["DnD_weaponMastery"] = serializeWeaponMasteryState(masteryCalc.totalSlots, existingMasteryState.mastered);
