@@ -4,6 +4,7 @@ import {
     classChoiceRegistry,
     classChoiceRouterRegistry,
     featRegistry, 
+    featRouterRegistry,
     raceRegistry,
     racialSpellsRegistry,
     itemRegistry,
@@ -14,14 +15,12 @@ import {
     racesMap,
     itemsMap,
     rulesMap,
-    generalFeatsMap,
-    epicBoonFeatsMap,
     weaponMasteriesMap,
     spellsMap,
     pastEditionsRegistry
 } from './registry';
 
-export { classChoiceRouterRegistry };
+export { classChoiceRouterRegistry, featRouterRegistry };
 
 import { App, normalizePath } from 'obsidian';
 
@@ -291,29 +290,94 @@ export async function getRacialSpellsData(app: App, settings: FetchSettings, rac
     return resolveByPriority(settings, fetchNative, fetchCustom);
 }
 
+export function toNormalizedFeatSlug(val: any): string {
+    return toSlug(val).replace(/[()]/g, '').replace(/-+/g, '-').replace(/^-+|-+$/g, '');
+}
+
+function isFeatRouterObject(obj: any): boolean {
+    if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return false;
+    if (
+        obj.name !== undefined ||
+        obj.description !== undefined ||
+        obj.category !== undefined ||
+        obj.uses !== undefined ||
+        obj.improveAbility !== undefined ||
+        obj.speedMod !== undefined ||
+        obj.initiativeMod !== undefined ||
+        obj.weaponMastery !== undefined ||
+        obj.proficiencySavingThrow !== undefined ||
+        obj.grantedExpertise !== undefined
+    ) {
+        return false;
+    }
+    return Object.values(obj).every(v => typeof v === 'string');
+}
+
+function resolveFileIdFromRouterMap(routers: Record<string, any> | undefined, searchKey: string): string | null {
+    if (!routers || typeof routers !== 'object') return null;
+    for (const routerDict of Object.values(routers)) {
+        const matched = resolveFileIdFromRouter(routerDict, searchKey);
+        if (matched) return matched;
+    }
+    return null;
+}
+
+async function listCustomFeatRouters(app: App, basePath: string): Promise<{ id: string; data: Record<string, any> }[]> {
+    const out: { id: string; data: Record<string, any> }[] = [];
+    const routersDir = normalizePath(`${basePath}/feats/featRouters`);
+    try {
+        if (await app.vault.adapter.exists(routersDir)) {
+            const listed = await app.vault.adapter.list(routersDir);
+            for (const filePath of listed.files || []) {
+                if (!filePath.toLowerCase().endsWith('.json')) continue;
+                const data = await readCustomJson(app, filePath);
+                if (isFeatRouterObject(data)) {
+                    const fileName = filePath.split('/').pop() || '';
+                    out.push({ id: toSlug(fileName), data });
+                }
+            }
+        }
+    } catch (e) {
+        console.error(`D&D Plugin: Could not list custom feat routers in "${routersDir}"`, e);
+    }
+    return out;
+}
+
 // --- Logic for Fetching Extra Feats ---
 export async function getExtraFeat(app: App, settings: FetchSettings, featName: string) {
     const safeName = Array.isArray(featName) ? featName[0] : featName;
     if (typeof safeName !== 'string' || !safeName.trim()) return null;
+    const rawStem = safeName.trim().replace(/\.json$/i, '');
     const featId = toSlug(safeName);
+    const normSlug = toNormalizedFeatSlug(safeName);
 
     const fetchNative = () => {
-        const targetRegistry = (settings.edition && pastEditionsRegistry[settings.edition])
-            ? pastEditionsRegistry[settings.edition].featRegistry
-            : featRegistry;
+        const edData = (settings.edition && pastEditionsRegistry[settings.edition]) ? pastEditionsRegistry[settings.edition] : null;
+        const targetRegistry = edData ? edData.featRegistry : featRegistry;
 
-        const mappedGeneral = resolveFileIdFromRouter(generalFeatsMap, safeName);
-        const mappedEpic = resolveFileIdFromRouter(epicBoonFeatsMap, safeName);
-        const lookupId = mappedGeneral || mappedEpic || featId;
+        const mappedEdRouter = edData
+            ? (resolveFileIdFromRouterMap(edData.featRouterRegistry, safeName)
+                || resolveFileIdFromRouter(edData.generalFeatsMap, safeName)
+                || resolveFileIdFromRouter(edData.epicBoonFeatsMap, safeName))
+            : null;
+        const mappedNativeRouter = resolveFileIdFromRouterMap(featRouterRegistry, safeName);
+        const lookupCandidates = Array.from(new Set([mappedEdRouter, mappedNativeRouter, featId, normSlug].filter(Boolean))) as string[];
 
-        const directMatch = getIgnoreCase(targetRegistry, lookupId);
-        if (directMatch) return directMatch;
+        for (const cand of lookupCandidates) {
+            const directMatch = getIgnoreCase(targetRegistry, cand);
+            if (directMatch) return directMatch;
+        }
 
         // Fallback: Match by the "name" property inside the feat JSON
         if (targetRegistry && typeof targetRegistry === 'object') {
             for (const featObj of Object.values(targetRegistry)) {
-                if (featObj && typeof featObj === 'object' && featObj.name && toSlug(String(featObj.name)) === featId) {
-                    return featObj;
+                const fRec = featObj as Record<string, any>;
+                if (fRec && typeof fRec === 'object' && fRec.name) {
+                    const objSlug = toSlug(String(fRec.name));
+                    const objNorm = toNormalizedFeatSlug(String(fRec.name));
+                    if (objSlug === featId || (normSlug && objNorm === normSlug)) {
+                        return fRec;
+                    }
                 }
             }
         }
@@ -321,15 +385,44 @@ export async function getExtraFeat(app: App, settings: FetchSettings, featName: 
     };
 
     const fetchCustom = async (basePath: string) => {
-        const mappedFromGeneral = await getCustomMappedName(app, basePath, 'general-feats.json', safeName);
-        const mappedFromEpic = await getCustomMappedName(app, basePath, 'epic-boon-feats.json', safeName);
-        const nativeMapped = resolveFileIdFromRouter(generalFeatsMap, safeName) || resolveFileIdFromRouter(epicBoonFeatsMap, safeName);
-        const candidateIds = Array.from(new Set([mappedFromGeneral, mappedFromEpic, nativeMapped, featId].filter(Boolean))) as string[];
+        const customRouters = await listCustomFeatRouters(app, basePath);
+        let customRouterMapped: string | null = null;
+        for (const r of customRouters) {
+            const matched = resolveFileIdFromRouter(r.data, safeName);
+            if (matched) {
+                customRouterMapped = matched;
+                break;
+            }
+        }
+        const nativeMapped = resolveFileIdFromRouterMap(featRouterRegistry, safeName);
+        const candidateIds = Array.from(new Set([customRouterMapped, nativeMapped, rawStem, featId, normSlug].filter(Boolean))) as string[];
 
         for (const id of candidateIds) {
             const data = await readCustomJson(app, `${basePath}/feats/${id}.json`);
             if (data) return data;
         }
+
+        // Fallback: Match by "name" inside <customRulebook>/feats/*.json (parity with native feat & Class lookups)
+        const featsDir = normalizePath(`${basePath}/feats`);
+        try {
+            if (await app.vault.adapter.exists(featsDir)) {
+                const listed = await app.vault.adapter.list(featsDir);
+                for (const filePath of listed.files || []) {
+                    if (!filePath.toLowerCase().endsWith('.json')) continue;
+                    const data = await readCustomJson(app, filePath);
+                    if (data && typeof data === 'object' && !Array.isArray(data) && data.name) {
+                        const objSlug = toSlug(String(data.name));
+                        const objNorm = toNormalizedFeatSlug(String(data.name));
+                        if (objSlug === featId || (normSlug && objNorm === normSlug)) {
+                            return data;
+                        }
+                    }
+                }
+            }
+        } catch (e) {
+            console.error(`D&D Plugin: Could not scan custom feats in "${featsDir}"`, e);
+        }
+
         return null;
     };
 
@@ -343,14 +436,17 @@ export interface FeatPoolEntry {
 }
 
 const NON_SELECTABLE_FEAT_IDS = new Set([
-    "ability-score-improvement",
-    "general-feats",
-    "epic-boon-feats"
+    "ability-score-improvement"
 ]);
 
 // --- Logic for Listing All Selectable Feats (Native + Custom Rulebook) ---
 export async function getAvailableFeats(app: App, settings: FetchSettings): Promise<FeatPoolEntry[]> {
     const featsMap = new Map<string, FeatPoolEntry>();
+    const excludedIds = new Set<string>(NON_SELECTABLE_FEAT_IDS);
+    Object.keys(featRouterRegistry || {}).forEach(k => {
+        const s = toSlug(k);
+        if (s) excludedIds.add(s);
+    });
 
     const targetRegistry = (settings.edition && pastEditionsRegistry[settings.edition])
         ? pastEditionsRegistry[settings.edition].featRegistry
@@ -359,7 +455,7 @@ export async function getAvailableFeats(app: App, settings: FetchSettings): Prom
     if (targetRegistry && typeof targetRegistry === 'object') {
         for (const [rawKey, rawObj] of Object.entries(targetRegistry)) {
             const id = toSlug(rawKey);
-            if (!id || NON_SELECTABLE_FEAT_IDS.has(id)) continue;
+            if (!id || excludedIds.has(id)) continue;
             const featObj = rawObj as Record<string, any>;
             if (!featObj || typeof featObj !== 'object' || featObj.hide === true) continue;
             const name = String(featObj.name || rawKey).trim();
@@ -370,6 +466,9 @@ export async function getAvailableFeats(app: App, settings: FetchSettings): Prom
 
     const basePath = getCleanCustomBasePath(settings);
     if (basePath) {
+        const customRouters = await listCustomFeatRouters(app, basePath);
+        customRouters.forEach(r => { if (r.id) excludedIds.add(r.id); });
+
         const featsDir = normalizePath(`${basePath}/feats`);
         try {
             if (await app.vault.adapter.exists(featsDir)) {
@@ -378,10 +477,10 @@ export async function getAvailableFeats(app: App, settings: FetchSettings): Prom
                     if (!filePath.toLowerCase().endsWith('.json')) continue;
                     const fileName = filePath.split('/').pop() || '';
                     const id = toSlug(fileName);
-                    if (!id || NON_SELECTABLE_FEAT_IDS.has(id)) continue;
+                    if (!id || excludedIds.has(id)) continue;
 
                     const featObj = await readCustomJson(app, filePath);
-                    if (!featObj || typeof featObj !== 'object' || Array.isArray(featObj)) continue;
+                    if (!featObj || typeof featObj !== 'object' || Array.isArray(featObj) || isFeatRouterObject(featObj)) continue;
 
                     if (featObj.hide === true) {
                         if (settings.customRulebookPriority) featsMap.delete(id);
@@ -625,18 +724,20 @@ export async function getClassChoiceData(app: App, settings: FetchSettings, choi
     return fetchNative();
 }
 
-// --- Logic for Fetching Feat Category Router Maps (general-feats.json & epic-boon-feats.json) ---
+// --- Logic for Fetching Feat Category Router Maps (rulebook/feats/featRouters/*.json) ---
 export async function getFeatMapData(app: App, settings: FetchSettings, featMapName: string) {
     if (!featMapName) return null;
     const cleanKey = featMapName.trim().toLowerCase().replace(/\.json$/i, '');
-    const featRouters: Record<string, any> = {
-        "general-feats": generalFeatsMap,
-        "epic-boon-feats": epicBoonFeatsMap
-    };
+    const slugKey = toSlug(cleanKey);
 
     const fetchNative = () => {
         if (settings.edition && pastEditionsRegistry[settings.edition]) {
             const edData = pastEditionsRegistry[settings.edition];
+            if (edData.featRouterRegistry) {
+                const edRouter = getIgnoreCase(edData.featRouterRegistry, cleanKey)
+                    || (slugKey ? getIgnoreCase(edData.featRouterRegistry, slugKey) : null);
+                if (edRouter) return edRouter;
+            }
             if (cleanKey === "general-feats" && edData.generalFeatsMap && Object.keys(edData.generalFeatsMap).length > 0) {
                 return edData.generalFeatsMap;
             }
@@ -644,12 +745,20 @@ export async function getFeatMapData(app: App, settings: FetchSettings, featMapN
                 return edData.epicBoonFeatsMap;
             }
         }
-        return featRouters[cleanKey] || null;
+        return getIgnoreCase(featRouterRegistry, cleanKey)
+            || (slugKey ? getIgnoreCase(featRouterRegistry, slugKey) : null)
+            || null;
     };
 
     const fetchCustom = async (basePath: string) => {
-        return (await readCustomJson(app, `${basePath}/${cleanKey}.json`))
-            ?? (await readCustomJson(app, `${basePath}/feats/${cleanKey}.json`));
+        const candidates = Array.from(new Set([cleanKey, slugKey].filter(Boolean)));
+        for (const key of candidates) {
+            const data = await readCustomJson(app, `${basePath}/feats/featRouters/${key}.json`);
+            if (data && isFeatRouterObject(data)) {
+                return data;
+            }
+        }
+        return null;
     };
 
     const basePath = getCleanCustomBasePath(settings);

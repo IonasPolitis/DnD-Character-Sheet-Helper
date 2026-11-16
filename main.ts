@@ -1,5 +1,5 @@
 import { App, CachedMetadata, Plugin, PluginSettingTab, Setting, MarkdownPostProcessorContext, parseYaml, MarkdownRenderChild, MarkdownRenderer, TFile, Modal, Notice, MarkdownView, normalizePath, Platform, addIcon } from 'obsidian';
-import { getClassData, getSubclassData, getBackgroundData, getRaceData, getRacialSpellsData, getExtraFeat, getAvailableFeats, FeatPoolEntry, toSlug, getItemData, getRuleData, getSpellData, getSpellsPoolData, getClassChoiceData, getClassChoiceRouterData, classChoiceRouterRegistry, getFeatMapData, getWeaponMasteriesMap, getWeaponMasteryDescription, buildWeaponMasteriesMarkdown } from './data';
+import { getClassData, getSubclassData, getBackgroundData, getRaceData, getRacialSpellsData, getExtraFeat, getAvailableFeats, FeatPoolEntry, toSlug, toNormalizedFeatSlug, getItemData, getRuleData, getSpellData, getSpellsPoolData, getClassChoiceData, getClassChoiceRouterData, classChoiceRouterRegistry, getFeatMapData, getWeaponMasteriesMap, getWeaponMasteryDescription, buildWeaponMasteriesMarkdown } from './data';
 import { MarkdownNotes, classesMap, racesMap, backgroundsMap, itemsMap } from './registry';
 import { THEMES } from './themes';
 import { RIBBON_ICON_SVG } from './ribbon-icon';
@@ -105,7 +105,7 @@ export function parseStringArray(raw: any, stripJsonExt = false): string[] {
 
 /** Normalizes feat IDs and display names into comparable slugs (e.g. `"Magic Initiate (Wizard)"` -> `"magic-initiate-wizard"`). */
 export function normalizeFeatKey(val: any): string {
-    return toSlug(val).replace(/[()]/g, "").replace(/-+/g, "-").replace(/^-+|-+$/g, "");
+    return toNormalizedFeatSlug(val);
 }
 
 /** Parses `DnD_extraFeats` from YAML arrays, JSON strings, or comma-delimited text and deduplicates by feat slug. */
@@ -1491,18 +1491,7 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
             }
         };
 
-        if (Array.isArray(extraFeatsInput)) {
-            extraFeatsInput.forEach(addFeat);
-        } else if (typeof extraFeatsInput === "string" && extraFeatsInput.trim().startsWith("[")) {
-            try {
-                const parsed = JSON.parse(extraFeatsInput.trim());
-                if (Array.isArray(parsed)) parsed.forEach(addFeat);
-            } catch {
-                addFeat(extraFeatsInput);
-            }
-        } else {
-            addFeat(extraFeatsInput);
-        }
+        parseExtraFeatsList(extraFeatsInput).forEach(addFeat);
         addFeat(backgroundFeatInput);
         autoGrantedFeats.forEach(addFeat);
 
@@ -2413,7 +2402,7 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
             const subclassArray = classArray.map((_, i) => rawSubclassArray[i] || null);
 
             // 7. PRE-PASS: Gather all auto-granted feats and determine dynamic subclass level
-            let finalExtraFeats = Array.isArray(extraFeats) ? extraFeats.filter(hasValidValue) : (hasValidValue(extraFeats) ? [extraFeats] : []);
+            let finalExtraFeats = parseExtraFeatsList(extraFeats);
             let hasActiveSubclass = false;
 
             if (classArray.length > 0) {
@@ -2467,18 +2456,22 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
 
             // Clean up the gathered feats to remove engine mechanics and router files
             const validFeats: string[] = [];
+            const seenFeatSlugs = new Set<string>();
             for (const featId of finalExtraFeats) {
-                if (!hasValidValue(featId) || featId === "ability-score-improvement") continue;
+                const cleanFeatId = String(featId ?? "").trim();
+                const featSlug = normalizeFeatKey(cleanFeatId);
+                if (!hasValidValue(cleanFeatId) || featSlug === "ability-score-improvement" || seenFeatSlugs.has(featSlug)) continue;
 
-                const routerData = await getFeatMapData(this.app, fetchOptions, String(featId));
+                const routerData = await getFeatMapData(this.app, fetchOptions, cleanFeatId);
                 const isRouter = !!routerData;
 
                 if (!isRouter) {
-                    validFeats.push(featId);
+                    seenFeatSlugs.add(featSlug);
+                    validFeats.push(cleanFeatId);
                 }
             }
 
-            finalExtraFeats = [...new Set(validFeats)];
+            finalExtraFeats = validFeats;
 
             // Loop through the user's custom section order
             for (const sectionName of this.settings.sectionOrder) {
@@ -2686,7 +2679,7 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
 
                             const badgeText = featData.badge ? featData.badge : (featData.category ? featData.category : "Feat");
                             titleContainer.createEl("span", { text: badgeText, cls: "dnd-level-badge" });
-                            titleContainer.createEl("span", { text: featData.name, cls: "dnd-feature-name" });
+                            titleContainer.createEl("span", { text: featData.name || formatFeatureOrSlug(safeFeatId), cls: "dnd-feature-name" });
                             renderFeatureUses(titleContainer, featData);
 
                             const descDiv = featureBlock.createDiv({ cls: "dnd-feature-desc" });
@@ -5274,12 +5267,7 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
         }
 
         // 5. Extra Feats
-        const rawExtraFeats = frontmatter["DnD_extraFeats"];
-        if (Array.isArray(rawExtraFeats)) {
-            extraFeatIds.push(...rawExtraFeats.map(String));
-        } else if (typeof rawExtraFeats === "string" && rawExtraFeats.trim()) {
-            extraFeatIds.push(rawExtraFeats.trim());
-        }
+        extraFeatIds.push(...parseExtraFeatsList(frontmatter["DnD_extraFeats"]));
         for (const featId of new Set(extraFeatIds)) {
             if (!featId || featId.startsWith("<") || featId === "ability-score-improvement") continue;
             const featData = await getExtraFeat(this.app, fetchOptions, featId);
@@ -9117,7 +9105,7 @@ class ManageCharacterModal extends Modal {
         const rawSubclassArray = Array.isArray(subclass) ? subclass : (subclass ? [subclass] : []);
         const subclassArray = classArray.map((_, i) => rawSubclassArray[i] || null);
 
-        let finalExtraFeats = Array.isArray(extraFeats) ? [...extraFeats] : (extraFeats ? [extraFeats] : []);
+        let finalExtraFeats = parseExtraFeatsList(extraFeats);
 
         // 1. Class, Subclass & Class Choices Features
         for (let index = 0; index < classArray.length; index++) {

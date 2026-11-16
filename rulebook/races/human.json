@@ -15,7 +15,8 @@
             },
             {
                   "name": "Versatile",
-                  "description": "You gain an Origin feat of your choice. Skilled is recommended."
+                  "description": "You gain an Origin feat of your choice. Skilled is recommended.",
+                  "grantedFeats": [ "skilled", "origin-feats" ]
             }
       ]
 }

@@ -251,6 +251,8 @@ rulebook/
 │       │   └── <add your custom class choice routers>
 │       └── <add your custom class choices>
 ├── feats/
+│   ├── featRouters/
+│   │   ├── <add your custom feat routers>
 │   └── <add your custom feats>
 ├── items/
 │   └── <add your custom items>
@@ -268,8 +270,6 @@ rulebook/
 │   └── <add your custom spells>
 ├── backgrounds.json
 ├── classes.json
-├── epic-boon-feats.json
-├── general-feats.json
 ├── items.json
 ├── races.json
 ├── rules.json
@@ -393,7 +393,7 @@ The `grantedSubclases` variable grants the player the Sublcasses that are includ
 
 The `grantedFeats` variable gives the player feat choices or automatic feats when that level is reached. The array can contain:
 - Specific feat filenames (e.g. `"actor"`, `"alert"`): directly grants the feat if only one is listed, or offers a choice between them.
-- Router filenames (e.g. `"general-feats"`, `"epic-boon-feats"`): provides a secondary dropdown allowing the player to pick any feat within that category.
+- Router filenames inside `feats/featRouters/` (e.g. `"general-feats"`, `"epic-boon-feats"`, `"origin-feats"`): provides a secondary dropdown allowing the player to pick any feat within that category.
 - `"ability-score-improvement"`: triggers the standard Ability Score Improvement milestone (+2 to one stat or +1 to two stats) in the Level Up modal.
 
 The `uses` variable sets how many uses this feature has, and when used checkboxes will appear at the top right of that feature's line acording to the value it was set. For the amount of uses it accepts single numbers and in string it accepts math (+, -,, *, /) and will also automatically imput the value of a core DnD ability.

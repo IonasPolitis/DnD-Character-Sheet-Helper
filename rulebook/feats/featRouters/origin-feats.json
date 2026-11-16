@@ -1,0 +1,14 @@
+{
+      "alert": "Alert",
+      "crafter": "Crafter",
+      "healer": "Healer",
+      "lucky": "Lucky",
+      "magic-initiate-cleric": "Magic Initiate -Cleric",
+      "magic-initiate-druid": "Magic Initiate -Druid",
+      "magic-initiate-wizard": "Magic Initiate -Wizard",
+      "musician": "Musician",
+      "savage-attacker": "Savage Attaker",
+      "skilled": "Skilled",
+      "tavern-brawler": "Tavern Brawler",
+      "tough": "Tough"
+}
