@@ -1,3 +1,3 @@
 {
-      "notes": "Version 2.1.1. Added automatic racial/lineage spellcasting & multi-pool Spellbook support (racialSpells routers, elf-cantrips pool, DnD_spellPools / spellPools array, Class > Race ability priority, Manage Character Spellcasting Ability override, Innate spell limit exemption, and Classes in Spellbook previews), live dnd-controls refresh when DnD_spellcastingAbility changes, and mobile layout fixes for the Level Up Max Health input bar."
+      "notes": "Version 2.1.2. Added a Feats tab to Manage Character (DnD_extraFeats), automatic note-title renaming from Character Name in the Creation Wizard, unified Race/Class granted-feat milestones & optional Extra Feats in Wizard Step 3 ('Features Options') and Level Up, dynamic feats/featRouters/ support (including origin-feats and Human Versatile), live Custom Rulebook reload on focus/visibility/external JSON edits, and dnd-features async render & Unarmored Defense fixes."
 }
