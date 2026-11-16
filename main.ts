@@ -1,5 +1,5 @@
 import { App, CachedMetadata, Plugin, PluginSettingTab, Setting, MarkdownPostProcessorContext, parseYaml, MarkdownRenderChild, MarkdownRenderer, TFile, Modal, Notice, MarkdownView, normalizePath, Platform, addIcon } from 'obsidian';
-import { getClassData, getSubclassData, getBackgroundData, getRaceData, getRacialSpellsData, getExtraFeat, getAvailableFeats, FeatPoolEntry, toSlug, toNormalizedFeatSlug, getItemData, getRuleData, getSpellData, getSpellsPoolData, getClassChoiceData, getClassChoiceRouterData, classChoiceRouterRegistry, getFeatMapData, getWeaponMasteriesMap, getWeaponMasteryDescription, buildWeaponMasteriesMarkdown } from './data';
+import { getClassData, getSubclassData, getBackgroundData, getRaceData, getRacialSpellsData, getExtraFeat, getAvailableFeats, FeatPoolEntry, toSlug, toNormalizedFeatSlug, getCleanCustomBasePath, getItemData, getRuleData, getSpellData, getSpellsPoolData, getClassChoiceData, getClassChoiceRouterData, classChoiceRouterRegistry, getFeatMapData, getWeaponMasteriesMap, getWeaponMasteryDescription, buildWeaponMasteriesMarkdown } from './data';
 import { MarkdownNotes, classesMap, racesMap, backgroundsMap, itemsMap } from './registry';
 import { THEMES } from './themes';
 import { RIBBON_ICON_SVG } from './ribbon-icon';
@@ -512,11 +512,131 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
     settings: DnDPluginSettings;
     featureRestTypes: Map<string, "short" | "long"> = new Map();
     activeHeroicInspiration: Set<string> = new Set();
+    rulebookRevision: number = 0;
+    private lastCustomRulebookFingerprint: string | null = null;
+    private isCheckingCustomRulebook = false;
+    private lastRulebookCheckTime = 0;
 
     setHeroicInspiration(sourcePath: string, active: boolean) {
         if (active) this.activeHeroicInspiration.add(sourcePath);
         else this.activeHeroicInspiration.delete(sourcePath);
         window.dispatchEvent(new CustomEvent("dnd-heroic-inspiration-changed", { detail: { sourcePath } }));
+    }
+
+    resetCustomRulebookWatcherState() {
+        this.lastCustomRulebookFingerprint = null;
+        this.lastRulebookCheckTime = 0;
+    }
+
+    refreshOpenSheets(bumpRevision = true) {
+        if (bumpRevision) {
+            this.rulebookRevision++;
+        }
+        this.app.workspace.iterateAllLeaves((leaf) => {
+            if (leaf.view instanceof MarkdownView && leaf.view.file) {
+                const activeFile = leaf.view.file;
+                const cache = this.app.metadataCache.getFileCache(activeFile);
+                if (cache) {
+                    this.app.metadataCache.trigger('changed', activeFile, '', cache);
+                }
+            }
+        });
+    }
+
+    private async computeCustomRulebookFingerprint(basePath: string): Promise<{ fingerprint: string; masteriesStat: string }> {
+        const adapter = this.app.vault.adapter;
+        const jsonPaths = new Set<string>();
+        const dirsToScan = [
+            basePath,
+            `${basePath}/feats`,
+            `${basePath}/feats/featRouters`,
+            `${basePath}/classes`,
+            `${basePath}/classes/classChoices`,
+            `${basePath}/classes/classChoices/classRouterFiles`,
+            `${basePath}/races`,
+            `${basePath}/races/racialSpells`,
+            `${basePath}/spells`,
+            `${basePath}/spells/spellPools`,
+            `${basePath}/items`,
+            `${basePath}/rules`
+        ];
+
+        await Promise.all(dirsToScan.map(async (dir) => {
+            const normDir = normalizePath(dir);
+            try {
+                if (await adapter.exists(normDir)) {
+                    const listed = await adapter.list(normDir);
+                    for (const filePath of listed.files || []) {
+                        if (filePath.toLowerCase().endsWith('.json')) {
+                            jsonPaths.add(normalizePath(filePath));
+                        }
+                    }
+                }
+            } catch {
+                /* Ignore unreadable directories safely */
+            }
+        }));
+
+        const sortedPaths = Array.from(jsonPaths).sort();
+        const stats = await Promise.all(sortedPaths.map(async (p) => {
+            try {
+                const st = await adapter.stat(p);
+                return st ? `${p}:${st.mtime}:${st.size}` : `${p}:present`;
+            } catch {
+                return `${p}:present`;
+            }
+        }));
+
+        const wmPath = normalizePath(`${basePath}/weapon-masteries.json`).toLowerCase();
+        const masteriesStat = stats.find(entry => entry.toLowerCase().startsWith(`${wmPath}:`)) || "";
+        const fingerprint = `${basePath}|${this.settings.customRulebookPriority}|${stats.join('|')}`;
+        return { fingerprint, masteriesStat };
+    }
+
+    async checkCustomRulebookChanges(triggerRefreshIfChanged = true, force = false): Promise<boolean> {
+        if (this.isCheckingCustomRulebook) return false;
+        const now = Date.now();
+        if (!force && now - this.lastRulebookCheckTime < 1500) return false;
+
+        this.isCheckingCustomRulebook = true;
+        this.lastRulebookCheckTime = now;
+        try {
+            const basePath = getCleanCustomBasePath(this.settings);
+            if (!basePath) {
+                const hadPrev = this.lastCustomRulebookFingerprint !== null && this.lastCustomRulebookFingerprint !== "";
+                this.lastCustomRulebookFingerprint = "";
+                if (hadPrev && triggerRefreshIfChanged) {
+                    await this.syncWeaponMasteriesMarkdown();
+                    this.refreshOpenSheets();
+                    return true;
+                }
+                return false;
+            }
+
+            const { fingerprint, masteriesStat } = await this.computeCustomRulebookFingerprint(basePath);
+            if (this.lastCustomRulebookFingerprint === null) {
+                this.lastCustomRulebookFingerprint = fingerprint;
+                return false;
+            }
+
+            if (fingerprint !== this.lastCustomRulebookFingerprint) {
+                const prevParts = this.lastCustomRulebookFingerprint.split('|');
+                const wmPrefix = `${normalizePath(`${basePath}/weapon-masteries.json`).toLowerCase()}:`;
+                const prevMasteriesStat = prevParts.find(p => p.toLowerCase().startsWith(wmPrefix)) || "";
+                this.lastCustomRulebookFingerprint = fingerprint;
+
+                if (masteriesStat !== prevMasteriesStat) {
+                    await this.syncWeaponMasteriesMarkdown();
+                }
+                if (triggerRefreshIfChanged) {
+                    this.refreshOpenSheets();
+                }
+                return true;
+            }
+            return false;
+        } finally {
+            this.isCheckingCustomRulebook = false;
+        }
     }
 
     private touchGuardWindows = new WeakSet<Window>();
@@ -577,32 +697,47 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
         );
 
         // Automatically refresh open character sheets whenever a file inside the Custom Rulebook folder is edited
-        const refreshIfCustomRulebookFile = (filePath: string) => {
-            const basePath = this.settings.customRulebookPath?.replace(/^['"]+|['"]+$/g, '').trim().replace(/^\/+|\/+$/g, '');
+        const refreshIfCustomRulebookFile = (filePath: string, oldPath?: string) => {
+            const basePath = getCleanCustomBasePath(this.settings);
             if (!basePath) return;
-            const normBase = normalizePath(basePath);
-            if (filePath.startsWith(normBase + "/") || filePath === normBase) {
-                if (filePath === normalizePath(`${normBase}/weapon-masteries.json`)) {
-                    void this.syncWeaponMasteriesMarkdown();
-                }
-                this.app.workspace.iterateAllLeaves((leaf) => {
-                    if (leaf.view instanceof MarkdownView && leaf.view.file) {
-                        const activeFile = leaf.view.file;
-                        const cache = this.app.metadataCache.getFileCache(activeFile);
-                        if (cache) {
-                            this.app.metadataCache.trigger('changed', activeFile, '', cache);
-                        }
-                    }
-                });
+            const normBaseLower = normalizePath(basePath).toLowerCase();
+            const isInsideCustomRulebook = (candidate?: string) => {
+                if (!candidate) return false;
+                const normLower = normalizePath(candidate).toLowerCase();
+                return normLower === normBaseLower || normLower.startsWith(normBaseLower + "/");
+            };
+            if (!isInsideCustomRulebook(filePath) && !isInsideCustomRulebook(oldPath)) return;
+
+            const generatedMasteriesMdLower = normalizePath(`${basePath}/markdown/weapon-masteries.md`).toLowerCase();
+            if (!oldPath && normalizePath(filePath).toLowerCase() === generatedMasteriesMdLower) {
+                return;
             }
+
+            if (normalizePath(filePath).toLowerCase() === normalizePath(`${basePath}/weapon-masteries.json`).toLowerCase()) {
+                void this.syncWeaponMasteriesMarkdown();
+            }
+            this.resetCustomRulebookWatcherState();
+            this.refreshOpenSheets();
         };
 
         this.registerEvent(this.app.vault.on('modify', (file) => refreshIfCustomRulebookFile(file.path)));
         this.registerEvent(this.app.vault.on('create', (file) => refreshIfCustomRulebookFile(file.path)));
         this.registerEvent(this.app.vault.on('delete', (file) => refreshIfCustomRulebookFile(file.path)));
+        this.registerEvent(this.app.vault.on('rename', (file, oldPath) => refreshIfCustomRulebookFile(file.path, oldPath)));
 
-        this.app.workspace.onLayoutReady(() => {
-            void this.syncWeaponMasteriesMarkdown();
+        // Fallback watcher for `.json` changes made externally or when Obsidian "Detect all file extensions" is OFF
+        this.registerDomEvent(window, 'focus', () => {
+            void this.checkCustomRulebookChanges(true);
+        });
+        this.registerDomEvent(document, 'visibilitychange', () => {
+            if (document.visibilityState === 'visible') {
+                void this.checkCustomRulebookChanges(true);
+            }
+        });
+
+        this.app.workspace.onLayoutReady(async () => {
+            await this.syncWeaponMasteriesMarkdown();
+            await this.checkCustomRulebookChanges(false, true);
         });
 
         // Register custom ribbon icon from ribbon.svg
@@ -2019,12 +2154,57 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
         const renderChild = new MarkdownRenderChild(el);
         ctx.addChild(renderChild);
 
-        let isUpdatingFeatureUses = false;
+        let activeRenderId = 0;
+        let isUnloaded = false;
+        let lastRenderedRevision = this.rulebookRevision;
+        let pendingSelfSync: {
+            updates: Record<string, string>;
+            excludeKeys: string[];
+            nonSyncSignature: string;
+        } | null = null;
+        let pendingSelfSyncTimer: ReturnType<typeof setTimeout> | null = null;
+
+        const clearPendingSelfSync = () => {
+            pendingSelfSync = null;
+            if (pendingSelfSyncTimer !== null) {
+                clearTimeout(pendingSelfSyncTimer);
+                pendingSelfSyncTimer = null;
+            }
+        };
+
+        const getNonSyncSignature = (fm: Record<string, any> | undefined, excludeKeys: string[]): string => {
+            if (!fm) return '';
+            const excluded = new Set(excludeKeys);
+            const entries = Object.keys(fm)
+                .filter((key) => !excluded.has(key))
+                .sort()
+                .map((key) => [key, fm[key]]);
+            try {
+                return JSON.stringify(entries);
+            } catch {
+                return String(Date.now());
+            }
+        };
+
+        renderChild.register(() => {
+            isUnloaded = true;
+            clearPendingSelfSync();
+        });
 
         // 2. Wrap our entire rendering logic into a reusable function
-        const renderContent = async () => {
+        const renderContent = async (overrideCache?: CachedMetadata | null) => {
+            if (isUnloaded) return;
+            const myRenderId = ++activeRenderId;
+            lastRenderedRevision = this.rulebookRevision;
+
             // Create a temporary wrapper to prevent UI flickering while awaiting data
             const wrapper = document.createElement('div');
+            const commitWrapper = (): boolean => {
+                if (isUnloaded || myRenderId !== activeRenderId) return false;
+                el.empty();
+                el.appendChild(wrapper);
+                return true;
+            };
 
             // Parse the user's code block using Obsidian's built-in YAML parser
             let blockData;
@@ -2032,13 +2212,12 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                 blockData = parseYaml(source);
             } catch (error) {
                 wrapper.createEl("p", { text: "Error: Invalid format in dnd-features block.", cls: "dnd-error" });
-                el.empty();
-                el.appendChild(wrapper);
+                commitWrapper();
                 return;
             }
 
             // 2. Fetch the frontmatter for the current active file
-            const fileCache = this.app.metadataCache.getCache(ctx.sourcePath);
+            const fileCache = overrideCache ?? this.app.metadataCache.getCache(ctx.sourcePath);
             const frontmatter: Record<string, any> = fileCache?.frontmatter || {};
 
             // 3. Helper function to resolve "frontmatter.property" values
@@ -2160,20 +2339,38 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
             }
 
             let featureUsesNeedsSync = false;
+            const performSelfSyncUpdate = async (updates: Record<string, string>) => {
+                if (isUnloaded || myRenderId !== activeRenderId) return;
+                clearPendingSelfSync();
+                const latestFm = this.app.metadataCache.getCache(ctx.sourcePath)?.frontmatter || frontmatter;
+                const excludeKeys = Object.keys(updates);
+                pendingSelfSync = {
+                    updates,
+                    excludeKeys,
+                    nonSyncSignature: getNonSyncSignature(latestFm, excludeKeys)
+                };
+                pendingSelfSyncTimer = setTimeout(() => {
+                    pendingSelfSync = null;
+                    pendingSelfSyncTimer = null;
+                }, 1500);
+
+                try {
+                    await this.updateCharacterFrontmatter(ctx.sourcePath, updates);
+                } catch (err) {
+                    clearPendingSelfSync();
+                    throw err;
+                }
+            };
+
             const saveFeatureUsesToFrontmatter = async () => {
                 const serialized: [string, string, string][] = featureUsesState.map(entry => [
                     String(entry.name),
                     String(entry.max),
                     String(entry.used)
                 ]);
-                isUpdatingFeatureUses = true;
-                try {
-                    await this.updateCharacterFrontmatter(ctx.sourcePath, {
-                        [targetFeatureUsesFmKey]: JSON.stringify(serialized)
-                    });
-                } finally {
-                    setTimeout(() => { isUpdatingFeatureUses = false; }, 150);
-                }
+                await performSelfSyncUpdate({
+                    [targetFeatureUsesFmKey]: JSON.stringify(serialized)
+                });
             };
 
             // Helper: Evaluate a feature's "uses" formula (supports blockData vars, frontmatter vars, and +, -, *, /)
@@ -2378,8 +2575,7 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                     errorBox.createEl("p", {
                         text: `You have multiple classes listed, but the "class-levels" variable is missing or is invalid. Please provide a level for each class.`
                     });
-                    el.empty();
-                    el.appendChild(wrapper);
+                    commitWrapper();
                     return;
                 }
 
@@ -2390,8 +2586,7 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                     errorBox.createEl("p", {
                         text: `The sum of class-levels (${totalClassLevels}) does not match the total level (${parsedLevel}).`
                     });
-                    el.empty();
-                    el.appendChild(wrapper);
+                    commitWrapper();
                     return;
                 }
             }
@@ -2694,8 +2889,7 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                     wrapper.appendChild(sectionWindow);
                 }
             }
-            el.empty();
-            el.appendChild(wrapper);
+            if (!commitWrapper()) return;
 
             // Auto-sync DnD_weaponMastery[0] (available slots) in frontmatter from class/subclass/feat JSONs
             const rawWeaponMasteryProp = blockData.weaponMastery ?? blockData['weapon-mastery'];
@@ -2710,6 +2904,8 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
             const rawWmValue = resolveValue(rawWeaponMasteryProp) ?? frontmatter[targetWeaponMasteryFmKey];
             const currentMasteryState = parseWeaponMasteryState(rawWmValue);
             const bgDataForMastery = background ? await getBackgroundData(this.app, fetchOptions, background) : null;
+            if (isUnloaded || myRenderId !== activeRenderId) return;
+
             const bgFeatForMastery = bgDataForMastery?.feat || frontmatter["DnD_backgroundFeat"];
             const masteryCalc = await this.resolveCharacterWeaponMasterySlots(
                 dndClass,
@@ -2720,6 +2916,8 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                 subclass,
                 fetchOptions
             );
+            if (isUnloaded || myRenderId !== activeRenderId) return;
+
             const expectedSerializedMastery = serializeWeaponMasteryState(masteryCalc.totalSlots, currentMasteryState.mastered);
             const weaponMasteryNeedsSync = (
                 currentMasteryState.available !== masteryCalc.totalSlots ||
@@ -2727,7 +2925,7 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
             );
 
             if (featureUsesNeedsSync || weaponMasteryNeedsSync) {
-                const fmUpdates: Record<string, any> = {};
+                const fmUpdates: Record<string, string> = {};
                 if (featureUsesNeedsSync) {
                     const serializedUses: [string, string, string][] = featureUsesState.map(entry => [
                         String(entry.name),
@@ -2739,12 +2937,7 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                 if (weaponMasteryNeedsSync) {
                     fmUpdates[targetWeaponMasteryFmKey] = expectedSerializedMastery;
                 }
-                isUpdatingFeatureUses = true;
-                try {
-                    await this.updateCharacterFrontmatter(ctx.sourcePath, fmUpdates);
-                } finally {
-                    setTimeout(() => { isUpdatingFeatureUses = false; }, 150);
-                }
+                await performSelfSyncUpdate(fmUpdates);
             }
         };
 
@@ -2753,10 +2946,28 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
 
         // 4. Register Event Listener for Frontmatter Changes
         renderChild.registerEvent(
-            this.app.metadataCache.on('changed', (file) => {
-                if (file.path === ctx.sourcePath && !isUpdatingFeatureUses) {
-                    renderContent();
+            this.app.metadataCache.on('changed', (file, _data, cache) => {
+                if (isUnloaded || file.path !== ctx.sourcePath) return;
+
+                if (this.rulebookRevision !== lastRenderedRevision) {
+                    clearPendingSelfSync();
+                    renderContent(cache);
+                    return;
                 }
+
+                if (pendingSelfSync) {
+                    const incomingFm = cache?.frontmatter;
+                    const nonSyncMatches = getNonSyncSignature(incomingFm, pendingSelfSync.excludeKeys) === pendingSelfSync.nonSyncSignature;
+                    const syncedKeysMatch = Object.entries(pendingSelfSync.updates).every(
+                        ([key, val]) => String(incomingFm?.[key] ?? '') === val
+                    );
+                    clearPendingSelfSync();
+                    if (nonSyncMatches && syncedKeysMatch) {
+                        return;
+                    }
+                }
+
+                renderContent(cache);
             })
         );
     }
@@ -7351,15 +7562,7 @@ class DnDSettingsTab extends PluginSettingTab {
 
     // Triggers all open Markdown notes to re-render safely when rulebook settings change
     private refreshOpenSheets() {
-        this.app.workspace.iterateAllLeaves((leaf) => {
-            if (leaf.view instanceof MarkdownView && leaf.view.file) {
-                const file = leaf.view.file;
-                const cache = this.app.metadataCache.getFileCache(file);
-                if (cache) {
-                    this.app.metadataCache.trigger('changed', file, '', cache);
-                }
-            }
-        });
+        this.plugin.refreshOpenSheets();
     }
 
     display(): void {
@@ -7393,6 +7596,8 @@ class DnDSettingsTab extends PluginSettingTab {
                 .onChange(async (value) => {
                     this.plugin.settings.customRulebookPath = value;
                     await this.plugin.saveSettings();
+                    this.plugin.resetCustomRulebookWatcherState();
+                    await this.plugin.checkCustomRulebookChanges(false, true);
                     await this.plugin.syncWeaponMasteriesMarkdown();
                     this.refreshOpenSheets();
                 }));
@@ -7405,6 +7610,8 @@ class DnDSettingsTab extends PluginSettingTab {
                 .onChange(async (value) => {
                     this.plugin.settings.customRulebookPriority = value;
                     await this.plugin.saveSettings();
+                    this.plugin.resetCustomRulebookWatcherState();
+                    await this.plugin.checkCustomRulebookChanges(false, true);
                     await this.plugin.syncWeaponMasteriesMarkdown();
                     this.refreshOpenSheets();
                 }));
@@ -10013,37 +10220,40 @@ class ManageCharacterModal extends Modal {
         // --- EXECUTE MASS MARKDOWN REPLACEMENT ---
         const file = this.app.vault.getAbstractFileByPath(this.sourcePath);
         if (file instanceof TFile) {
-            await this.app.vault.process(file, (content) => {
-                let updatedContent = content;
+            const bonusRegex = /(bonuses:\s*\n)([\s\S]*?)(?=\n```)/;
+            const profRegex = /(```(?:dnd-)?skills[\s\S]*?proficiencies:\s*\n)([\s\S]*?)(?=\n[ \t]*expertise:)/;
+            const currentContent = await this.app.vault.cachedRead(file);
+            if (bonusRegex.test(currentContent) || profRegex.test(currentContent)) {
+                await this.app.vault.process(file, (content) => {
+                    let updatedContent = content;
 
-                // B. Update Skills Block (if inline lists are used instead of frontmatter pointers)
-                const cSkills = combinedProficiencies.filter(p => p[1] === "class").map(p => `  - ${p[0]}`);
-                const bSkills = combinedProficiencies.filter(p => p[1] === "background").map(p => `  - ${p[0]}`);
-                const eSkills = combinedProficiencies.filter(p => p[1] === "extra").map(p => `  - ${p[0]}`);
+                    // B. Update Skills Block (if inline lists are used instead of frontmatter pointers)
+                    const cSkills = combinedProficiencies.filter(p => p[1] === "class").map(p => `  - ${p[0]}`);
+                    const bSkills = combinedProficiencies.filter(p => p[1] === "background").map(p => `  - ${p[0]}`);
+                    const eSkills = combinedProficiencies.filter(p => p[1] === "extra").map(p => `  - ${p[0]}`);
 
-                let bonusInject = "";
-                if (this.currentSkillBonuses.length > 0) {
-                    bonusInject = this.currentSkillBonuses.map(b =>
-                        `  - name: ${b[0]}\n    target: ${b[1]}\n    value: ${b[2]}`
-                    ).join('\n') + '\n';
-                } else {
-                    bonusInject = "  - name: <Item Name>\n    target: <chosen skill>\n    value: <+value>\n";
-                }
+                    let bonusInject = "";
+                    if (this.currentSkillBonuses.length > 0) {
+                        bonusInject = this.currentSkillBonuses.map(b =>
+                            `  - name: ${b[0]}\n    target: ${b[1]}\n    value: ${b[2]}`
+                        ).join('\n') + '\n';
+                    } else {
+                        bonusInject = "  - name: <Item Name>\n    target: <chosen skill>\n    value: <+value>\n";
+                    }
 
-                const bonusRegex = /(bonuses:\s*\n)([\s\S]*?)(?=\n```)/;
-                updatedContent = updatedContent.replace(bonusRegex, `$1${bonusInject}`);
+                    updatedContent = updatedContent.replace(bonusRegex, `$1${bonusInject}`);
 
-                let profInject = "";
-                if (cSkills.length > 0) profInject += `  #Class\n${cSkills.join('\n')}\n`;
-                if (bSkills.length > 0) profInject += `  #Background\n${bSkills.join('\n')}\n`;
-                if (eSkills.length > 0) profInject += `  #Extra\n${eSkills.join('\n')}\n`;
-                if (profInject === "") profInject = "  - <chosen skills>\n";
+                    let profInject = "";
+                    if (cSkills.length > 0) profInject += `  #Class\n${cSkills.join('\n')}\n`;
+                    if (bSkills.length > 0) profInject += `  #Background\n${bSkills.join('\n')}\n`;
+                    if (eSkills.length > 0) profInject += `  #Extra\n${eSkills.join('\n')}\n`;
+                    if (profInject === "") profInject = "  - <chosen skills>\n";
 
-                const profRegex = /(```(?:dnd-)?skills[\s\S]*?proficiencies:\s*\n)([\s\S]*?)(?=\n[ \t]*expertise:)/;
-                updatedContent = updatedContent.replace(profRegex, `$1${profInject}`);
+                    updatedContent = updatedContent.replace(profRegex, `$1${profInject}`);
 
-                return updatedContent;
-            });
+                    return updatedContent;
+                });
+            }
         }
 
         new Notice("Character updated successfully!");
