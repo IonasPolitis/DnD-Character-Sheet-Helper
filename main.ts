@@ -6369,6 +6369,62 @@ class CharacterWizardModal extends Modal {
         ]);
     }
 
+    /** Strips filesystem- and Obsidian-illegal filename characters while preserving readable spacing. */
+    private sanitizeNoteTitle(rawName: string): string {
+        return rawName
+            .replace(/[\\/:*?"<>|\x00-\x1f]+/g, " ")
+            .replace(/\s+/g, " ")
+            .replace(/^[.\s]+|[.\s]+$/g, "");
+    }
+
+    /** Resolves a collision-free vault path in the file's current folder, allowing case-only renames of `file`. */
+    private resolveUniqueNotePath(file: TFile, baseTitle: string): string {
+        const ext = file.extension || "md";
+        const parentPath = file.parent?.path && file.parent.path !== "/" ? file.parent.path : "";
+        const buildPath = (name: string) =>
+            normalizePath(parentPath ? `${parentPath}/${name}.${ext}` : `${name}.${ext}`);
+
+        const siblingNames = new Set(
+            (file.parent?.children ?? [])
+                .filter((child): child is TFile => child instanceof TFile && child.path !== file.path)
+                .map(child => child.name.toLowerCase())
+        );
+
+        const hasCollision = (candidatePath: string, candidateFileName: string) => {
+            if (siblingNames.has(candidateFileName.toLowerCase())) return true;
+            const existing = this.app.vault.getAbstractFileByPath(candidatePath);
+            return existing !== null && existing.path !== file.path;
+        };
+
+        let candidateBase = baseTitle;
+        let candidatePath = buildPath(candidateBase);
+        let suffix = 1;
+
+        while (hasCollision(candidatePath, `${candidateBase}.${ext}`)) {
+            candidateBase = `${baseTitle} ${suffix++}`;
+            candidatePath = buildPath(candidateBase);
+        }
+
+        return candidatePath;
+    }
+
+    /** Renames the target note file to the user-entered character name when non-empty. */
+    private async renameNoteToCharacterName(file: TFile | null): Promise<void> {
+        if (!file) return;
+        const sanitizedTitle = this.sanitizeNoteTitle(String(this.wizardData.name ?? ""));
+        if (!sanitizedTitle) return;
+
+        const targetPath = this.resolveUniqueNotePath(file, sanitizedTitle);
+        if (targetPath === file.path) return;
+
+        try {
+            await this.app.fileManager.renameFile(file, targetPath);
+        } catch (error) {
+            console.warn("Character Wizard: Could not rename note to character name:", error);
+            new Notice(`Note created, but could not rename title to "${sanitizedTitle}".`);
+        }
+    }
+
     // Incremented on every renderStep() call so stale (slower) async renders are discarded
     private renderToken = 0;
 
@@ -6580,7 +6636,11 @@ class CharacterWizardModal extends Modal {
         nameDiv.createEl("label", { text: "Character Name: ", cls: "dnd-form-label" });
         const nameInput = nameDiv.createEl("input", { type: "text", value: this.wizardData.name, cls: "dnd-modal-form-input" });
         nameInput.placeholder = "e.g., Din";
-        nameInput.onchange = (e) => this.wizardData.name = (e.target as HTMLInputElement).value;
+        const updateCharacterName = (e: Event) => {
+            this.wizardData.name = (e.target as HTMLInputElement).value;
+        };
+        nameInput.oninput = updateCharacterName;
+        nameInput.onchange = updateCharacterName;
 
         const levelDiv = grid.createDiv();
         levelDiv.createEl("label", { text: "Level: ", cls: "dnd-form-label" });
@@ -8317,7 +8377,9 @@ class CharacterWizardModal extends Modal {
         const expRegex = /(expertise:\s*\n)([\s\S]*?)(?=\n[ \t]*half_proficiencies:)/;
         finalContent = finalContent.replace(expRegex, `$1${expInject}`);
 
-        // 6. Paste to Editor and Finalize UI State
+        // 6. Rename Note Title (if provided), Paste to Editor, and Finalize UI State
+        await this.renameNoteToCharacterName(view.file);
+
         try {
             const currentState = view.getState();
             if (currentState.mode !== 'source') {
