@@ -28,7 +28,7 @@ import { App, normalizePath } from 'obsidian';
 // --- Helper: Slugify a string for resilient key/filename matching ---
 // Accepts raw frontmatter values too: Obsidian list properties arrive as arrays (e.g. ["Orc"]),
 // so we unwrap the first entry instead of crashing on `.trim()` of a non-string.
-function toSlug(val: any): string {
+export function toSlug(val: any): string {
     const raw = Array.isArray(val) ? val[0] : val;
     if (typeof raw !== 'string') return '';
     return raw.trim().toLowerCase().replace(/['"]/g, '').replace(/\s+/g, '-').replace(/\.json$/i, '');
@@ -334,6 +334,73 @@ export async function getExtraFeat(app: App, settings: FetchSettings, featName: 
     };
 
     return resolveByPriority(settings, fetchNative, fetchCustom);
+}
+
+export interface FeatPoolEntry {
+    id: string;
+    name: string;
+    category: string;
+}
+
+const NON_SELECTABLE_FEAT_IDS = new Set([
+    "ability-score-improvement",
+    "general-feats",
+    "epic-boon-feats"
+]);
+
+// --- Logic for Listing All Selectable Feats (Native + Custom Rulebook) ---
+export async function getAvailableFeats(app: App, settings: FetchSettings): Promise<FeatPoolEntry[]> {
+    const featsMap = new Map<string, FeatPoolEntry>();
+
+    const targetRegistry = (settings.edition && pastEditionsRegistry[settings.edition])
+        ? pastEditionsRegistry[settings.edition].featRegistry
+        : featRegistry;
+
+    if (targetRegistry && typeof targetRegistry === 'object') {
+        for (const [rawKey, rawObj] of Object.entries(targetRegistry)) {
+            const id = toSlug(rawKey);
+            if (!id || NON_SELECTABLE_FEAT_IDS.has(id)) continue;
+            const featObj = rawObj as Record<string, any>;
+            if (!featObj || typeof featObj !== 'object' || featObj.hide === true) continue;
+            const name = String(featObj.name || rawKey).trim();
+            const category = String(featObj.category || "Feat").trim();
+            featsMap.set(id, { id, name, category });
+        }
+    }
+
+    const basePath = getCleanCustomBasePath(settings);
+    if (basePath) {
+        const featsDir = normalizePath(`${basePath}/feats`);
+        try {
+            if (await app.vault.adapter.exists(featsDir)) {
+                const listed = await app.vault.adapter.list(featsDir);
+                for (const filePath of listed.files || []) {
+                    if (!filePath.toLowerCase().endsWith('.json')) continue;
+                    const fileName = filePath.split('/').pop() || '';
+                    const id = toSlug(fileName);
+                    if (!id || NON_SELECTABLE_FEAT_IDS.has(id)) continue;
+
+                    const featObj = await readCustomJson(app, filePath);
+                    if (!featObj || typeof featObj !== 'object' || Array.isArray(featObj)) continue;
+
+                    if (featObj.hide === true) {
+                        if (settings.customRulebookPriority) featsMap.delete(id);
+                        continue;
+                    }
+
+                    if (settings.customRulebookPriority || !featsMap.has(id)) {
+                        const name = String(featObj.name || fileName.replace(/\.json$/i, '')).trim();
+                        const category = String(featObj.category || "Custom Feat").trim();
+                        featsMap.set(id, { id, name, category });
+                    }
+                }
+            }
+        } catch (e) {
+            console.error(`D&D Plugin: Could not list custom feats in "${featsDir}"`, e);
+        }
+    }
+
+    return Array.from(featsMap.values()).sort((a, b) => a.name.localeCompare(b.name));
 }
 
 // --- Logic for Fetching Item Data ---

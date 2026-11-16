@@ -1,5 +1,5 @@
 import { App, CachedMetadata, Plugin, PluginSettingTab, Setting, MarkdownPostProcessorContext, parseYaml, MarkdownRenderChild, MarkdownRenderer, TFile, Modal, Notice, MarkdownView, normalizePath, Platform, addIcon } from 'obsidian';
-import { getClassData, getSubclassData, getBackgroundData, getRaceData, getRacialSpellsData, getExtraFeat, getItemData, getRuleData, getSpellData, getSpellsPoolData, getClassChoiceData, getClassChoiceRouterData, classChoiceRouterRegistry, getFeatMapData, getWeaponMasteriesMap, getWeaponMasteryDescription, buildWeaponMasteriesMarkdown } from './data';
+import { getClassData, getSubclassData, getBackgroundData, getRaceData, getRacialSpellsData, getExtraFeat, getAvailableFeats, FeatPoolEntry, toSlug, getItemData, getRuleData, getSpellData, getSpellsPoolData, getClassChoiceData, getClassChoiceRouterData, classChoiceRouterRegistry, getFeatMapData, getWeaponMasteriesMap, getWeaponMasteryDescription, buildWeaponMasteriesMarkdown } from './data';
 import { MarkdownNotes, classesMap, racesMap, backgroundsMap, itemsMap } from './registry';
 import { THEMES } from './themes';
 import { RIBBON_ICON_SVG } from './ribbon-icon';
@@ -99,6 +99,25 @@ export function parseStringArray(raw: any, stripJsonExt = false): string[] {
             seen.add(norm);
             out.push(val);
         }
+    }
+    return out;
+}
+
+/** Normalizes feat IDs and display names into comparable slugs (e.g. `"Magic Initiate (Wizard)"` -> `"magic-initiate-wizard"`). */
+export function normalizeFeatKey(val: any): string {
+    return toSlug(val).replace(/[()]/g, "").replace(/-+/g, "-").replace(/^-+|-+$/g, "");
+}
+
+/** Parses `DnD_extraFeats` from YAML arrays, JSON strings, or comma-delimited text and deduplicates by feat slug. */
+export function parseExtraFeatsList(raw: any): string[] {
+    const entries = parseStringArray(raw);
+    const seenSlugs = new Set<string>();
+    const out: string[] = [];
+    for (const entry of entries) {
+        const slug = normalizeFeatKey(entry) || entry.toLowerCase();
+        if (!slug || seenSlugs.has(slug)) continue;
+        seenSlugs.add(slug);
+        out.push(entry);
     }
     return out;
 }
@@ -2808,6 +2827,7 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
 
             // 1. Resolve Core Variables strictly from the code block (with frontmatter fallbacks for dynamic Monk/Class calculations)
             const dndClass = resolveValue(blockData.class) ?? frontmatter["DnD_class"];
+            const subclass = resolveValue(blockData.subclass ?? blockData.Subclass) ?? frontmatter["DnD_subclass"] ?? frontmatter["DnD_Subclass"];
             const classLevels = resolveValue(blockData.classLevels ?? blockData['class-levels']) ?? frontmatter["DnD_classLevels"];
             const level = Number(resolveValue(blockData.level) ?? frontmatter["DnD_level"] ?? frontmatter["level"]) || 1;
             const background = resolveValue(blockData.background);
@@ -2936,7 +2956,7 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                     if (expectedType === "Weapon" && (safeName === "unarmed-strike" || safeName === "unarmed-strikes")) {
                         displayStat = await this.resolveUnarmedStrikeDamage(dndClass, classLevels, level, statsRecord, attackStat, fetchOptions);
                     } else if (expectedType === "Armor" && safeName === "unarmored-defense") {
-                        const unarmoredCalc = await this.resolveUnarmoredDefense(dndClass, classLevels, level, statsRecord, fetchOptions, subclassArray);
+                        const unarmoredCalc = await this.resolveUnarmoredDefense(dndClass, classLevels, level, statsRecord, fetchOptions, subclass);
                         displayStat = String(unarmoredCalc.totalAc);
                     }
 
@@ -5042,7 +5062,7 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                     cls: "dnd-health-hitdice-label"
                 });
 
-                let penaltyText = "No penalties (-2 D20 Tests & -5 ft. Speed per level)";
+                let penaltyText = "(Penalties: -2 on D20 Dice Rolls & -5 feet Speed per Level)";
                 if (exhaustionLevel >= 6) {
                     penaltyText = "💀 Death (-12 D20 Tests • -30 ft. Speed)";
                 } else if (exhaustionLevel > 0) {
@@ -8785,15 +8805,29 @@ class InventoryModal extends Modal {
     }
 }
 
+type ManageTabId = "stats" | "attack" | "ac" | "speed" | "skills" | "feats" | "items" | "features";
+
+const MANAGE_TABS: readonly { id: ManageTabId; label: string; icon: string }[] = [
+    { id: "stats", label: "Ability Scores", icon: "🖋️" },
+    { id: "attack", label: "Attack Ability", icon: "🎯" },
+    { id: "ac", label: "Armor Class Mod", icon: "🛡️" },
+    { id: "speed", label: "Speed", icon: "🏃" },
+    { id: "skills", label: "Skills", icon: "🔨" },
+    { id: "feats", label: "Feats", icon: "✨" },
+    { id: "items", label: "Items", icon: "🎒" },
+    { id: "features", label: "Hide Features", icon: "📜" }
+];
+
 // --- CONSOLIDATED MANAGE CHARACTER MODAL ---
 class ManageCharacterModal extends Modal {
     plugin: DnDCharacterSheetHelperPlugin;
     sourcePath: string;
 
     // Tab Navigation State
-    activeTab: "stats" | "attack" | "ac" | "speed" | "skills" | "items" | "features" = "stats";
+    activeTab: ManageTabId = "stats";
 
     // --- Unified Data State ---
+    cachedFrontmatter: Record<string, any> = {};
     // 1. Stats State
     currentStats: Record<string, number> = { strength: 10, dexterity: 10, constitution: 10, intelligence: 10, wisdom: 10, charisma: 10 };
     // 1b. Saving Throws State
@@ -8827,6 +8861,10 @@ class ManageCharacterModal extends Modal {
         "Nature", "Perception", "Performance", "Persuasion", "Religion",
         "Sleight of Hand", "Stealth", "Survival"
     ];
+    // 4b. Extra Feats State (DnD_extraFeats)
+    currentExtraFeats: string[] = [];
+    availableFeats: FeatPoolEntry[] = [];
+    featDisplayMap: Record<string, FeatPoolEntry> = {};
     // 5. Item Bonuses State (Strictly Strings)
     currentSkillBonuses: [string, string, string][] = [];
     // 6. Hidden Features State
@@ -8850,6 +8888,7 @@ class ManageCharacterModal extends Modal {
         // --- FETCH ALL DATA ONCE ---
         const fileCache = this.app.metadataCache.getCache(this.sourcePath);
         const frontmatter = fileCache?.frontmatter || {};
+        this.cachedFrontmatter = frontmatter;
 
         // Fetch Stats
         const statsList = ["strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"];
@@ -8861,63 +8900,33 @@ class ManageCharacterModal extends Modal {
         // Fetch AC
         this.currentAcMod = Number(frontmatter["DnD_armorAcMod"]) || 0;
 
-        // Fetch Speed
+        // Fetch Speed baseline
         this.currentSpeed = frontmatter["DnD_speed"] !== undefined && frontmatter["DnD_speed"] !== "" && !isNaN(Number(frontmatter["DnD_speed"]))
             ? Number(frontmatter["DnD_speed"])
             : 30;
         this.currentSpeedMod = Number(frontmatter["DnD_speedMod"]) || 0;
 
-        // Fetch Speed Breakdown & Custom Modifier adhering to D&D 5.5e
-        this.speedBreakdown = await this.plugin.resolveCharacterSpeedModifiers(
-            frontmatter["DnD_class"],
-            frontmatter["DnD_classLevels"],
-            Number(frontmatter["DnD_level"]) || 1,
-            frontmatter["DnD_extraFeats"],
-            frontmatter["DnD_backgroundFeat"],
-            frontmatter["DnD_armor"],
-            this.currentSpeed,
-            0,
-            frontmatter["DnD_subclass"] ?? frontmatter["DnD_Subclass"],
-            this.plugin.settings
-        );
-        const autoBonus = (this.speedBreakdown?.classSpeedBonus || 0) + (this.speedBreakdown?.featSpeedBonus || 0);
-        if (frontmatter["DnD_customSpeedMod"] !== undefined && frontmatter["DnD_customSpeedMod"] !== null && frontmatter["DnD_customSpeedMod"] !== "") {
-            this.currentCustomSpeedMod = Number(frontmatter["DnD_customSpeedMod"]) || 0;
-        } else {
-            const legacyMod = Number(frontmatter["DnD_speedMod"]) || 0;
-            this.currentCustomSpeedMod = legacyMod - autoBonus;
+        // Fetch Extra Feats (DnD_extraFeats) & build feat catalog / display metadata
+        this.currentExtraFeats = parseExtraFeatsList(frontmatter["DnD_extraFeats"]);
+        this.availableFeats = await getAvailableFeats(this.app, this.plugin.settings);
+        this.featDisplayMap = {};
+        for (const f of this.availableFeats) {
+            this.featDisplayMap[normalizeFeatKey(f.id)] = f;
+            const nameSlug = normalizeFeatKey(f.name);
+            if (nameSlug && !this.featDisplayMap[nameSlug]) {
+                this.featDisplayMap[nameSlug] = f;
+            }
         }
-        this.currentSpeedMod = autoBonus + this.currentCustomSpeedMod;
-
-        // Fetch Initiative Breakdown & Custom Initiative Modifier
-        const charLevelForInit = Number(frontmatter["DnD_level"]) || 1;
-        const profBonusForInit = Number(frontmatter["DnD_proficiencyBonus"]) || Math.ceil(1 + (charLevelForInit / 4));
-        const bgDataForInit = frontmatter["DnD_background"]
-            ? await getBackgroundData(this.app, this.plugin.settings, frontmatter["DnD_background"])
-            : null;
-        const initCalc = await this.plugin.resolveCharacterInitiativeModifiers(
-            frontmatter["DnD_class"],
-            frontmatter["DnD_classLevels"],
-            charLevelForInit,
-            frontmatter["DnD_extraFeats"],
-            bgDataForInit?.feat || frontmatter["DnD_backgroundFeat"],
-            frontmatter["DnD_subclass"] ?? frontmatter["DnD_Subclass"],
-            frontmatter["DnD_race"],
-            frontmatter["DnD_raceLineage"],
-            this.currentStats,
-            profBonusForInit,
-            0,
-            this.plugin.settings
-        );
-        this.initiativeBreakdown = initCalc.breakdown;
-        if (frontmatter["DnD_customInitiativeMod"] !== undefined && frontmatter["DnD_customInitiativeMod"] !== null && frontmatter["DnD_customInitiativeMod"] !== "") {
-            this.currentCustomInitiativeMod = Number(frontmatter["DnD_customInitiativeMod"]) || 0;
-        } else if (frontmatter["DnD_initiativeMod"] !== undefined && frontmatter["DnD_initiativeMod"] !== null && frontmatter["DnD_initiativeMod"] !== "") {
-            this.currentCustomInitiativeMod = (Number(frontmatter["DnD_initiativeMod"]) || 0) - initCalc.autoBonus;
-        } else {
-            this.currentCustomInitiativeMod = 0;
+        for (const existingFeat of this.currentExtraFeats) {
+            const slug = normalizeFeatKey(existingFeat);
+            if (!slug || this.featDisplayMap[slug]) continue;
+            const resolvedFeat = await getExtraFeat(this.app, this.plugin.settings, existingFeat);
+            this.featDisplayMap[slug] = {
+                id: existingFeat,
+                name: resolvedFeat?.name ? String(resolvedFeat.name).trim() : formatFeatureOrSlug(existingFeat),
+                category: resolvedFeat?.category ? String(resolvedFeat.category).trim() : ""
+            };
         }
-        this.currentInitiativeMod = initCalc.autoBonus + this.currentCustomInitiativeMod;
 
         // Fetch Attack & Spellcasting Ability
         this.extraAttackMod = Number(frontmatter["DnD_attackRollMod"]) || 0;
@@ -8934,22 +8943,9 @@ class ManageCharacterModal extends Modal {
             }
         }
 
-        // Fetch Weapon Mastery State & Available Weapons with Valid Masteries
+        // Fetch Weapon Mastery State & Feat-dependent breakdowns
         this.weaponMasteryState = parseWeaponMasteryState(frontmatter["DnD_weaponMastery"]);
-        const bgDataForMastery = frontmatter["DnD_background"]
-            ? await getBackgroundData(this.app, this.plugin.settings, frontmatter["DnD_background"])
-            : null;
-        const masteryCalc = await this.plugin.resolveCharacterWeaponMasterySlots(
-            frontmatter["DnD_class"],
-            frontmatter["DnD_classLevels"],
-            Number(frontmatter["DnD_level"]) || 1,
-            frontmatter["DnD_extraFeats"],
-            bgDataForMastery?.feat || frontmatter["DnD_backgroundFeat"],
-            frontmatter["DnD_subclass"] ?? frontmatter["DnD_Subclass"],
-            this.plugin.settings
-        );
-        this.weaponMasteryState.available = masteryCalc.totalSlots;
-        this.weaponMasteryBreakdown = masteryCalc.breakdown;
+        await this.refreshFeatDependentState(frontmatter, true);
 
         const itemLookupKeys = new Set<string>(Object.keys(itemsMap || {}));
         const basePath = this.plugin.settings.customRulebookPath?.trim();
@@ -9055,31 +9051,21 @@ class ManageCharacterModal extends Modal {
             this.currentHiddenFeatures = hideRaw.map((f: any) => String(f).trim()).filter(Boolean);
         }
 
-        await this.fetchAvailableFeatures(frontmatter);
-
         // --- BUILD TAB HEADER ---
         const tabHeader = contentEl.createDiv({ cls: "dnd-modal-tabs" });
 
-        const createTabBtn = (id: typeof this.activeTab, label: string, icon: string) => {
+        for (const tab of MANAGE_TABS) {
             const btn = tabHeader.createEl("button", {
-                text: `${icon} ${label}`,
+                text: `${tab.icon} ${tab.label}`,
                 cls: "dnd-modal-tab-btn dnd-manage-tab-btn"
             });
+            btn.dataset.tabId = tab.id;
             btn.onclick = () => {
-                this.activeTab = id;
+                this.activeTab = tab.id;
                 this.renderTabs(tabHeader);
                 this.renderContent();
             };
-            return btn;
-        };
-
-        createTabBtn("stats", "Ability Scores", "🖋️");
-        createTabBtn("attack", "Attack Ability", "🎯");
-        createTabBtn("ac", "Armor Class Mod", "🛡️");
-        createTabBtn("speed", "Speed", "🏃");
-        createTabBtn("skills", "Skills", "🔨");
-        createTabBtn("items", "Items", "🎒");
-        createTabBtn("features", "Hide Features", "📜");
+        }
 
         // --- FIXED CONTENT CONTAINER ---
         this.contentContainer = contentEl.createDiv({ cls: "dnd-manage-content" });
@@ -9236,12 +9222,88 @@ class ManageCharacterModal extends Modal {
         this.availableFeaturesToHide = Array.from(discovered);
     }
 
+    /** Recomputes feat-dependent breakdowns (Speed, Initiative, Weapon Mastery, Hide Features) from `this.currentExtraFeats`. */
+    async refreshFeatDependentState(frontmatter: Record<string, any>, isInitialLoad: boolean) {
+        const charLevel = Number(frontmatter["DnD_level"]) || 1;
+        const profBonus = Number(frontmatter["DnD_proficiencyBonus"]) || Math.ceil(1 + (charLevel / 4));
+        const subclassVal = frontmatter["DnD_subclass"] ?? frontmatter["DnD_Subclass"];
+        const bgData = frontmatter["DnD_background"]
+            ? await getBackgroundData(this.app, this.plugin.settings, frontmatter["DnD_background"])
+            : null;
+        const bgFeat = bgData?.feat || frontmatter["DnD_backgroundFeat"];
+
+        this.speedBreakdown = await this.plugin.resolveCharacterSpeedModifiers(
+            frontmatter["DnD_class"],
+            frontmatter["DnD_classLevels"],
+            charLevel,
+            this.currentExtraFeats,
+            bgFeat,
+            frontmatter["DnD_armor"],
+            this.currentSpeed,
+            0,
+            subclassVal,
+            this.plugin.settings
+        );
+        const autoSpeedBonus = (this.speedBreakdown?.classSpeedBonus || 0) + (this.speedBreakdown?.featSpeedBonus || 0);
+        if (isInitialLoad) {
+            if (frontmatter["DnD_customSpeedMod"] !== undefined && frontmatter["DnD_customSpeedMod"] !== null && frontmatter["DnD_customSpeedMod"] !== "") {
+                this.currentCustomSpeedMod = Number(frontmatter["DnD_customSpeedMod"]) || 0;
+            } else {
+                const legacyMod = Number(frontmatter["DnD_speedMod"]) || 0;
+                this.currentCustomSpeedMod = legacyMod - autoSpeedBonus;
+            }
+        }
+        this.currentSpeedMod = autoSpeedBonus + this.currentCustomSpeedMod;
+
+        const initCalc = await this.plugin.resolveCharacterInitiativeModifiers(
+            frontmatter["DnD_class"],
+            frontmatter["DnD_classLevels"],
+            charLevel,
+            this.currentExtraFeats,
+            bgFeat,
+            subclassVal,
+            frontmatter["DnD_race"],
+            frontmatter["DnD_raceLineage"],
+            this.currentStats,
+            profBonus,
+            0,
+            this.plugin.settings
+        );
+        this.initiativeBreakdown = initCalc.breakdown;
+        if (isInitialLoad) {
+            if (frontmatter["DnD_customInitiativeMod"] !== undefined && frontmatter["DnD_customInitiativeMod"] !== null && frontmatter["DnD_customInitiativeMod"] !== "") {
+                this.currentCustomInitiativeMod = Number(frontmatter["DnD_customInitiativeMod"]) || 0;
+            } else if (frontmatter["DnD_initiativeMod"] !== undefined && frontmatter["DnD_initiativeMod"] !== null && frontmatter["DnD_initiativeMod"] !== "") {
+                this.currentCustomInitiativeMod = (Number(frontmatter["DnD_initiativeMod"]) || 0) - initCalc.autoBonus;
+            } else {
+                this.currentCustomInitiativeMod = 0;
+            }
+        }
+        this.currentInitiativeMod = initCalc.autoBonus + this.currentCustomInitiativeMod;
+
+        const masteryCalc = await this.plugin.resolveCharacterWeaponMasterySlots(
+            frontmatter["DnD_class"],
+            frontmatter["DnD_classLevels"],
+            charLevel,
+            this.currentExtraFeats,
+            bgFeat,
+            subclassVal,
+            this.plugin.settings
+        );
+        this.weaponMasteryState.available = masteryCalc.totalSlots;
+        this.weaponMasteryBreakdown = masteryCalc.breakdown;
+
+        await this.fetchAvailableFeatures({
+            ...frontmatter,
+            DnD_extraFeats: this.currentExtraFeats
+        });
+    }
+
     renderTabs(tabHeader: HTMLElement) {
         const buttons = tabHeader.querySelectorAll("button");
-        const tabs = ["stats", "attack", "ac", "speed", "skills", "items", "features"];
 
-        buttons.forEach((btn, index) => {
-            btn.classList.toggle("is-active", tabs[index] === this.activeTab);
+        buttons.forEach((btn) => {
+            btn.classList.toggle("is-active", (btn as HTMLElement).dataset.tabId === this.activeTab);
         });
     }
 
@@ -9643,6 +9705,80 @@ class ManageCharacterModal extends Modal {
             };
         }
 
+        else if (this.activeTab === "feats") {
+            this.contentContainer.createEl("h4", { text: "Extra Feats", cls: "dnd-manage-section-title" });
+
+            const listDiv = this.contentContainer.createDiv({ cls: "dnd-manage-scroll-list" });
+            if (this.currentExtraFeats.length === 0) {
+                listDiv.createEl("p", { text: "No extra feats added.", cls: "dnd-manage-empty-box" });
+            } else {
+                this.currentExtraFeats.forEach((featEntry, index) => {
+                    const row = listDiv.createDiv({ cls: "dnd-modal-list-row" });
+                    const meta = this.featDisplayMap[normalizeFeatKey(featEntry)];
+                    const labelWrap = row.createEl("span", { cls: "dnd-modal-row-name dnd-feat-row-label" });
+                    labelWrap.createSpan({ text: meta?.name || formatFeatureOrSlug(featEntry) });
+                    if (meta?.category) {
+                        labelWrap.createSpan({ text: meta.category, cls: "dnd-level-badge dnd-feat-cat-badge" });
+                    }
+
+                    const delBtn = row.createEl("button", { text: "✕", cls: "dnd-modal-del-btn" });
+                    delBtn.onclick = async () => {
+                        this.currentExtraFeats.splice(index, 1);
+                        await this.refreshFeatDependentState(this.cachedFrontmatter, false);
+                        this.renderContent();
+                    };
+                });
+            }
+
+            const addDiv = this.contentContainer.createDiv({ cls: "dnd-modal-add-bar" });
+            const selectEl = addDiv.createEl("select", { cls: "dnd-modal-add-select" });
+            selectEl.createEl("option", { text: "-- Select Feat to Add --", value: "" });
+
+            const ownedFeatSlugs = new Set(this.currentExtraFeats.map(f => normalizeFeatKey(f)).filter(Boolean));
+            const categoryGroups: Record<string, FeatPoolEntry[]> = {
+                "Origin Feats": [],
+                "General Feats": [],
+                "Epic Boons": [],
+                "Other / Homebrew Feats": []
+            };
+            const categoryBucketMap: Record<string, string> = {
+                "origin feat": "Origin Feats",
+                "general feat": "General Feats",
+                "epic boon": "Epic Boons"
+            };
+
+            this.availableFeats.forEach(feat => {
+                if (ownedFeatSlugs.has(normalizeFeatKey(feat.id))) return;
+                const bucketKey = categoryBucketMap[feat.category.toLowerCase()] || "Other / Homebrew Feats";
+                categoryGroups[bucketKey].push(feat);
+            });
+
+            Object.entries(categoryGroups).forEach(([groupLabel, entries]) => {
+                if (entries.length === 0) return;
+                const optGroup = selectEl.createEl("optgroup", { attr: { label: groupLabel } });
+                entries.forEach(feat => {
+                    optGroup.createEl("option", { text: feat.name, value: feat.id });
+                });
+            });
+
+            const addBtn = addDiv.createEl("button", { text: "Add Feat" });
+            addBtn.onclick = async () => {
+                const chosenId = selectEl.value;
+                if (!chosenId) return;
+                const chosenSlug = normalizeFeatKey(chosenId);
+                if (!this.currentExtraFeats.some(f => normalizeFeatKey(f) === chosenSlug)) {
+                    this.currentExtraFeats.push(chosenId);
+                    await this.refreshFeatDependentState(this.cachedFrontmatter, false);
+                    this.renderContent();
+                }
+            };
+
+            this.contentContainer.createEl("small", {
+                text: "Updates DnD_extraFeats. Speed, Initiative, Weapon Mastery slots, and Hide Features sync automatically on save; adjust Ability Scores, Saving Throws, Skills, or HP in their tabs if a feat grants choices.",
+                cls: "dnd-form-hint"
+            });
+        }
+
         else if (this.activeTab === "items") {
             this.contentContainer.createEl("h4", { text: "Skill Bonuses (Magic Items & Gear)", cls: "dnd-manage-section-title" });
 
@@ -9810,29 +9946,56 @@ class ManageCharacterModal extends Modal {
         updates["DnD_armorAcMod"] = this.currentAcMod;
         updates["DnD_speed"] = this.currentSpeed;
         updates["DnD_customSpeedMod"] = this.currentCustomSpeedMod;
-        updates["DnD_speedMod"] = this.currentSpeedMod;
 
-        // Recalculate Initiative Modifiers (in case Ability Scores like WIS changed in Stats tab)
-        const profBonusForInitSave = Number(frontmatter["DnD_proficiencyBonus"]) || Math.ceil(1 + (level / 4));
-        const bgDataForInitSave = frontmatter["DnD_background"]
+        const profBonusForSave = Number(frontmatter["DnD_proficiencyBonus"]) || Math.ceil(1 + (level / 4));
+        const subclassForSave = frontmatter["DnD_subclass"] ?? frontmatter["DnD_Subclass"];
+        const bgDataForSave = frontmatter["DnD_background"]
             ? await getBackgroundData(this.app, this.plugin.settings, frontmatter["DnD_background"])
             : null;
+        const bgFeatForSave = bgDataForSave?.feat || frontmatter["DnD_backgroundFeat"];
+
+        // Recalculate Speed, Initiative & Weapon Mastery Slots from currentExtraFeats + currentStats
+        const speedCalcSave = await this.plugin.resolveCharacterSpeedModifiers(
+            dndClass,
+            classLevels,
+            level,
+            this.currentExtraFeats,
+            bgFeatForSave,
+            currentArmor,
+            this.currentSpeed,
+            this.currentCustomSpeedMod,
+            subclassForSave,
+            this.plugin.settings
+        );
+        updates["DnD_speedMod"] = speedCalcSave.totalSpeedMod;
+
         const initCalcSave = await this.plugin.resolveCharacterInitiativeModifiers(
             dndClass,
             classLevels,
             level,
-            frontmatter["DnD_extraFeats"],
-            bgDataForInitSave?.feat || frontmatter["DnD_backgroundFeat"],
-            frontmatter["DnD_subclass"] ?? frontmatter["DnD_Subclass"],
+            this.currentExtraFeats,
+            bgFeatForSave,
+            subclassForSave,
             frontmatter["DnD_race"],
             frontmatter["DnD_raceLineage"],
             this.currentStats,
-            profBonusForInitSave,
+            profBonusForSave,
             this.currentCustomInitiativeMod,
             this.plugin.settings
         );
         updates["DnD_customInitiativeMod"] = this.currentCustomInitiativeMod;
         updates["DnD_initiativeMod"] = initCalcSave.totalInitiativeMod;
+
+        const masteryCalcSave = await this.plugin.resolveCharacterWeaponMasterySlots(
+            dndClass,
+            classLevels,
+            level,
+            this.currentExtraFeats,
+            bgFeatForSave,
+            subclassForSave,
+            this.plugin.settings
+        );
+        this.weaponMasteryState.available = masteryCalcSave.totalSlots;
 
         updates["DnD_attackRollMod"] = this.extraAttackMod;
         updates["DnD_attackStat"] = this.currentAttackStat;
@@ -9843,11 +10006,12 @@ class ManageCharacterModal extends Modal {
             this.weaponMasteryState.mastered
         );
 
-        // 3. Process Skills & Tools Database
+        // 3. Process Skills, Tools & Extra Feats Databases
         const combinedProficiencies = [...this.baseProficiencies];
         this.currentExtraSkills.forEach(s => combinedProficiencies.push([s, "extra"]));
         updates["DnD_skillProficiencies"] = JSON.stringify(combinedProficiencies);
         updates["DnD_toolProficiencies"] = this.currentToolProficiencies;
+        updates["DnD_extraFeats"] = [...this.currentExtraFeats];
 
         // 4. Process Item Bonuses Database
         updates["DnD_skillBonuses"] = JSON.stringify(this.currentSkillBonuses);

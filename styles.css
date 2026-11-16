@@ -2287,7 +2287,8 @@ body .modal-container .modal .dnd-modal-add-bar > button,
 }
 
 .dnd-manage-tab-btn {
-    flex: 1;
+    flex: 1 1 auto;
+    white-space: nowrap;
 }
 
 .dnd-manage-section-title {
@@ -2310,6 +2311,19 @@ body .modal-container .modal .dnd-modal-add-bar > button,
     margin: 0;
     text-align: center;
     padding: 10px;
+}
+
+.dnd-feat-row-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.dnd-level-badge.dnd-feat-cat-badge {
+    font-size: 0.72em;
+    padding: 2px 7px;
+    margin-right: 0;
 }
 
 .dnd-form-group {

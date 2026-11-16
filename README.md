@@ -146,6 +146,8 @@ The variable `classLevels` is used when you have multiple classes on your charac
 
 The variable `classChoices` stores class-specific feature selections (such as Warlock Eldritch Invocations, Fighter Fighting Styles, Sorcerer Metamagic, or Blood Hunter Blood Curses & Crimson Rites) grouped by router using the structure: `[ [ "<Router-Filename>", [ [ "<Choice-Filename>", "<Level-Gained>" ], ... ] ], ... ]`.
 
+The variable `extraFeats` (linked to `frontmatter.DnD_extraFeats` on character sheets) stores additional Feats gained outside of Backgrounds or automatic class grants, and can be added or removed anytime after character creation via **Manage Character -> Feats**.
+
 Write down a Feature's name as it appears on the screen inside the variable `hide` (or manage it via the **Manage Character** button) to hide it from view.
 
 The variable `featureUses` savesthe state of the checkboxes on each Class or Subclass Feature, Race Trait and Feat of the character wit this structure: `[ [ "<Feature's-Name>", "<Available-Uses>", "<Expended-Uses>"], ... ]`
