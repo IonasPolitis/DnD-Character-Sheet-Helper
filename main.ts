@@ -1,5 +1,5 @@
 import { App, CachedMetadata, Plugin, PluginSettingTab, Setting, MarkdownPostProcessorContext, parseYaml, MarkdownRenderChild, MarkdownRenderer, TFile, Modal, Notice, MarkdownView, normalizePath, Platform, addIcon } from 'obsidian';
-import { getClassData, getSubclassData, getBackgroundData, getRaceData, getRacialSpellsData, getExtraFeat, getAvailableFeats, FeatPoolEntry, toSlug, toNormalizedFeatSlug, getCleanCustomBasePath, getItemData, getRuleData, getSpellData, getSpellsPoolData, getClassChoiceData, getClassChoiceRouterData, classChoiceRouterRegistry, getFeatMapData, getWeaponMasteriesMap, getWeaponMasteryDescription, buildWeaponMasteriesMarkdown } from './data';
+import { getClassData, getSubclassData, getBackgroundData, getRaceData, getRacialSpellsData, getExtraFeat, getAvailableFeats, FeatPoolEntry, toSlug, toNormalizedFeatSlug, getCleanCustomBasePath, readCustomJson, mergeDictionaries, getItemData, getRuleData, getSpellData, getSpellsPoolData, getClassChoiceData, getClassChoiceRouterData, classChoiceRouterRegistry, getFeatMapData, getWeaponMasteriesMap, getWeaponMasteryDescription, buildWeaponMasteriesMarkdown } from './data';
 import { MarkdownNotes, classesMap, racesMap, backgroundsMap, itemsMap } from './registry';
 import { THEMES } from './themes';
 import { RIBBON_ICON_SVG } from './ribbon-icon';
@@ -120,6 +120,104 @@ export function parseExtraFeatsList(raw: any): string[] {
         out.push(entry);
     }
     return out;
+}
+
+/** Checks if a resolved frontmatter/YAML value contains non-empty, non-placeholder data. */
+export function hasValidValue(val: any): boolean {
+    if (val === undefined || val === null) return false;
+    if (Array.isArray(val)) return val.some(item => hasValidValue(item));
+    if (typeof val === "string") {
+        const t = val.trim();
+        return t !== "" && t !== "[]" && !t.startsWith("<");
+    }
+    return true;
+}
+
+/** Normalizes, flattens, and deduplicates feat IDs across multiple sources, excluding ASI and placeholders. */
+export function combineUniqueFeatIds(...sources: any[]): string[] {
+    const seenSlugs = new Set<string>();
+    const out: string[] = [];
+    for (const src of sources) {
+        for (const entry of parseExtraFeatsList(src)) {
+            const slug = normalizeFeatKey(entry) || entry.toLowerCase();
+            if (!slug || slug === "ability-score-improvement" || seenSlugs.has(slug)) continue;
+            seenSlugs.add(slug);
+            out.push(entry);
+        }
+    }
+    return out;
+}
+
+/** Parses an array or JSON-encoded array string (`"[...]"`) into an array, returning `[]` on invalid input. */
+export function parseJsonArrayProp(raw: any, resolver?: (val: any) => any): any[] {
+    const resolved = resolver ? resolver(raw) : raw;
+    if (!resolved) return [];
+    if (Array.isArray(resolved)) return resolved;
+    if (typeof resolved === "string") {
+        const trimmed = resolved.trim();
+        if (trimmed.startsWith("[")) {
+            try {
+                const parsed = JSON.parse(trimmed);
+                return Array.isArray(parsed) ? parsed : [];
+            } catch {
+                return [];
+            }
+        }
+    }
+    return [];
+}
+
+/** Strips full-line `#` YAML comments and parses a code block's YAML into a non-null object. */
+export function parseBlockYaml(source: string): Record<string, any> {
+    if (!source || !source.trim()) return {};
+    const cleanSource = source.replace(/^[ \t]*#.*$/gm, "");
+    return parseYaml(cleanSource) || {};
+}
+
+/** Resolves `"frontmatter.<Key>"` or `"{{ frontmatter.<Key> }}"` against `frontmatter` with legacy key fallbacks. */
+export function createFrontmatterResolver(frontmatter: Record<string, any>): (val: any) => any {
+    return (val: any) => {
+        if (typeof val === "string") {
+            const trimmed = val.trim().replace(/^\{\{\s*|\s*\}\}$/g, "");
+            if (trimmed.startsWith("frontmatter.")) {
+                const propName = trimmed.replace("frontmatter.", "").trim();
+                if (frontmatter[propName] !== undefined) return frontmatter[propName];
+                if (propName === "level") return frontmatter["DnD_level"];
+                if (propName === "DnD_level") return frontmatter["level"];
+                if (propName === "DnD_Subclass") return frontmatter["DnD_subclass"];
+                if (propName === "DnD_subclass") return frontmatter["DnD_Subclass"];
+                if (propName === "proficiencyBonus" || propName === "proficiency_bonus") return frontmatter["DnD_proficiencyBonus"];
+                if (propName === "DnD_proficiencyBonus") return frontmatter["proficiency_bonus"] ?? frontmatter["proficiencyBonus"];
+                return undefined;
+            }
+        }
+        return val;
+    };
+}
+
+/** Extracts `<Key>` if `rawProp` is `"frontmatter.<Key>"` (or wrapped in `{{ }}`), else returns `fallbackKey`. */
+export function extractFrontmatterKey(rawProp: any, fallbackKey: string): string {
+    if (typeof rawProp === "string") {
+        const trimmed = rawProp.trim().replace(/^\{\{\s*|\s*\}\}$/g, "");
+        if (trimmed.startsWith("frontmatter.")) {
+            return trimmed.replace("frontmatter.", "").trim() || fallbackKey;
+        }
+    }
+    return fallbackKey;
+}
+
+/** Extracts the 6 core ability scores from `blockData` (if provided) or `frontmatter["DnD_<ability>"]`, defaulting to 10. */
+export function extractAbilityScores(
+    frontmatter: Record<string, any>,
+    blockData?: Record<string, any>,
+    resolver?: (val: any) => any
+): Record<string, number> {
+    const record: Record<string, number> = {};
+    for (const stat of ALL_ABILITIES) {
+        const blockVal = blockData ? (resolver ? resolver(blockData[stat]) : blockData[stat]) : undefined;
+        record[stat] = Number(blockVal ?? frontmatter?.[`DnD_${stat}`]) || 10;
+    }
+    return record;
 }
 
 /** Parses `[ [ ["spell1", "spell2"], "level" ], ... ]` into a cloned `Record<string, string[]>`. */
@@ -553,6 +651,7 @@ async function renderGrantedFeatMilestoneCard(opts: {
                     });
                     const selectEl = choiceGroup.createEl("select", { cls: "dnd-modal-form-input" });
                     selectEl.createEl("option", { text: "-- Select an Ability to Improve --", value: "" });
+                    const disabledOptions = new Set<AbilityKey>();
                     imp.options.forEach(ab => {
                         const curr = currentStats[ab] || 10;
                         const newVal = Math.min(imp.maxCap, curr + imp.amount);
@@ -568,10 +667,17 @@ async function renderGrantedFeatMilestoneCard(opts: {
                             text: `${formatFeatureOrSlug(ab)} (${curr} → ${newVal})${tagStr}`,
                             value: ab
                         });
-                        if (isCapped || isAlreadyProficient) optEl.disabled = true;
+                        if (isCapped || isAlreadyProficient) {
+                            optEl.disabled = true;
+                            disabledOptions.add(ab);
+                        }
                     });
                     if (preserveSubState && state.abilityChoices[impIdx]) {
-                        selectEl.value = state.abilityChoices[impIdx];
+                        if (disabledOptions.has(state.abilityChoices[impIdx])) {
+                            delete state.abilityChoices[impIdx];
+                        } else {
+                            selectEl.value = state.abilityChoices[impIdx];
+                        }
                     }
                     selectEl.onchange = async (e) => {
                         const val = (e.target as HTMLSelectElement).value as AbilityKey;
@@ -673,11 +779,23 @@ async function renderGrantedFeatMilestoneCard(opts: {
             const asiContainer = optionContainer.createDiv({ cls: "dnd-form-grid-2" });
             const statSelect1 = asiContainer.createEl("select", { cls: "dnd-modal-form-input" });
             const statSelect2 = asiContainer.createEl("select", { cls: "dnd-modal-form-input" });
-            const currentStats = getCurrentStats();
 
             const updateAsiOptions = () => {
-                const val1 = statSelect1.value || state.asiStat1;
-                const val2 = statSelect2.value || state.asiStat2;
+                const currentStats = getCurrentStats();
+                let val1 = statSelect1.value || state.asiStat1;
+                let val2 = statSelect2.value || state.asiStat2;
+
+                if (val1 && (currentStats[val1] || 10) >= 20) {
+                    val1 = "";
+                    state.asiStat1 = "";
+                }
+                if (val2) {
+                    const eff2 = (val1 === val2) ? (currentStats[val2] || 10) + 1 : (currentStats[val2] || 10);
+                    if (eff2 >= 20) {
+                        val2 = "";
+                        state.asiStat2 = "";
+                    }
+                }
 
                 statSelect1.empty();
                 statSelect2.empty();
@@ -839,6 +957,266 @@ export function serializeWeaponMasteryState(available: number, mastered: string[
     return JSON.stringify([cleanAvail, cleanMastered]);
 }
 
+/** Shared Weapon & Armor Loadout UI (Rulebook dropdown vs Custom input toggle + Weapon Mastery checkbox) used by Wizard Step 4 and EquipItemsModal. */
+function renderWeaponAndArmorLoadoutControls(opts: {
+    parentEl: HTMLElement;
+    availableWeapons: { id: string; name: string; damage: string; mastery: string }[];
+    availableArmors: { id: string; name: string; ac: string; category: string }[];
+    availableMasterySlots: number;
+    getMasteredWeapons: () => string[];
+    setMasteredWeapons: (list: string[]) => void;
+    getWeaponName: () => string;
+    setWeaponName: (val: string) => void;
+    getWeaponDamage: () => string;
+    setWeaponDamage: (val: string) => void;
+    getIsWeaponCustom: () => boolean;
+    setIsWeaponCustom: (val: boolean) => void;
+    getArmorName: () => string;
+    setArmorName: (val: string) => void;
+    getArmorAc: () => string | number;
+    setArmorAc: (val: any) => void;
+    getIsArmorCustom: () => boolean;
+    setIsArmorCustom: (val: boolean) => void;
+    defaultArmorAcOnClear: string | number;
+    coerceMatchedArmorAc: (acStr: string) => string | number;
+    onViewMasteries: () => void;
+    onModeToggleReRender: () => void;
+    onInputKeyUp?: (e: KeyboardEvent) => void;
+}) {
+    const {
+        parentEl,
+        availableWeapons,
+        availableArmors,
+        availableMasterySlots,
+        getMasteredWeapons,
+        setMasteredWeapons,
+        getWeaponName,
+        setWeaponName,
+        getWeaponDamage,
+        setWeaponDamage,
+        getIsWeaponCustom,
+        setIsWeaponCustom,
+        getArmorName,
+        setArmorName,
+        getArmorAc,
+        setArmorAc,
+        getIsArmorCustom,
+        setIsArmorCustom,
+        defaultArmorAcOnClear,
+        coerceMatchedArmorAc,
+        onViewMasteries,
+        onModeToggleReRender,
+        onInputKeyUp
+    } = opts;
+
+    const createModeToggle = (parentRow: HTMLElement, isCustom: boolean, onToggle: () => void) => {
+        const toggleWrap = parentRow.createDiv({
+            cls: "dnd-equip-toggle-wrapper",
+            attr: { title: "Switch between Rulebook Database and Custom Item" }
+        });
+
+        toggleWrap.createEl("span", {
+            text: "Custom",
+            cls: `dnd-equip-toggle-label ${isCustom ? "is-active" : ""}`
+        });
+
+        const switchTrack = toggleWrap.createDiv({
+            cls: `dnd-toggle-switch ${isCustom ? "is-active" : ""}`
+        });
+        switchTrack.createDiv({ cls: "dnd-toggle-knob" });
+
+        toggleWrap.onclick = () => onToggle();
+    };
+
+    // 1. WEAPON SECTION
+    const weaponSection = parentEl.createDiv({ cls: "dnd-form-group-lg" });
+    const weaponLabelRow = weaponSection.createDiv({ cls: "dnd-flex-between" });
+    weaponLabelRow.createEl("label", { text: "Weapon Name:", cls: "dnd-form-label-sub" });
+    const viewMasteriesLink = weaponLabelRow.createEl("a", {
+        text: "📖 View Weapon Masteries",
+        cls: "dnd-note-link dnd-form-hint",
+        href: "#"
+    });
+    viewMasteriesLink.onclick = (e) => {
+        e.preventDefault();
+        onViewMasteries();
+    };
+
+    const weaponRow = weaponSection.createDiv({ cls: "dnd-equip-row" });
+    const masteryCheckboxContainer = weaponSection.createDiv();
+
+    const renderWeaponMasteryToggle = () => {
+        masteryCheckboxContainer.empty();
+        const currWeapon = getWeaponName();
+        if (getIsWeaponCustom() || !currWeapon || currWeapon === "None") return;
+        const matchedWeapon = availableWeapons.find(w => w.name === currWeapon);
+        if (!matchedWeapon || !matchedWeapon.mastery) return;
+
+        const weaponSlug = sanitizeWeaponSlug(matchedWeapon.id || matchedWeapon.name);
+        const currentMastered = getMasteredWeapons();
+        const isChecked = currentMastered.includes(weaponSlug);
+        const usedCount = currentMastered.length;
+        const isDisabled = availableMasterySlots <= 0 || (!isChecked && usedCount >= availableMasterySlots);
+
+        const masteryRow = masteryCheckboxContainer.createDiv({ cls: "dnd-form-row" });
+        const cb = masteryRow.createEl("input", { type: "checkbox" });
+        cb.checked = isChecked && availableMasterySlots > 0;
+        cb.disabled = isDisabled;
+        cb.onchange = (ev) => {
+            const checked = (ev.target as HTMLInputElement).checked;
+            let list = [...getMasteredWeapons()];
+            if (checked) {
+                if (list.length < availableMasterySlots && !list.includes(weaponSlug)) {
+                    list.push(weaponSlug);
+                }
+            } else {
+                list = list.filter(s => s !== weaponSlug);
+            }
+            setMasteredWeapons(list);
+            renderWeaponMasteryToggle();
+        };
+
+        const labelText = availableMasterySlots > 0
+            ? `Use Weapon Mastery (${matchedWeapon.mastery}) — ${usedCount} / ${availableMasterySlots} Masteries Used`
+            : `Use Weapon Mastery (${matchedWeapon.mastery}) — 0 Masteries Available`;
+        masteryRow.createEl("label", { text: labelText });
+    };
+
+    if (!getIsWeaponCustom()) {
+        const weaponSelect = weaponRow.createEl("select", { cls: "dnd-equip-field" });
+        weaponSelect.createEl("option", { text: "-- Select a Weapon --", value: "" });
+        weaponSelect.createEl("option", { text: "None (Unarmed)", value: "None" });
+
+        availableWeapons.forEach(w => {
+            const metaParts = [w.damage, w.mastery].filter(Boolean);
+            const metaSuffix = metaParts.length > 0 ? ` (${metaParts.join(", ")})` : "";
+            weaponSelect.createEl("option", { text: `${w.name}${metaSuffix}`, value: w.name });
+        });
+
+        weaponSelect.value = getWeaponName() || "";
+        weaponSelect.onchange = (e) => {
+            const nextVal = (e.target as HTMLSelectElement).value;
+            setWeaponName(nextVal);
+            const matched = availableWeapons.find(w => w.name === nextVal);
+            if (matched) {
+                setWeaponDamage(matched.damage);
+            } else if (nextVal === "None" || nextVal === "") {
+                setWeaponDamage("");
+            }
+            renderWeaponMasteryToggle();
+        };
+    } else {
+        const currWeapon = getWeaponName();
+        const weaponInput = weaponRow.createEl("input", {
+            type: "text",
+            value: currWeapon === "None" ? "" : (currWeapon || ""),
+            cls: "dnd-equip-field"
+        });
+        weaponInput.placeholder = "e.g., Sun Blade";
+        weaponInput.oninput = (e) => {
+            setWeaponName((e.target as HTMLInputElement).value);
+        };
+        if (onInputKeyUp) weaponInput.onkeyup = onInputKeyUp;
+    }
+
+    renderWeaponMasteryToggle();
+
+    createModeToggle(weaponRow, Boolean(getIsWeaponCustom()), () => {
+        const nextCustom = !getIsWeaponCustom();
+        setIsWeaponCustom(nextCustom);
+        if (!nextCustom) {
+            const currName = String(getWeaponName() || "").toLowerCase();
+            const matched = availableWeapons.find(w => w.name.toLowerCase() === currName);
+            setWeaponName(matched ? matched.name : "");
+            setWeaponDamage(matched ? matched.damage : "");
+        }
+        onModeToggleReRender();
+    });
+
+    if (getIsWeaponCustom()) {
+        const weaponSub = weaponSection.createDiv({ cls: "dnd-equip-custom-sub" });
+        weaponSub.createEl("label", { text: "Weapon Damage:", cls: "dnd-form-label-sm" });
+        const dmgInput = weaponSub.createEl("input", {
+            type: "text",
+            value: getWeaponDamage() || "",
+            cls: "dnd-equip-field"
+        });
+        dmgInput.placeholder = "e.g., 1d8 + 2 Radiant";
+        dmgInput.oninput = (e) => {
+            setWeaponDamage((e.target as HTMLInputElement).value);
+        };
+        if (onInputKeyUp) dmgInput.onkeyup = onInputKeyUp;
+    }
+
+    // 2. ARMOR SECTION
+    const armorSection = parentEl.createDiv({ cls: "dnd-form-group" });
+    armorSection.createEl("label", { text: "Armor Name:", cls: "dnd-form-label-sub" });
+
+    const armorRow = armorSection.createDiv({ cls: "dnd-equip-row" });
+
+    if (!getIsArmorCustom()) {
+        const armorSelect = armorRow.createEl("select", { cls: "dnd-equip-field" });
+        armorSelect.createEl("option", { text: "-- Select Armor --", value: "" });
+        armorSelect.createEl("option", { text: "None (Unarmored)", value: "None" });
+
+        availableArmors.forEach(a => {
+            const catLabel = a.category ? `, ${a.category}` : "";
+            armorSelect.createEl("option", { text: `${a.name} (AC ${a.ac}${catLabel})`, value: a.name });
+        });
+
+        armorSelect.value = getArmorName() || "";
+        armorSelect.onchange = (e) => {
+            const nextVal = (e.target as HTMLSelectElement).value;
+            setArmorName(nextVal);
+            const matched = availableArmors.find(a => a.name === nextVal);
+            if (matched) {
+                setArmorAc(coerceMatchedArmorAc(matched.ac));
+            } else if (nextVal === "None" || nextVal === "") {
+                setArmorAc(coerceMatchedArmorAc("10"));
+            }
+        };
+    } else {
+        const currArmor = getArmorName();
+        const armorInput = armorRow.createEl("input", {
+            type: "text",
+            value: currArmor === "None" ? "" : (currArmor || ""),
+            cls: "dnd-equip-field"
+        });
+        armorInput.placeholder = "e.g., Elven Chain";
+        armorInput.oninput = (e) => {
+            setArmorName((e.target as HTMLInputElement).value);
+        };
+        if (onInputKeyUp) armorInput.onkeyup = onInputKeyUp;
+    }
+
+    createModeToggle(armorRow, Boolean(getIsArmorCustom()), () => {
+        const nextCustom = !getIsArmorCustom();
+        setIsArmorCustom(nextCustom);
+        if (!nextCustom) {
+            const currName = String(getArmorName() || "").toLowerCase();
+            const matched = availableArmors.find(a => a.name.toLowerCase() === currName);
+            setArmorName(matched ? matched.name : "");
+            setArmorAc(matched ? coerceMatchedArmorAc(matched.ac) : defaultArmorAcOnClear);
+        }
+        onModeToggleReRender();
+    });
+
+    if (getIsArmorCustom()) {
+        const armorSub = armorSection.createDiv({ cls: "dnd-equip-custom-sub" });
+        armorSub.createEl("label", { text: "Armor AC:", cls: "dnd-form-label-sm" });
+        const acInput = armorSub.createEl("input", {
+            type: "number",
+            value: String(getArmorAc() ?? ""),
+            cls: "dnd-equip-field"
+        });
+        acInput.placeholder = "e.g., 16";
+        acInput.oninput = (e) => {
+            setArmorAc((e.target as HTMLInputElement).value);
+        };
+        if (onInputKeyUp) acInput.onkeyup = onInputKeyUp;
+    }
+}
+
 // 1. Define the shape of our settings
 interface DnDPluginSettings {
     combineClassSubclass: boolean;
@@ -880,49 +1258,8 @@ const DEFAULT_SETTINGS: DnDPluginSettings = {
     ...THEMES.default.colors // Spread the default colors directly from the library!
 }
 
-interface CharacterSheetVariables {
-    DnD_level: number;
-    DnD_proficiency_bonus: number;
-    DnD_race: string[];
-    DnD_race_lineage: string;
-    DnD_class: string[];
-    DnD_class_subclass: string[];
-    DnD_class_chosen_items: string;
-    DnD_languages: string[];
-    DnD_background: string;
-    DnD_background_feat: string;
-    DnD_background_chosen_items: string;
-    DnD_extra_feats: string[];
-    DnD_spellcasting_ability: string;
-    DnD_maxHealth: number;
-    DnD_current_health: number;
-    DnD_hit_dice: string;
-    DnD_speed: number;
-    DnD_strength: number;
-    DnD_dexterity: number;
-    DnD_constitution: number;
-    DnD_intelligence: number;
-    DnD_wisdom: number;
-    DnD_charisma: number;
-    DnD_hide_feature: string[];
-    DnD_class_equipment: string;
-    DnD_background_equipment: string;
-    DnD_weapon: string;
-    DnD_weapon_damage: number;
-    DnD_armor: string;
-    DnD_armorAc: number;
-    DnD_armor_ac_bonus: number;
-    DnD_armor_ac_mod: number;
-    DnD_attack_stat: string;
-    DnD_attack_roll_mod: number;
-    dnd_gold_added: number;
-    dnd_gold_spent: number;
-    cssclasses: string;
-    obsidianUIMode: string;
-}
-
 export default class DnDCharacterSheetHelperPlugin extends Plugin {
-    settings: DnDPluginSettings;
+    settings: DnDPluginSettings = { ...DEFAULT_SETTINGS };
     featureRestTypes: Map<string, "short" | "long"> = new Map();
     activeHeroicInspiration: Set<string> = new Set();
     rulebookRevision: number = 0;
@@ -1156,8 +1493,7 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
         // Register custom ribbon icon from ribbon.svg
         addIcon('csh-ribbon', RIBBON_ICON_SVG);
 
-        // Sidebar ribbon icon to launch Character Wizard
-        const ribbonIconEl = this.addRibbonIcon('csh-ribbon', 'Launch Character Creation Wizard', () => {
+        const launchCharacterWizard = () => {
             const view = this.app.workspace.getActiveViewOfType(MarkdownView);
 
             if (!view) {
@@ -1167,23 +1503,16 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
 
             // Launch our new multi-step wizard!
             new CharacterWizardModal(this.app, this).open();
-        });
+        };
+
+        // Sidebar ribbon icon to launch Character Wizard
+        const ribbonIconEl = this.addRibbonIcon('csh-ribbon', 'Launch Character Creation Wizard', launchCharacterWizard);
         ribbonIconEl.addClass('csh-ribbon-btn');
 
         this.addCommand({
             id: 'csh-launch-character-wizard',
             name: 'Launch Character Creation Wizard',
-            callback: () => {
-                const view = this.app.workspace.getActiveViewOfType(MarkdownView);
-
-                if (!view) {
-                    new Notice("Please open a note first to launch the Wizard.");
-                    return;
-                }
-
-                // Launch our new multi-step wizard!
-                new CharacterWizardModal(this.app, this).open();
-            }
+            callback: launchCharacterWizard
         });
 
         this.addCommand({
@@ -1208,7 +1537,7 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
 
                         if (!content) {
                             const available = Object.keys(MarkdownNotes).join(', ');
-                            new Notice(`Template missing! Available files: \${available}`);
+                            new Notice(`Template missing! Available files: ${available}`);
                             return;
                         }
 
@@ -1285,19 +1614,19 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
         await this.saveData(this.settings);
     }
 
-    // --- Helper: Fetch Character Sheet Template with 2-Stage Custom Rulebook Priority ---
-    async getTemplateContent(): Promise<string | null> {
-        const fetchNative = () => MarkdownNotes['dnd_character_template'] || null;
-        const basePath = this.settings.customRulebookPath?.replace(/^['"]+|['"]+$/g, '').trim().replace(/^\/+|\/+$/g, '');
+    // --- Helper: Fetch Bundled or Custom Rulebook Markdown Note with 2-Stage Priority ---
+    async getMarkdownNoteContent(noteKey: string): Promise<string | null> {
+        const fetchNative = () => MarkdownNotes[noteKey] || null;
+        const basePath = getCleanCustomBasePath(this.settings);
         if (!basePath) return fetchNative();
 
         const fetchCustom = async () => {
-            const customPath = normalizePath(`${basePath}/markdown/dnd_character_template.md`);
+            const customPath = normalizePath(`${basePath}/markdown/${noteKey}.md`);
             if (await this.app.vault.adapter.exists(customPath)) {
                 try {
                     return await this.app.vault.adapter.read(customPath);
                 } catch (e) {
-                    console.error(`Failed to read custom template at ${customPath}`, e);
+                    console.error(`Failed to read custom markdown at ${customPath}`, e);
                 }
             }
             return null;
@@ -1306,6 +1635,94 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
         return this.settings.customRulebookPriority
             ? (await fetchCustom()) ?? fetchNative()
             : fetchNative() ?? (await fetchCustom());
+    }
+
+    // --- Helper: Fetch Character Sheet Template with 2-Stage Custom Rulebook Priority ---
+    async getTemplateContent(): Promise<string | null> {
+        return this.getMarkdownNoteContent('dnd_character_template');
+    }
+
+    // --- Helper: Merge Native & Custom Router JSON Maps by Priority ---
+    async loadMergedRouterMap(fileName: string, nativeMap: Record<string, any>): Promise<Record<string, any>> {
+        const basePath = getCleanCustomBasePath(this.settings);
+        const customMap = basePath ? await readCustomJson(this.app, `${basePath}/${fileName}`) : null;
+        return mergeDictionaries(nativeMap || {}, customMap, this.settings.customRulebookPriority) || {};
+    }
+
+    // --- Helper: Scan Rulebook & Custom Rulebook Items Catalog Once for Modals ---
+    async loadRulebookEquipmentCatalog(): Promise<{
+        items: { id: string; name: string; type: string }[];
+        weapons: { id: string; name: string; damage: string; mastery: string }[];
+        masteryWeapons: { id: string; name: string; mastery: string }[];
+        armors: { id: string; name: string; ac: string; category: string }[];
+        tools: string[];
+    }> {
+        const mergedItemsRouter = await this.loadMergedRouterMap("items.json", itemsMap);
+        const itemLookupKeys = new Set<string>([
+            ...Object.keys(itemsMap || {}),
+            ...Object.keys(mergedItemsRouter || {})
+        ]);
+
+        const allItemsMap = new Map<string, { id: string; name: string; type: string }>();
+        const weaponsMap = new Map<string, { id: string; name: string; damage: string; mastery: string }>();
+        const masteryWeps: { id: string; name: string; mastery: string }[] = [];
+        const armorsMap = new Map<string, { id: string; name: string; ac: string; category: string }>();
+        const toolsSet = new Set<string>();
+        const extraToolIds = new Set(["disguise-kit", "forgery-kit", "herbalism-kit", "poisoners-kit", "thieves-tools", "navigators-tools"]);
+
+        for (const key of itemLookupKeys) {
+            const data = await getItemData(this.app, this.settings, key);
+            if (!data || !data.type) continue;
+
+            const typeLower = String(data.type).toLowerCase().trim().replace(/['"]/g, '').replace(/\s+/g, '-');
+            const displayName = String(data.name || key).trim();
+            const mapKey = displayName.toLowerCase();
+
+            allItemsMap.set(mapKey, { id: key, name: displayName, type: typeLower });
+
+            if (
+                typeLower === "artisans-tool" ||
+                typeLower === "musical-instrument" ||
+                typeLower === "gaming-set" ||
+                extraToolIds.has(String(key).toLowerCase().trim())
+            ) {
+                toolsSet.add(displayName);
+            }
+
+            if (typeLower.includes("weapon")) {
+                const masteryInfo = data.mastery
+                    ? await getWeaponMasteryDescription(this.app, this.settings, data.mastery)
+                    : null;
+                weaponsMap.set(mapKey, {
+                    id: key,
+                    name: displayName,
+                    damage: String(data.damage || ""),
+                    mastery: masteryInfo ? masteryInfo.name : ""
+                });
+                if (masteryInfo) {
+                    masteryWeps.push({
+                        id: sanitizeWeaponSlug(key),
+                        name: displayName,
+                        mastery: masteryInfo.name
+                    });
+                }
+            } else if (typeLower.includes("armor")) {
+                armorsMap.set(mapKey, {
+                    id: key,
+                    name: displayName,
+                    ac: String(data.ac || "10"),
+                    category: String(data.category || "")
+                });
+            }
+        }
+
+        return {
+            items: Array.from(allItemsMap.values()).sort((a, b) => a.name.localeCompare(b.name)),
+            weapons: Array.from(weaponsMap.values()).sort((a, b) => a.name.localeCompare(b.name)),
+            masteryWeapons: masteryWeps.sort((a, b) => a.name.localeCompare(b.name)),
+            armors: Array.from(armorsMap.values()).sort((a, b) => a.name.localeCompare(b.name)),
+            tools: Array.from(toolsSet).sort((a, b) => a.localeCompare(b))
+        };
     }
 
     /**
@@ -1319,7 +1736,7 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
             const mdContent = buildWeaponMasteriesMarkdown(map);
             MarkdownNotes["weapon-masteries"] = mdContent;
 
-            const basePath = this.settings.customRulebookPath?.replace(/^['"]+|['"]+$/g, '').trim().replace(/^\/+|\/+$/g, '');
+            const basePath = getCleanCustomBasePath(this.settings);
             if (!basePath) return;
 
             const customJsonPath = normalizePath(`${basePath}/weapon-masteries.json`);
@@ -1681,6 +2098,120 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
         };
     }
 
+    /**
+     * Resolves Base AC (`armorAc`), Dexterity/Unarmored AC Bonus (`armorAcBonus`), and canonical armor name
+     * across Rulebook armors (Light, Medium, Heavy, Unarmored Defense), unarmored ("None"), and Custom Armors.
+     */
+    async resolveEquippedArmorStats(params: {
+        armorNameInput: any;
+        manualAcInput?: any;
+        isCustomMode?: boolean;
+        classInput: any;
+        classLevelsInput: any;
+        totalLevel: number;
+        statsRecord: Record<string, number>;
+        subclassInput?: any;
+        fetchOptions?: any;
+    }): Promise<{ resolvedArmorName: string; armorAc: number; armorAcBonus: number; isUnarmored: boolean }> {
+        const opts = params.fetchOptions || this.settings;
+        const rawArmorStr = String(params.armorNameInput ?? "").trim();
+        const cleanArmorLower = rawArmorStr.toLowerCase();
+        const hasArmorName = rawArmorStr !== "" && cleanArmorLower !== "none" && !rawArmorStr.startsWith("<");
+        const parsedManualAc = parseInt(String(params.manualAcInput ?? ""), 10);
+        const dexMod = Math.floor(((Number(params.statsRecord?.dexterity) || 10) - 10) / 2);
+
+        const getUnarmored = () => this.resolveUnarmoredDefense(
+            params.classInput,
+            params.classLevelsInput,
+            params.totalLevel,
+            params.statsRecord,
+            opts,
+            params.subclassInput
+        );
+
+        if (params.isCustomMode) {
+            if (hasArmorName) {
+                return {
+                    resolvedArmorName: rawArmorStr,
+                    armorAc: !isNaN(parsedManualAc) ? parsedManualAc : 10,
+                    armorAcBonus: 0,
+                    isUnarmored: false
+                };
+            }
+            if (!isNaN(parsedManualAc)) {
+                return {
+                    resolvedArmorName: "None",
+                    armorAc: parsedManualAc,
+                    armorAcBonus: 0,
+                    isUnarmored: false
+                };
+            }
+            const unarmoredCalc = await getUnarmored();
+            return {
+                resolvedArmorName: "None",
+                armorAc: unarmoredCalc.baseAc,
+                armorAcBonus: unarmoredCalc.acBonus,
+                isUnarmored: true
+            };
+        }
+
+        if (hasArmorName) {
+            const safeArmorName = rawArmorStr.toLowerCase().replace(/['"]/g, '').trim().replace(/\s+/g, '-');
+            const armorData = await getItemData(this.app, opts, safeArmorName);
+            if (armorData && armorData.ac && armorData.category) {
+                const category = String(armorData.category).toLowerCase();
+                if (category.includes("unarmored") || safeArmorName === "unarmored-defense") {
+                    const unarmoredCalc = await getUnarmored();
+                    return {
+                        resolvedArmorName: armorData.name || "Unarmored Defense",
+                        armorAc: unarmoredCalc.baseAc,
+                        armorAcBonus: unarmoredCalc.acBonus,
+                        isUnarmored: true
+                    };
+                }
+                const baseAc = parseInt(String(armorData.ac), 10);
+                let armorAcBonus = dexMod;
+                if (category.includes("light")) armorAcBonus = dexMod;
+                else if (category.includes("medium")) armorAcBonus = Math.min(dexMod, 2);
+                else if (category.includes("heavy")) armorAcBonus = 0;
+
+                return {
+                    resolvedArmorName: armorData.name || rawArmorStr,
+                    armorAc: !isNaN(baseAc) ? baseAc : 10,
+                    armorAcBonus,
+                    isUnarmored: false
+                };
+            }
+
+            // Non-empty armor name not found in rulebook (e.g. Custom Armor already equipped on sheet)
+            if (params.isCustomMode === undefined) {
+                return {
+                    resolvedArmorName: rawArmorStr,
+                    armorAc: !isNaN(parsedManualAc) ? parsedManualAc : 10,
+                    armorAcBonus: 0,
+                    isUnarmored: false
+                };
+            }
+        }
+
+        const unarmoredCalc = await getUnarmored();
+        return {
+            resolvedArmorName: "None",
+            armorAc: unarmoredCalc.baseAc,
+            armorAcBonus: unarmoredCalc.acBonus,
+            isUnarmored: true
+        };
+    }
+
+    /** Resolves a character's Background Feat ID from `DnD_background` JSON data, falling back to `DnD_backgroundFeat`. */
+    async resolveBackgroundFeatId(backgroundInput: any, backgroundFeatInput: any, fetchOptions?: any): Promise<any> {
+        if (hasValidValue(backgroundInput)) {
+            const bgData = await getBackgroundData(this.app, fetchOptions || this.settings, backgroundInput);
+            if (bgData?.feat) return bgData.feat;
+        }
+        return backgroundFeatInput;
+    }
+
     // --- Helper: Calculate Dynamic Damage for "Unarmed Strike" using class scalingDice & Ability Modifiers ---
     async resolveUnarmedStrikeDamage(
         classInput: any,
@@ -1781,15 +2312,10 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
     ): Promise<string[]> {
         const opts = fetchOptions || this.settings;
         const cache = routerCache || new Map<string, boolean>();
-        const hasValid = (val: any): boolean => {
-            if (val === undefined || val === null) return false;
-            const s = String(val).trim();
-            return s !== "" && !s.startsWith("<");
-        };
         const raceArray = raceInput
-            ? (Array.isArray(raceInput) ? raceInput.filter(hasValid) : (hasValid(raceInput) ? [raceInput] : []))
+            ? (Array.isArray(raceInput) ? raceInput.filter(hasValidValue) : (hasValidValue(raceInput) ? [raceInput] : []))
             : [];
-        const lineageClean = hasValid(raceLineageInput) ? String(raceLineageInput).trim().toLowerCase() : "";
+        const lineageClean = hasValidValue(raceLineageInput) ? String(raceLineageInput).trim().toLowerCase() : "";
 
         const out: string[] = [];
         for (const raceName of raceArray) {
@@ -1820,11 +2346,6 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
     }): Promise<string[]> {
         const opts = params.fetchOptions || this.settings;
         const routerCache = new Map<string, boolean>();
-        const hasValid = (val: any): boolean => {
-            if (val === undefined || val === null) return false;
-            const s = String(val).trim();
-            return s !== "" && !s.startsWith("<");
-        };
         const out: string[] = [];
         const pushUnique = (f: string | null) => {
             if (f && !out.some(existing => normalizeFeatKey(existing) === normalizeFeatKey(f))) {
@@ -1833,10 +2354,10 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
         };
 
         const classArray = params.classInput
-            ? (Array.isArray(params.classInput) ? params.classInput.filter(hasValid) : (hasValid(params.classInput) ? [params.classInput] : []))
+            ? (Array.isArray(params.classInput) ? params.classInput.filter(hasValidValue) : (hasValidValue(params.classInput) ? [params.classInput] : []))
             : [];
         const rawSubclassArray = params.subclassInput
-            ? (Array.isArray(params.subclassInput) ? params.subclassInput.filter(hasValid) : (hasValid(params.subclassInput) ? [params.subclassInput] : []))
+            ? (Array.isArray(params.subclassInput) ? params.subclassInput.filter(hasValidValue) : (hasValidValue(params.subclassInput) ? [params.subclassInput] : []))
             : [];
 
         for (let idx = 0; idx < classArray.length; idx++) {
@@ -2009,28 +2530,6 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
 
         // 3. Feat Speed Bonuses
         let featSpeedBonus = 0;
-        const allFeatIds: string[] = [];
-        if (Array.isArray(extraFeatsInput)) {
-            allFeatIds.push(...extraFeatsInput.map(String));
-        } else if (typeof extraFeatsInput === "string" && extraFeatsInput.trim()) {
-            const trimmed = extraFeatsInput.trim();
-            if (trimmed.startsWith("[")) {
-                try {
-                    const parsed = JSON.parse(trimmed);
-                    if (Array.isArray(parsed)) allFeatIds.push(...parsed.map(String));
-                } catch {
-                    allFeatIds.push(...trimmed.split(",").map(s => s.trim()));
-                }
-            } else {
-                allFeatIds.push(...trimmed.split(",").map(s => s.trim()));
-            }
-        }
-
-        if (backgroundFeatInput) {
-            const bgStr = String(backgroundFeatInput).trim();
-            if (bgStr && !bgStr.startsWith("<")) allFeatIds.push(bgStr);
-        }
-
         const autoGrantedForSpeed = await this.collectAutoGrantedFeats({
             classInput,
             classLevelsInput,
@@ -2040,12 +2539,9 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
             raceLineageInput,
             fetchOptions: options
         });
-        allFeatIds.push(...autoGrantedForSpeed);
-
-        const uniqueFeatIds = [...new Set(allFeatIds.map(f => f.trim()).filter(f => f && !f.startsWith("<")))];
+        const uniqueFeatIds = combineUniqueFeatIds(extraFeatsInput, backgroundFeatInput, autoGrantedForSpeed);
 
         for (const featId of uniqueFeatIds) {
-            if (featId === "ability-score-improvement") continue;
             const featData = await getExtraFeat(this.app, options, featId);
             if (featData && featData.speedMod !== undefined && !isNaN(Number(featData.speedMod))) {
                 const val = Number(featData.speedMod);
@@ -2103,15 +2599,10 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
     ): Promise<{ totalSlots: number; breakdown: { source: string; count: number }[] }> {
         const opts = fetchOptions || this.settings;
         const routerCache = new Map<string, boolean>();
-        const hasValid = (val: any): boolean => {
-            if (val === undefined || val === null) return false;
-            const s = String(val).trim();
-            return s !== "" && !s.startsWith("<");
-        };
 
         const breakdown: { source: string; count: number }[] = [];
-        const classArray = classInput ? (Array.isArray(classInput) ? classInput.filter(hasValid) : (hasValid(classInput) ? [classInput] : [])) : [];
-        const rawSubclassArray = subclassInput ? (Array.isArray(subclassInput) ? subclassInput.filter(hasValid) : (hasValid(subclassInput) ? [subclassInput] : [])) : [];
+        const classArray = classInput ? (Array.isArray(classInput) ? classInput.filter(hasValidValue) : (hasValidValue(classInput) ? [classInput] : [])) : [];
+        const rawSubclassArray = subclassInput ? (Array.isArray(subclassInput) ? subclassInput.filter(hasValidValue) : (hasValidValue(subclassInput) ? [subclassInput] : [])) : [];
         const autoGrantedFeats: string[] = [];
 
         for (let idx = 0; idx < classArray.length; idx++) {
@@ -2168,18 +2659,7 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
         autoGrantedFeats.push(...raceAutoFeats);
 
         // Gather all feats (extraFeats + backgroundFeat + auto-granted feats)
-        const featList: string[] = [];
-        const addFeat = (f: any) => {
-            if (!hasValid(f)) return;
-            const clean = String(f).trim();
-            if (clean && !featList.some(existing => existing.toLowerCase() === clean.toLowerCase())) {
-                featList.push(clean);
-            }
-        };
-
-        parseExtraFeatsList(extraFeatsInput).forEach(addFeat);
-        addFeat(backgroundFeatInput);
-        autoGrantedFeats.forEach(addFeat);
+        const featList = combineUniqueFeatIds(extraFeatsInput, backgroundFeatInput, autoGrantedFeats);
 
         for (const featId of featList) {
             const featData = await getExtraFeat(this.app, opts, featId);
@@ -2531,11 +3011,6 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
         breakdown: { source: string; amount: number }[];
     }> {
         const opts = fetchOptions || this.settings;
-        const hasValid = (val: any): boolean => {
-            if (val === undefined || val === null) return false;
-            const s = String(val).trim();
-            return s !== "" && !s.startsWith("<");
-        };
 
         const evaluateInitMod = (rawMod: any): number => {
             if (rawMod === undefined || rawMod === null || rawMod === "") return 0;
@@ -2568,8 +3043,8 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
         const breakdown: { source: string; amount: number }[] = [];
         let autoBonus = 0;
 
-        const classArray = classInput ? (Array.isArray(classInput) ? classInput.filter(hasValid) : (hasValid(classInput) ? [classInput] : [])) : [];
-        const rawSubclassArray = subclassInput ? (Array.isArray(subclassInput) ? subclassInput.filter(hasValid) : (hasValid(subclassInput) ? [subclassInput] : [])) : [];
+        const classArray = classInput ? (Array.isArray(classInput) ? classInput.filter(hasValidValue) : (hasValidValue(classInput) ? [classInput] : [])) : [];
+        const rawSubclassArray = subclassInput ? (Array.isArray(subclassInput) ? subclassInput.filter(hasValidValue) : (hasValidValue(subclassInput) ? [subclassInput] : [])) : [];
         const autoGrantedFeats: string[] = [];
 
         // 1. Class & Subclass Features
@@ -2611,8 +3086,8 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
         }
 
         // 2. Race & Lineage Traits
-        const raceArray = raceInput ? (Array.isArray(raceInput) ? raceInput.filter(hasValid) : (hasValid(raceInput) ? [raceInput] : [])) : [];
-        const lineageClean = hasValid(raceLineageInput) ? String(raceLineageInput).trim().toLowerCase() : "";
+        const raceArray = raceInput ? (Array.isArray(raceInput) ? raceInput.filter(hasValidValue) : (hasValidValue(raceInput) ? [raceInput] : [])) : [];
+        const lineageClean = hasValidValue(raceLineageInput) ? String(raceLineageInput).trim().toLowerCase() : "";
         for (const raceName of raceArray) {
             const raceData = await getRaceData(this.app, opts, raceName);
             const raceTraits = raceData?.traits || raceData?.features;
@@ -2634,36 +3109,7 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
         }
 
         // 3. Feats (extraFeats + backgroundFeat + auto-granted feats)
-        const featList: string[] = [];
-        const addFeat = (f: any) => {
-            if (!hasValid(f)) return;
-            const clean = String(f).trim();
-            if (clean && !featList.some(existing => existing.toLowerCase() === clean.toLowerCase())) {
-                featList.push(clean);
-            }
-        };
-
-        if (Array.isArray(extraFeatsInput)) {
-            extraFeatsInput.forEach(addFeat);
-        } else if (typeof extraFeatsInput === "string") {
-            const trimmed = extraFeatsInput.trim();
-            if (trimmed.startsWith("[")) {
-                try {
-                    const parsed = JSON.parse(trimmed);
-                    if (Array.isArray(parsed)) parsed.forEach(addFeat);
-                } catch {
-                    addFeat(trimmed);
-                }
-            } else if (trimmed.includes(",")) {
-                trimmed.split(",").forEach(addFeat);
-            } else {
-                addFeat(trimmed);
-            }
-        } else {
-            addFeat(extraFeatsInput);
-        }
-        addFeat(backgroundFeatInput);
-        autoGrantedFeats.forEach(addFeat);
+        const featList = combineUniqueFeatIds(extraFeatsInput, backgroundFeatInput, autoGrantedFeats);
 
         for (const featId of featList) {
             const featData = await getExtraFeat(this.app, opts, featId);
@@ -2747,9 +3193,9 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
             };
 
             // Parse the user's code block using Obsidian's built-in YAML parser
-            let blockData;
+            let blockData: Record<string, any>;
             try {
-                blockData = parseYaml(source);
+                blockData = parseBlockYaml(source);
             } catch (error) {
                 wrapper.createEl("p", { text: "Error: Invalid format in dnd-features block.", cls: "dnd-error" });
                 commitWrapper();
@@ -2761,35 +3207,7 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
             const frontmatter: Record<string, any> = fileCache?.frontmatter || {};
 
             // 3. Helper function to resolve "frontmatter.property" values
-            const resolveValue = (val: any) => {
-                if (typeof val === 'string') {
-                    const trimmed = val.trim().replace(/^\{\{\s*|\s*\}\}$/g, '');
-                    if (trimmed.startsWith('frontmatter.')) {
-                        const propName = trimmed.replace('frontmatter.', '').trim();
-                        if (frontmatter[propName] !== undefined) return frontmatter[propName];
-                        // Fallback for legacy template keys (level <-> DnD_level, DnD_Subclass <-> DnD_subclass, proficiencyBonus <-> DnD_proficiencyBonus)
-                        if (propName === 'level') return frontmatter['DnD_level'];
-                        if (propName === 'DnD_level') return frontmatter['level'];
-                        if (propName === 'DnD_Subclass') return frontmatter['DnD_subclass'];
-                        if (propName === 'DnD_subclass') return frontmatter['DnD_Subclass'];
-                        if (propName === 'proficiencyBonus' || propName === 'proficiency_bonus') return frontmatter['DnD_proficiencyBonus'];
-                        if (propName === 'DnD_proficiencyBonus') return frontmatter['proficiency_bonus'] ?? frontmatter['proficiencyBonus'];
-                        return undefined;
-                    }
-                }
-                return val;
-            };
-
-            // Helper to check if a resolved frontmatter/YAML value actually contains non-empty data
-            const hasValidValue = (val: any): boolean => {
-                if (val === undefined || val === null) return false;
-                if (Array.isArray(val)) return val.some(item => hasValidValue(item));
-                if (typeof val === 'string') {
-                    const t = val.trim();
-                    return t !== '' && t !== '[]' && !t.startsWith('<');
-                }
-                return true;
-            };
+            const resolveValue = createFrontmatterResolver(frontmatter);
 
             // 4. Resolve all core variables
             const level = resolveValue(blockData.level) ?? frontmatter['DnD_level'] ?? frontmatter['level'] ?? 1;
@@ -2827,16 +3245,7 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
             };
 
             // Normalize the 'hide' variable into a clean array of lowercased strings
-            let hiddenFeatures: string[] = [];
-            let parsedHide = hideRaw;
-            if (typeof parsedHide === 'string' && parsedHide.trim().startsWith('[')) {
-                try { parsedHide = JSON.parse(parsedHide.trim()); } catch { parsedHide = []; }
-            }
-            if (Array.isArray(parsedHide)) {
-                hiddenFeatures = parsedHide.map(name => String(name).toLowerCase().trim()).filter(Boolean);
-            } else if (typeof parsedHide === 'string' && parsedHide.trim() !== '') {
-                hiddenFeatures = parsedHide.split(',').map(name => String(name).toLowerCase().trim()).filter(Boolean);
-            }
+            const hiddenFeatures = parseStringArray(hideRaw).map(name => name.toLowerCase());
 
             // 5. Validate Multiclassing Levels & Ensure Numbers
             const parsedLevel = Number(level) || 0;
@@ -2846,34 +3255,22 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
 
             // 5.5. Parse featureUses array ([ ["<Feature/Feat-Name>", "UsesAvailable", "UsesUsed"], ... ])
             const rawFeatureUsesProp = blockData.featureUses ?? blockData['feature-uses'];
-            let targetFeatureUsesFmKey = "DnD_featureUses";
-            if (typeof rawFeatureUsesProp === "string") {
-                const trimmedProp = rawFeatureUsesProp.trim().replace(/^\{\{\s*|\s*\}\}$/g, '');
-                if (trimmedProp.startsWith("frontmatter.")) {
-                    targetFeatureUsesFmKey = trimmedProp.replace("frontmatter.", "").trim() || "DnD_featureUses";
-                }
-            }
-
-            let featureUsesRaw = resolveValue(rawFeatureUsesProp) ?? frontmatter[targetFeatureUsesFmKey];
-            if (typeof featureUsesRaw === "string" && featureUsesRaw.trim().startsWith("[")) {
-                try { featureUsesRaw = JSON.parse(featureUsesRaw.trim()); } catch { featureUsesRaw = []; }
-            }
+            const targetFeatureUsesFmKey = extractFrontmatterKey(rawFeatureUsesProp, "DnD_featureUses");
+            const featureUsesRaw = parseJsonArrayProp(resolveValue(rawFeatureUsesProp) ?? frontmatter[targetFeatureUsesFmKey]);
 
             const featureUsesState: { name: string; max: number; used: number }[] = [];
-            if (Array.isArray(featureUsesRaw)) {
-                for (const item of featureUsesRaw) {
-                    const tuple = resolveValue(item);
-                    if (Array.isArray(tuple) && tuple.length >= 3 && tuple[0]) {
-                        const fName = String(tuple[0]).trim();
-                        const fMax = Math.max(0, Number(String(tuple[1]).replace(/[^0-9.-]/g, "")) || 0);
-                        const fUsed = Math.max(0, Number(String(tuple[2]).replace(/[^0-9.-]/g, "")) || 0);
-                        if (fName) {
-                            featureUsesState.push({
-                                name: fName,
-                                max: fMax,
-                                used: fMax > 0 ? Math.min(fMax, fUsed) : fUsed
-                            });
-                        }
+            for (const item of featureUsesRaw) {
+                const tuple = resolveValue(item);
+                if (Array.isArray(tuple) && tuple.length >= 3 && tuple[0]) {
+                    const fName = String(tuple[0]).trim();
+                    const fMax = Math.max(0, Number(String(tuple[1]).replace(/[^0-9.-]/g, "")) || 0);
+                    const fUsed = Math.max(0, Number(String(tuple[2]).replace(/[^0-9.-]/g, "")) || 0);
+                    if (fName) {
+                        featureUsesState.push({
+                            name: fName,
+                            max: fMax,
+                            used: fMax > 0 ? Math.min(fMax, fUsed) : fUsed
+                        });
                     }
                 }
             }
@@ -3437,20 +3834,12 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
 
             // Auto-sync DnD_weaponMastery[0] (available slots) in frontmatter from class/subclass/feat JSONs
             const rawWeaponMasteryProp = blockData.weaponMastery ?? blockData['weapon-mastery'];
-            let targetWeaponMasteryFmKey = "DnD_weaponMastery";
-            if (typeof rawWeaponMasteryProp === "string") {
-                const trimmedWmProp = rawWeaponMasteryProp.trim().replace(/^\{\{\s*|\s*\}\}$/g, '');
-                if (trimmedWmProp.startsWith("frontmatter.")) {
-                    targetWeaponMasteryFmKey = trimmedWmProp.replace("frontmatter.", "").trim() || "DnD_weaponMastery";
-                }
-            }
+            const targetWeaponMasteryFmKey = extractFrontmatterKey(rawWeaponMasteryProp, "DnD_weaponMastery");
 
             const rawWmValue = resolveValue(rawWeaponMasteryProp) ?? frontmatter[targetWeaponMasteryFmKey];
             const currentMasteryState = parseWeaponMasteryState(rawWmValue);
-            const bgDataForMastery = background ? await getBackgroundData(this.app, fetchOptions, background) : null;
+            const bgFeatForMastery = await this.resolveBackgroundFeatId(background, frontmatter["DnD_backgroundFeat"], fetchOptions);
             if (isUnloaded || myRenderId !== activeRenderId) return;
-
-            const bgFeatForMastery = bgDataForMastery?.feat || frontmatter["DnD_backgroundFeat"];
             const masteryCalc = await this.resolveCharacterWeaponMasterySlots(
                 dndClass,
                 classLevels,
@@ -3547,9 +3936,7 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
 
             let blockData: Record<string, any> = {};
             try {
-                if (source.trim()) {
-                    blockData = parseYaml(source) || {};
-                }
+                blockData = parseBlockYaml(source);
             } catch (error) {
                 wrapper.createEl("p", { text: "Error: Invalid format in dnd-inventory block.", cls: "dnd-error" });
                 el.empty();
@@ -3560,15 +3947,7 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
             const fileCache = this.app.metadataCache.getCache(ctx.sourcePath);
             const frontmatter: Record<string, any> = fileCache?.frontmatter || {};
 
-            const resolveValue = (val: any) => {
-                if (typeof val === 'string') {
-                    const trimmed = val.trim().replace(/^\{\{\s*|\s*\}\}$/g, '');
-                    if (trimmed.startsWith('frontmatter.')) {
-                        return frontmatter[trimmed.replace('frontmatter.', '').trim()];
-                    }
-                }
-                return val;
-            };
+            const resolveValue = createFrontmatterResolver(frontmatter);
 
             const sanitizeItem = (val: any) => {
                 if (!val) return null;
@@ -3591,14 +3970,7 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
             const armorAc = resolveValue(blockData.armorAc ?? blockData['armor_ac']);
             const edition = resolveValue(blockData.edition);
 
-            const statsRecord: Record<string, number> = {
-                strength: Number(resolveValue(blockData.strength) ?? frontmatter["DnD_strength"]) || 10,
-                dexterity: Number(resolveValue(blockData.dexterity) ?? frontmatter["DnD_dexterity"]) || 10,
-                constitution: Number(resolveValue(blockData.constitution) ?? frontmatter["DnD_constitution"]) || 10,
-                intelligence: Number(resolveValue(blockData.intelligence) ?? frontmatter["DnD_intelligence"]) || 10,
-                wisdom: Number(resolveValue(blockData.wisdom) ?? frontmatter["DnD_wisdom"]) || 10,
-                charisma: Number(resolveValue(blockData.charisma) ?? frontmatter["DnD_charisma"]) || 10
-            };
+            const statsRecord = extractAbilityScores(frontmatter, blockData, resolveValue);
             const attackStat = String(resolveValue(blockData.attackStat) ?? frontmatter["DnD_attackStat"] ?? "strength");
 
             const fetchOptions = {
@@ -3621,32 +3993,13 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
             }
 
             // 3. Parse Inventory Arrays strictly from blockData variables
-            const parseJsonArray = (raw: any): any[] => {
-                const resolved = resolveValue(raw);
-                if (!resolved) return [];
-                if (Array.isArray(resolved)) return resolved;
-                if (typeof resolved === 'string' && resolved.trim().startsWith('[')) {
-                    try { return JSON.parse(resolved.trim()); } catch { return []; }
-                }
-                return [];
-            };
+            const parseJsonArray = (raw: any): any[] => parseJsonArrayProp(raw, resolveValue);
 
-            // Helper to extract the target frontmatter key if a block property is mapped via "frontmatter.<Key>"
-            const getTargetFmKey = (rawProp: any, fallbackKey: string): string => {
-                if (typeof rawProp === 'string') {
-                    const trimmed = rawProp.trim().replace(/^\{\{\s*|\s*\}\}$/g, '');
-                    if (trimmed.startsWith('frontmatter.')) {
-                        return trimmed.replace('frontmatter.', '').trim();
-                    }
-                }
-                return fallbackKey;
-            };
-
-            const starterFmKey = getTargetFmKey(blockData.starterEquipment, "DnD_starterEquipment");
-            const invItemsFmKey = getTargetFmKey(blockData.inventoryItems, "DnD_inventoryItems");
-            const customItemsFmKey = getTargetFmKey(blockData.customItems, "DnD_customItems");
-            const wealthAddedFmKey = getTargetFmKey(blockData.wealthAdded, "DnD_wealthAdded");
-            const wealthSpentFmKey = getTargetFmKey(blockData.wealthSpent, "DnD_wealthSpent");
+            const starterFmKey = extractFrontmatterKey(blockData.starterEquipment, "DnD_starterEquipment");
+            const invItemsFmKey = extractFrontmatterKey(blockData.inventoryItems, "DnD_inventoryItems");
+            const customItemsFmKey = extractFrontmatterKey(blockData.customItems, "DnD_customItems");
+            const wealthAddedFmKey = extractFrontmatterKey(blockData.wealthAdded, "DnD_wealthAdded");
+            const wealthSpentFmKey = extractFrontmatterKey(blockData.wealthSpent, "DnD_wealthSpent");
 
             // Structure: [ ["<item-id>", "<qty>", "<show: true/false>"], ... ]
             const rawStarter = parseJsonArray(blockData.starterEquipment);
@@ -3973,7 +4326,7 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                             String(newQty),
                             String(existing[2] ?? "true"),
                             String(existing[3] ?? "0"),
-                            String(existing[4] ?? "0"),
+                            String(existing[4] ?? ""),
                             String(existing[5] ?? "Gear"),
                             String(existing[6] ?? "")
                         ];
@@ -4196,9 +4549,9 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
             const wrapper = document.createElement('div');
 
             // Parse the user's code block using Obsidian's built-in YAML parser
-            let blockData;
+            let blockData: Record<string, any>;
             try {
-                blockData = parseYaml(source);
+                blockData = parseBlockYaml(source);
             } catch (error) {
                 wrapper.createEl("p", { text: "Error: Invalid format in dnd-rules block.", cls: "dnd-error" });
                 el.empty();
@@ -4211,13 +4564,7 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
             const frontmatter = fileCache?.frontmatter || {};
 
             // 3. Helper function to resolve "frontmatter.property" values
-            const resolveValue = (val: any) => {
-                if (typeof val === 'string' && val.startsWith('frontmatter.')) {
-                    const key = val.replace('frontmatter.', '');
-                    return frontmatter[key];
-                }
-                return val;
-            };
+            const resolveValue = createFrontmatterResolver(frontmatter);
 
             // 4. Resolve all core variables
             const hbRule = resolveValue(blockData.rules);
@@ -4279,9 +4626,7 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
         // 1. Parse the YAML options (e.g., align: right-up)
         let blockData: Record<string, any> = {};
         try {
-            if (source.trim()) {
-                blockData = parseYaml(source) || {};
-            }
+            blockData = parseBlockYaml(source);
         } catch (error) {
             el.empty();
             el.createEl("p", { text: "Error: Invalid YAML in dnd-controls block.", cls: "dnd-error-text" });
@@ -4378,9 +4723,7 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
 
             let blockData: Record<string, any> = {};
             try {
-                if (source.trim()) {
-                    blockData = parseYaml(source) || {};
-                }
+                blockData = parseBlockYaml(source);
             } catch (error) {
                 wrapper.createEl("p", { text: "Error: Invalid format in dnd-spells block.", cls: "dnd-error" });
                 el.empty();
@@ -4392,18 +4735,15 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
             const frontmatter: Record<string, any> = fileCache?.frontmatter || {};
 
             // Standard helper: Only reads from frontmatter if the user explicitly writes "frontmatter.<key>"
-            const resolveValue = (val: any) => {
-                if (typeof val === 'string') {
-                    const trimmed = val.trim().replace(/^\{\{\s*|\s*\}\}$/g, "");
-                    if (trimmed.startsWith('frontmatter.')) {
-                        return frontmatter[trimmed.replace('frontmatter.', '')];
-                    }
-                }
-                return val;
-            };
+            const resolveValue = createFrontmatterResolver(frontmatter);
 
             // 1. Resolve spellcastingAbility strictly from the code block variable
             const spellcastingAbility = resolveValue(blockData.spellcastingAbility) || "";
+            const edition = resolveValue(blockData.edition);
+            const fetchOptions = {
+                ...this.settings,
+                edition: edition ? String(edition) : undefined
+            };
 
             // --- HIDE-AND-SHOW LOGIC ---
             // If the character has no spellcasting ability, completely abort rendering.
@@ -4470,10 +4810,7 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
             const slotsArray = parseAllSpellSlots(rawSpellSlotsProp);
 
             // Determine which frontmatter key to update when clicking a spell slot pip (defaulting to DnD_spellSlots)
-            let targetSlotsFmKey = "DnD_spellSlots";
-            if (typeof rawSpellSlotsProp === "string" && rawSpellSlotsProp.trim().startsWith("frontmatter.")) {
-                targetSlotsFmKey = rawSpellSlotsProp.trim().replace("frontmatter.", "");
-            }
+            const targetSlotsFmKey = extractFrontmatterKey(rawSpellSlotsProp, "DnD_spellSlots");
 
             // Gather all levels that either have spells OR have > 0 max spell slots in the 9-element array
             const levelSet = new Set<string>(
@@ -4584,7 +4921,7 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
 
                 for (const spellKey of spellKeys) {
                     const fallbackName = spellKey.replace(/-/g, " ").replace(/\b\w/g, c => c.toUpperCase());
-                    const spellData = (await this.loadSpellFile(spellKey)) || {
+                    const spellData = (await getSpellData(this.app, fetchOptions, spellKey)) || {
                         name: fallbackName,
                         level: Number(lvl),
                         school: "",
@@ -4715,11 +5052,7 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
 
             let blockData: Record<string, any> = {};
             try {
-                if (source.trim()) {
-                    // Strip YAML comments (like #Class or #Background) before parsing so they never interfere
-                    const cleanSource = source.replace(/^[ \t]*#.*$/gm, "");
-                    blockData = parseYaml(cleanSource) || {};
-                }
+                blockData = parseBlockYaml(source);
             } catch (error) {
                 wrapper.createEl("p", { text: "Error: Invalid YAML format in dnd-skills block.", cls: "dnd-error-text" });
                 el.empty();
@@ -4731,15 +5064,7 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
             const frontmatter: Record<string, any> = fileCache?.frontmatter || {};
 
             // Resolves "frontmatter.Key" or "{{ frontmatter.Key }}"
-            const resolveValue = (val: any) => {
-                if (typeof val === "string") {
-                    const trimmed = val.trim().replace(/^\{\{\s*|\s*\}\}$/g, "");
-                    if (trimmed.startsWith("frontmatter.")) {
-                        return frontmatter[trimmed.replace("frontmatter.", "")];
-                    }
-                }
-                return val;
-            };
+            const resolveValue = createFrontmatterResolver(frontmatter);
 
             // Recursive Universal Parser for Skill Lists
             const parseSkillMap = (rawInput: any, map = new Map<string, string>()): Map<string, string> => {
@@ -5006,10 +5331,7 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
 
             let blockData: Record<string, any> = {};
             try {
-                if (source.trim()) {
-                    const cleanSource = source.replace(/^[ \t]*#.*$/gm, "");
-                    blockData = parseYaml(cleanSource) || {};
-                }
+                blockData = parseBlockYaml(source);
             } catch (error) {
                 wrapper.createEl("p", { text: "Error: Invalid YAML format in dnd-abilities block.", cls: "dnd-error-text" });
                 el.empty();
@@ -5020,15 +5342,7 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
             const fileCache = this.app.metadataCache.getCache(ctx.sourcePath);
             const frontmatter: Record<string, any> = fileCache?.frontmatter || {};
 
-            const resolveValue = (val: any) => {
-                if (typeof val === "string") {
-                    const trimmed = val.trim().replace(/^\{\{\s*|\s*\}\}$/g, "");
-                    if (trimmed.startsWith("frontmatter.")) {
-                        return frontmatter[trimmed.replace("frontmatter.", "")];
-                    }
-                }
-                return val;
-            };
+            const resolveValue = createFrontmatterResolver(frontmatter);
 
             // 1. Parse Proficiencies (Supports frontmatter.DnD_classProficiencies, YAML lists, and bracket arrays)
             const parseProficiencies = (rawInput: any, set = new Set<string>()): Set<string> => {
@@ -5253,10 +5567,7 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
 
             let blockData: Record<string, any> = {};
             try {
-                if (source.trim()) {
-                    const cleanSource = source.replace(/^[ \t]*#.*$/gm, "");
-                    blockData = parseYaml(cleanSource) || {};
-                }
+                blockData = parseBlockYaml(source);
             } catch (error) {
                 wrapper.createEl("p", { text: "Error: Invalid YAML format in dnd-info block.", cls: "dnd-error-text" });
                 el.empty();
@@ -5267,15 +5578,7 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
             const fileCache = this.app.metadataCache.getCache(ctx.sourcePath);
             const frontmatter: Record<string, any> = fileCache?.frontmatter || {};
 
-            const resolveValue = (val: any) => {
-                if (typeof val === "string") {
-                    const trimmed = val.trim().replace(/^\{\{\s*|\s*\}\}$/g, "");
-                    if (trimmed.startsWith("frontmatter.")) {
-                        return frontmatter[trimmed.replace("frontmatter.", "")];
-                    }
-                }
-                return val;
-            };
+            const resolveValue = createFrontmatterResolver(frontmatter);
 
             // Helper to turn strings, YAML arrays, or JSON strings into a clean display string
             const formatTextValue = (rawVal: any, fallback: string = "-"): string => {
@@ -5343,14 +5646,14 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                     ? parseNumericMod(rawAcBonus, 0)
                     : (hasBaseAc ? 0 : dexMod);
 
-                const acMod = parseNumericMod(blockData.armorAcMod ?? frontmatter["DnD_armorAcMod"], 0);
+                const acMod = parseNumericMod(resolveValue(blockData.armorAcMod) ?? frontmatter["DnD_armorAcMod"], 0);
 
                 const explicitAc = resolveValue(blockData.armorClass ?? blockData.ac);
                 const finalAc = (explicitAc !== undefined && explicitAc !== null && explicitAc !== "" && !isNaN(Number(explicitAc)))
                     ? Number(explicitAc)
                     : (baseAc + acBonus + acMod);
 
-                const armorName = formatTextValue(blockData.armor ?? frontmatter["DnD_armor"], "Unarmored");
+                const armorName = formatTextValue(resolveValue(blockData.armor) ?? frontmatter["DnD_armor"], "Unarmored");
 
                 cards.push({
                     label: "ARMOR CLASS",
@@ -5373,20 +5676,18 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                 if (rawInitMod !== undefined && rawInitMod !== null && String(rawInitMod).trim() !== "") {
                     resolvedInitMod = parseNumericMod(rawInitMod, 0);
                 } else {
-                    const statsForInit: Record<string, number> = {
-                        strength: Number(resolveValue(blockData.strength) ?? frontmatter["DnD_strength"]) || 10,
-                        dexterity: dexScore,
-                        constitution: Number(resolveValue(blockData.constitution) ?? frontmatter["DnD_constitution"]) || 10,
-                        intelligence: Number(resolveValue(blockData.intelligence) ?? frontmatter["DnD_intelligence"]) || 10,
-                        wisdom: Number(resolveValue(blockData.wisdom) ?? frontmatter["DnD_wisdom"]) || 10,
-                        charisma: Number(resolveValue(blockData.charisma) ?? frontmatter["DnD_charisma"]) || 10
-                    };
+                    const statsForInit = extractAbilityScores(frontmatter, blockData, resolveValue);
+                    const bgFeatForInit = await this.resolveBackgroundFeatId(
+                        resolveValue(blockData.background) ?? frontmatter["DnD_background"],
+                        resolveValue(blockData.backgroundFeat) ?? frontmatter["DnD_backgroundFeat"],
+                        this.settings
+                    );
                     const initCalc = await this.resolveCharacterInitiativeModifiers(
                         frontmatter["DnD_class"],
                         frontmatter["DnD_classLevels"],
                         level,
                         frontmatter["DnD_extraFeats"],
-                        frontmatter["DnD_backgroundFeat"],
+                        bgFeatForInit,
                         frontmatter["DnD_subclass"] ?? frontmatter["DnD_Subclass"],
                         frontmatter["DnD_race"],
                         frontmatter["DnD_raceLineage"],
@@ -5413,7 +5714,7 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                 });
 
                 // 3. Attack Roll (Base Ability Mod + Proficiency Bonus + DnD_attack_roll_mod)
-                const attackStatRaw = formatTextValue(blockData.attackStat ?? frontmatter["DnD_attackStat"], "strength").toLowerCase();
+                const attackStatRaw = formatTextValue(resolveValue(blockData.attackStat) ?? frontmatter["DnD_attackStat"], "strength").toLowerCase();
                 const attackStatScore = Number(resolveValue(blockData[attackStatRaw]) ?? frontmatter[`DnD_${attackStatRaw}`]) || 10;
                 const attackStatMod = Math.floor((attackStatScore - 10) / 2);
 
@@ -5423,7 +5724,7 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                     : true;
 
                 const DnD_attack_roll_mod = parseNumericMod(
-                    blockData.attackRollMod ?? blockData.DnD_attack_roll_mod ?? blockData.DnD_attackRollMod ?? frontmatter["DnD_attackRollMod"],
+                    resolveValue(blockData.attackRollMod ?? blockData.DnD_attack_roll_mod ?? blockData.DnD_attackRollMod) ?? frontmatter["DnD_attackRollMod"],
                     0
                 );
 
@@ -5442,9 +5743,9 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                 });
 
                 // 4. Speed
-                const rawSpeed = resolveValue(blockData.speed ?? frontmatter["DnD_speed"]);
+                const rawSpeed = resolveValue(blockData.speed) ?? frontmatter["DnD_speed"];
                 const rawSpeedMod = parseNumericMod(
-                    blockData.speedMod ?? blockData.DnD_speed_mod ?? blockData.DnD_speedMod ?? frontmatter["DnD_speedMod"],
+                    resolveValue(blockData.speedMod ?? blockData.DnD_speed_mod ?? blockData.DnD_speedMod) ?? frontmatter["DnD_speedMod"],
                     0
                 );
                 let speedDisplay = `${30 + rawSpeedMod} feet`;
@@ -5452,7 +5753,7 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                     const sTrim = String(rawSpeed).trim();
                     speedDisplay = !isNaN(Number(sTrim)) ? `${Number(sTrim) + rawSpeedMod} feet` : sTrim;
                 }
-                const speedSublabel = formatTextValue(blockData.speedSublabel ?? frontmatter["DnD_speedSublabel"], "");
+                const speedSublabel = formatTextValue(resolveValue(blockData.speedSublabel) ?? frontmatter["DnD_speedSublabel"], "");
 
                 cards.push({
                     label: "SPEED",
@@ -5461,14 +5762,14 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                 });
             } else {
                 // --- CHARACTER MODE: RACE, CLASS, BACKGROUND, LEVEL (+ LANGUAGES) ---
-                const raceVal = formatTextValue(blockData.race ?? frontmatter["DnD_race"], "-");
-                const raceSub = formatTextValue(blockData.raceLineage ?? blockData.lineage ?? frontmatter["DnD_raceLineage"], "");
+                const raceVal = formatTextValue(resolveValue(blockData.race) ?? frontmatter["DnD_race"], "-");
+                const raceSub = formatTextValue(resolveValue(blockData.raceLineage ?? blockData.lineage) ?? frontmatter["DnD_raceLineage"], "");
 
-                const classVal = formatTextValue(blockData.class ?? frontmatter["DnD_class"], "-");
-                const classSub = formatTextValue(blockData.subclass ?? frontmatter["DnD_subclass"], "");
+                const classVal = formatTextValue(resolveValue(blockData.class) ?? frontmatter["DnD_class"], "-");
+                const classSub = formatTextValue(resolveValue(blockData.subclass) ?? frontmatter["DnD_subclass"] ?? frontmatter["DnD_Subclass"], "");
 
-                const bgVal = formatTextValue(blockData.background ?? frontmatter["DnD_background"], "-");
-                const bgSub = formatTextValue(blockData.backgroundFeat ?? frontmatter["DnD_backgroundFeat"], "");
+                const bgVal = formatTextValue(resolveValue(blockData.background) ?? frontmatter["DnD_background"], "-");
+                const bgSub = formatTextValue(resolveValue(blockData.backgroundFeat) ?? frontmatter["DnD_backgroundFeat"], "");
 
                 const levelNum = Number(resolveValue(blockData.level) ?? frontmatter["DnD_level"]) || 1;
                 const DnD_proficiency_bonus = Number(
@@ -5483,7 +5784,7 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                     { label: "LEVEL", value: String(levelNum), sublabel: levelSub }
                 );
 
-                languagesStr = formatTextValue(blockData.languages ?? frontmatter["DnD_languages"], "");
+                languagesStr = formatTextValue(resolveValue(blockData.languages) ?? frontmatter["DnD_languages"], "");
             }
 
             // Render 4-Column Responsive Grid (splits cleanly into 2x2 if narrow)
@@ -5553,10 +5854,7 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
 
             let blockData: Record<string, any> = {};
             try {
-                if (source.trim()) {
-                    const cleanSource = source.replace(/^[ \t]*#.*$/gm, "");
-                    blockData = parseYaml(cleanSource) || {};
-                }
+                blockData = parseBlockYaml(source);
             } catch (error) {
                 wrapper.createEl("p", { text: "Error: Invalid YAML format in dnd-health block.", cls: "dnd-error-text" });
                 el.empty();
@@ -5567,15 +5865,7 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
             const fileCache = this.app.metadataCache.getCache(ctx.sourcePath);
             const frontmatter: Record<string, any> = fileCache?.frontmatter || {};
 
-            const resolveValue = (val: any) => {
-                if (typeof val === "string") {
-                    const trimmed = val.trim().replace(/^\{\{\s*|\s*\}\}$/g, "");
-                    if (trimmed.startsWith("frontmatter.")) {
-                        return frontmatter[trimmed.replace("frontmatter.", "")];
-                    }
-                }
-                return val;
-            };
+            const resolveValue = createFrontmatterResolver(frontmatter);
 
             // 1. Resolve health (Max HP), level (DnD_level), and hitDice ([HitDie, SpentCount] in DnD_hitDice)
             const rawMaxHealth = resolveValue(blockData.health ?? blockData.maxHealth);
@@ -5588,11 +5878,8 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                 ? Math.max(1, Number(rawLevel))
                 : Math.max(1, Number(frontmatter["DnD_level"]) || 1);
 
-            let targetHitDiceKey = "DnD_hitDice";
             const rawHitDiceConfig = blockData.hitDice ?? blockData.DnD_hit_dice;
-            if (typeof rawHitDiceConfig === "string" && rawHitDiceConfig.trim().startsWith("frontmatter.")) {
-                targetHitDiceKey = rawHitDiceConfig.trim().replace("frontmatter.", "");
-            }
+            const targetHitDiceKey = extractFrontmatterKey(rawHitDiceConfig, "DnD_hitDice");
 
             let fallbackHitDie = "d8";
             if (frontmatter["DnD_class"]) {
@@ -5610,10 +5897,7 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
             const spentHitDice = parsedHd.spent;
 
             // Resolve DnD_current_health from frontmatter.DnD_currentHealth (or block override)
-            let targetCurrentHpKey = "DnD_currentHealth";
-            if (typeof blockData.currentHealth === "string" && blockData.currentHealth.trim().startsWith("frontmatter.")) {
-                targetCurrentHpKey = blockData.currentHealth.trim().replace("frontmatter.", "");
-            }
+            const targetCurrentHpKey = extractFrontmatterKey(blockData.currentHealth, "DnD_currentHealth");
 
             const rawCurrentHealth = resolveValue(blockData.currentHealth) ?? frontmatter[targetCurrentHpKey];
             const DnD_current_health = (rawCurrentHealth !== undefined && rawCurrentHealth !== null && rawCurrentHealth !== "" && !isNaN(Number(rawCurrentHealth)))
@@ -5621,10 +5905,7 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                 : maxHealth;
 
             // Resolve DnD_exhaustion (0..6) from frontmatter.DnD_exhaustion (or block override)
-            let targetExhaustionKey = "DnD_exhaustion";
-            if (typeof blockData.exhaustion === "string" && blockData.exhaustion.trim().startsWith("frontmatter.")) {
-                targetExhaustionKey = blockData.exhaustion.trim().replace("frontmatter.", "");
-            }
+            const targetExhaustionKey = extractFrontmatterKey(blockData.exhaustion, "DnD_exhaustion");
             const rawExhaustion = resolveValue(blockData.exhaustion) ?? frontmatter[targetExhaustionKey];
             const exhaustionLevel = (rawExhaustion !== undefined && rawExhaustion !== null && rawExhaustion !== "" && !isNaN(Number(rawExhaustion)))
                 ? Math.max(0, Math.min(6, Math.floor(Number(rawExhaustion))))
@@ -6444,30 +6725,9 @@ class CharacterWizardModal extends Modal {
     }
 
     async fetchDropdownData() {
-        const basePath = this.plugin.settings.customRulebookPath?.replace(/^['"]+|['"]+$/g, '').trim().replace(/^\/+|\/+$/g, '');
-        const priority = this.plugin.settings.customRulebookPriority;
-
-        const readCustomRouter = async (fileName: string): Promise<Record<string, any> | null> => {
-            if (!basePath) return null;
-            const customPath = normalizePath(`${basePath}/${fileName}`);
-            try {
-                if (await this.app.vault.adapter.exists(customPath)) {
-                    const content = await this.app.vault.adapter.read(customPath);
-                    return JSON.parse(content);
-                }
-            } catch (e) {
-                console.error(`Wizard Error: Could not read custom file at ${customPath}`, e);
-            }
-            return null;
-        };
-
         // For Router Files ({ "<filename>": "<Display Name>" } like classes.json & races.json)
         const getRouterDisplayNames = async (fileName: string, nativeMap: Record<string, any>) => {
-            const customMap = await readCustomRouter(fileName);
-            const merged = customMap
-                ? (priority ? { ...(nativeMap || {}), ...customMap } : { ...customMap, ...(nativeMap || {}) })
-                : (nativeMap || {});
-
+            const merged = await this.plugin.loadMergedRouterMap(fileName, nativeMap);
             const displayNames = new Set<string>();
             for (const [k, v] of Object.entries(merged)) {
                 if (typeof v === "string") {
@@ -6485,11 +6745,7 @@ class CharacterWizardModal extends Modal {
 
         // For Inline Object Maps ({ "<Display Name>": { ... } } like backgrounds.json)
         const getObjectKeys = async (fileName: string, nativeMap: Record<string, any>) => {
-            const customMap = await readCustomRouter(fileName);
-            const merged = customMap
-                ? (priority ? { ...(nativeMap || {}), ...customMap } : { ...customMap, ...(nativeMap || {}) })
-                : (nativeMap || {});
-
+            const merged = await this.plugin.loadMergedRouterMap(fileName, nativeMap);
             const keys = Object.keys(merged).sort((a, b) => a.localeCompare(b));
             if (keys.length === 0) {
                 console.warn(`Wizard: No data found for ${fileName}.`);
@@ -6503,57 +6759,11 @@ class CharacterWizardModal extends Modal {
         this.availableBackgrounds = await getObjectKeys("backgrounds.json", backgroundsMap);
         this.availableFeats = await getAvailableFeats(this.app, this.plugin.settings);
 
-        // Populate Weapon & Armor pools from native + custom rulebook items.json
-        const itemLookupKeys = new Set<string>(Object.keys(itemsMap || {}));
-        const customItemsObj = await readCustomRouter("items.json");
-        if (customItemsObj && typeof customItemsObj === "object") {
-            Object.keys(customItemsObj).forEach(k => itemLookupKeys.add(k));
-        }
-
-        const allItemsMap = new Map<string, { id: string; name: string; type: string }>();
-        const weaponsMap = new Map<string, { id: string; name: string; damage: string; mastery: string }>();
-        const armorsMap = new Map<string, { id: string; name: string; ac: string; category: string }>();
-        const toolsSet = new Set<string>();
-        const extraToolIds = new Set(["disguise-kit", "forgery-kit", "herbalism-kit", "poisoners-kit", "thieves-tools", "navigators-tools"]);
-
-        for (const key of itemLookupKeys) {
-            const data = await getItemData(this.app, this.plugin.settings, key);
-            if (!data || !data.type) continue;
-
-            const typeLower = String(data.type).toLowerCase().trim().replace(/['"]/g, '').replace(/\s+/g, '-');
-            const displayName = String(data.name || key).trim();
-            const mapKey = displayName.toLowerCase();
-
-            allItemsMap.set(mapKey, { id: key, name: displayName, type: typeLower });
-
-            if (
-                typeLower === "artisans-tool" ||
-                typeLower === "musical-instrument" ||
-                typeLower === "gaming-set" ||
-                extraToolIds.has(String(key).toLowerCase().trim())
-            ) {
-                toolsSet.add(displayName);
-            }
-
-            if (typeLower.includes("weapon")) {
-                const masteryInfo = data.mastery
-                    ? await getWeaponMasteryDescription(this.app, this.plugin.settings, data.mastery)
-                    : null;
-                weaponsMap.set(mapKey, {
-                    id: key,
-                    name: displayName,
-                    damage: String(data.damage || ""),
-                    mastery: masteryInfo ? masteryInfo.name : ""
-                });
-            } else if (typeLower.includes("armor")) {
-                armorsMap.set(mapKey, { id: key, name: displayName, ac: String(data.ac || "10"), category: String(data.category || "") });
-            }
-        }
-
-        this.availableItems = Array.from(allItemsMap.values()).sort((a, b) => a.name.localeCompare(b.name));
-        this.availableWeapons = Array.from(weaponsMap.values()).sort((a, b) => a.name.localeCompare(b.name));
-        this.availableArmors = Array.from(armorsMap.values()).sort((a, b) => a.name.localeCompare(b.name));
-        this.availableTools = Array.from(toolsSet).sort((a, b) => a.localeCompare(b));
+        const catalog = await this.plugin.loadRulebookEquipmentCatalog();
+        this.availableItems = catalog.items;
+        this.availableWeapons = catalog.weapons;
+        this.availableArmors = catalog.armors;
+        this.availableTools = catalog.tools;
     }
 
     // Main rendering engine for the Wizard
@@ -6705,6 +6915,8 @@ class CharacterWizardModal extends Modal {
             this.wizardData.dndClass = (e.target as HTMLSelectElement).value;
             this.wizardData.subclass = "";
             this.wizardData.classChoices = [];
+            this.wizardData.chosenSkills = [];
+            this.wizardData.expertiseChoices = [];
             this.pruneGrantedFeatSelectionsByPrefix("class:");
             this.pruneGrantedFeatSelectionsByPrefix("subclass:");
             await this.renderStep();
@@ -6748,6 +6960,8 @@ class CharacterWizardModal extends Modal {
 
         bgSelect.onchange = async (e) => {
             this.wizardData.background = (e.target as HTMLSelectElement).value;
+            this.wizardData.chosenBgSkills = [];
+            this.wizardData.chosenAbilityBonuses = [];
             await this.renderStep();
         };
     }
@@ -7074,6 +7288,11 @@ class CharacterWizardModal extends Modal {
                 }
 
                 // 2. Render Class/Subclass Expertise Engine (grantedExpertise) across levels 1..wizardLevelNum
+                if (!Array.isArray(this.wizardData.expertiseChoices)) {
+                    this.wizardData.expertiseChoices = [];
+                }
+                let expertiseSlotIndex = 0;
+
                 for (let lvl = 1; lvl <= wizardLevelNum; lvl++) {
                     const targetLevel = lvl.toString();
                     let levelFeatures: any[] = [];
@@ -7088,7 +7307,7 @@ class CharacterWizardModal extends Modal {
                         if (feature.grantedExpertise && Array.isArray(feature.grantedExpertise) && feature.grantedExpertise.length === 2) {
                             hasChoices = true;
                             const expPool = feature.grantedExpertise[0] as string[];
-                            const grantedExpertiseCount = feature.grantedExpertise[1] as number;
+                            const grantedExpertiseCount = Number(feature.grantedExpertise[1]) || 0;
 
                             if (grantedExpertiseCount > 0) {
                                 const expDiv = container.createDiv({ cls: "dnd-form-card" });
@@ -7103,20 +7322,26 @@ class CharacterWizardModal extends Modal {
 
                                 let filteredProficiencies = availableProficiencies;
                                 if (expPool.length > 0) {
-                                    filteredProficiencies = availableProficiencies.filter(skill => expPool.map(s => String(s).toLowerCase()).includes(String(skill).toLowerCase()));
-                                }
-
-                                if (!this.wizardData.expertiseChoices || this.wizardData.expertiseChoices.length !== grantedExpertiseCount) {
-                                    this.wizardData.expertiseChoices = Array(grantedExpertiseCount).fill(["", targetLevel]);
+                                    const lowerPool = expPool.map(s => String(s).toLowerCase());
+                                    filteredProficiencies = availableProficiencies.filter(skill => lowerPool.includes(String(skill).toLowerCase()));
                                 }
 
                                 if (filteredProficiencies.length === 0) {
+                                    for (let e = 0; e < grantedExpertiseCount; e++) {
+                                        this.wizardData.expertiseChoices[expertiseSlotIndex++] = ["", targetLevel];
+                                    }
                                     expDiv.createEl("p", {
                                         text: "You have no eligible skill proficiencies to gain Expertise in. Please go back to Step 2 and select your class/background skills first!",
                                         cls: "dnd-error-text dnd-form-note"
                                     });
                                 } else {
                                     for (let e = 0; e < grantedExpertiseCount; e++) {
+                                        const slotIdx = expertiseSlotIndex++;
+                                        const existingTuple = this.wizardData.expertiseChoices[slotIdx];
+                                        const prevSkill = Array.isArray(existingTuple) ? String(existingTuple[0] || "") : "";
+                                        const validPrevSkill = filteredProficiencies.includes(prevSkill) ? prevSkill : "";
+                                        this.wizardData.expertiseChoices[slotIdx] = [validPrevSkill, targetLevel];
+
                                         const selectDiv = expDiv.createDiv({ cls: "dnd-form-slot-row" });
                                         selectDiv.createEl("small", { text: `Choice ${e + 1}:`, cls: "dnd-form-slot-label-sm" });
 
@@ -7128,11 +7353,11 @@ class CharacterWizardModal extends Modal {
                                             selectEl.createEl("option", { text: displaySkill, value: skill });
                                         });
 
-                                        if (this.wizardData.expertiseChoices[e]) selectEl.value = this.wizardData.expertiseChoices[e][0];
+                                        selectEl.value = validPrevSkill;
 
                                         selectEl.onchange = (evt) => {
                                             const val = (evt.target as HTMLSelectElement).value;
-                                            this.wizardData.expertiseChoices[e] = [val, targetLevel];
+                                            this.wizardData.expertiseChoices[slotIdx] = [val, targetLevel];
                                         };
                                     }
                                 }
@@ -7140,7 +7365,12 @@ class CharacterWizardModal extends Modal {
                         }
                     }
                 }
+                this.wizardData.expertiseChoices = this.wizardData.expertiseChoices.slice(0, expertiseSlotIndex);
+            } else {
+                this.wizardData.expertiseChoices = [];
             }
+        } else {
+            this.wizardData.expertiseChoices = [];
         }
 
         // 3. Gather Race Trait & Class/Subclass Granted Feats Milestones
@@ -7236,6 +7466,28 @@ class CharacterWizardModal extends Modal {
             return base;
         };
 
+        const getStatsForMilestone = (excludeSlotKey: string): Record<string, number> => {
+            const stats = getBaselineStats();
+            for (const [otherKey, otherSel] of Object.entries(this.wizardData.grantedFeatSelections || {}) as [string, GrantedFeatMilestoneState][]) {
+                if (otherKey === excludeSlotKey || !otherSel) continue;
+                if (otherSel.chosenOptionType === "asi") {
+                    if (otherSel.asiStat1 && ALL_ABILITIES.includes(otherSel.asiStat1 as AbilityKey)) {
+                        stats[otherSel.asiStat1] = Math.min(20, (stats[otherSel.asiStat1] || 10) + 1);
+                    }
+                    if (otherSel.asiStat2 && ALL_ABILITIES.includes(otherSel.asiStat2 as AbilityKey)) {
+                        stats[otherSel.asiStat2] = Math.min(20, (stats[otherSel.asiStat2] || 10) + 1);
+                    }
+                } else if (otherSel.chosenFeatKey && otherSel.abilityChoices) {
+                    for (const chosenAb of Object.values(otherSel.abilityChoices)) {
+                        if (chosenAb && ALL_ABILITIES.includes(chosenAb)) {
+                            stats[chosenAb] = Math.min(20, (stats[chosenAb] || 10) + 1);
+                        }
+                    }
+                }
+            }
+            return stats;
+        };
+
         let renderOptionalExtraFeatsSection = () => {};
 
         for (const milestone of featMilestones) {
@@ -7256,12 +7508,21 @@ class CharacterWizardModal extends Modal {
                 cardCls: "dnd-form-card",
                 descriptionHint: milestone.descriptionHint,
                 state,
-                getCurrentStats: getBaselineStats,
+                getCurrentStats: () => getStatsForMilestone(milestone.slotKey),
                 existingSavingThrows,
                 knownSkillsForExpertise: availableProficiencies,
-                getAlreadyUsedExpertise: () => (this.wizardData.expertiseChoices || [])
-                    .map((c: any[]) => String(c?.[0] || "").toLowerCase())
-                    .filter(Boolean),
+                getAlreadyUsedExpertise: () => {
+                    const used = (this.wizardData.expertiseChoices || [])
+                        .map((c: any[]) => String(c?.[0] || "").toLowerCase())
+                        .filter(Boolean);
+                    for (const [otherKey, otherSel] of Object.entries(this.wizardData.grantedFeatSelections || {}) as [string, GrantedFeatMilestoneState][]) {
+                        if (otherKey === milestone.slotKey || !otherSel) continue;
+                        for (const exp of otherSel.featExpertiseChoices || []) {
+                            if (exp) used.push(String(exp).toLowerCase());
+                        }
+                    }
+                    return used;
+                },
                 onStateChange: () => {
                     renderOptionalExtraFeatsSection();
                 }
@@ -7559,26 +7820,6 @@ class CharacterWizardModal extends Modal {
         // --- Equipped Items (Weapon & Armor with Custom Toggle) ---
         container.createEl("h4", { text: "Equipped Items", cls: "dnd-wizard-subhead" });
 
-        const createModeToggle = (parentRow: HTMLElement, isCustom: boolean, onToggle: () => void) => {
-            const toggleWrap = parentRow.createDiv({
-                cls: "dnd-equip-toggle-wrapper",
-                attr: { title: "Switch between Rulebook Database and Custom Item" }
-            });
-
-            toggleWrap.createEl("span", {
-                text: "Custom",
-                cls: `dnd-equip-toggle-label ${isCustom ? "is-active" : ""}`
-            });
-
-            const switchTrack = toggleWrap.createDiv({
-                cls: `dnd-toggle-switch ${isCustom ? "is-active" : ""}`
-            });
-            switchTrack.createDiv({ cls: "dnd-toggle-knob" });
-
-            toggleWrap.onclick = () => onToggle();
-        };
-
-        // 1. WEAPON SECTION
         const bgDataForMastery = this.wizardData.background
             ? await getBackgroundData(this.app, this.plugin.settings, this.wizardData.background)
             : null;
@@ -7593,188 +7834,34 @@ class CharacterWizardModal extends Modal {
             this.wizardData.race,
             this.wizardData.raceLineage
         );
-        const availableMasterySlots = wizardMasteryCalc.totalSlots;
         if (!Array.isArray(this.wizardData.weaponMasteries)) {
             this.wizardData.weaponMasteries = [];
         }
 
-        const weaponSection = container.createDiv({ cls: "dnd-form-group-lg" });
-        const weaponLabelRow = weaponSection.createDiv({ cls: "dnd-flex-between" });
-        weaponLabelRow.createEl("label", { text: "Weapon Name:", cls: "dnd-form-label-sub" });
-        const viewMasteriesLink = weaponLabelRow.createEl("a", {
-            text: "📖 View Weapon Masteries",
-            cls: "dnd-note-link dnd-form-hint",
-            href: "#"
+        renderWeaponAndArmorLoadoutControls({
+            parentEl: container,
+            availableWeapons: this.availableWeapons,
+            availableArmors: this.availableArmors,
+            availableMasterySlots: wizardMasteryCalc.totalSlots,
+            getMasteredWeapons: () => Array.isArray(this.wizardData.weaponMasteries) ? this.wizardData.weaponMasteries : [],
+            setMasteredWeapons: (list) => { this.wizardData.weaponMasteries = list; },
+            getWeaponName: () => this.wizardData.weapon || "",
+            setWeaponName: (val) => { this.wizardData.weapon = val; },
+            getWeaponDamage: () => this.wizardData.weaponDamage || "",
+            setWeaponDamage: (val) => { this.wizardData.weaponDamage = val; },
+            getIsWeaponCustom: () => Boolean(this.wizardData.isWeaponCustom),
+            setIsWeaponCustom: (val) => { this.wizardData.isWeaponCustom = val; },
+            getArmorName: () => this.wizardData.armor || "",
+            setArmorName: (val) => { this.wizardData.armor = val; },
+            getArmorAc: () => this.wizardData.armorAc ?? "",
+            setArmorAc: (val) => { this.wizardData.armorAc = val; },
+            getIsArmorCustom: () => Boolean(this.wizardData.isArmorCustom),
+            setIsArmorCustom: (val) => { this.wizardData.isArmorCustom = val; },
+            defaultArmorAcOnClear: "",
+            coerceMatchedArmorAc: (acStr) => Number(acStr) || 10,
+            onViewMasteries: () => new NoteModal(this.app, this.plugin, "weapon-masteries").open(),
+            onModeToggleReRender: () => { void this.renderStep(); }
         });
-        viewMasteriesLink.onclick = (e) => {
-            e.preventDefault();
-            new NoteModal(this.app, this.plugin, "weapon-masteries").open();
-        };
-
-        const weaponRow = weaponSection.createDiv({ cls: "dnd-equip-row" });
-        const masteryCheckboxContainer = weaponSection.createDiv();
-
-        const renderWizardWeaponMasteryToggle = () => {
-            masteryCheckboxContainer.empty();
-            if (this.wizardData.isWeaponCustom || !this.wizardData.weapon || this.wizardData.weapon === "None") return;
-            const matchedWeapon = this.availableWeapons.find(w => w.name === this.wizardData.weapon);
-            if (!matchedWeapon || !matchedWeapon.mastery) return;
-
-            const weaponSlug = sanitizeWeaponSlug(matchedWeapon.id || matchedWeapon.name);
-            const currentMastered: string[] = Array.isArray(this.wizardData.weaponMasteries) ? this.wizardData.weaponMasteries : [];
-            const isChecked = currentMastered.includes(weaponSlug);
-            const usedCount = currentMastered.length;
-            const isDisabled = availableMasterySlots <= 0 || (!isChecked && usedCount >= availableMasterySlots);
-
-            const masteryRow = masteryCheckboxContainer.createDiv({ cls: "dnd-form-row" });
-            const cb = masteryRow.createEl("input", { type: "checkbox" });
-            cb.checked = isChecked && availableMasterySlots > 0;
-            cb.disabled = isDisabled;
-            cb.onchange = (ev) => {
-                const checked = (ev.target as HTMLInputElement).checked;
-                let list: string[] = Array.isArray(this.wizardData.weaponMasteries) ? [...this.wizardData.weaponMasteries] : [];
-                if (checked) {
-                    if (list.length < availableMasterySlots && !list.includes(weaponSlug)) {
-                        list.push(weaponSlug);
-                    }
-                } else {
-                    list = list.filter(s => s !== weaponSlug);
-                }
-                this.wizardData.weaponMasteries = list;
-                renderWizardWeaponMasteryToggle();
-            };
-
-            const labelText = availableMasterySlots > 0
-                ? `Use Weapon Mastery (${matchedWeapon.mastery}) — ${usedCount} / ${availableMasterySlots} Masteries Used`
-                : `Use Weapon Mastery (${matchedWeapon.mastery}) — 0 Masteries Available`;
-            masteryRow.createEl("label", { text: labelText });
-        };
-
-        if (!this.wizardData.isWeaponCustom) {
-            const weaponSelect = weaponRow.createEl("select", { cls: "dnd-equip-field" });
-            weaponSelect.createEl("option", { text: "-- Select a Weapon --", value: "" });
-            weaponSelect.createEl("option", { text: "None (Unarmed)", value: "None" });
-
-            this.availableWeapons.forEach(w => {
-                const metaParts = [w.damage, w.mastery].filter(Boolean);
-                const metaSuffix = metaParts.length > 0 ? ` (${metaParts.join(", ")})` : "";
-                weaponSelect.createEl("option", { text: `${w.name}${metaSuffix}`, value: w.name });
-            });
-
-            weaponSelect.value = this.wizardData.weapon || "";
-            weaponSelect.onchange = (e) => {
-                this.wizardData.weapon = (e.target as HTMLSelectElement).value;
-                const matched = this.availableWeapons.find(w => w.name === this.wizardData.weapon);
-                if (matched) {
-                    this.wizardData.weaponDamage = matched.damage;
-                } else if (this.wizardData.weapon === "None" || this.wizardData.weapon === "") {
-                    this.wizardData.weaponDamage = "";
-                }
-                renderWizardWeaponMasteryToggle();
-            };
-        } else {
-            const weaponInput = weaponRow.createEl("input", {
-                type: "text",
-                value: this.wizardData.weapon === "None" ? "" : (this.wizardData.weapon || ""),
-                cls: "dnd-equip-field"
-            });
-            weaponInput.placeholder = "e.g., Sun Blade";
-            weaponInput.oninput = (e) => {
-                this.wizardData.weapon = (e.target as HTMLInputElement).value;
-            };
-        }
-
-        renderWizardWeaponMasteryToggle();
-
-        createModeToggle(weaponRow, Boolean(this.wizardData.isWeaponCustom), () => {
-            this.wizardData.isWeaponCustom = !this.wizardData.isWeaponCustom;
-            if (!this.wizardData.isWeaponCustom) {
-                const matched = this.availableWeapons.find(
-                    w => w.name.toLowerCase() === String(this.wizardData.weapon || "").toLowerCase()
-                );
-                this.wizardData.weapon = matched ? matched.name : "";
-                this.wizardData.weaponDamage = matched ? matched.damage : "";
-            }
-            this.renderStep();
-        });
-
-        if (this.wizardData.isWeaponCustom) {
-            const weaponSub = weaponSection.createDiv({ cls: "dnd-equip-custom-sub" });
-            weaponSub.createEl("label", { text: "Weapon Damage:", cls: "dnd-form-label-sm" });
-            const dmgInput = weaponSub.createEl("input", {
-                type: "text",
-                value: this.wizardData.weaponDamage || "",
-                cls: "dnd-equip-field"
-            });
-            dmgInput.placeholder = "e.g., 1d8 + 2 Radiant";
-            dmgInput.oninput = (e) => {
-                this.wizardData.weaponDamage = (e.target as HTMLInputElement).value;
-            };
-        }
-
-        // 2. ARMOR SECTION
-        const armorSection = container.createDiv({ cls: "dnd-form-group" });
-        armorSection.createEl("label", { text: "Armor Name:", cls: "dnd-form-label-sub" });
-
-        const armorRow = armorSection.createDiv({ cls: "dnd-equip-row" });
-
-        if (!this.wizardData.isArmorCustom) {
-            const armorSelect = armorRow.createEl("select", { cls: "dnd-equip-field" });
-            armorSelect.createEl("option", { text: "-- Select Armor --", value: "" });
-            armorSelect.createEl("option", { text: "None (Unarmored)", value: "None" });
-
-            this.availableArmors.forEach(a => {
-                const catLabel = a.category ? `, ${a.category}` : "";
-                armorSelect.createEl("option", { text: `${a.name} (AC ${a.ac}${catLabel})`, value: a.name });
-            });
-
-            armorSelect.value = this.wizardData.armor || "";
-            armorSelect.onchange = (e) => {
-                this.wizardData.armor = (e.target as HTMLSelectElement).value;
-                const matched = this.availableArmors.find(a => a.name === this.wizardData.armor);
-                if (matched) {
-                    this.wizardData.armorAc = Number(matched.ac) || 10;
-                } else if (this.wizardData.armor === "None" || this.wizardData.armor === "") {
-                    this.wizardData.armorAc = 10;
-                }
-            };
-        } else {
-            const armorInput = armorRow.createEl("input", {
-                type: "text",
-                value: this.wizardData.armor === "None" ? "" : (this.wizardData.armor || ""),
-                cls: "dnd-equip-field"
-            });
-            armorInput.placeholder = "e.g., Elven Chain";
-            armorInput.oninput = (e) => {
-                this.wizardData.armor = (e.target as HTMLInputElement).value;
-            };
-        }
-
-        createModeToggle(armorRow, Boolean(this.wizardData.isArmorCustom), () => {
-            this.wizardData.isArmorCustom = !this.wizardData.isArmorCustom;
-            if (!this.wizardData.isArmorCustom) {
-                const matched = this.availableArmors.find(
-                    a => a.name.toLowerCase() === String(this.wizardData.armor || "").toLowerCase()
-                );
-                this.wizardData.armor = matched ? matched.name : "";
-                this.wizardData.armorAc = matched ? (Number(matched.ac) || 10) : "";
-            }
-            this.renderStep();
-        });
-
-        if (this.wizardData.isArmorCustom) {
-            const armorSub = armorSection.createDiv({ cls: "dnd-equip-custom-sub" });
-            armorSub.createEl("label", { text: "Armor AC:", cls: "dnd-form-label-sm" });
-            const acInput = armorSub.createEl("input", {
-                type: "number",
-                value: String(this.wizardData.armorAc ?? ""),
-                cls: "dnd-equip-field"
-            });
-            acInput.placeholder = "e.g., 16";
-            acInput.oninput = (e) => {
-                this.wizardData.armorAc = (e.target as HTMLInputElement).value;
-            };
-        }
     }
 
     renderStepFive(container: HTMLElement) {
@@ -7804,7 +7891,6 @@ class CharacterWizardModal extends Modal {
         let unarmoredDefense = "";
         let attackStat = "strength";
         let spellcastingData: any = null;
-        let pactMagicData: any = null;
         let initialSpeedMod = 0;
         const wizardLvlNum = Number(this.wizardData.level) || 1;
         let classSpellsPool: string | null = null;
@@ -7868,7 +7954,7 @@ class CharacterWizardModal extends Modal {
         if (this.wizardData.background) {
             bgDataStore = await getBackgroundData(this.app, this.plugin.settings, this.wizardData.background);
             if (bgDataStore && bgDataStore.feat) {
-                bgFeat = bgDataStore.feat.split('-').map((word: string) => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+                bgFeat = formatFeatureOrSlug(bgDataStore.feat);
             }
         }
 
@@ -7997,58 +8083,19 @@ class CharacterWizardModal extends Modal {
             );
         }
 
-        const dexMod = Math.floor((wizardStatsRecord.dexterity - 10) / 2);
-        let armorAcBonus = dexMod;
-        let isUnarmored = true;
-        const parsedManualAc = parseInt(String(this.wizardData.armorAc));
-
-        if (!this.wizardData.isArmorCustom) {
-            if (this.wizardData.armor && this.wizardData.armor.toLowerCase() !== "none") {
-                const safeArmorName = this.wizardData.armor.toLowerCase().replace(/['"]/g, '').trim().replace(/\s+/g, '-');
-                const armorData = await getItemData(this.app, this.plugin.settings, safeArmorName);
-
-                if (armorData && armorData.ac && armorData.category) {
-                    const category = String(armorData.category).toLowerCase();
-                    if (!category.includes("unarmored") && safeArmorName !== "unarmored-defense") {
-                        isUnarmored = false;
-                        this.wizardData.armorAc = parseInt(String(armorData.ac));
-                        if (category.includes("light")) {
-                            armorAcBonus = dexMod;
-                        } else if (category.includes("medium")) {
-                            armorAcBonus = Math.min(dexMod, 2);
-                        } else if (category.includes("heavy")) {
-                            armorAcBonus = 0;
-                        }
-                    }
-                }
-            }
-        } else {
-            const cleanCustomArmor = String(this.wizardData.armor || "").trim();
-            if (cleanCustomArmor && cleanCustomArmor.toLowerCase() !== "none") {
-                isUnarmored = false;
-                this.wizardData.armorAc = !isNaN(parsedManualAc) ? parsedManualAc : 10;
-                armorAcBonus = 0;
-            } else if (!isNaN(parsedManualAc)) {
-                isUnarmored = false;
-                this.wizardData.armorAc = parsedManualAc;
-                armorAcBonus = 0;
-            }
-        }
-
-        if (isUnarmored) {
-            const unarmoredCalc = await this.plugin.resolveUnarmoredDefense(
-                this.wizardData.dndClass,
-                null,
-                Number(this.wizardData.level) || 1,
-                wizardStatsRecord,
-                this.plugin.settings,
-                this.wizardData.subclass
-            );
-            this.wizardData.armorAc = unarmoredCalc.baseAc;
-            armorAcBonus = unarmoredCalc.acBonus;
-        }
-
-        this.wizardData.armorAcBonus = armorAcBonus;
+        const armorStats = await this.plugin.resolveEquippedArmorStats({
+            armorNameInput: this.wizardData.armor,
+            manualAcInput: this.wizardData.armorAc,
+            isCustomMode: Boolean(this.wizardData.isArmorCustom),
+            classInput: this.wizardData.dndClass,
+            classLevelsInput: null,
+            totalLevel: Number(this.wizardData.level) || 1,
+            statsRecord: wizardStatsRecord,
+            subclassInput: this.wizardData.subclass,
+            fetchOptions: this.plugin.settings
+        });
+        this.wizardData.armorAc = armorStats.armorAc;
+        this.wizardData.armorAcBonus = armorStats.armorAcBonus;
         this.wizardData.armorAcMod = 0; // Initialize manual modifier strictly to 0
 
         // 3. Prepare the Template string
@@ -8421,34 +8468,10 @@ class NoteModal extends Modal {
         this.renderChild = new MarkdownRenderChild(contentEl);
         this.renderChild.load();
 
-        const formattedTitle = this.noteKey.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+        const formattedTitle = formatFeatureOrSlug(this.noteKey);
         titleEl.setText(formattedTitle);
 
-        const fetchNativeNote = (): string | null => MarkdownNotes[this.noteKey] || null;
-
-        const fetchCustomNote = async (basePath: string): Promise<string | null> => {
-            const mdPath = normalizePath(`${basePath}/markdown/${this.noteKey}.md`);
-            if (await this.app.vault.adapter.exists(mdPath)) {
-                try {
-                    return await this.app.vault.adapter.read(mdPath);
-                } catch (e) {
-                    console.error(`NoteModal Error: Failed to read custom markdown at ${mdPath}`, e);
-                }
-            }
-            return null;
-        };
-
-        // 1st & 2nd STAGE: Resolve Markdown Note with Custom Rulebook Priority
-        const customBasePath = this.plugin.settings.customRulebookPath?.trim() || "";
-        let fileContent: string | null = null;
-
-        if (!customBasePath) {
-            fileContent = fetchNativeNote();
-        } else if (this.plugin.settings.customRulebookPriority) {
-            fileContent = (await fetchCustomNote(customBasePath)) ?? fetchNativeNote();
-        } else {
-            fileContent = fetchNativeNote() ?? (await fetchCustomNote(customBasePath));
-        }
+        const fileContent = await this.plugin.getMarkdownNoteContent(this.noteKey);
 
         if (fileContent) {
             await this.plugin.renderDndMarkdown(fileContent, contentEl, "", this.renderChild);
@@ -8755,57 +8778,9 @@ class EquipItemsModal extends Modal {
     }
 
     async fetchEquipmentPools() {
-        const itemLookupKeys = new Set<string>(Object.keys(itemsMap || {}));
-        const basePath = this.plugin.settings.customRulebookPath?.trim();
-
-        if (basePath) {
-            const customItemsPath = normalizePath(`${basePath}/items.json`);
-            try {
-                if (await this.app.vault.adapter.exists(customItemsPath)) {
-                    const content = await this.app.vault.adapter.read(customItemsPath);
-                    const parsed = JSON.parse(content);
-                    if (parsed && typeof parsed === "object") {
-                        Object.keys(parsed).forEach(k => itemLookupKeys.add(k));
-                    }
-                }
-            } catch (e) {
-                console.error(`EquipItemsModal: Could not read custom items.json at ${customItemsPath}`, e);
-            }
-        }
-
-        const weaponsMap = new Map<string, { id: string; name: string; damage: string; mastery: string }>();
-        const armorsMap = new Map<string, { id: string; name: string; ac: string; category: string }>();
-
-        for (const key of itemLookupKeys) {
-            const data = await getItemData(this.app, this.plugin.settings, key);
-            if (!data || !data.type) continue;
-
-            const typeLower = String(data.type).toLowerCase();
-            const displayName = String(data.name || key).trim();
-            const mapKey = displayName.toLowerCase();
-
-            if (typeLower.includes("weapon")) {
-                const masteryInfo = data.mastery
-                    ? await getWeaponMasteryDescription(this.app, this.plugin.settings, data.mastery)
-                    : null;
-                weaponsMap.set(mapKey, {
-                    id: key,
-                    name: displayName,
-                    damage: String(data.damage || ""),
-                    mastery: masteryInfo ? masteryInfo.name : ""
-                });
-            } else if (typeLower.includes("armor")) {
-                armorsMap.set(mapKey, {
-                    id: key,
-                    name: displayName,
-                    ac: String(data.ac || "10"),
-                    category: String(data.category || "")
-                });
-            }
-        }
-
-        this.availableWeapons = Array.from(weaponsMap.values()).sort((a, b) => a.name.localeCompare(b.name));
-        this.availableArmors = Array.from(armorsMap.values()).sort((a, b) => a.name.localeCompare(b.name));
+        const catalog = await this.plugin.loadRulebookEquipmentCatalog();
+        this.availableWeapons = catalog.weapons;
+        this.availableArmors = catalog.armors;
     }
 
     renderForm() {
@@ -8815,207 +8790,31 @@ class EquipItemsModal extends Modal {
             if (e.key === "Enter") this.equipItems();
         };
 
-        // Helper to build the themed pill toggle switch on the right of each field
-        const createModeToggle = (parentRow: HTMLElement, isCustom: boolean, onToggle: () => void) => {
-            const toggleWrap = parentRow.createDiv({
-                cls: "dnd-equip-toggle-wrapper",
-                attr: { title: "Switch between Rulebook Database and Custom Item" }
-            });
-
-            toggleWrap.createEl("span", {
-                text: "Custom",
-                cls: `dnd-equip-toggle-label ${isCustom ? "is-active" : ""}`
-            });
-
-            const switchTrack = toggleWrap.createDiv({
-                cls: `dnd-toggle-switch ${isCustom ? "is-active" : ""}`
-            });
-            switchTrack.createDiv({ cls: "dnd-toggle-knob" });
-
-            toggleWrap.onclick = () => onToggle();
-        };
-
-        // ==========================================
-        // 1. WEAPON SECTION
-        // ==========================================
-        const weaponSection = this.formContainer.createDiv({ cls: "dnd-form-group-lg" });
-        const weaponLabelRow = weaponSection.createDiv({ cls: "dnd-flex-between" });
-        weaponLabelRow.createEl("label", { text: "Weapon Name:", cls: "dnd-form-label-sub" });
-        const viewMasteriesLink = weaponLabelRow.createEl("a", {
-            text: "📖 View Weapon Masteries",
-            cls: "dnd-note-link dnd-form-hint",
-            href: "#"
+        renderWeaponAndArmorLoadoutControls({
+            parentEl: this.formContainer,
+            availableWeapons: this.availableWeapons,
+            availableArmors: this.availableArmors,
+            availableMasterySlots: this.weaponMasteryState.available,
+            getMasteredWeapons: () => this.weaponMasteryState.mastered,
+            setMasteredWeapons: (list) => { this.weaponMasteryState.mastered = list; },
+            getWeaponName: () => this.weaponName,
+            setWeaponName: (val) => { this.weaponName = val; },
+            getWeaponDamage: () => this.weaponDamage,
+            setWeaponDamage: (val) => { this.weaponDamage = val; },
+            getIsWeaponCustom: () => this.isWeaponCustom,
+            setIsWeaponCustom: (val) => { this.isWeaponCustom = val; },
+            getArmorName: () => this.armorName,
+            setArmorName: (val) => { this.armorName = val; },
+            getArmorAc: () => this.armorAc,
+            setArmorAc: (val) => { this.armorAc = String(val ?? ""); },
+            getIsArmorCustom: () => this.isArmorCustom,
+            setIsArmorCustom: (val) => { this.isArmorCustom = val; },
+            defaultArmorAcOnClear: "10",
+            coerceMatchedArmorAc: (acStr) => acStr,
+            onViewMasteries: () => new NoteModal(this.app, this.plugin, "weapon-masteries").open(),
+            onModeToggleReRender: () => this.renderForm(),
+            onInputKeyUp: handleEnter
         });
-        viewMasteriesLink.onclick = (e) => {
-            e.preventDefault();
-            new NoteModal(this.app, this.plugin, "weapon-masteries").open();
-        };
-
-        const weaponRow = weaponSection.createDiv({ cls: "dnd-equip-row" });
-        const masteryCheckboxContainer = weaponSection.createDiv();
-
-        const renderEquipWeaponMasteryToggle = () => {
-            masteryCheckboxContainer.empty();
-            if (this.isWeaponCustom || !this.weaponName || this.weaponName === "None") return;
-            const matchedWeapon = this.availableWeapons.find(w => w.name === this.weaponName);
-            if (!matchedWeapon || !matchedWeapon.mastery) return;
-
-            const weaponSlug = sanitizeWeaponSlug(matchedWeapon.id || matchedWeapon.name);
-            const availableSlots = this.weaponMasteryState.available;
-            const currentMastered = this.weaponMasteryState.mastered;
-            const isChecked = currentMastered.includes(weaponSlug);
-            const usedCount = currentMastered.length;
-            const isDisabled = availableSlots <= 0 || (!isChecked && usedCount >= availableSlots);
-
-            const masteryRow = masteryCheckboxContainer.createDiv({ cls: "dnd-form-row" });
-            const cb = masteryRow.createEl("input", { type: "checkbox" });
-            cb.checked = isChecked && availableSlots > 0;
-            cb.disabled = isDisabled;
-            cb.onchange = (ev) => {
-                const checked = (ev.target as HTMLInputElement).checked;
-                if (checked) {
-                    if (this.weaponMasteryState.mastered.length < availableSlots && !this.weaponMasteryState.mastered.includes(weaponSlug)) {
-                        this.weaponMasteryState.mastered.push(weaponSlug);
-                    }
-                } else {
-                    this.weaponMasteryState.mastered = this.weaponMasteryState.mastered.filter(s => s !== weaponSlug);
-                }
-                renderEquipWeaponMasteryToggle();
-            };
-
-            const labelText = availableSlots > 0
-                ? `Use Weapon Mastery (${matchedWeapon.mastery}) — ${usedCount} / ${availableSlots} Masteries Used`
-                : `Use Weapon Mastery (${matchedWeapon.mastery}) — 0 Masteries Available`;
-            masteryRow.createEl("label", { text: labelText });
-        };
-
-        if (!this.isWeaponCustom) {
-            const weaponSelect = weaponRow.createEl("select", { cls: "dnd-equip-field" });
-            weaponSelect.createEl("option", { text: "-- Select a Weapon --", value: "" });
-            weaponSelect.createEl("option", { text: "None (Unarmed)", value: "None" });
-
-            this.availableWeapons.forEach(w => {
-                const metaParts = [w.damage, w.mastery].filter(Boolean);
-                const metaSuffix = metaParts.length > 0 ? ` (${metaParts.join(", ")})` : "";
-                weaponSelect.createEl("option", { text: `${w.name}${metaSuffix}`, value: w.name });
-            });
-
-            weaponSelect.value = this.weaponName;
-            weaponSelect.onchange = (e) => {
-                this.weaponName = (e.target as HTMLSelectElement).value;
-                const matched = this.availableWeapons.find(w => w.name === this.weaponName);
-                if (matched) {
-                    this.weaponDamage = matched.damage;
-                } else if (this.weaponName === "None" || this.weaponName === "") {
-                    this.weaponDamage = "";
-                }
-                renderEquipWeaponMasteryToggle();
-            };
-        } else {
-            const weaponInput = weaponRow.createEl("input", {
-                type: "text",
-                value: this.weaponName === "None" ? "" : this.weaponName,
-                cls: "dnd-equip-field"
-            });
-            weaponInput.placeholder = "e.g., Sun Blade";
-            weaponInput.oninput = (e) => {
-                this.weaponName = (e.target as HTMLInputElement).value;
-            };
-            weaponInput.onkeyup = handleEnter;
-        }
-
-        renderEquipWeaponMasteryToggle();
-
-        createModeToggle(weaponRow, this.isWeaponCustom, () => {
-            this.isWeaponCustom = !this.isWeaponCustom;
-            if (!this.isWeaponCustom) {
-                const matched = this.availableWeapons.find(w => w.name.toLowerCase() === this.weaponName.toLowerCase());
-                this.weaponName = matched ? matched.name : "";
-                this.weaponDamage = matched ? matched.damage : "";
-            }
-            this.renderForm();
-        });
-
-        if (this.isWeaponCustom) {
-            const weaponSub = weaponSection.createDiv({ cls: "dnd-equip-custom-sub" });
-            weaponSub.createEl("label", { text: "Weapon Damage:", cls: "dnd-form-label-sm" });
-            const dmgInput = weaponSub.createEl("input", {
-                type: "text",
-                value: this.weaponDamage,
-                cls: "dnd-equip-field"
-            });
-            dmgInput.placeholder = "e.g., 1d8 + 2 Radiant";
-            dmgInput.oninput = (e) => {
-                this.weaponDamage = (e.target as HTMLInputElement).value;
-            };
-            dmgInput.onkeyup = handleEnter;
-        }
-
-        // ==========================================
-        // 2. ARMOR SECTION
-        // ==========================================
-        const armorSection = this.formContainer.createDiv({ cls: "dnd-form-group" });
-        armorSection.createEl("label", { text: "Armor Name:", cls: "dnd-form-label-sub" });
-
-        const armorRow = armorSection.createDiv({ cls: "dnd-equip-row" });
-
-        if (!this.isArmorCustom) {
-            const armorSelect = armorRow.createEl("select", { cls: "dnd-equip-field" });
-            armorSelect.createEl("option", { text: "-- Select Armor --", value: "" });
-            armorSelect.createEl("option", { text: "None (Unarmored)", value: "None" });
-
-            this.availableArmors.forEach(a => {
-                const catLabel = a.category ? `, ${a.category}` : "";
-                armorSelect.createEl("option", { text: `${a.name} (AC ${a.ac}${catLabel})`, value: a.name });
-            });
-
-            armorSelect.value = this.armorName;
-            armorSelect.onchange = (e) => {
-                this.armorName = (e.target as HTMLSelectElement).value;
-                const matched = this.availableArmors.find(a => a.name === this.armorName);
-                if (matched) {
-                    this.armorAc = matched.ac;
-                } else if (this.armorName === "None" || this.armorName === "") {
-                    this.armorAc = "10";
-                }
-            };
-        } else {
-            const armorInput = armorRow.createEl("input", {
-                type: "text",
-                value: this.armorName === "None" ? "" : this.armorName,
-                cls: "dnd-equip-field"
-            });
-            armorInput.placeholder = "e.g., Elven Chain";
-            armorInput.oninput = (e) => {
-                this.armorName = (e.target as HTMLInputElement).value;
-            };
-            armorInput.onkeyup = handleEnter;
-        }
-
-        createModeToggle(armorRow, this.isArmorCustom, () => {
-            this.isArmorCustom = !this.isArmorCustom;
-            if (!this.isArmorCustom) {
-                const matched = this.availableArmors.find(a => a.name.toLowerCase() === this.armorName.toLowerCase());
-                this.armorName = matched ? matched.name : "";
-                this.armorAc = matched ? matched.ac : "10";
-            }
-            this.renderForm();
-        });
-
-        if (this.isArmorCustom) {
-            const armorSub = armorSection.createDiv({ cls: "dnd-equip-custom-sub" });
-            armorSub.createEl("label", { text: "Armor AC:", cls: "dnd-form-label-sm" });
-            const acInput = armorSub.createEl("input", {
-                type: "number",
-                value: this.armorAc,
-                cls: "dnd-equip-field"
-            });
-            acInput.placeholder = "e.g., 16";
-            acInput.oninput = (e) => {
-                this.armorAc = (e.target as HTMLInputElement).value;
-            };
-            acInput.onkeyup = handleEnter;
-        }
     }
 
     onClose() {
@@ -9027,14 +8826,7 @@ class EquipItemsModal extends Modal {
         const fileCache = this.app.metadataCache.getCache(this.sourcePath);
         const frontmatter = fileCache?.frontmatter || {};
 
-        const statsRecord: Record<string, number> = {
-            strength: Number(frontmatter["DnD_strength"]) || 10,
-            dexterity: Number(frontmatter["DnD_dexterity"]) || 10,
-            constitution: Number(frontmatter["DnD_constitution"]) || 10,
-            intelligence: Number(frontmatter["DnD_intelligence"]) || 10,
-            wisdom: Number(frontmatter["DnD_wisdom"]) || 10,
-            charisma: Number(frontmatter["DnD_charisma"]) || 10
-        };
+        const statsRecord = extractAbilityScores(frontmatter);
         const level = Number(frontmatter["DnD_level"]) || 1;
         const dndClass = frontmatter["DnD_class"];
         const classLevels = frontmatter["DnD_classLevels"];
@@ -9082,71 +8874,38 @@ class EquipItemsModal extends Modal {
         // 2. Process Armor Update
         const armorChanged = this.armorName !== this.originalArmor || (this.isArmorCustom && this.armorAc !== this.originalArmorAc);
         if (armorChanged) {
-            const dexMod = Math.floor((statsRecord.dexterity - 10) / 2);
-            const unarmoredCalc = await this.plugin.resolveUnarmoredDefense(
-                dndClass,
-                classLevels,
-                level,
+            const subclassVal = frontmatter["DnD_subclass"] ?? frontmatter["DnD_Subclass"];
+            const armorStats = await this.plugin.resolveEquippedArmorStats({
+                armorNameInput: this.armorName,
+                manualAcInput: this.armorAc,
+                isCustomMode: this.isArmorCustom,
+                classInput: dndClass,
+                classLevelsInput: classLevels,
+                totalLevel: level,
                 statsRecord,
-                this.plugin.settings,
-                frontmatter["DnD_subclass"] ?? frontmatter["DnD_Subclass"]
-            );
-
-            if (!this.isArmorCustom) {
-                const safeArmorName = this.armorName.toLowerCase().replace(/['"]/g, '').trim().replace(/\s+/g, '-');
-                const armorData = (this.armorName && this.armorName.toLowerCase() !== "none")
-                    ? await getItemData(this.app, this.plugin.settings, safeArmorName)
-                    : null;
-
-                if (armorData && armorData.ac && armorData.category) {
-                    const category = String(armorData.category).toLowerCase();
-                    if (category.includes("unarmored") || safeArmorName === "unarmored-defense") {
-                        updates["DnD_armor"] = armorData.name || "Unarmored Defense";
-                        updates["DnD_armorAc"] = unarmoredCalc.baseAc;
-                        updates["DnD_armorAcBonus"] = unarmoredCalc.acBonus;
-                    } else {
-                        const baseAc = parseInt(String(armorData.ac));
-                        let armorAcBonus = dexMod;
-
-                        if (category.includes("light")) armorAcBonus = dexMod;
-                        else if (category.includes("medium")) armorAcBonus = Math.min(dexMod, 2);
-                        else if (category.includes("heavy")) armorAcBonus = 0;
-
-                        updates["DnD_armor"] = armorData.name;
-                        updates["DnD_armorAc"] = baseAc;
-                        updates["DnD_armorAcBonus"] = armorAcBonus;
-                    }
-                } else {
-                    updates["DnD_armor"] = "None";
-                    updates["DnD_armorAc"] = unarmoredCalc.baseAc;
-                    updates["DnD_armorAcBonus"] = unarmoredCalc.acBonus;
-                }
-            } else {
-                const cleanCustomArmor = this.armorName.trim();
-                const parsedCustomAc = parseInt(this.armorAc);
-
-                if (!cleanCustomArmor || cleanCustomArmor.toLowerCase() === "none") {
-                    updates["DnD_armor"] = "None";
-                    updates["DnD_armorAc"] = !isNaN(parsedCustomAc) ? parsedCustomAc : unarmoredCalc.baseAc;
-                    updates["DnD_armorAcBonus"] = !isNaN(parsedCustomAc) ? 0 : unarmoredCalc.acBonus;
-                } else {
-                    updates["DnD_armor"] = cleanCustomArmor;
-                    updates["DnD_armorAc"] = !isNaN(parsedCustomAc) ? parsedCustomAc : 10;
-                    updates["DnD_armorAcBonus"] = 0;
-                }
-            }
+                subclassInput: subclassVal,
+                fetchOptions: this.plugin.settings
+            });
+            updates["DnD_armor"] = armorStats.resolvedArmorName;
+            updates["DnD_armorAc"] = armorStats.armorAc;
+            updates["DnD_armorAcBonus"] = armorStats.armorAcBonus;
 
             // Recalculate Speed Modifier in case Unarmored Movement, Fast Movement, or Roving is affected by armor
+            const bgFeatForSpeed = await this.plugin.resolveBackgroundFeatId(
+                frontmatter["DnD_background"],
+                frontmatter["DnD_backgroundFeat"],
+                this.plugin.settings
+            );
             const speedCalc = await this.plugin.resolveCharacterSpeedModifiers(
                 dndClass,
                 classLevels,
                 level,
                 frontmatter["DnD_extraFeats"],
-                frontmatter["DnD_backgroundFeat"],
+                bgFeatForSpeed,
                 updates["DnD_armor"] || this.armorName,
                 frontmatter["DnD_speed"],
                 frontmatter["DnD_customSpeedMod"],
-                frontmatter["DnD_subclass"] ?? frontmatter["DnD_Subclass"],
+                subclassVal,
                 this.plugin.settings,
                 frontmatter["DnD_race"],
                 frontmatter["DnD_raceLineage"]
@@ -9276,12 +9035,7 @@ class InventoryModal extends Modal {
     }
 
     private parseArrayProp(raw: any): any[] {
-        if (!raw) return [];
-        if (Array.isArray(raw)) return raw;
-        if (typeof raw === "string" && raw.trim().startsWith("[")) {
-            try { return JSON.parse(raw.trim()); } catch { return []; }
-        }
-        return [];
+        return parseJsonArrayProp(raw);
     }
 
     async onOpen() {
@@ -9314,7 +9068,7 @@ class InventoryModal extends Modal {
             String(Math.max(0, Number(e[1]) || 0)),
             String(e[2] ?? "true"),
             String(Number(e[3]) || 0),
-            String(Number(e[4]) || 0),
+            formatItemCost(e[4]),
             String(e[5] ?? "Gear"),
             String(e[6] ?? "")
         ]);
@@ -9372,26 +9126,7 @@ class InventoryModal extends Modal {
     }
 
     async loadRulebookItemsPool() {
-        const basePath = this.plugin.settings.customRulebookPath?.replace(/^['"]+|['"]+$/g, '').trim().replace(/^\/+|\/+$/g, '');
-        const priority = this.plugin.settings.customRulebookPriority;
-        let customMap: Record<string, string> | null = null;
-
-        if (basePath) {
-            const customPath = normalizePath(`${basePath}/items.json`);
-            try {
-                if (await this.app.vault.adapter.exists(customPath)) {
-                    const content = await this.app.vault.adapter.read(customPath);
-                    customMap = JSON.parse(content);
-                }
-            } catch (e) {
-                console.error(`InventoryModal: Failed to read custom items.json at ${customPath}`, e);
-            }
-        }
-
-        const nativeMap = (itemsMap as Record<string, string>) || {};
-        this.availableRulebookItems = customMap
-            ? (priority ? { ...nativeMap, ...customMap } : { ...customMap, ...nativeMap })
-            : { ...nativeMap };
+        this.availableRulebookItems = await this.plugin.loadMergedRouterMap("items.json", itemsMap);
     }
 
     renderTracker() {
@@ -10005,8 +9740,7 @@ class ManageCharacterModal extends Modal {
         this.cachedFrontmatter = frontmatter;
 
         // Fetch Stats
-        const statsList = ["strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"];
-        statsList.forEach(stat => this.currentStats[stat] = Number(frontmatter[`DnD_${stat}`]) || 10);
+        this.currentStats = extractAbilityScores(frontmatter);
 
         // Fetch Saving Throw Proficiencies
         this.currentSavingThrows = parseSavingThrows(frontmatter["DnD_classProficiencies"]);
@@ -10061,73 +9795,15 @@ class ManageCharacterModal extends Modal {
         this.weaponMasteryState = parseWeaponMasteryState(frontmatter["DnD_weaponMastery"]);
         await this.refreshFeatDependentState(frontmatter, true);
 
-        const itemLookupKeys = new Set<string>(Object.keys(itemsMap || {}));
-        const basePath = this.plugin.settings.customRulebookPath?.trim();
-        if (basePath) {
-            const customItemsPath = normalizePath(`${basePath}/items.json`);
-            try {
-                if (await this.app.vault.adapter.exists(customItemsPath)) {
-                    const content = await this.app.vault.adapter.read(customItemsPath);
-                    const parsed = JSON.parse(content);
-                    if (parsed && typeof parsed === "object") {
-                        Object.keys(parsed).forEach(k => itemLookupKeys.add(k));
-                    }
-                }
-            } catch (e) {
-                console.error(`ManageCharacterModal: Could not read custom items.json at ${customItemsPath}`, e);
-            }
-        }
-        const masteryWeps: { id: string; name: string; mastery: string }[] = [];
-        const toolsSet = new Set<string>();
-        const extraToolIds = new Set(["disguise-kit", "forgery-kit", "herbalism-kit", "poisoners-kit", "thieves-tools", "navigators-tools"]);
-        for (const key of itemLookupKeys) {
-            const data = await getItemData(this.app, this.plugin.settings, key);
-            if (!data || !data.type) continue;
-            const typeLower = String(data.type).toLowerCase().trim().replace(/['"]/g, '').replace(/\s+/g, '-');
-            const displayName = String(data.name || key).trim();
-            if (
-                typeLower === "artisans-tool" ||
-                typeLower === "musical-instrument" ||
-                typeLower === "gaming-set" ||
-                extraToolIds.has(String(key).toLowerCase().trim())
-            ) {
-                toolsSet.add(displayName);
-            }
-            if (!data.mastery || !typeLower.includes("weapon")) continue;
-            const masteryInfo = await getWeaponMasteryDescription(this.app, this.plugin.settings, data.mastery);
-            if (!masteryInfo) continue;
-            masteryWeps.push({
-                id: sanitizeWeaponSlug(key),
-                name: displayName,
-                mastery: masteryInfo.name
-            });
-        }
-        this.availableMasteryWeapons = masteryWeps.sort((a, b) => a.name.localeCompare(b.name));
-        this.availableTools = Array.from(toolsSet).sort((a, b) => a.localeCompare(b));
+        const catalog = await this.plugin.loadRulebookEquipmentCatalog();
+        this.availableMasteryWeapons = catalog.masteryWeapons;
+        this.availableTools = catalog.tools;
 
         // Fetch Tool Proficiencies from Frontmatter (DnD_toolProficiencies)
-        let toolsRaw = frontmatter["DnD_toolProficiencies"] || [];
-        if (typeof toolsRaw === "string") {
-            const trimmed = toolsRaw.trim();
-            if (trimmed.startsWith("[")) {
-                try { toolsRaw = JSON.parse(trimmed); } catch { toolsRaw = []; }
-            } else if (trimmed !== "" && !trimmed.startsWith("<")) {
-                toolsRaw = trimmed.split(",").map((s: string) => s.trim());
-            } else {
-                toolsRaw = [];
-            }
-        }
-        if (Array.isArray(toolsRaw)) {
-            this.currentToolProficiencies = toolsRaw
-                .map((t: any) => String(t ?? "").trim())
-                .filter((t: string) => t !== "" && !t.startsWith("<"));
-        }
+        this.currentToolProficiencies = parseStringArray(frontmatter["DnD_toolProficiencies"]);
 
         // Fetch Skills from Frontmatter Database (Force Strings)
-        let profsRaw = frontmatter["DnD_skillProficiencies"] || [];
-        if (typeof profsRaw === 'string') {
-            try { profsRaw = JSON.parse(profsRaw); } catch { profsRaw = []; }
-        }
+        const profsRaw = parseJsonArrayProp(frontmatter["DnD_skillProficiencies"]);
         profsRaw.forEach((p: any) => {
             if (Array.isArray(p) && p.length > 0) {
                 if (String(p[1]) === "extra") this.currentExtraSkills.push(String(p[0]).toLowerCase());
@@ -10138,10 +9814,7 @@ class ManageCharacterModal extends Modal {
         });
 
         // Fetch Skill Bonuses from Frontmatter Database (Force Strings)
-        let bonusesRaw = frontmatter["DnD_skillBonuses"] || [];
-        if (typeof bonusesRaw === 'string') {
-            try { bonusesRaw = JSON.parse(bonusesRaw); } catch { bonusesRaw = []; }
-        }
+        const bonusesRaw = parseJsonArrayProp(frontmatter["DnD_skillBonuses"]);
         this.currentSkillBonuses = bonusesRaw.map((b: any) => [String(b[0]), String(b[1]), String(b[2])]);
 
         // Fetch Attack Proficiency toggle from frontmatter (defaults to true)
@@ -10150,20 +9823,7 @@ class ManageCharacterModal extends Modal {
             : true;
 
         // Fetch Hidden Features from Frontmatter Database (DnD_hideFeature)
-        let hideRaw = frontmatter["DnD_hideFeature"] || [];
-        if (typeof hideRaw === "string") {
-            const trimmed = hideRaw.trim();
-            if (trimmed.startsWith("[")) {
-                try { hideRaw = JSON.parse(trimmed); } catch { hideRaw = []; }
-            } else if (trimmed !== "") {
-                hideRaw = trimmed.split(",").map((s: string) => s.trim());
-            } else {
-                hideRaw = [];
-            }
-        }
-        if (Array.isArray(hideRaw)) {
-            this.currentHiddenFeatures = hideRaw.map((f: any) => String(f).trim()).filter(Boolean);
-        }
+        this.currentHiddenFeatures = parseStringArray(frontmatter["DnD_hideFeature"]);
 
         // --- BUILD TAB HEADER ---
         const tabHeader = contentEl.createDiv({ cls: "dnd-modal-tabs" });
@@ -10174,9 +9834,12 @@ class ManageCharacterModal extends Modal {
                 cls: "dnd-modal-tab-btn dnd-manage-tab-btn"
             });
             btn.dataset.tabId = tab.id;
-            btn.onclick = () => {
+            btn.onclick = async () => {
                 this.activeTab = tab.id;
                 this.renderTabs(tabHeader);
+                if (tab.id === "speed") {
+                    await this.refreshFeatDependentState(this.cachedFrontmatter, false);
+                }
                 this.renderContent();
             };
         }
@@ -10344,10 +10007,11 @@ class ManageCharacterModal extends Modal {
         const charLevel = Number(frontmatter["DnD_level"]) || 1;
         const profBonus = Number(frontmatter["DnD_proficiencyBonus"]) || Math.ceil(1 + (charLevel / 4));
         const subclassVal = frontmatter["DnD_subclass"] ?? frontmatter["DnD_Subclass"];
-        const bgData = frontmatter["DnD_background"]
-            ? await getBackgroundData(this.app, this.plugin.settings, frontmatter["DnD_background"])
-            : null;
-        const bgFeat = bgData?.feat || frontmatter["DnD_backgroundFeat"];
+        const bgFeat = await this.plugin.resolveBackgroundFeatId(
+            frontmatter["DnD_background"],
+            frontmatter["DnD_backgroundFeat"],
+            this.plugin.settings
+        );
 
         this.speedBreakdown = await this.plugin.resolveCharacterSpeedModifiers(
             frontmatter["DnD_class"],
@@ -11003,51 +10667,31 @@ class ManageCharacterModal extends Modal {
             );
         }
 
-        const newDexMod = Math.floor((this.currentStats.dexterity - 10) / 2);
-        let armorAcBonus = newDexMod;
-        let isUnarmored = true;
-
-        if (currentArmor && currentArmor.toLowerCase() !== "none") {
-            const safeArmorName = currentArmor.toLowerCase().replace(/['"]/g, '').trim().replace(/\s+/g, '-');
-            const armorData = await getItemData(this.app, this.plugin.settings, safeArmorName);
-
-            if (armorData && armorData.category) {
-                const category = String(armorData.category).toLowerCase();
-                if (!category.includes("unarmored") && safeArmorName !== "unarmored-defense") {
-                    isUnarmored = false;
-                    if (category.includes("light")) armorAcBonus = newDexMod;
-                    else if (category.includes("medium")) armorAcBonus = Math.min(newDexMod, 2);
-                    else if (category.includes("heavy")) armorAcBonus = 0;
-                }
-            } else if (Number(frontmatter["DnD_armorAc"]) > 10) {
-                isUnarmored = false;
-            }
+        const subclassForSave = frontmatter["DnD_subclass"] ?? frontmatter["DnD_Subclass"];
+        const armorStats = await this.plugin.resolveEquippedArmorStats({
+            armorNameInput: currentArmor,
+            manualAcInput: frontmatter["DnD_armorAc"],
+            classInput: dndClass,
+            classLevelsInput: classLevels,
+            totalLevel: level,
+            statsRecord: this.currentStats,
+            subclassInput: subclassForSave,
+            fetchOptions: this.plugin.settings
+        });
+        if (armorStats.isUnarmored) {
+            updates["DnD_armorAc"] = armorStats.armorAc;
         }
-
-        if (isUnarmored) {
-            const unarmoredCalc = await this.plugin.resolveUnarmoredDefense(
-                dndClass,
-                classLevels,
-                level,
-                this.currentStats,
-                this.plugin.settings,
-                frontmatter["DnD_subclass"] ?? frontmatter["DnD_Subclass"]
-            );
-            updates["DnD_armorAc"] = unarmoredCalc.baseAc;
-            armorAcBonus = unarmoredCalc.acBonus;
-        }
-
-        updates["DnD_armorAcBonus"] = armorAcBonus;
+        updates["DnD_armorAcBonus"] = armorStats.armorAcBonus;
         updates["DnD_armorAcMod"] = this.currentAcMod;
         updates["DnD_speed"] = this.currentSpeed;
         updates["DnD_customSpeedMod"] = this.currentCustomSpeedMod;
 
         const profBonusForSave = Number(frontmatter["DnD_proficiencyBonus"]) || Math.ceil(1 + (level / 4));
-        const subclassForSave = frontmatter["DnD_subclass"] ?? frontmatter["DnD_Subclass"];
-        const bgDataForSave = frontmatter["DnD_background"]
-            ? await getBackgroundData(this.app, this.plugin.settings, frontmatter["DnD_background"])
-            : null;
-        const bgFeatForSave = bgDataForSave?.feat || frontmatter["DnD_backgroundFeat"];
+        const bgFeatForSave = await this.plugin.resolveBackgroundFeatId(
+            frontmatter["DnD_background"],
+            frontmatter["DnD_backgroundFeat"],
+            this.plugin.settings
+        );
 
         // Recalculate Speed, Initiative & Weapon Mastery Slots from currentExtraFeats + currentStats
         const speedCalcSave = await this.plugin.resolveCharacterSpeedModifiers(
@@ -11239,10 +10883,13 @@ class LevelUpModal extends Modal {
         const subclassVal = frontmatter["DnD_subclass"] ?? frontmatter["DnD_Subclass"];
         this.currentSubclass = (Array.isArray(subclassVal) ? subclassVal[0] : subclassVal) || "";
 
-        const statsList = ["strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"];
-        statsList.forEach(s => {
-            this.currentStats[s] = Number(frontmatter[`DnD_${s}`]) || 10;
-        });
+        this.currentStats = extractAbilityScores(frontmatter);
+
+        const bgFeatForBaseline = await this.plugin.resolveBackgroundFeatId(
+            frontmatter["DnD_background"],
+            frontmatter["DnD_backgroundFeat"],
+            this.plugin.settings
+        );
 
         // Fetch current speed breakdown at this.currentLevel for live milestone comparison
         this.currentSpeedCalc = await this.plugin.resolveCharacterSpeedModifiers(
@@ -11250,25 +10897,26 @@ class LevelUpModal extends Modal {
             frontmatter["DnD_classLevels"],
             this.currentLevel,
             frontmatter["DnD_extraFeats"],
-            frontmatter["DnD_backgroundFeat"],
+            bgFeatForBaseline,
             frontmatter["DnD_armor"],
             frontmatter["DnD_speed"],
             frontmatter["DnD_customSpeedMod"],
             frontmatter["DnD_subclass"] ?? frontmatter["DnD_Subclass"],
-            this.plugin.settings
+            this.plugin.settings,
+            frontmatter["DnD_race"],
+            frontmatter["DnD_raceLineage"]
         );
 
-        const bgDataForMastery = frontmatter["DnD_background"]
-            ? await getBackgroundData(this.app, this.plugin.settings, frontmatter["DnD_background"])
-            : null;
         const currentMasteryCalc = await this.plugin.resolveCharacterWeaponMasterySlots(
             frontmatter["DnD_class"] || this.dndClass,
             frontmatter["DnD_classLevels"],
             this.currentLevel,
             frontmatter["DnD_extraFeats"],
-            bgDataForMastery?.feat || frontmatter["DnD_backgroundFeat"],
+            bgFeatForBaseline,
             frontmatter["DnD_subclass"] ?? frontmatter["DnD_Subclass"],
-            this.plugin.settings
+            this.plugin.settings,
+            frontmatter["DnD_race"],
+            frontmatter["DnD_raceLineage"]
         );
         this.currentMasterySlots = currentMasteryCalc.totalSlots;
 
@@ -11333,8 +10981,9 @@ class LevelUpModal extends Modal {
         const newLevelClassFeatures = classData?.features?.[targetLevel];
         if (Array.isArray(newLevelClassFeatures)) {
             for (const feature of newLevelClassFeatures) {
-                if (feature.grantedSubclasses && typeof feature.grantedSubclasses === "string") {
-                    newlyGrantedSubclassFile = feature.grantedSubclasses.trim();
+                const grantedSub = feature?.grantedSubclasses ?? feature?.grantedSubclass;
+                if (grantedSub && typeof grantedSub === "string") {
+                    newlyGrantedSubclassFile = grantedSub.trim().replace(/\.json$/i, "");
                     if (feature.name) grantedSubclassFeatureName = String(feature.name);
                     break;
                 }
@@ -11435,23 +11084,22 @@ class LevelUpModal extends Modal {
         const fileCache = this.app.metadataCache.getCache(this.sourcePath);
         const frontmatter = fileCache?.frontmatter || {};
 
-        let existingFeats = frontmatter["DnD_extraFeats"];
-        const currentFeats: string[] = Array.isArray(existingFeats)
-            ? [...existingFeats]
-            : (existingFeats ? [existingFeats] : []);
-
-        for (const gf of this.grantedFeatsState) {
-            if (gf.chosenFeatKey && !currentFeats.includes(gf.chosenFeatKey)) {
-                currentFeats.push(gf.chosenFeatKey);
-            }
-        }
+        const currentFeats = combineUniqueFeatIds(
+            frontmatter["DnD_extraFeats"],
+            this.grantedFeatsState.map(gf => gf.chosenFeatKey).filter(Boolean)
+        );
+        const bgFeatForMilestone = await this.plugin.resolveBackgroundFeatId(
+            frontmatter["DnD_background"],
+            frontmatter["DnD_backgroundFeat"],
+            this.plugin.settings
+        );
 
         const projectedSpeed = await this.plugin.resolveCharacterSpeedModifiers(
             frontmatter["DnD_class"] || this.dndClass,
             frontmatter["DnD_classLevels"],
             this.newLevel,
             currentFeats,
-            frontmatter["DnD_backgroundFeat"],
+            bgFeatForMilestone,
             frontmatter["DnD_armor"],
             frontmatter["DnD_speed"],
             frontmatter["DnD_customSpeedMod"],
@@ -11476,15 +11124,12 @@ class LevelUpModal extends Modal {
             }
         }
 
-        const bgDataForMastery = frontmatter["DnD_background"]
-            ? await getBackgroundData(this.app, this.plugin.settings, frontmatter["DnD_background"])
-            : null;
         const projectedMastery = await this.plugin.resolveCharacterWeaponMasterySlots(
             frontmatter["DnD_class"] || this.dndClass,
             frontmatter["DnD_classLevels"],
             this.newLevel,
             currentFeats,
-            bgDataForMastery?.feat || frontmatter["DnD_backgroundFeat"],
+            bgFeatForMilestone,
             this.currentSubclass ? [this.currentSubclass] : (frontmatter["DnD_subclass"] ?? frontmatter["DnD_Subclass"]),
             this.plugin.settings,
             frontmatter["DnD_race"],
@@ -11518,7 +11163,6 @@ class LevelUpModal extends Modal {
         this.newExpertiseChoices = [];
         this.newSpellcastingAbility = "";
 
-        const statsList = ["strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"];
         let slotsByRouter: Record<string, { unlockedLevel: number; featureName: string }[]> = {};
         let activeRoutersAtTargetLevel = new Set<string>();
         const grantedFeatMilestones: { featureName: string; grantedFeats: string[] }[] = [];
@@ -11709,11 +11353,10 @@ class LevelUpModal extends Modal {
             expDiv.createEl("label", { text: `New Expertise Granted (${this.newGrantedExpertiseCount} Choices)`, cls: "dnd-form-label-bold" });
             expDiv.createEl("small", { text: "Select from your known proficiencies to gain Expertise.", cls: "dnd-form-hint-block" });
 
-            let existingProfsRaw = frontmatter["DnD_skillProficiencies"] || [];
-            if (typeof existingProfsRaw === 'string') try { existingProfsRaw = JSON.parse(existingProfsRaw); } catch { existingProfsRaw = []; }
+            const existingProfsRaw = parseJsonArrayProp(frontmatter["DnD_skillProficiencies"]);
 
             let knownSkills: string[] = [];
-            (Array.isArray(existingProfsRaw) ? existingProfsRaw : []).forEach((p: any) => {
+            existingProfsRaw.forEach((p: any) => {
                 if (Array.isArray(p) && p.length > 0) knownSkills.push(p[0]);
                 else if (typeof p === 'string') knownSkills.push(p);
             });
@@ -11722,9 +11365,8 @@ class LevelUpModal extends Modal {
                 knownSkills = knownSkills.filter((s: string) => this.expertisePool.map(e => String(e).toLowerCase()).includes(String(s).toLowerCase()));
             }
 
-            let existingExpRaw = frontmatter["DnD_skillExpertise"] || [];
-            if (typeof existingExpRaw === 'string') try { existingExpRaw = JSON.parse(existingExpRaw); } catch { existingExpRaw = []; }
-            const currentExpertise = (Array.isArray(existingExpRaw) ? existingExpRaw : []).map((e: any) => String(e[0]).toLowerCase());
+            const existingExpRaw = parseJsonArrayProp(frontmatter["DnD_skillExpertise"]);
+            const currentExpertise = existingExpRaw.map((e: any) => Array.isArray(e) ? String(e[0]).toLowerCase() : String(e).toLowerCase());
 
             knownSkills = knownSkills.filter(s => !currentExpertise.includes(String(s).toLowerCase()));
             this.newExpertiseChoices = Array(this.newGrantedExpertiseCount).fill("");
@@ -11755,20 +11397,14 @@ class LevelUpModal extends Modal {
         }
 
         // 3. Render Data-Driven Granted Feats / ASI Milestones
-        let existingProfsForFeatsRaw = frontmatter["DnD_skillProficiencies"] || [];
-        if (typeof existingProfsForFeatsRaw === "string") {
-            try { existingProfsForFeatsRaw = JSON.parse(existingProfsForFeatsRaw); } catch { existingProfsForFeatsRaw = []; }
-        }
+        const existingProfsForFeatsRaw = parseJsonArrayProp(frontmatter["DnD_skillProficiencies"]);
         const knownSkillsForFeats: string[] = [];
-        (Array.isArray(existingProfsForFeatsRaw) ? existingProfsForFeatsRaw : []).forEach((p: any) => {
+        existingProfsForFeatsRaw.forEach((p: any) => {
             if (Array.isArray(p) && p.length > 0) knownSkillsForFeats.push(String(p[0]));
             else if (typeof p === "string") knownSkillsForFeats.push(p);
         });
-        let existingExpForFeatsRaw = frontmatter["DnD_skillExpertise"] || [];
-        if (typeof existingExpForFeatsRaw === "string") {
-            try { existingExpForFeatsRaw = JSON.parse(existingExpForFeatsRaw); } catch { existingExpForFeatsRaw = []; }
-        }
-        const existingExpForFeats = (Array.isArray(existingExpForFeatsRaw) ? existingExpForFeatsRaw : []).map((e: any) =>
+        const existingExpForFeatsRaw = parseJsonArrayProp(frontmatter["DnD_skillExpertise"]);
+        const existingExpForFeats = existingExpForFeatsRaw.map((e: any) =>
             Array.isArray(e) ? String(e[0]).toLowerCase() : String(e).toLowerCase()
         );
         const existingSavesForFeats = parseSavingThrows(frontmatter["DnD_classProficiencies"]);
@@ -11785,13 +11421,42 @@ class LevelUpModal extends Modal {
                 headerLabel: `Level ${this.newLevel} Milestone: ${milestone.featureName}`,
                 cardCls: "dnd-form-card-active",
                 state,
-                getCurrentStats: () => this.currentStats,
+                getCurrentStats: () => {
+                    const stats = { ...this.currentStats };
+                    for (const otherState of this.grantedFeatsState) {
+                        if (otherState === state || !otherState) continue;
+                        if (otherState.chosenOptionType === "asi") {
+                            if (otherState.asiStat1 && ALL_ABILITIES.includes(otherState.asiStat1 as AbilityKey)) {
+                                stats[otherState.asiStat1] = Math.min(20, (stats[otherState.asiStat1] || 10) + 1);
+                            }
+                            if (otherState.asiStat2 && ALL_ABILITIES.includes(otherState.asiStat2 as AbilityKey)) {
+                                stats[otherState.asiStat2] = Math.min(20, (stats[otherState.asiStat2] || 10) + 1);
+                            }
+                        } else if (otherState.chosenFeatKey && otherState.abilityChoices) {
+                            for (const chosenAb of Object.values(otherState.abilityChoices)) {
+                                if (chosenAb && ALL_ABILITIES.includes(chosenAb)) {
+                                    stats[chosenAb] = Math.min(20, (stats[chosenAb] || 10) + 1);
+                                }
+                            }
+                        }
+                    }
+                    return stats;
+                },
                 existingSavingThrows: existingSavesForFeats,
                 knownSkillsForExpertise: knownSkillsForFeats,
-                getAlreadyUsedExpertise: () => [
-                    ...existingExpForFeats,
-                    ...this.newExpertiseChoices.map(c => c.toLowerCase())
-                ],
+                getAlreadyUsedExpertise: () => {
+                    const used = [
+                        ...existingExpForFeats,
+                        ...this.newExpertiseChoices.map(c => c.toLowerCase()).filter(Boolean)
+                    ];
+                    for (const otherState of this.grantedFeatsState) {
+                        if (otherState === state || !otherState) continue;
+                        for (const exp of otherState.featExpertiseChoices || []) {
+                            if (exp) used.push(String(exp).toLowerCase());
+                        }
+                    }
+                    return used;
+                },
                 onStateChange: async () => {
                     await this.updateRetroactiveConHp();
                     await this.updateSpeedMilestoneBadge();
@@ -11942,10 +11607,8 @@ class LevelUpModal extends Modal {
         }
 
         // Purely Additive Expertise Output (using strings in arrays)
-        let existingExpRaw = frontmatter["DnD_skillExpertise"] || [];
-        if (typeof existingExpRaw === 'string') try { existingExpRaw = JSON.parse(existingExpRaw); } catch { existingExpRaw = []; }
-
-        const finalExpertise = (Array.isArray(existingExpRaw) ? existingExpRaw : []).map((e: any) => Array.isArray(e) ? [String(e[0]), String(e[1])] : e);
+        const existingExpRaw = parseJsonArrayProp(frontmatter["DnD_skillExpertise"]);
+        const finalExpertise = existingExpRaw.map((e: any) => Array.isArray(e) ? [String(e[0]), String(e[1])] : e);
 
         this.newExpertiseChoices.forEach(choice => {
             if (choice) {
@@ -11966,19 +11629,22 @@ class LevelUpModal extends Modal {
         if (finalExpertise.length > 0) updates["DnD_skillExpertise"] = JSON.stringify(finalExpertise);
 
         // --- Handle Data-Driven Granted Feats / ASI & Recalculate Unarmed Strike / AC Bonus on Level Up ---
-        let existingFeats = frontmatter["DnD_extraFeats"];
-        if (!Array.isArray(existingFeats)) {
-            existingFeats = existingFeats ? [existingFeats] : [];
-        }
+        let existingFeats = parseExtraFeatsList(frontmatter["DnD_extraFeats"]);
 
         for (const gfState of this.grantedFeatsState) {
             if (gfState.chosenOptionType === "asi") {
-                if (gfState.asiStat1) this.currentStats[gfState.asiStat1] += 1;
-                if (gfState.asiStat2) this.currentStats[gfState.asiStat2] += 1;
+                if (gfState.asiStat1 && ALL_ABILITIES.includes(gfState.asiStat1 as AbilityKey)) {
+                    const curr1 = this.currentStats[gfState.asiStat1] || 10;
+                    this.currentStats[gfState.asiStat1] = Math.max(curr1, Math.min(20, curr1 + 1));
+                }
+                if (gfState.asiStat2 && ALL_ABILITIES.includes(gfState.asiStat2 as AbilityKey)) {
+                    const curr2 = this.currentStats[gfState.asiStat2] || 10;
+                    this.currentStats[gfState.asiStat2] = Math.max(curr2, Math.min(20, curr2 + 1));
+                }
 
                 Object.keys(this.currentStats).forEach(s => updates[`DnD_${s}`] = this.currentStats[s]);
             } else if (gfState.chosenFeatKey) {
-                existingFeats.push(gfState.chosenFeatKey);
+                existingFeats = parseExtraFeatsList([...existingFeats, gfState.chosenFeatKey]);
                 updates["DnD_extraFeats"] = [...existingFeats];
 
                 const chosenFeatData = await getExtraFeat(this.app, this.plugin.settings, gfState.chosenFeatKey);
@@ -12044,40 +11710,30 @@ class LevelUpModal extends Modal {
 
         // Recalculate AC Bonus in case Dexterity/Unarmored Defense stat increased or Unarmored Defense was unlocked
         const currentArmor = String(frontmatter["DnD_armor"] || "");
-        const newDexMod = Math.floor((this.currentStats.dexterity - 10) / 2);
-        let armorAcBonus = newDexMod;
-        let isUnarmored = true;
+        const effectiveSubclass = this.currentSubclass
+            ? [this.currentSubclass]
+            : (frontmatter["DnD_subclass"] ?? frontmatter["DnD_Subclass"]);
 
-        if (currentArmor && currentArmor.toLowerCase() !== "none") {
-            const safeArmorName = currentArmor.toLowerCase().replace(/['"]/g, '').trim().replace(/\s+/g, '-');
-            const armorData = await getItemData(this.app, this.plugin.settings, safeArmorName);
-
-            if (armorData && armorData.category) {
-                const category = String(armorData.category).toLowerCase();
-                if (!category.includes("unarmored") && safeArmorName !== "unarmored-defense") {
-                    isUnarmored = false;
-                    if (category.includes("light")) armorAcBonus = newDexMod;
-                    else if (category.includes("medium")) armorAcBonus = Math.min(newDexMod, 2);
-                    else if (category.includes("heavy")) armorAcBonus = 0;
-                }
-            } else if (Number(frontmatter["DnD_armorAc"]) > 10) {
-                isUnarmored = false;
-            }
+        const armorStats = await this.plugin.resolveEquippedArmorStats({
+            armorNameInput: currentArmor,
+            manualAcInput: frontmatter["DnD_armorAc"],
+            classInput: frontmatter["DnD_class"] || this.dndClass,
+            classLevelsInput: frontmatter["DnD_classLevels"],
+            totalLevel: this.newLevel,
+            statsRecord: this.currentStats,
+            subclassInput: effectiveSubclass,
+            fetchOptions: this.plugin.settings
+        });
+        if (armorStats.isUnarmored) {
+            updates["DnD_armorAc"] = armorStats.armorAc;
         }
+        updates["DnD_armorAcBonus"] = armorStats.armorAcBonus;
 
-        if (isUnarmored) {
-            const unarmoredCalc = await this.plugin.resolveUnarmoredDefense(
-                frontmatter["DnD_class"] || this.dndClass,
-                frontmatter["DnD_classLevels"],
-                this.newLevel,
-                this.currentStats,
-                this.plugin.settings,
-                frontmatter["DnD_subclass"] ?? frontmatter["DnD_Subclass"]
-            );
-            updates["DnD_armorAc"] = unarmoredCalc.baseAc;
-            armorAcBonus = unarmoredCalc.acBonus;
-        }
-        updates["DnD_armorAcBonus"] = armorAcBonus;
+        const bgFeatForLvlUp = await this.plugin.resolveBackgroundFeatId(
+            frontmatter["DnD_background"],
+            frontmatter["DnD_backgroundFeat"],
+            this.plugin.settings
+        );
 
         // Recalculate deterministic Speed Modifier
         const speedCalc = await this.plugin.resolveCharacterSpeedModifiers(
@@ -12085,27 +11741,24 @@ class LevelUpModal extends Modal {
             frontmatter["DnD_classLevels"],
             this.newLevel,
             existingFeats,
-            frontmatter["DnD_backgroundFeat"],
+            bgFeatForLvlUp,
             frontmatter["DnD_armor"],
             frontmatter["DnD_speed"],
             frontmatter["DnD_customSpeedMod"],
-            this.currentSubclass ? [this.currentSubclass] : (frontmatter["DnD_subclass"] ?? frontmatter["DnD_Subclass"]),
+            effectiveSubclass,
             this.plugin.settings,
             frontmatter["DnD_race"],
             frontmatter["DnD_raceLineage"]
         );
         updates["DnD_speedMod"] = speedCalc.totalSpeedMod;
 
-        const bgDataForMastery = frontmatter["DnD_background"]
-            ? await getBackgroundData(this.app, this.plugin.settings, frontmatter["DnD_background"])
-            : null;
         const masteryCalc = await this.plugin.resolveCharacterWeaponMasterySlots(
             frontmatter["DnD_class"] || this.dndClass,
             frontmatter["DnD_classLevels"],
             this.newLevel,
             existingFeats,
-            bgDataForMastery?.feat || frontmatter["DnD_backgroundFeat"],
-            this.currentSubclass ? [this.currentSubclass] : (frontmatter["DnD_subclass"] ?? frontmatter["DnD_Subclass"]),
+            bgFeatForLvlUp,
+            effectiveSubclass,
             this.plugin.settings,
             frontmatter["DnD_race"],
             frontmatter["DnD_raceLineage"]
@@ -12119,8 +11772,8 @@ class LevelUpModal extends Modal {
             frontmatter["DnD_classLevels"],
             this.newLevel,
             existingFeats,
-            bgDataForMastery?.feat || frontmatter["DnD_backgroundFeat"],
-            this.currentSubclass ? [this.currentSubclass] : (frontmatter["DnD_subclass"] ?? frontmatter["DnD_Subclass"]),
+            bgFeatForLvlUp,
+            effectiveSubclass,
             frontmatter["DnD_race"],
             frontmatter["DnD_raceLineage"],
             this.currentStats,
@@ -12137,11 +11790,14 @@ class LevelUpModal extends Modal {
         if (finalExpertise.length > 0) {
             const file = this.app.vault.getAbstractFileByPath(this.sourcePath);
             if (file instanceof TFile) {
-                await this.app.vault.process(file, (content) => {
-                    const expInject = finalExpertise.map((e: any) => `  - ${e[0]}`).join('\n') + '\n';
-                    const expRegex = /(expertise:\s*\n)([\s\S]*?)(?=\n[ \t]*half_proficiencies:)/;
-                    return content.replace(expRegex, `$1${expInject}`);
-                });
+                const expRegex = /(expertise:\s*\n)([\s\S]*?)(?=\n[ \t]*half_proficiencies:)/;
+                const currentContent = await this.app.vault.cachedRead(file);
+                if (expRegex.test(currentContent)) {
+                    await this.app.vault.process(file, (content) => {
+                        const expInject = finalExpertise.map((e: any) => `  - ${e[0]}`).join('\n') + '\n';
+                        return content.replace(expRegex, `$1${expInject}`);
+                    });
+                }
             }
         }
 
