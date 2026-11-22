@@ -1614,7 +1614,9 @@ export class DMToolsWidget {
     async render(): Promise<void> {
         if (!this.partyFolderListenerRegistered) {
             this.partyFolderListenerRegistered = true;
-            const onPartyFolderUpdated = () => {
+            const onPartyFolderUpdated = (evt: Event) => {
+                const detail = (evt as CustomEvent<{ sourceWidget?: DMToolsWidget }>)?.detail;
+                if (detail?.sourceWidget === this) return;
                 if (this.activeTab === "party" || this.activeTab === "initiative") {
                     void this.renderActiveTab();
                 }
@@ -3303,16 +3305,14 @@ export class DMToolsWidget {
     // ========================================================================
 
     private async renderPartyTab(): Promise<void> {
-        const {
-            activeFolder,
-            members: party,
-            isConfigured
-        } = getConfiguredPartyMembers(this.app, this.plugin, this.embedFilterFolder, this.embedFilterPlayers);
-
         const root = this.bodyContainer.createDiv({ cls: "dnd-party-root" });
+        const hasExplicitEmbedFilter = this.embedFilterFolder !== undefined
+            || (this.embedFilterPlayers !== undefined && this.embedFilterPlayers.length > 0);
+        let saveTimer: number | null = null;
+        let renderPartyContent!: () => void;
 
-        // Party Folder Selector (lets DM choose which vault folder contains active party character sheets)
-        if (this.hostMode === "modal" || this.hostMode === "sidebar") {
+        // Party Folder Input (lets DM type or paste the vault folder containing active party sheets)
+        if ((this.hostMode === "modal" || this.hostMode === "sidebar") && !hasExplicitEmbedFilter) {
             const folderBar = root.createDiv({ cls: "dnd-compendium-controls dnd-party-folder-bar" });
             const folderRow = folderBar.createDiv({ cls: "dnd-compendium-search-row" });
             folderRow.createEl("span", {
@@ -3320,107 +3320,50 @@ export class DMToolsWidget {
                 cls: "dnd-party-folder-label"
             });
 
-            const folderSelect = folderRow.createEl("select", {
-                cls: "dnd-modal-form-input dnd-party-folder-select",
-                attr: { title: "Select the vault folder containing your party's character sheets" }
+            const datalistId = `dnd-party-folders-${Math.random().toString(36).slice(2, 8)}`;
+            const folderInput = folderRow.createEl("input", {
+                type: "text",
+                placeholder: 'Type or paste folder path (e.g. "Campaign/Party", "/" for root)...',
+                value: this.plugin.settings.partyFolderPath || "",
+                cls: "dnd-modal-form-input dnd-party-folder-input",
+                attr: {
+                    list: datalistId,
+                    title: 'Enter the vault folder path containing your party\'s character sheets (or "/" for vault root)'
+                }
             });
-            folderSelect.createEl("option", { text: "— Select Party Folder —", value: "" });
-            folderSelect.createEl("option", { text: "Vault Root (/)", value: "/" });
-
-            const folderPaths = listVaultFolderPaths(this.app);
-            const savedPath = (this.plugin.settings.partyFolderPath || "").trim();
-            if (savedPath && savedPath !== "/" && !folderPaths.some(p => p.toLowerCase() === savedPath.toLowerCase())) {
-                folderPaths.unshift(savedPath);
+            const dataListEl = folderRow.createEl("datalist", { attr: { id: datalistId } });
+            dataListEl.createEl("option", { attr: { value: "/" } });
+            for (const fp of listVaultFolderPaths(this.app)) {
+                dataListEl.createEl("option", { attr: { value: fp } });
             }
-            for (const fp of folderPaths) {
-                folderSelect.createEl("option", { text: fp, value: fp });
-            }
-            folderSelect.value = savedPath;
 
-            folderSelect.onchange = async () => {
-                this.plugin.settings.partyFolderPath = folderSelect.value;
+            const commitFolderPath = async (rerenderBody: boolean) => {
+                if (saveTimer !== null) {
+                    window.clearTimeout(saveTimer);
+                    saveTimer = null;
+                }
+                this.plugin.settings.partyFolderPath = folderInput.value.trim();
                 await this.plugin.saveSettings();
-                window.dispatchEvent(new CustomEvent("dnd-dm-party-folder-updated"));
-                await this.renderActiveTab();
+                window.dispatchEvent(new CustomEvent("dnd-dm-party-folder-updated", { detail: { sourceWidget: this } }));
+                if (rerenderBody) renderPartyContent();
+            };
+
+            folderInput.oninput = () => {
+                this.plugin.settings.partyFolderPath = folderInput.value.trim();
+                renderPartyContent();
+                if (saveTimer !== null) window.clearTimeout(saveTimer);
+                saveTimer = window.setTimeout(() => { void commitFolderPath(false); }, 350);
+            };
+            folderInput.onchange = () => { void commitFolderPath(true); };
+            folderInput.onkeydown = (evt: KeyboardEvent) => {
+                if (evt.key === "Enter") {
+                    evt.preventDefault();
+                    void commitFolderPath(true);
+                }
             };
         }
 
-        // Top Summary Banner
-        const banner = root.createDiv({ cls: "dnd-party-banner" });
-        const statsSummary = banner.createDiv({ cls: "dnd-party-banner-stats" });
-
-        const maxPP = party.length > 0 ? Math.max(...party.map(p => p.passivePerception)) : 0;
-        const maxPI = party.length > 0 ? Math.max(...party.map(p => p.passiveInvestigation)) : 0;
-        const maxPIns = party.length > 0 ? Math.max(...party.map(p => p.passiveInsight)) : 0;
-
-        const addBannerChip = (label: string, val: string) => {
-            const chip = statsSummary.createDiv({ cls: "dnd-party-banner-chip" });
-            chip.createEl("span", { text: label, cls: "dnd-party-chip-label" });
-            chip.createEl("strong", { text: val, cls: "dnd-party-chip-val" });
-        };
-
-        addBannerChip("Party Size", String(party.length));
-        addBannerChip("Best Passive Perception", String(maxPP));
-        addBannerChip("Best Passive Investigation", String(maxPI));
-        addBannerChip("Best Passive Insight", String(maxPIns));
-
-        const bannerActions = banner.createDiv({ cls: "dnd-party-banner-actions" });
-        const sendToInitBtn = bannerActions.createEl("button", {
-            text: "Send Party to Initiative",
-            cls: "dnd-dm-small-btn mod-cta"
-        });
-        sendToInitBtn.onclick = async () => {
-            if (!isConfigured) {
-                new Notice("Select a Party Folder above first.");
-                return;
-            }
-            const state = this.getInitiativeState();
-            let added = 0;
-            for (const pc of party) {
-                if (state.combatants.some(c => c.sourcePath === pc.sourcePath)) continue;
-                state.combatants.push({
-                    id: `pc-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-                    name: pc.name,
-                    initiative: rollD20() + pc.initBonus,
-                    initBonus: pc.initBonus,
-                    dexMod: pc.dexMod,
-                    hp: pc.currentHp,
-                    maxHp: pc.maxHp,
-                    tempHp: pc.tempHp,
-                    ac: pc.ac,
-                    isPC: true,
-                    conditions: [],
-                    concentrating: false,
-                    sourcePath: pc.sourcePath
-                });
-                added++;
-            }
-            await this.saveInitiativeState();
-            new Notice(added > 0 ? `Added ${added} PC(s) to Initiative Tracker!` : "All party PCs are already in the Initiative Tracker.");
-            if (this.hostMode === "modal" || this.hostMode === "sidebar") {
-                await this.setTab("initiative");
-            }
-        };
-
-        const refreshPartyBtn = bannerActions.createEl("button", {
-            text: "Refresh",
-            cls: "dnd-dm-small-btn"
-        });
-        refreshPartyBtn.onclick = async () => {
-            await this.renderActiveTab();
-        };
-
-        if (party.length === 0) {
-            root.createEl("div", {
-                text: !isConfigured
-                    ? "Select a Party Folder above to display your party's character sheets here and enable automatic whole-party import in the Initiative Tracker."
-                    : `No character sheet notes found in "${activeFolder || "/"}". Pick another folder above or create character sheets in that folder.`,
-                cls: "dnd-modal-empty-text"
-            });
-            return;
-        }
-
-        const grid = root.createDiv({ cls: "dnd-party-grid" });
+        const partyBody = root.createDiv({ cls: "dnd-party-body" });
         const abilityShort: Record<AbilityKey, string> = {
             strength: "STR",
             dexterity: "DEX",
@@ -3430,152 +3373,244 @@ export class DMToolsWidget {
             charisma: "CHA"
         };
 
-        for (const pc of party) {
-            const card = grid.createDiv({ cls: "dnd-party-card" });
+        renderPartyContent = () => {
+            partyBody.empty();
+            const {
+                activeFolder,
+                members: party,
+                isConfigured
+            } = getConfiguredPartyMembers(this.app, this.plugin, this.embedFilterFolder, this.embedFilterPlayers);
 
-            // Card Header
-            const header = card.createDiv({ cls: "dnd-party-card-header" });
-            const titleCol = header.createDiv();
-            const nameLink = titleCol.createEl("h4", {
-                text: pc.name,
-                cls: "dnd-party-card-name is-clickable",
-                attr: { title: `Click to open ${pc.sourcePath}` }
-            });
-            nameLink.onclick = async () => {
-                await this.app.workspace.openLinkText(pc.sourcePath, "", false);
+            // Top Summary Banner
+            const banner = partyBody.createDiv({ cls: "dnd-party-banner" });
+            const statsSummary = banner.createDiv({ cls: "dnd-party-banner-stats" });
+
+            const maxPP = party.length > 0 ? Math.max(...party.map(p => p.passivePerception)) : 0;
+            const maxPI = party.length > 0 ? Math.max(...party.map(p => p.passiveInvestigation)) : 0;
+            const maxPIns = party.length > 0 ? Math.max(...party.map(p => p.passiveInsight)) : 0;
+
+            const addBannerChip = (label: string, val: string) => {
+                const chip = statsSummary.createDiv({ cls: "dnd-party-banner-chip" });
+                chip.createEl("span", { text: label, cls: "dnd-party-chip-label" });
+                chip.createEl("strong", { text: val, cls: "dnd-party-chip-val" });
             };
 
-            const subTitle = `Lvl ${pc.level} • ${pc.race} • ${pc.dndClass}${pc.subclass ? ` (${pc.subclass})` : ""}`;
-            titleCol.createEl("div", { text: subTitle, cls: "dnd-party-card-subtitle" });
+            addBannerChip("Party Size", String(party.length));
+            addBannerChip("Best Passive Perception", String(maxPP));
+            addBannerChip("Best Passive Investigation", String(maxPI));
+            addBannerChip("Best Passive Insight", String(maxPIns));
 
-            // Heroic Inspiration Button
-            const hiBtn = header.createEl("button", {
-                text: pc.heroicInspiration ? "Inspired" : "Inspire",
-                cls: `dnd-dm-small-btn dnd-party-hi-btn ${pc.heroicInspiration ? "is-active" : ""}`.trim(),
-                attr: { title: "Toggle Heroic Inspiration for this character" }
+            const bannerActions = banner.createDiv({ cls: "dnd-party-banner-actions" });
+            const sendToInitBtn = bannerActions.createEl("button", {
+                text: "Send Party to Initiative",
+                cls: "dnd-dm-small-btn mod-cta"
             });
-            hiBtn.onclick = async () => {
-                this.plugin.setHeroicInspiration(pc.sourcePath, !pc.heroicInspiration);
-                await this.renderActiveTab();
-            };
-
-            // HP Bar & Quick Sheet HP Editor
-            const hpPct = pc.maxHp > 0 ? Math.max(0, Math.min(100, Math.round((pc.currentHp / pc.maxHp) * 100))) : 0;
-            const hpSection = card.createDiv({ cls: "dnd-party-hp-section" });
-            const hpLabelRow = hpSection.createDiv({ cls: "dnd-party-hp-label-row" });
-            hpLabelRow.createEl("strong", {
-                text: `HP: ${pc.currentHp} / ${pc.maxHp}${pc.tempHp > 0 ? ` (+${pc.tempHp} Temp)` : ""}`
-            });
-
-            const quickHpControls = hpLabelRow.createDiv({ cls: "dnd-party-hp-controls" });
-            const deltaIn = quickHpControls.createEl("input", {
-                type: "number",
-                placeholder: "±HP",
-                cls: "dnd-init-delta-input"
-            });
-            const dmgBtn = quickHpControls.createEl("button", {
-                text: "- Dmg",
-                cls: "dnd-dm-small-btn",
-                attr: { title: "Damage character (updates their character sheet note)" }
-            });
-            const healBtn = quickHpControls.createEl("button", {
-                text: "+ Heal",
-                cls: "dnd-dm-small-btn",
-                attr: { title: "Heal character (updates their character sheet note)" }
-            });
-
-            dmgBtn.onclick = async () => {
-                let dmg = Math.max(0, Number(deltaIn.value) || 0);
-                if (dmg <= 0) return;
-                let newTemp = pc.tempHp;
-                if (newTemp > 0) {
-                    const absorbed = Math.min(newTemp, dmg);
-                    newTemp -= absorbed;
-                    dmg -= absorbed;
+            sendToInitBtn.onclick = async () => {
+                if (!isConfigured) {
+                    new Notice("Enter a Party Folder path above first.");
+                    return;
                 }
-                const newHp = Math.max(0, pc.currentHp - dmg);
-                await this.plugin.updateCharacterFrontmatter(pc.sourcePath, {
-                    "DnD_currentHealth": newHp,
-                    "DnD_tempHealth": newTemp
-                });
-                setTimeout(() => void this.renderActiveTab(), 120);
-            };
-            healBtn.onclick = async () => {
-                const heal = Math.max(0, Number(deltaIn.value) || 0);
-                if (heal <= 0) return;
-                const newHp = Math.min(pc.maxHp, pc.currentHp + heal);
-                await this.plugin.updateCharacterFrontmatter(pc.sourcePath, {
-                    "DnD_currentHealth": newHp
-                });
-                setTimeout(() => void this.renderActiveTab(), 120);
+                if (saveTimer !== null) {
+                    window.clearTimeout(saveTimer);
+                    saveTimer = null;
+                }
+                const state = this.getInitiativeState();
+                let added = 0;
+                for (const pc of party) {
+                    if (state.combatants.some(c => c.sourcePath === pc.sourcePath)) continue;
+                    state.combatants.push({
+                        id: `pc-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+                        name: pc.name,
+                        initiative: rollD20() + pc.initBonus,
+                        initBonus: pc.initBonus,
+                        dexMod: pc.dexMod,
+                        hp: pc.currentHp,
+                        maxHp: pc.maxHp,
+                        tempHp: pc.tempHp,
+                        ac: pc.ac,
+                        isPC: true,
+                        conditions: [],
+                        concentrating: false,
+                        sourcePath: pc.sourcePath
+                    });
+                    added++;
+                }
+                await this.saveInitiativeState();
+                new Notice(added > 0 ? `Added ${added} PC(s) to Initiative Tracker!` : "All party PCs are already in the Initiative Tracker.");
+                if (this.hostMode === "modal" || this.hostMode === "sidebar") {
+                    await this.setTab("initiative");
+                }
             };
 
-            const hpTrack = hpSection.createDiv({ cls: "dnd-init-hp-bar-track" });
-            const hpFill = hpTrack.createDiv({
-                cls: `dnd-init-hp-bar-fill ${hpPct <= 25 ? "is-critical" : (hpPct <= 50 ? "is-bloodied" : "")}`.trim()
+            const refreshPartyBtn = bannerActions.createEl("button", {
+                text: "Refresh",
+                cls: "dnd-dm-small-btn"
             });
-            hpFill.style.width = `${hpPct}%`;
-
-            // Vitals Strip (AC, Speed, Initiative, Exhaustion)
-            const vitalsGrid = card.createDiv({ cls: "dnd-party-vitals-grid" });
-            const addVitalBox = (label: string, val: string) => {
-                const box = vitalsGrid.createDiv({ cls: "dnd-party-vital-box" });
-                box.createEl("div", { text: label, cls: "dnd-party-vital-label" });
-                box.createEl("div", { text: val, cls: "dnd-party-vital-val" });
+            refreshPartyBtn.onclick = () => {
+                renderPartyContent();
             };
-            addVitalBox("AC", String(pc.ac));
-            addVitalBox("Speed", `${pc.speed} ft.`);
-            addVitalBox("Init", formatSignedNumber(pc.initBonus));
-            addVitalBox("Exhaust", `${pc.exhaustion}/6`);
 
-            // Passive Senses Row
-            const sensesRow = card.createDiv({ cls: "dnd-party-senses-row" });
-            const addSensePill = (label: string, val: number) => {
-                const pill = sensesRow.createDiv({ cls: "dnd-party-sense-pill" });
-                pill.createEl("span", { text: label, cls: "dnd-party-sense-label" });
-                pill.createEl("strong", { text: String(val), cls: "dnd-party-sense-val" });
-            };
-            addSensePill("Pass. Perc", pc.passivePerception);
-            addSensePill("Pass. Inv", pc.passiveInvestigation);
-            addSensePill("Pass. Ins", pc.passiveInsight);
-
-            // 6 Ability Modifiers & Saving Throw Proficiency Strip
-            const abilRow = card.createDiv({ cls: "dnd-party-abilities-strip" });
-            for (const abKey of ALL_ABILITIES) {
-                const score = pc.abilities[abKey] ?? 10;
-                const mod = abilityModFromScore(score);
-                const isSaveProf = pc.savingThrows.includes(abKey);
-                const cell = abilRow.createDiv({
-                    cls: `dnd-party-ability-cell ${isSaveProf ? "is-save-proficient" : ""}`.trim(),
-                    attr: { title: `${abKey.toUpperCase()}: ${score} (${formatSignedNumber(mod)})${isSaveProf ? " • Saving Throw Proficient" : ""}` }
+            if (party.length === 0) {
+                partyBody.createEl("div", {
+                    text: !isConfigured
+                        ? "Enter your Party Folder path above to display your party's character sheets here and enable automatic whole-party import in the Initiative Tracker."
+                        : `No character sheet notes found in "${activeFolder || "/"}". Enter another folder path above or create character sheets in that folder.`,
+                    cls: "dnd-modal-empty-text"
                 });
-                cell.createEl("div", {
-                    text: `${abilityShort[abKey]}${isSaveProf ? "★" : ""}`,
-                    cls: "dnd-party-ability-lbl"
-                });
-                cell.createEl("div", {
-                    text: formatSignedNumber(mod),
-                    cls: "dnd-party-ability-mod"
-                });
+                return;
             }
 
-            // Languages & Tools Footer
-            if (pc.languages.length > 0 || pc.toolProficiencies.length > 0) {
-                const metaFooter = card.createDiv({ cls: "dnd-party-card-footer" });
-                if (pc.languages.length > 0) {
-                    metaFooter.createEl("div", {
-                        text: `Languages: ${pc.languages.join(", ")}`,
-                        cls: "dnd-party-footer-line"
+            const grid = partyBody.createDiv({ cls: "dnd-party-grid" });
+
+            for (const pc of party) {
+                const card = grid.createDiv({ cls: "dnd-party-card" });
+
+                // Card Header
+                const header = card.createDiv({ cls: "dnd-party-card-header" });
+                const titleCol = header.createDiv();
+                const nameLink = titleCol.createEl("h4", {
+                    text: pc.name,
+                    cls: "dnd-party-card-name is-clickable",
+                    attr: { title: `Click to open ${pc.sourcePath}` }
+                });
+                nameLink.onclick = async () => {
+                    await this.app.workspace.openLinkText(pc.sourcePath, "", false);
+                };
+
+                const subTitle = `Lvl ${pc.level} • ${pc.race} • ${pc.dndClass}${pc.subclass ? ` (${pc.subclass})` : ""}`;
+                titleCol.createEl("div", { text: subTitle, cls: "dnd-party-card-subtitle" });
+
+                // Heroic Inspiration Button
+                const hiBtn = header.createEl("button", {
+                    text: pc.heroicInspiration ? "Inspired" : "Inspire",
+                    cls: `dnd-dm-small-btn dnd-party-hi-btn ${pc.heroicInspiration ? "is-active" : ""}`.trim(),
+                    attr: { title: "Toggle Heroic Inspiration for this character" }
+                });
+                hiBtn.onclick = () => {
+                    this.plugin.setHeroicInspiration(pc.sourcePath, !pc.heroicInspiration);
+                    renderPartyContent();
+                };
+
+                // HP Bar & Quick Sheet HP Editor
+                const hpPct = pc.maxHp > 0 ? Math.max(0, Math.min(100, Math.round((pc.currentHp / pc.maxHp) * 100))) : 0;
+                const hpSection = card.createDiv({ cls: "dnd-party-hp-section" });
+                const hpLabelRow = hpSection.createDiv({ cls: "dnd-party-hp-label-row" });
+                hpLabelRow.createEl("strong", {
+                    text: `HP: ${pc.currentHp} / ${pc.maxHp}${pc.tempHp > 0 ? ` (+${pc.tempHp} Temp)` : ""}`
+                });
+
+                const quickHpControls = hpLabelRow.createDiv({ cls: "dnd-party-hp-controls" });
+                const deltaIn = quickHpControls.createEl("input", {
+                    type: "number",
+                    placeholder: "±HP",
+                    cls: "dnd-init-delta-input"
+                });
+                const dmgBtn = quickHpControls.createEl("button", {
+                    text: "- Dmg",
+                    cls: "dnd-dm-small-btn",
+                    attr: { title: "Damage character (updates their character sheet note)" }
+                });
+                const healBtn = quickHpControls.createEl("button", {
+                    text: "+ Heal",
+                    cls: "dnd-dm-small-btn",
+                    attr: { title: "Heal character (updates their character sheet note)" }
+                });
+
+                dmgBtn.onclick = async () => {
+                    let dmg = Math.max(0, Number(deltaIn.value) || 0);
+                    if (dmg <= 0) return;
+                    let newTemp = pc.tempHp;
+                    if (newTemp > 0) {
+                        const absorbed = Math.min(newTemp, dmg);
+                        newTemp -= absorbed;
+                        dmg -= absorbed;
+                    }
+                    const newHp = Math.max(0, pc.currentHp - dmg);
+                    await this.plugin.updateCharacterFrontmatter(pc.sourcePath, {
+                        "DnD_currentHealth": newHp,
+                        "DnD_tempHealth": newTemp
+                    });
+                    setTimeout(() => renderPartyContent(), 120);
+                };
+                healBtn.onclick = async () => {
+                    const heal = Math.max(0, Number(deltaIn.value) || 0);
+                    if (heal <= 0) return;
+                    const newHp = Math.min(pc.maxHp, pc.currentHp + heal);
+                    await this.plugin.updateCharacterFrontmatter(pc.sourcePath, {
+                        "DnD_currentHealth": newHp
+                    });
+                    setTimeout(() => renderPartyContent(), 120);
+                };
+
+                const hpTrack = hpSection.createDiv({ cls: "dnd-init-hp-bar-track" });
+                const hpFill = hpTrack.createDiv({
+                    cls: `dnd-init-hp-bar-fill ${hpPct <= 25 ? "is-critical" : (hpPct <= 50 ? "is-bloodied" : "")}`.trim()
+                });
+                hpFill.style.width = `${hpPct}%`;
+
+                // Vitals Strip (AC, Speed, Initiative, Exhaustion)
+                const vitalsGrid = card.createDiv({ cls: "dnd-party-vitals-grid" });
+                const addVitalBox = (label: string, val: string) => {
+                    const box = vitalsGrid.createDiv({ cls: "dnd-party-vital-box" });
+                    box.createEl("div", { text: label, cls: "dnd-party-vital-label" });
+                    box.createEl("div", { text: val, cls: "dnd-party-vital-val" });
+                };
+                addVitalBox("AC", String(pc.ac));
+                addVitalBox("Speed", `${pc.speed} ft.`);
+                addVitalBox("Init", formatSignedNumber(pc.initBonus));
+                addVitalBox("Exhaust", `${pc.exhaustion}/6`);
+
+                // Passive Senses Row
+                const sensesRow = card.createDiv({ cls: "dnd-party-senses-row" });
+                const addSensePill = (label: string, val: number) => {
+                    const pill = sensesRow.createDiv({ cls: "dnd-party-sense-pill" });
+                    pill.createEl("span", { text: label, cls: "dnd-party-sense-label" });
+                    pill.createEl("strong", { text: String(val), cls: "dnd-party-sense-val" });
+                };
+                addSensePill("Pass. Perc", pc.passivePerception);
+                addSensePill("Pass. Inv", pc.passiveInvestigation);
+                addSensePill("Pass. Ins", pc.passiveInsight);
+
+                // 6 Ability Modifiers & Saving Throw Proficiency Strip
+                const abilRow = card.createDiv({ cls: "dnd-party-abilities-strip" });
+                for (const abKey of ALL_ABILITIES) {
+                    const score = pc.abilities[abKey] ?? 10;
+                    const mod = abilityModFromScore(score);
+                    const isSaveProf = pc.savingThrows.includes(abKey);
+                    const cell = abilRow.createDiv({
+                        cls: `dnd-party-ability-cell ${isSaveProf ? "is-save-proficient" : ""}`.trim(),
+                        attr: { title: `${abKey.toUpperCase()}: ${score} (${formatSignedNumber(mod)})${isSaveProf ? " • Saving Throw Proficient" : ""}` }
+                    });
+                    cell.createEl("div", {
+                        text: `${abilityShort[abKey]}${isSaveProf ? "★" : ""}`,
+                        cls: "dnd-party-ability-lbl"
+                    });
+                    cell.createEl("div", {
+                        text: formatSignedNumber(mod),
+                        cls: "dnd-party-ability-mod"
                     });
                 }
-                if (pc.toolProficiencies.length > 0) {
-                    metaFooter.createEl("div", {
-                        text: `Tools: ${pc.toolProficiencies.join(", ")}`,
-                        cls: "dnd-party-footer-line"
-                    });
+
+                // Languages & Tools Footer
+                if (pc.languages.length > 0 || pc.toolProficiencies.length > 0) {
+                    const metaFooter = card.createDiv({ cls: "dnd-party-card-footer" });
+                    if (pc.languages.length > 0) {
+                        metaFooter.createEl("div", {
+                            text: `Languages: ${pc.languages.join(", ")}`,
+                            cls: "dnd-party-footer-line"
+                        });
+                    }
+                    if (pc.toolProficiencies.length > 0) {
+                        metaFooter.createEl("div", {
+                            text: `Tools: ${pc.toolProficiencies.join(", ")}`,
+                            cls: "dnd-party-footer-line"
+                        });
+                    }
                 }
             }
-        }
+        };
+
+        renderPartyContent();
     }
 
     // ========================================================================

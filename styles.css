@@ -3558,23 +3558,21 @@ body .modal-container .modal .dnd-modal-add-bar > button,
     min-width: 65px;
     height: 8px;
     border-radius: 999px;
-    background-color: var(--dnd-ui-color-bg-darker);
-    border: 1px solid var(--dnd-ui-color-border-primary);
+    background-color: var(--dnd-ui-color-bg-secondary);
+    border: none;
     overflow: hidden;
 }
 
 .dnd-init-hp-bar-fill {
     height: 100%;
-    background-color: var(--dnd-ui-color-accent-teal);
-    transition: width 0.2s ease;
+    background-color: var(--dnd-ui-color-border-active);
+    border-radius: 999px;
+    transition: width 0.25s ease;
 }
 
-.dnd-init-hp-bar-fill.is-bloodied {
-    background-color: var(--dnd-ui-color-accent-purple);
-}
-
+.dnd-init-hp-bar-fill.is-bloodied,
 .dnd-init-hp-bar-fill.is-critical {
-    background-color: var(--dnd-ui-color-accent-red);
+    background-color: var(--dnd-ui-color-border-active);
 }
 
 .dnd-init-hp-inputs {
@@ -3690,12 +3688,24 @@ body .modal-container .modal .dnd-modal-add-bar > button,
     white-space: nowrap;
 }
 
-.dnd-dm-widget .dnd-party-folder-bar select.dnd-party-folder-select {
+.dnd-dm-widget .dnd-party-folder-bar input.dnd-party-folder-input {
     flex: 1 1 200px;
     min-width: 160px;
     background-color: var(--dnd-ui-color-bg-secondary) !important;
     color: var(--dnd-ui-color-text-bright) !important;
     color: oklch(from var(--dnd-ui-color-bg-secondary) clamp(0, (0.63 - l) * 9999, 1) 0 0 / 1) !important;
+}
+
+.dnd-dm-widget .dnd-party-folder-bar input.dnd-party-folder-input::placeholder {
+    color: var(--dnd-ui-color-text-muted) !important;
+    color: oklch(from var(--dnd-ui-color-bg-secondary) clamp(0, (0.63 - l) * 9999, 1) 0 0 / 0.65) !important;
+    opacity: 1;
+}
+
+.dnd-party-body {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
 }
 
 .dnd-party-banner {
