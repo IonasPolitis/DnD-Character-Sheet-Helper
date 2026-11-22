@@ -8706,7 +8706,7 @@ class DnDSettingsTab extends PluginSettingTab {
                 }));
 
         // Draggable List for Section Order
-        containerEl.createEl('h3', { text: 'Section Render Order', cls: 'setting-item-name dnd-settings-header' });
+        containerEl.createEl('h3', { text: 'DnD-Features Section Order', cls: 'setting-item-name dnd-settings-header' });
         containerEl.createEl('p', { text: 'Drag and drop the sections below to change their display order. If "Combine Class and Subclass" is enabled, the Subclass block will be hidden.', cls: 'setting-item-description' });
 
         const listContainer = containerEl.createDiv({ cls: 'dnd-draggable-list' });
@@ -8728,12 +8728,12 @@ class DnDSettingsTab extends PluginSettingTab {
 
             item.addEventListener('dragenter', (e) => {
                 if (e.target !== dragSource) {
-                    (e.target as HTMLElement).style.border = '1px dashed var(--text-accent)';
+                    (e.target as HTMLElement).style.border = '1px dashed var(--interactive-accent, var(--text-accent))';
                 }
             });
 
             item.addEventListener('dragleave', (e) => {
-                (e.target as HTMLElement).style.border = '1px solid var(--dnd-ui-color-border-primary)';
+                (e.target as HTMLElement).style.border = '';
             });
 
             item.addEventListener('drop', async (e) => {
