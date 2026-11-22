@@ -124,13 +124,13 @@ function ensureReadableContrast(fg: RgbaColor, bg: RgbaColor, fallbackTarget: Rg
 }
 
 const OBSIDIAN_FALLBACK_COLORS: ThemeColors = {
-  colorBgPrimary: "#363636",
-  colorBgSecondary: "#4e4e4e",
-  colorBgTertiary: "#424242",
-  colorBgHover: "#636363",
-  colorBgDarker: "#1e1e1e",
-  colorBgGroup: "#453d56",
-  colorBgProficient: "#423c52",
+  colorBgPrimary: "#262626",
+  colorBgSecondary: "#404040",
+  colorBgTertiary: "#515151",
+  colorBgHover: "#595959",
+  colorBgDarker: "#1b1b1b",
+  colorBgGroup: "#352e45",
+  colorBgProficient: "#322c40",
 
   colorTextPrimary: "#dadada",
   colorTextSecondary: "#c4a8ff",
@@ -139,7 +139,7 @@ const OBSIDIAN_FALLBACK_COLORS: ThemeColors = {
   colorTextMuted: "#bdbdbd",
   colorTextGroup: "#cbb4ff",
 
-  colorBorderPrimary: "#5f5f5f",
+  colorBorderPrimary: "#4f4f4f",
   colorBorderActive: "#8a5cf5",
   colorBorderFocus: "rgba(138, 92, 245, 0.45)",
 
@@ -226,33 +226,49 @@ export function generateObsidianThemeColors(doc?: Document): ThemeColors {
     const rawPageBg = pickFirst(["var(--background-primary)", "var(--color-base-00)"]);
     const pageBackdrop = rawPageBg ? compositeOver(rawPageBg, defaultBackdrop) : defaultBackdrop;
 
-    // 1. Widget Background Primary = Obsidian's button background (--interactive-normal, falling back to --background-secondary)
-    const rawInteractive = pickFirstWithAlpha(["var(--interactive-normal)"]);
-    const interactiveComp = rawInteractive && rawInteractive.a > 0.01
-      ? compositeOver(rawInteractive, pageBackdrop)
-      : null;
-    const rawSecondaryFallback = pickFirstWithAlpha([
+    // 1. Widget Background Primary = Obsidian Theme's Sidebar background
+    // Sample live rendered sidebar DOM first (excluding our own isolated DM Tools panel),
+    // falling back to Obsidian's core sidebar variable (--background-secondary).
+    let sidebarDomBg: RgbaColor | null = null;
+    if (typeof targetDoc.querySelector === "function") {
+      const sidebarSelectors = [
+        ".workspace-split.mod-left-split .workspace-tabs .workspace-leaf-content:not([data-type='dnd-dm-tools-view'])",
+        ".workspace-split.mod-left-split .workspace-tabs .workspace-leaf",
+        ".workspace-split.mod-left-split .workspace-tabs",
+        ".workspace-split.mod-left-split",
+        ".workspace-split.mod-right-split .workspace-tabs .workspace-leaf-content:not([data-type='dnd-dm-tools-view'])",
+        ".workspace-split.mod-sidedock",
+      ];
+      for (const sel of sidebarSelectors) {
+        try {
+          const el = targetDoc.querySelector(sel) as Element | null;
+          if (!el) continue;
+          if (typeof el.closest === "function" && el.closest(".dnd-dm-sidebar-view, .dnd-dm-widget, [data-type='dnd-dm-tools-view']")) {
+            continue;
+          }
+          const computedBg = parseComputedRgbString(win.getComputedStyle(el).backgroundColor);
+          if (computedBg && computedBg.a > 0.05) {
+            sidebarDomBg = compositeOver(computedBg, pageBackdrop);
+            break;
+          }
+        } catch {
+          // Ignore selector lookup failures in lightweight mock DOMs
+        }
+      }
+    }
+
+    const rawSidebarBgVar = pickFirstWithAlpha([
       "var(--background-secondary)",
       "var(--background-primary-alt)",
       "var(--color-base-20)",
     ]);
-    const secondaryFallbackComp = rawSecondaryFallback && rawSecondaryFallback.a > 0.01
-      ? compositeOver(rawSecondaryFallback, pageBackdrop)
+    const sidebarVarComp = rawSidebarBgVar && rawSidebarBgVar.a > 0.01
+      ? compositeOver(rawSidebarBgVar, pageBackdrop)
       : null;
 
-    let bgPrimary: RgbaColor;
-    if (interactiveComp && colorDistance(interactiveComp, pageBackdrop) >= 4) {
-      bgPrimary = interactiveComp;
-    } else if (secondaryFallbackComp && colorDistance(secondaryFallbackComp, pageBackdrop) >= 4) {
-      bgPrimary = secondaryFallbackComp;
-    } else if (interactiveComp) {
-      bgPrimary = interactiveComp;
-    } else if (secondaryFallbackComp) {
-      bgPrimary = secondaryFallbackComp;
-    } else {
-      const pageShift = relativeLuminance(pageBackdrop) > 0.45 ? blackRgb : whiteRgb;
-      bgPrimary = mixRgb(pageBackdrop, pageShift, 0.07);
-    }
+    const bgPrimary: RgbaColor = sidebarDomBg
+      || sidebarVarComp
+      || mixRgb(pageBackdrop, relativeLuminance(pageBackdrop) > 0.45 ? blackRgb : whiteRgb, 0.06);
 
     const isLightBg = relativeLuminance(bgPrimary) > 0.45;
     const contrastTargetText: RgbaColor = isLightBg ? blackRgb : whiteRgb;
@@ -270,14 +286,10 @@ export function generateObsidianThemeColors(doc?: Document): ThemeColors {
       ? candidateBright
       : ensureReadableContrast(mixRgb(textPrimary, contrastTargetText, 0.35), bgPrimary, contrastTargetText, 5.0);
 
-    // 3. Button Background Secondary (lighter version of widget/button base) & Tertiary
+    // 3. Button Background Secondary (lighter step from sidebar base) & Tertiary
     const bgSecondary = lightenForButtonBg(bgPrimary);
 
-    const rawBgTertiary = pickFirstWithAlpha(["var(--background-secondary-alt)", "var(--color-base-25)"]);
-    const tertiaryComp = rawBgTertiary && rawBgTertiary.a > 0.01 ? compositeOver(rawBgTertiary, bgSecondary) : null;
-    let bgTertiary = (tertiaryComp && colorDistance(tertiaryComp, bgPrimary) >= 8 && colorDistance(tertiaryComp, bgSecondary) >= 8)
-      ? tertiaryComp
-      : mixRgb(bgSecondary, contrastTargetText, 0.09);
+    let bgTertiary = mixRgb(bgSecondary, contrastTargetText, 0.09);
     if (colorDistance(bgTertiary, bgPrimary) < 8 || colorDistance(bgTertiary, bgSecondary) < 8) {
       bgTertiary = mixRgb(bgPrimary, bgSecondary, 0.5);
     }
@@ -289,20 +301,23 @@ export function generateObsidianThemeColors(doc?: Document): ThemeColors {
       ? hoverComp
       : lightenForButtonBg(bgSecondary);
 
-    // 5. Darker / Inset Surface (inputs, previews, stat cells)
-    const bgAltRaw = pickFirst(["var(--background-primary-alt)", "var(--color-base-10)"]);
-    const formFieldRaw = pickFirstWithAlpha(["var(--background-modifier-form-field)"]);
-    const bgAltComp = bgAltRaw ? compositeOver(bgAltRaw, pageBackdrop) : null;
-    const formFieldComp = formFieldRaw && formFieldRaw.a > 0.02 ? compositeOver(formFieldRaw, pageBackdrop) : null;
-    const bgDarker = (bgAltComp && colorDistance(bgAltComp, bgPrimary) >= 10)
-      ? bgAltComp
-      : (formFieldComp && colorDistance(formFieldComp, bgPrimary) >= 10
-        ? formFieldComp
-        : (colorDistance(pageBackdrop, bgPrimary) >= 10
-          ? pageBackdrop
-          : mixRgb(bgPrimary, blackRgb, isLightBg ? 0.06 : 0.24)));
+    // 5. Darker / Inset Surface (inputs, previews, stat cells — darker than the sidebar base)
+    const rawBgDarkerVar = pickFirstWithAlpha([
+      "var(--background-secondary-alt)",
+      "var(--color-base-00)",
+      "var(--background-modifier-form-field)",
+    ]);
+    const darkerVarComp = rawBgDarkerVar && rawBgDarkerVar.a > 0.02
+      ? compositeOver(rawBgDarkerVar, bgPrimary)
+      : null;
+    const darkerFallback = mixRgb(bgPrimary, blackRgb, isLightBg ? 0.06 : 0.28);
+    const bgDarker = (darkerVarComp
+      && colorDistance(darkerVarComp, bgPrimary) >= 6
+      && relativeLuminance(darkerVarComp) <= relativeLuminance(bgPrimary))
+      ? darkerVarComp
+      : darkerFallback;
 
-    // 6. Active & Accent Colors from Obsidian
+    // 6. Active & Accent Colors from Obsidian (--interactive-accent powers primary CTA / Level Up buttons)
     const rawAccent = pickFirst(["var(--interactive-accent)", "var(--color-accent)", "var(--text-accent)"]);
     const accentRgb = rawAccent ? compositeOver(rawAccent, bgPrimary) : { r: 138, g: 92, b: 245, a: 1 };
 
