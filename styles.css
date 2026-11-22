@@ -2873,7 +2873,8 @@ body .modal-container .modal .dnd-modal-add-bar > button,
 .dnd-dm-widget .dnd-party-banner,
 .dnd-dm-widget .dnd-party-card,
 .dnd-dm-widget .dnd-monsters-status-banner,
-.dnd-dm-widget .dnd-statblock-card {
+.dnd-dm-widget .dnd-statblock-card,
+.modal.dnd-statblock-preview-modal .dnd-statblock-card {
     --dnd-dm-text: var(--dnd-ui-color-text-primary);
     --dnd-dm-text-bright: var(--dnd-ui-color-text-bright);
     --dnd-dm-text-muted: var(--dnd-ui-color-text-muted);
@@ -3047,10 +3048,42 @@ body .modal-container .modal .dnd-modal-add-bar > button,
     display: flex;
     flex-direction: column;
     gap: 8px;
-    background-color: var(--dnd-ui-color-bg-secondary);
+    background-color: var(--dnd-ui-color-bg-primary);
     border: 1px solid var(--dnd-ui-color-border-primary);
     border-radius: 10px;
     padding: 10px;
+}
+
+.dnd-dm-widget .dnd-compendium-controls input.dnd-compendium-search-input {
+    background-color: var(--dnd-ui-color-bg-secondary) !important;
+    color: var(--dnd-ui-color-text-bright) !important;
+    color: oklch(from var(--dnd-ui-color-bg-secondary) clamp(0, (0.63 - l) * 9999, 1) 0 0 / 1) !important;
+}
+
+.dnd-dm-widget .dnd-compendium-controls input.dnd-compendium-search-input::placeholder {
+    color: var(--dnd-ui-color-text-muted) !important;
+    color: oklch(from var(--dnd-ui-color-bg-secondary) clamp(0, (0.63 - l) * 9999, 1) 0 0 / 0.65) !important;
+    opacity: 1;
+}
+
+.dnd-dm-widget .dnd-modal-list-row {
+    background-color: var(--dnd-ui-color-bg-primary);
+}
+
+.dnd-dm-widget .dnd-modal-list-row.is-clickable:hover {
+    background-color: var(--dnd-ui-color-bg-hover);
+    border-color: var(--dnd-ui-color-border-active);
+}
+
+.dnd-dm-widget .dnd-modal-list-row.is-active {
+    background-color: var(--dnd-ui-color-bg-primary);
+    border-color: var(--dnd-ui-color-border-active);
+    box-shadow: 0 0 0 1px var(--dnd-ui-color-border-active);
+}
+
+.dnd-dm-widget .dnd-spellbook-preview,
+.dnd-dm-widget .dnd-compendium-preview {
+    background-color: var(--dnd-ui-color-bg-secondary);
 }
 
 .dnd-compendium-search-row {
@@ -3366,14 +3399,14 @@ body .modal-container .modal .dnd-modal-add-bar > button,
     gap: 6px;
     padding: 10px 12px;
     border-radius: 10px;
-    background-color: var(--dnd-ui-color-bg-secondary);
+    background-color: var(--dnd-ui-color-bg-primary);
     border: 1px solid var(--dnd-ui-color-border-primary);
     transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
 .dnd-init-card.is-active-turn {
     border: 2px solid var(--dnd-ui-color-accent-teal);
-    background-color: var(--dnd-ui-color-bg-tertiary);
+    background-color: var(--dnd-ui-color-bg-primary);
     box-shadow: 0 0 10px rgba(0, 0, 0, 0.25);
 }
 
@@ -3687,7 +3720,7 @@ body .modal-container .modal .dnd-modal-add-bar > button,
     gap: 10px;
     padding: 12px 14px;
     border-radius: 12px;
-    background-color: var(--dnd-ui-color-bg-secondary);
+    background-color: var(--dnd-ui-color-bg-primary);
     border: 1px solid var(--dnd-ui-color-border-primary);
 }
 
@@ -3868,6 +3901,13 @@ body .modal-container .modal .dnd-modal-add-bar > button,
     border-radius: 12px;
     padding: 14px 16px;
     color: var(--dnd-ui-color-text-primary);
+}
+
+.dnd-monster-preview-statblock .dnd-statblock-card {
+    background-color: transparent;
+    border: none;
+    border-radius: 0;
+    padding: 2px 0;
 }
 
 .dnd-statblock-title-row {
