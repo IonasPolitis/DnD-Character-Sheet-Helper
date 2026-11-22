@@ -124,22 +124,22 @@ function ensureReadableContrast(fg: RgbaColor, bg: RgbaColor, fallbackTarget: Rg
 }
 
 const OBSIDIAN_FALLBACK_COLORS: ThemeColors = {
-  colorBgPrimary: "#1e1e1e",
-  colorBgSecondary: "#262626",
-  colorBgTertiary: "#2f2f2f",
-  colorBgHover: "#363636",
-  colorBgDarker: "#171717",
-  colorBgGroup: "#2b2838",
-  colorBgProficient: "#262334",
+  colorBgPrimary: "#363636",
+  colorBgSecondary: "#4e4e4e",
+  colorBgTertiary: "#424242",
+  colorBgHover: "#636363",
+  colorBgDarker: "#1e1e1e",
+  colorBgGroup: "#453d56",
+  colorBgProficient: "#423c52",
 
   colorTextPrimary: "#dadada",
-  colorTextSecondary: "#a882ff",
-  colorTextSublabel: "#9ab2bf",
+  colorTextSecondary: "#c4a8ff",
+  colorTextSublabel: "#a2c6cf",
   colorTextBright: "#ffffff",
-  colorTextMuted: "#b3b3b3",
-  colorTextGroup: "#a882ff",
+  colorTextMuted: "#bdbdbd",
+  colorTextGroup: "#cbb4ff",
 
-  colorBorderPrimary: "#363636",
+  colorBorderPrimary: "#5f5f5f",
   colorBorderActive: "#8a5cf5",
   colorBorderFocus: "rgba(138, 92, 245, 0.45)",
 
@@ -147,6 +147,22 @@ const OBSIDIAN_FALLBACK_COLORS: ThemeColors = {
   colorAccentRed: "#fb464c",
   colorAccentPurple: "#a882ff",
 };
+
+function lightenForButtonBg(base: RgbaColor): RgbaColor {
+  const white: RgbaColor = { r: 255, g: 255, b: 255, a: 1 };
+  const black: RgbaColor = { r: 0, g: 0, b: 0, a: 1 };
+  const distToWhite = colorDistance(base, white);
+  if (distToWhite < 14) {
+    // Base is already near pure white (#f9f9f9-#ffffff): nudge slightly off-white so buttons remain visible
+    return mixRgb(base, black, 0.06);
+  }
+  if (distToWhite < 36) {
+    // Very light base (#eaeaea-#f8f8f8): step cleanly up to crisp white
+    return white;
+  }
+  const weight = Math.min(0.65, Math.max(0.12, 36 / distToWhite));
+  return mixRgb(base, white, weight);
+}
 
 /**
  * Samples Obsidian's active CSS variables from `doc.body` (supporting Default, Community Themes,
@@ -203,71 +219,100 @@ export function generateObsidianThemeColors(doc?: Document): ThemeColors {
     const defaultBackdrop: RgbaColor = isLightClass
       ? { r: 255, g: 255, b: 255, a: 1 }
       : { r: 30, g: 30, b: 30, a: 1 };
-
-    // 1. Background Primary
-    const rawBgPrimary = pickFirst(["var(--background-primary)", "var(--color-base-00)"]);
-    const bgPrimary = rawBgPrimary ? compositeOver(rawBgPrimary, defaultBackdrop) : defaultBackdrop;
-    const isLightBg = relativeLuminance(bgPrimary) > 0.45;
     const whiteRgb: RgbaColor = { r: 255, g: 255, b: 255, a: 1 };
     const blackRgb: RgbaColor = { r: 0, g: 0, b: 0, a: 1 };
+
+    // Page canvas backdrop used to composite translucent theme variables cleanly
+    const rawPageBg = pickFirst(["var(--background-primary)", "var(--color-base-00)"]);
+    const pageBackdrop = rawPageBg ? compositeOver(rawPageBg, defaultBackdrop) : defaultBackdrop;
+
+    // 1. Widget Background Primary = Obsidian's button background (--interactive-normal, falling back to --background-secondary)
+    const rawInteractive = pickFirstWithAlpha(["var(--interactive-normal)"]);
+    const interactiveComp = rawInteractive && rawInteractive.a > 0.01
+      ? compositeOver(rawInteractive, pageBackdrop)
+      : null;
+    const rawSecondaryFallback = pickFirstWithAlpha([
+      "var(--background-secondary)",
+      "var(--background-primary-alt)",
+      "var(--color-base-20)",
+    ]);
+    const secondaryFallbackComp = rawSecondaryFallback && rawSecondaryFallback.a > 0.01
+      ? compositeOver(rawSecondaryFallback, pageBackdrop)
+      : null;
+
+    let bgPrimary: RgbaColor;
+    if (interactiveComp && colorDistance(interactiveComp, pageBackdrop) >= 4) {
+      bgPrimary = interactiveComp;
+    } else if (secondaryFallbackComp && colorDistance(secondaryFallbackComp, pageBackdrop) >= 4) {
+      bgPrimary = secondaryFallbackComp;
+    } else if (interactiveComp) {
+      bgPrimary = interactiveComp;
+    } else if (secondaryFallbackComp) {
+      bgPrimary = secondaryFallbackComp;
+    } else {
+      const pageShift = relativeLuminance(pageBackdrop) > 0.45 ? blackRgb : whiteRgb;
+      bgPrimary = mixRgb(pageBackdrop, pageShift, 0.07);
+    }
+
+    const isLightBg = relativeLuminance(bgPrimary) > 0.45;
     const contrastTargetText: RgbaColor = isLightBg ? blackRgb : whiteRgb;
-    const shiftDirectionTarget: RgbaColor = isLightBg ? blackRgb : whiteRgb;
 
     // 2. Primary Text & Bright Text
     const rawTextNormal = pickFirst(["var(--text-normal)", "var(--color-base-100)"]);
-    const textPrimary = rawTextNormal
+    const rawTextPrimaryComp = rawTextNormal
       ? compositeOver(rawTextNormal, bgPrimary)
       : (isLightBg ? { r: 34, g: 34, b: 34, a: 1 } : { r: 218, g: 218, b: 218, a: 1 });
+    const textPrimary = ensureReadableContrast(rawTextPrimaryComp, bgPrimary, contrastTargetText, 4.5);
 
     const rawTextBright = pickFirst(["var(--h1-color)", "var(--bold-color)"]);
     const candidateBright = rawTextBright ? compositeOver(rawTextBright, bgPrimary) : null;
     const textBright = (candidateBright && colorDistance(candidateBright, textPrimary) >= 12 && contrastRatio(candidateBright, bgPrimary) >= 4.5)
       ? candidateBright
-      : mixRgb(textPrimary, contrastTargetText, 0.35);
+      : ensureReadableContrast(mixRgb(textPrimary, contrastTargetText, 0.35), bgPrimary, contrastTargetText, 5.0);
 
-    // 3. Background Secondary & Tertiary
-    const rawBgSecondary = pickFirst(["var(--background-secondary)", "var(--background-primary-alt)", "var(--color-base-20)"]);
-    let bgSecondary = rawBgSecondary ? compositeOver(rawBgSecondary, bgPrimary) : mixRgb(bgPrimary, shiftDirectionTarget, 0.05);
-    if (colorDistance(bgSecondary, bgPrimary) < 8) {
-      const altBg = pickFirst(["var(--background-primary-alt)", "var(--color-base-20)"]);
-      const compAlt = altBg ? compositeOver(altBg, bgPrimary) : null;
-      bgSecondary = (compAlt && colorDistance(compAlt, bgPrimary) >= 8)
-        ? compAlt
-        : mixRgb(bgPrimary, shiftDirectionTarget, 0.06);
-    }
+    // 3. Button Background Secondary (lighter version of widget/button base) & Tertiary
+    const bgSecondary = lightenForButtonBg(bgPrimary);
 
-    const rawBgTertiary = pickFirst(["var(--background-secondary-alt)", "var(--color-base-25)"]);
-    let bgTertiary = rawBgTertiary ? compositeOver(rawBgTertiary, bgSecondary) : mixRgb(bgSecondary, shiftDirectionTarget, 0.06);
-    if (colorDistance(bgTertiary, bgSecondary) < 8) {
-      bgTertiary = mixRgb(bgSecondary, contrastTargetText, 0.07);
-    }
-
-    // 4. Hover Background
-    const rawBgHover = pickFirstWithAlpha(["var(--background-modifier-hover)", "var(--interactive-hover)"]);
-    let bgHover = rawBgHover && rawBgHover.a > 0.01
-      ? compositeOver(rawBgHover, bgSecondary)
+    const rawBgTertiary = pickFirstWithAlpha(["var(--background-secondary-alt)", "var(--color-base-25)"]);
+    const tertiaryComp = rawBgTertiary && rawBgTertiary.a > 0.01 ? compositeOver(rawBgTertiary, bgSecondary) : null;
+    let bgTertiary = (tertiaryComp && colorDistance(tertiaryComp, bgPrimary) >= 8 && colorDistance(tertiaryComp, bgSecondary) >= 8)
+      ? tertiaryComp
       : mixRgb(bgSecondary, contrastTargetText, 0.09);
-    if (colorDistance(bgHover, bgSecondary) < 6) {
-      bgHover = mixRgb(bgSecondary, contrastTargetText, 0.09);
+    if (colorDistance(bgTertiary, bgPrimary) < 8 || colorDistance(bgTertiary, bgSecondary) < 8) {
+      bgTertiary = mixRgb(bgPrimary, bgSecondary, 0.5);
     }
+
+    // 4. Hover Background (visibly distinct from lightened button background)
+    const rawBgHover = pickFirstWithAlpha(["var(--interactive-hover)", "var(--background-modifier-hover)"]);
+    const hoverComp = rawBgHover && rawBgHover.a > 0.01 ? compositeOver(rawBgHover, bgSecondary) : null;
+    const bgHover = (hoverComp && colorDistance(hoverComp, bgSecondary) >= 12)
+      ? hoverComp
+      : lightenForButtonBg(bgSecondary);
 
     // 5. Darker / Inset Surface (inputs, previews, stat cells)
     const bgAltRaw = pickFirst(["var(--background-primary-alt)", "var(--color-base-10)"]);
     const formFieldRaw = pickFirstWithAlpha(["var(--background-modifier-form-field)"]);
-    const bgAltComp = bgAltRaw ? compositeOver(bgAltRaw, bgPrimary) : null;
-    const formFieldComp = formFieldRaw && formFieldRaw.a > 0.02 ? compositeOver(formFieldRaw, bgPrimary) : null;
-    let bgDarker = (bgAltComp && colorDistance(bgAltComp, bgPrimary) >= 8)
+    const bgAltComp = bgAltRaw ? compositeOver(bgAltRaw, pageBackdrop) : null;
+    const formFieldComp = formFieldRaw && formFieldRaw.a > 0.02 ? compositeOver(formFieldRaw, pageBackdrop) : null;
+    const bgDarker = (bgAltComp && colorDistance(bgAltComp, bgPrimary) >= 10)
       ? bgAltComp
-      : (formFieldComp && colorDistance(formFieldComp, bgPrimary) >= 6 ? formFieldComp : mixRgb(bgPrimary, blackRgb, isLightBg ? 0.05 : 0.18));
+      : (formFieldComp && colorDistance(formFieldComp, bgPrimary) >= 10
+        ? formFieldComp
+        : (colorDistance(pageBackdrop, bgPrimary) >= 10
+          ? pageBackdrop
+          : mixRgb(bgPrimary, blackRgb, isLightBg ? 0.06 : 0.24)));
 
     // 6. Active & Accent Colors from Obsidian
     const rawAccent = pickFirst(["var(--interactive-accent)", "var(--color-accent)", "var(--text-accent)"]);
     const accentRgb = rawAccent ? compositeOver(rawAccent, bgPrimary) : { r: 138, g: 92, b: 245, a: 1 };
 
     const rawTagBg = pickFirstWithAlpha(["var(--tag-background)"]);
-    const bgGroup = (rawTagBg && rawTagBg.a > 0.02)
+    let bgGroup = (rawTagBg && rawTagBg.a > 0.02)
       ? compositeOver(rawTagBg, bgSecondary)
       : mixRgb(bgSecondary, accentRgb, 0.16);
+    if (colorDistance(bgGroup, bgPrimary) < 8) {
+      bgGroup = mixRgb(bgPrimary, accentRgb, 0.18);
+    }
 
     const rawSelectedBg = pickFirstWithAlpha(["var(--nav-item-background-selected)", "var(--text-selection)"]);
     let bgProficient = (rawSelectedBg && rawSelectedBg.a > 0.02)
@@ -285,22 +330,23 @@ export function generateObsidianThemeColors(doc?: Document): ThemeColors {
 
     const rawTextAccent = pickFirst(["var(--text-accent)", "var(--link-color)", "var(--interactive-accent)"]);
     const textGroupRaw = rawTextAccent ? compositeOver(rawTextAccent, bgSecondary) : accentRgb;
-    const textGroup = ensureReadableContrast(textGroupRaw, bgSecondary, textBright, 3.3);
+    const secondaryContrastTarget = relativeLuminance(bgSecondary) > 0.35 ? blackRgb : whiteRgb;
+    const textGroup = ensureReadableContrast(textGroupRaw, bgSecondary, secondaryContrastTarget, 3.5);
 
     const rawH4Color = pickFirst(["var(--h4-color)", "var(--h3-color)"]);
     const h4Comp = rawH4Color ? compositeOver(rawH4Color, bgPrimary) : null;
     const textSecondaryRaw = (h4Comp && colorDistance(h4Comp, textPrimary) >= 14)
       ? h4Comp
       : mixRgb(textPrimary, textGroup, 0.55);
-    const textSecondary = ensureReadableContrast(textSecondaryRaw, bgSecondary, textPrimary, 3.6);
+    const textSecondary = ensureReadableContrast(textSecondaryRaw, bgPrimary, textPrimary, 3.6);
 
     // 8. Borders
     const rawBorder = pickFirstWithAlpha(["var(--background-modifier-border)", "var(--divider-color)"]);
     let borderPrimary = (rawBorder && rawBorder.a > 0.02)
       ? compositeOver(rawBorder, bgPrimary)
-      : mixRgb(bgPrimary, textPrimary, 0.18);
-    if (colorDistance(borderPrimary, bgPrimary) < 8) {
-      borderPrimary = mixRgb(bgPrimary, textPrimary, 0.2);
+      : mixRgb(bgSecondary, textPrimary, 0.18);
+    if (colorDistance(borderPrimary, bgPrimary) < 10 || colorDistance(borderPrimary, bgSecondary) < 10) {
+      borderPrimary = mixRgb(bgSecondary, textPrimary, 0.2);
     }
 
     const rawBorderActive = pickFirst(["var(--interactive-accent)", "var(--background-modifier-border-focus)"]);

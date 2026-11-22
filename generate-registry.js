@@ -57,71 +57,85 @@ function syncWeaponMasteriesMarkdownFile() {
 
 syncWeaponMasteriesMarkdownFile();
 
-// --- AUTO-GENERATE ribbon-icon.ts FROM ribbon.png OR ribbon.svg ---
-function syncRibbonIcon() {
-    const pngPath = path.join(__dirname, 'ribbon.png');
-    const svgPath = path.join(__dirname, 'ribbon.svg');
-    const ribbonTsPath = path.join(__dirname, 'ribbon-icon.ts');
-
+// --- AUTO-GENERATE ribbon-icon.ts FROM wizard-ribbon.png & dm-ribbon.png ---
+function buildRibbonIconInner(candidates, filterId) {
     let base64Str = '';
     let w = 100;
     let h = 100;
 
-    if (fs.existsSync(pngPath)) {
-        const buf = fs.readFileSync(pngPath);
-        base64Str = buf.toString('base64');
-        if (buf.length > 24 && buf[0] === 0x89 && buf[1] === 0x50) {
-            w = buf.readUInt32BE(16);
-            h = buf.readUInt32BE(20);
-        }
-    } else if (fs.existsSync(svgPath)) {
-        const svg = fs.readFileSync(svgPath, 'utf8');
-        const m = svg.match(/data:image\/png;base64,\s*([A-Za-z0-9+/=]+)/);
-        if (m) {
-            base64Str = m[1].replace(/\s+/g, '');
-            const buf = Buffer.from(base64Str, 'base64');
+    for (const filename of candidates) {
+        const fullPath = path.join(__dirname, filename);
+        if (!fs.existsSync(fullPath)) continue;
+
+        if (filename.toLowerCase().endsWith('.svg')) {
+            const svg = fs.readFileSync(fullPath, 'utf8');
+            const m = svg.match(/data:image\/png;base64,\s*([A-Za-z0-9+/=]+)/);
+            if (m) {
+                base64Str = m[1].replace(/\s+/g, '');
+                const buf = Buffer.from(base64Str, 'base64');
+                if (buf.length > 24 && buf[0] === 0x89 && buf[1] === 0x50) {
+                    w = buf.readUInt32BE(16);
+                    h = buf.readUInt32BE(20);
+                }
+                break;
+            }
+            // Raw SVG fallback
+            return svg.replace(/<\?xml[\s\S]*?\?>/g, '')
+                      .replace(/<!--[\s\S]*?-->/g, '')
+                      .replace(/<svg[\s\S]*?>/g, '')
+                      .replace(/<\/svg>/g, '')
+                      .trim();
+        } else {
+            const buf = fs.readFileSync(fullPath);
+            base64Str = buf.toString('base64');
             if (buf.length > 24 && buf[0] === 0x89 && buf[1] === 0x50) {
                 w = buf.readUInt32BE(16);
                 h = buf.readUInt32BE(20);
             }
-        } else {
-            // Raw SVG fallback
-            const inner = svg.replace(/<\?xml[\s\S]*?\?>/g, '')
-                             .replace(/<!--[\s\S]*?-->/g, '')
-                             .replace(/<svg[\s\S]*?>/g, '')
-                             .replace(/<\/svg>/g, '')
-                             .trim();
-            const tsContent = `// Auto-generated from ribbon.svg by generate-registry.js\nexport const RIBBON_ICON_SVG = ${JSON.stringify(inner)};\n`;
-            fs.writeFileSync(ribbonTsPath, tsContent, 'utf8');
-            console.log('✅ Auto-generated ribbon-icon.ts successfully!');
-            return;
+            break;
         }
-    } else {
-        return;
     }
 
-    if (!base64Str) return;
+    if (!base64Str) return '';
 
+    const targetSize = 105.0;
+    const maxDim = Math.max(w, h) || 1;
+    const scaledW = (w / maxDim) * targetSize;
+    const scaledH = (h / maxDim) * targetSize;
+    const posX = ((100.0 - scaledW) / 2.0).toFixed(2);
+    const posY = ((100.0 - scaledH) / 2.0).toFixed(2);
+    const wStr = scaledW.toFixed(2);
+    const hStr = scaledH.toFixed(2);
+
+    return `<defs><filter id="${filterId}" x="0%" y="0%" width="100%" height="100%" color-interpolation-filters="sRGB"><feFlood flood-color="currentColor" result="flood"/><feComposite in="flood" in2="SourceAlpha" operator="in"/></filter></defs><image filter="url(#${filterId})" x="${posX}" y="${posY}" width="${wStr}" height="${hStr}" href="data:image/png;base64,${base64Str}"/>`;
+}
+
+function syncRibbonIcons() {
+    const ribbonTsPath = path.join(__dirname, 'ribbon-icon.ts');
     try {
-        const targetSize = 105.0;
-        const maxDim = Math.max(w, h) || 1;
-        const scaledW = (w / maxDim) * targetSize;
-        const scaledH = (h / maxDim) * targetSize;
-        const posX = ((100.0 - scaledW) / 2.0).toFixed(2);
-        const posY = ((100.0 - scaledH) / 2.0).toFixed(2);
-        const wStr = scaledW.toFixed(2);
-        const hStr = scaledH.toFixed(2);
+        const wizardSvg = buildRibbonIconInner(['wizard-ribbon.png', 'ribbon.png', 'ribbon.svg'], 'csh-wizard-ribbon-tint');
+        const dmSvg = buildRibbonIconInner(['dm-ribbon.png'], 'csh-dm-ribbon-tint');
 
-        const innerContent = `<defs><filter id="csh-ribbon-tint" x="0%" y="0%" width="100%" height="100%" color-interpolation-filters="sRGB"><feFlood flood-color="currentColor" result="flood"/><feComposite in="flood" in2="SourceAlpha" operator="in"/></filter></defs><image filter="url(#csh-ribbon-tint)" x="${posX}" y="${posY}" width="${wStr}" height="${hStr}" href="data:image/png;base64,${base64Str}"/>`;
-        const tsContent = `// Auto-generated from ribbon.png / ribbon.svg by generate-registry.js\nexport const RIBBON_ICON_SVG = ${JSON.stringify(innerContent)};\n`;
-        fs.writeFileSync(ribbonTsPath, tsContent, 'utf8');
+        if (!wizardSvg && !dmSvg) return;
+
+        const lines = ['// Auto-generated from wizard-ribbon.png & dm-ribbon.png by generate-registry.js'];
+        if (wizardSvg) {
+            lines.push(`export const WIZARD_RIBBON_ICON_SVG = ${JSON.stringify(wizardSvg)};`);
+            lines.push(`export const RIBBON_ICON_SVG = WIZARD_RIBBON_ICON_SVG;`);
+        } else {
+            lines.push(`export const WIZARD_RIBBON_ICON_SVG = "";`);
+            lines.push(`export const RIBBON_ICON_SVG = "";`);
+        }
+        lines.push(`export const DM_RIBBON_ICON_SVG = ${JSON.stringify(dmSvg || '')};`);
+
+        fs.writeFileSync(ribbonTsPath, lines.join('\n') + '\n', 'utf8');
         console.log('✅ Auto-generated ribbon-icon.ts successfully!');
     } catch (e) {
-        console.error('Failed to sync ribbon icon:', e);
+        console.error('Failed to sync ribbon icons:', e);
     }
 }
 
-syncRibbonIcon();
+syncRibbonIcons();
 
 // --- MARKDOWN NOTE SCANNER ---
 function scanMarkdownNotes() {

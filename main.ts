@@ -2,7 +2,7 @@ import { App, CachedMetadata, Plugin, PluginSettingTab, Setting, MarkdownPostPro
 import { getClassData, getSubclassData, getBackgroundData, getRaceData, getRacialSpellsData, getExtraFeat, getAvailableFeats, FeatPoolEntry, toSlug, toNormalizedFeatSlug, getCleanCustomBasePath, readCustomJson, mergeDictionaries, getItemData, getRuleData, getSpellData, getSpellsPoolData, getClassChoiceData, getClassChoiceRouterData, classChoiceRouterRegistry, getFeatMapData, getWeaponMasteriesMap, getWeaponMasteryDescription, buildWeaponMasteriesMarkdown } from './data';
 import { MarkdownNotes, classesMap, racesMap, backgroundsMap, itemsMap } from './registry';
 import { THEMES, generateObsidianThemeColors } from './themes';
-import { RIBBON_ICON_SVG } from './ribbon-icon';
+import { WIZARD_RIBBON_ICON_SVG, DM_RIBBON_ICON_SVG } from './ribbon-icon';
 import {
     DM_TOOLS_VIEW_TYPE,
     DMToolsModal,
@@ -1330,7 +1330,8 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
             this.dmRibbonIconEl = null;
         }
         if (this.settings.showDmToolsRibbon !== false) {
-            this.dmRibbonIconEl = this.addRibbonIcon('shield', 'Open DnD DM Tools & Compendium', () => {
+            const dmIconId = DM_RIBBON_ICON_SVG ? 'csh-dm-ribbon' : 'shield';
+            this.dmRibbonIconEl = this.addRibbonIcon(dmIconId, 'Open DnD DM Tools & Compendium', () => {
                 this.openDMTools("compendium");
             });
             this.dmRibbonIconEl.addClass('csh-dm-ribbon-btn');
@@ -1588,8 +1589,13 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
             })
         );
 
-        // Register custom ribbon icon from ribbon.svg
-        addIcon('csh-ribbon', RIBBON_ICON_SVG);
+        // Register custom ribbon icons from wizard-ribbon.png & dm-ribbon.png
+        if (WIZARD_RIBBON_ICON_SVG) {
+            addIcon('csh-ribbon', WIZARD_RIBBON_ICON_SVG);
+        }
+        if (DM_RIBBON_ICON_SVG) {
+            addIcon('csh-dm-ribbon', DM_RIBBON_ICON_SVG);
+        }
 
         const launchCharacterWizard = () => {
             const view = this.app.workspace.getActiveViewOfType(MarkdownView);
@@ -8737,7 +8743,7 @@ class DnDSettingsTab extends PluginSettingTab {
 
         new Setting(containerEl)
             .setName('Show DM Tools Ribbon Icon')
-            .setDesc('Display a shield icon in the left ribbon sidebar for 1-click access to the DM Tools & Compendium.')
+            .setDesc('Display a DM Tools icon in the left ribbon sidebar for 1-click access to the DM Tools & Compendium.')
             .addToggle(toggle => toggle
                 .setValue(this.plugin.settings.showDmToolsRibbon !== false)
                 .onChange(async (value) => {
