@@ -1323,7 +1323,7 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
             this.dmRibbonIconEl = null;
         }
         if (this.settings.showDmToolsRibbon !== false) {
-            this.dmRibbonIconEl = this.addRibbonIcon('shield', 'Open D&D DM Tools & 5.5e Compendium', () => {
+            this.dmRibbonIconEl = this.addRibbonIcon('shield', 'Open D&D DM Tools & Compendium', () => {
                 this.openDMTools("compendium");
             });
             this.dmRibbonIconEl.addClass('csh-dm-ribbon-btn');
@@ -1594,12 +1594,12 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
             callback: launchCharacterWizard
         });
 
-        // DM Tools & 5.5e Compendium Ribbon Icon and Commands
+        // DM Tools & Compendium Ribbon Icon and Commands
         this.refreshDmToolsRibbonIcon();
 
         this.addCommand({
             id: 'csh-open-dm-tools',
-            name: 'Open DM Tools & 5.5e Compendium',
+            name: 'Open DM Tools & Compendium',
             callback: () => this.openDMTools("compendium")
         });
 
@@ -1617,7 +1617,7 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
 
         this.addCommand({
             id: 'csh-open-spell-browser',
-            name: 'Open 5.5e Spell Browser (DM Tools)',
+            name: 'Open Spell Browser (DM Tools)',
             callback: () => this.openDMTools("spells")
         });
 
@@ -8645,13 +8645,13 @@ class DnDSettingsTab extends PluginSettingTab {
                     this.display();
                 }));
 
-        // --- DM Tools & 5.5e Compendium Suite Settings ---
-        containerEl.createEl('h3', { text: 'DM Tools & 5.5e Compendium Suite', cls: 'setting-item-name dnd-settings-header' });
-        containerEl.createEl('p', { text: 'Configure how the DM Tools & 5.5e Compendium (Rulebook Search, Spell Browser, Initiative Tracker, Party Dashboard, and Monster Statblocks) open.', cls: 'setting-item-description' });
+        // --- DM Tools & Compendium Settings ---
+        containerEl.createEl('h3', { text: 'DM Tools & Compendium', cls: 'setting-item-name dnd-settings-header' });
+        containerEl.createEl('p', { text: 'Configure how the DM Tools & Compendium (Rulebook Search, Spell Browser, Initiative Tracker, Party Dashboard, and Monster Statblocks) open.', cls: 'setting-item-description' });
 
         new Setting(containerEl)
             .setName('Show DM Tools Ribbon Icon')
-            .setDesc('Display a shield icon in the left ribbon sidebar for 1-click access to the DM Tools & 5.5e Compendium.')
+            .setDesc('Display a shield icon in the left ribbon sidebar for 1-click access to the DM Tools & Compendium.')
             .addToggle(toggle => toggle
                 .setValue(this.plugin.settings.showDmToolsRibbon !== false)
                 .onChange(async (value) => {

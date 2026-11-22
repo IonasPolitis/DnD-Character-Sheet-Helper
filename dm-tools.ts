@@ -1074,7 +1074,7 @@ export class ConditionRuleModal extends Modal {
         this.renderChild.load();
 
         contentEl.createEl("h3", {
-            text: `📜 ${this.conditionName}`,
+            text: this.conditionName,
             cls: "dnd-section-header dnd-modal-header"
         });
 
@@ -1144,7 +1144,7 @@ export class StatblockPreviewModal extends Modal {
         const footer = contentEl.createDiv({ cls: "dnd-modal-footer" });
         if (this.onAddToInitiative) {
             const addBtn = footer.createEl("button", {
-                text: "⚔️ Add to Initiative",
+                text: "Add to Initiative",
                 cls: "mod-cta"
             });
             addBtn.onclick = () => {
@@ -1310,13 +1310,13 @@ export class DMToolsWidget {
         const headerBar = this.containerEl.createDiv({ cls: "dnd-dm-header-bar" });
         const titleGroup = headerBar.createDiv({ cls: "dnd-dm-title-group" });
         titleGroup.createEl("h3", {
-            text: "🎲 Dungeon Master Tools & 5.5e Compendium",
+            text: "Dungeon Master Tools & Compendium",
             cls: "dnd-section-header dnd-dm-title"
         });
 
         const headerActions = headerBar.createDiv({ cls: "dnd-dm-header-actions" });
         const refreshBtn = headerActions.createEl("button", {
-            text: "🔄 Refresh",
+            text: "Refresh",
             cls: "dnd-dm-header-btn",
             attr: { title: "Reload Compendium, Spells, Party & Monsters" }
         });
@@ -1330,7 +1330,7 @@ export class DMToolsWidget {
 
         if (this.onRequestSwitchHost) {
             const switchBtn = headerActions.createEl("button", {
-                text: this.hostMode === "modal" ? "📌 Dock to Sidebar" : "🗗 Open in Modal",
+                text: this.hostMode === "modal" ? "Dock to Sidebar" : "Open in Modal",
                 cls: "dnd-dm-header-btn mod-cta",
                 attr: {
                     title: this.hostMode === "modal"
@@ -1703,7 +1703,7 @@ export class DMToolsWidget {
 
         const searchInput = searchRow.createEl("input", {
             type: "text",
-            placeholder: "🔍 Search rules, conditions, classes, subclasses, choices, races, backgrounds, feats, items...",
+            placeholder: "Search rules, conditions, classes, subclasses, choices, races, backgrounds, feats, items...",
             value: this.compendiumQuery,
             cls: "dnd-modal-form-input dnd-compendium-search-input"
         });
@@ -1721,13 +1721,13 @@ export class DMToolsWidget {
         const pillsRow = controls.createDiv({ cls: "dnd-compendium-pills" });
         const categories: { id: "all" | CompendiumUnifiedItem["category"]; label: string }[] = [
             { id: "all", label: "All" },
-            { id: "rules", label: "📜 Rules & Conditions" },
-            { id: "classes", label: "⚔️ Classes & Subclasses" },
-            { id: "choices", label: "🔮 Class Choices" },
-            { id: "races", label: "🧝 Races & Lineages" },
-            { id: "backgrounds", label: "🏕️ Backgrounds" },
-            { id: "feats", label: "🏅 Feats" },
-            { id: "items", label: "🎒 Items & Masteries" }
+            { id: "rules", label: "Rules & Conditions" },
+            { id: "classes", label: "Classes & Subclasses" },
+            { id: "choices", label: "Class Choices" },
+            { id: "races", label: "Races & Lineages" },
+            { id: "backgrounds", label: "Backgrounds" },
+            { id: "feats", label: "Feats" },
+            { id: "items", label: "Items & Masteries" }
         ];
 
         // Master-Detail Grid
@@ -1768,7 +1768,7 @@ export class DMToolsWidget {
             });
 
             const copyBtn = toolbar.createEl("button", {
-                text: "📋 Copy Markdown",
+                text: "Copy Markdown",
                 cls: "dnd-dm-small-btn"
             });
             const mdText = await item.renderMarkdown();
@@ -1900,7 +1900,7 @@ export class DMToolsWidget {
 
         const searchInput = topRow.createEl("input", {
             type: "text",
-            placeholder: "🔍 Search 380+ spells by name, school, description, components...",
+            placeholder: "Search spells by name, school, description, components...",
             value: this.spellQuery,
             cls: "dnd-modal-form-input dnd-compendium-search-input"
         });
@@ -1972,7 +1972,7 @@ export class DMToolsWidget {
             }
 
             const copyBtn = badgesDiv.createEl("button", {
-                text: "📋 Copy",
+                text: "Copy",
                 cls: "dnd-dm-small-btn",
                 attr: { title: "Copy Spell Markdown" }
             });
@@ -2161,12 +2161,12 @@ export class DMToolsWidget {
         const topBar = root.createDiv({ cls: "dnd-init-top-bar" });
         const roundGroup = topBar.createDiv({ cls: "dnd-init-round-group" });
         roundGroup.createEl("span", {
-            text: `⚔️ Round ${state.round || 1}`,
+            text: `Round ${state.round || 1}`,
             cls: "dnd-init-round-badge"
         });
 
         const prevTurnBtn = roundGroup.createEl("button", {
-            text: "⏮ Prev Turn",
+            text: "Prev Turn",
             cls: "dnd-dm-small-btn"
         });
         prevTurnBtn.onclick = async () => {
@@ -2183,7 +2183,7 @@ export class DMToolsWidget {
         };
 
         const nextTurnBtn = roundGroup.createEl("button", {
-            text: "⏭ Next Turn",
+            text: "Next Turn",
             cls: "dnd-dm-small-btn mod-cta"
         });
         nextTurnBtn.onclick = async () => {
@@ -2207,14 +2207,14 @@ export class DMToolsWidget {
         });
         const syncCheckbox = syncLabel.createEl("input", { type: "checkbox" });
         syncCheckbox.checked = state.syncPcHpToFrontmatter !== false;
-        syncLabel.createSpan({ text: "🔗 Sync PC HP" });
+        syncLabel.createSpan({ text: "Sync PC HP" });
         syncCheckbox.onchange = async () => {
             state.syncPcHpToFrontmatter = syncCheckbox.checked;
             await this.saveInitiativeState();
         };
 
         const rerollNpcsBtn = rightActions.createEl("button", {
-            text: "🎲 Re-Roll NPCs",
+            text: "Re-Roll NPCs",
             cls: "dnd-dm-small-btn",
             attr: { title: "Roll 1d20 + Init Bonus for all non-PC combatants and auto-sort" }
         });
@@ -2230,7 +2230,7 @@ export class DMToolsWidget {
         };
 
         const clearNpcsBtn = rightActions.createEl("button", {
-            text: "🧹 Clear NPCs",
+            text: "Clear NPCs",
             cls: "dnd-dm-small-btn"
         });
         clearNpcsBtn.onclick = async () => {
@@ -2240,7 +2240,7 @@ export class DMToolsWidget {
         };
 
         const resetBtn = rightActions.createEl("button", {
-            text: "🔄 Reset All",
+            text: "Reset All",
             cls: "dnd-dm-small-btn dnd-btn-danger"
         });
         resetBtn.onclick = async () => {
@@ -2256,9 +2256,9 @@ export class DMToolsWidget {
         const modeSwitchRow = addPanel.createDiv({ cls: "dnd-compendium-pills dnd-init-mode-pills" });
 
         const modes: { id: "pc" | "monster" | "custom"; label: string }[] = [
-            { id: "pc", label: "👤 Import Vault PCs" },
-            { id: "monster", label: "🐉 Add Monster / Statblock" },
-            { id: "custom", label: "➕ Custom Combatant" }
+            { id: "pc", label: "Import Vault PCs" },
+            { id: "monster", label: "Add Monster / Statblock" },
+            { id: "custom", label: "Custom Combatant" }
         ];
         for (const m of modes) {
             const btn = modeSwitchRow.createEl("button", {
@@ -2291,7 +2291,7 @@ export class DMToolsWidget {
 
             const manualInitInput = addFormRow.createEl("input", {
                 type: "number",
-                placeholder: "Roll (or auto 🎲)",
+                placeholder: "Roll (or auto)",
                 cls: "dnd-modal-form-input dnd-init-num-input",
                 attr: { title: "Enter the player's physical initiative total, or leave blank to auto-roll 1d20 + Init Bonus" }
             });
@@ -2335,7 +2335,7 @@ export class DMToolsWidget {
             };
 
             const importAllBtn = addFormRow.createEl("button", {
-                text: "⚡ Import All Party PCs",
+                text: "Import All Party PCs",
                 cls: "dnd-dm-small-btn",
                 attr: { title: "Import all vault PCs not yet in the tracker and auto-roll their initiative" }
             });
@@ -2383,7 +2383,7 @@ export class DMToolsWidget {
             });
 
             const addMonBtn = addFormRow.createEl("button", {
-                text: "🎲 Roll & Add Monster(s)",
+                text: "Roll & Add Monster(s)",
                 cls: "dnd-dm-small-btn mod-cta"
             });
             addMonBtn.onclick = async () => {
@@ -2402,7 +2402,7 @@ export class DMToolsWidget {
             });
             const initInput = addFormRow.createEl("input", {
                 type: "number",
-                placeholder: "Init (or 🎲)",
+                placeholder: "Init (or auto)",
                 cls: "dnd-modal-form-input dnd-init-num-input",
                 attr: { title: "Initiative total (leave blank to auto-roll 1d20 + Init Bonus)" }
             });
@@ -2554,7 +2554,7 @@ export class DMToolsWidget {
 
             // AC Column
             const acCol = mainRow.createDiv({ cls: "dnd-init-col-ac" });
-            acCol.createEl("span", { text: "🛡️ AC", cls: "dnd-init-field-label" });
+            acCol.createEl("span", { text: "AC", cls: "dnd-init-field-label" });
             const acInput = acCol.createEl("input", {
                 type: "number",
                 value: String(c.ac),
@@ -2626,12 +2626,12 @@ export class DMToolsWidget {
                 attr: { min: "1" }
             });
             const dmgBtn = deltaWrap.createEl("button", {
-                text: "🗡️",
+                text: "- Dmg",
                 cls: "dnd-dm-small-btn dnd-btn-dmg",
                 attr: { title: "Apply Damage (absorbs Temp HP first)" }
             });
             const healBtn = deltaWrap.createEl("button", {
-                text: "💚",
+                text: "+ Heal",
                 cls: "dnd-dm-small-btn dnd-btn-heal",
                 attr: { title: "Apply Healing (up to Max HP)" }
             });
@@ -2649,7 +2649,7 @@ export class DMToolsWidget {
                 if (c.concentrating && c.hp < oldHp) {
                     const totalTaken = oldHp - c.hp;
                     const dc = Math.max(10, Math.min(30, Math.floor(totalTaken / 2)));
-                    new Notice(`⚠️ ${c.name} is Concentrating! Roll a DC ${dc} Constitution saving throw.`);
+                    new Notice(`${c.name} is Concentrating! Roll a DC ${dc} Constitution saving throw.`);
                 }
                 await this.syncCombatantHpToSheet(c);
                 await this.saveInitiativeState();
@@ -2683,7 +2683,7 @@ export class DMToolsWidget {
 
             if (c.concentrating) {
                 const concBadge = activeBadges.createEl("span", {
-                    text: "🔥 Concentrating ×",
+                    text: "Concentrating ×",
                     cls: "dnd-init-cond-badge is-concentration",
                     attr: { title: "Click to inspect Concentration rule or remove" }
                 });
@@ -2716,7 +2716,7 @@ export class DMToolsWidget {
             });
             condSelect.createEl("option", { text: "+ Condition / Concentration", value: "" });
             if (!c.concentrating) {
-                condSelect.createEl("option", { text: "🔥 Concentrating", value: "__CONCENTRATING__" });
+                condSelect.createEl("option", { text: "Concentrating", value: "__CONCENTRATING__" });
             }
             for (const condName of DND_55E_CONDITIONS) {
                 if (!(c.conditions || []).includes(condName)) {
@@ -2791,14 +2791,14 @@ export class DMToolsWidget {
             chip.createEl("strong", { text: val, cls: "dnd-party-chip-val" });
         };
 
-        addBannerChip("🛡️ Party Size", String(party.length));
-        addBannerChip("👁️ Best Passive Perception", String(maxPP));
-        addBannerChip("🔍 Best Passive Investigation", String(maxPI));
-        addBannerChip("🧠 Best Passive Insight", String(maxPIns));
+        addBannerChip("Party Size", String(party.length));
+        addBannerChip("Best Passive Perception", String(maxPP));
+        addBannerChip("Best Passive Investigation", String(maxPI));
+        addBannerChip("Best Passive Insight", String(maxPIns));
 
         const bannerActions = banner.createDiv({ cls: "dnd-party-banner-actions" });
         const sendToInitBtn = bannerActions.createEl("button", {
-            text: "⚔️ Send Party to Initiative",
+            text: "Send Party to Initiative",
             cls: "dnd-dm-small-btn mod-cta"
         });
         sendToInitBtn.onclick = async () => {
@@ -2831,7 +2831,7 @@ export class DMToolsWidget {
         };
 
         const refreshPartyBtn = bannerActions.createEl("button", {
-            text: "🔄 Refresh",
+            text: "Refresh",
             cls: "dnd-dm-small-btn"
         });
         refreshPartyBtn.onclick = async () => {
@@ -2876,7 +2876,7 @@ export class DMToolsWidget {
 
             // Heroic Inspiration Button
             const hiBtn = header.createEl("button", {
-                text: pc.heroicInspiration ? "✨ Inspired" : "☆ Inspire",
+                text: pc.heroicInspiration ? "Inspired" : "Inspire",
                 cls: `dnd-dm-small-btn dnd-party-hi-btn ${pc.heroicInspiration ? "is-active" : ""}`.trim(),
                 attr: { title: "Toggle Heroic Inspiration for this character" }
             });
@@ -2890,7 +2890,7 @@ export class DMToolsWidget {
             const hpSection = card.createDiv({ cls: "dnd-party-hp-section" });
             const hpLabelRow = hpSection.createDiv({ cls: "dnd-party-hp-label-row" });
             hpLabelRow.createEl("strong", {
-                text: `❤️ HP: ${pc.currentHp} / ${pc.maxHp}${pc.tempHp > 0 ? ` (+${pc.tempHp} Temp)` : ""}`
+                text: `HP: ${pc.currentHp} / ${pc.maxHp}${pc.tempHp > 0 ? ` (+${pc.tempHp} Temp)` : ""}`
             });
 
             const quickHpControls = hpLabelRow.createDiv({ cls: "dnd-party-hp-controls" });
@@ -2900,12 +2900,12 @@ export class DMToolsWidget {
                 cls: "dnd-init-delta-input"
             });
             const dmgBtn = quickHpControls.createEl("button", {
-                text: "🗡️",
+                text: "- Dmg",
                 cls: "dnd-dm-small-btn",
                 attr: { title: "Damage character (updates their character sheet note)" }
             });
             const healBtn = quickHpControls.createEl("button", {
-                text: "💚",
+                text: "+ Heal",
                 cls: "dnd-dm-small-btn",
                 attr: { title: "Heal character (updates their character sheet note)" }
             });
@@ -2949,21 +2949,21 @@ export class DMToolsWidget {
                 box.createEl("div", { text: label, cls: "dnd-party-vital-label" });
                 box.createEl("div", { text: val, cls: "dnd-party-vital-val" });
             };
-            addVitalBox("🛡️ AC", String(pc.ac));
-            addVitalBox("🏃 Speed", `${pc.speed} ft.`);
-            addVitalBox("⚡ Init", formatSignedNumber(pc.initBonus));
-            addVitalBox("💀 Exhaust", `${pc.exhaustion}/6`);
+            addVitalBox("AC", String(pc.ac));
+            addVitalBox("Speed", `${pc.speed} ft.`);
+            addVitalBox("Init", formatSignedNumber(pc.initBonus));
+            addVitalBox("Exhaust", `${pc.exhaustion}/6`);
 
             // Passive Senses Row
             const sensesRow = card.createDiv({ cls: "dnd-party-senses-row" });
-            const addSensePill = (icon: string, label: string, val: number) => {
+            const addSensePill = (label: string, val: number) => {
                 const pill = sensesRow.createDiv({ cls: "dnd-party-sense-pill" });
-                pill.createEl("span", { text: `${icon} ${label}`, cls: "dnd-party-sense-label" });
+                pill.createEl("span", { text: label, cls: "dnd-party-sense-label" });
                 pill.createEl("strong", { text: String(val), cls: "dnd-party-sense-val" });
             };
-            addSensePill("👁️", "Pass. Perc", pc.passivePerception);
-            addSensePill("🔍", "Pass. Inv", pc.passiveInvestigation);
-            addSensePill("🧠", "Pass. Ins", pc.passiveInsight);
+            addSensePill("Pass. Perc", pc.passivePerception);
+            addSensePill("Pass. Inv", pc.passiveInvestigation);
+            addSensePill("Pass. Ins", pc.passiveInsight);
 
             // 6 Ability Modifiers & Saving Throw Proficiency Strip
             const abilRow = card.createDiv({ cls: "dnd-party-abilities-strip" });
@@ -2990,13 +2990,13 @@ export class DMToolsWidget {
                 const metaFooter = card.createDiv({ cls: "dnd-party-card-footer" });
                 if (pc.languages.length > 0) {
                     metaFooter.createEl("div", {
-                        text: `🗣️ Languages: ${pc.languages.join(", ")}`,
+                        text: `Languages: ${pc.languages.join(", ")}`,
                         cls: "dnd-party-footer-line"
                     });
                 }
                 if (pc.toolProficiencies.length > 0) {
                     metaFooter.createEl("div", {
-                        text: `🛠️ Tools: ${pc.toolProficiencies.join(", ")}`,
+                        text: `Tools: ${pc.toolProficiencies.join(", ")}`,
                         cls: "dnd-party-footer-line"
                     });
                 }
@@ -3025,22 +3025,22 @@ export class DMToolsWidget {
         const badgesLeft = statusBanner.createDiv({ cls: "dnd-monsters-status-badges" });
 
         badgesLeft.createEl("span", {
-            text: `🐉 Fantasy Statblocks: ${this.monstersMeta.hasFantasyStatblocks ? "Connected" : "Fallback Active"}`,
+            text: `Fantasy Statblocks: ${this.monstersMeta.hasFantasyStatblocks ? "Connected" : "Fallback Active"}`,
             cls: `dnd-level-badge ${this.monstersMeta.hasFantasyStatblocks ? "dnd-badge-connected" : ""}`.trim()
         });
         badgesLeft.createEl("span", {
-            text: `📖 The DM Compendium: ${this.monstersMeta.hasDmCompendium ? "Connected" : "Not Detected"}`,
+            text: `The DM Compendium: ${this.monstersMeta.hasDmCompendium ? "Connected" : "Not Detected"}`,
             cls: `dnd-level-badge ${this.monstersMeta.hasDmCompendium ? "dnd-badge-connected" : ""}`.trim()
         });
         badgesLeft.createEl("span", {
-            text: `📄 Vault Statblocks: ${this.monstersMeta.vaultStatblockCount}`,
+            text: `Vault Statblocks: ${this.monstersMeta.vaultStatblockCount}`,
             cls: "dnd-level-badge"
         });
 
         const bannerBtns = statusBanner.createDiv({ cls: "dnd-monsters-status-actions" });
         if (this.monstersMeta.hasDmCompendium) {
             const tdcBtn = bannerBtns.createEl("button", {
-                text: "📖 Launch DM Compendium Search",
+                text: "Launch DM Compendium Search",
                 cls: "dnd-dm-small-btn mod-cta",
                 attr: { title: "Trigger The DM Compendium's native search modal" }
             });
@@ -3055,7 +3055,7 @@ export class DMToolsWidget {
         }
 
         const rescanBtn = bannerBtns.createEl("button", {
-            text: "🔄 Rescan Bestiaries",
+            text: "Rescan Bestiaries",
             cls: "dnd-dm-small-btn"
         });
         rescanBtn.onclick = async () => {
@@ -3070,7 +3070,7 @@ export class DMToolsWidget {
 
         const searchInput = searchRow.createEl("input", {
             type: "text",
-            placeholder: "🔍 Search creatures by name, type (Undead, Dragon, Fiend...), CR, or source...",
+            placeholder: "Search creatures by name, type (Undead, Dragon, Fiend...), CR, or source...",
             value: this.monsterQuery,
             cls: "dnd-modal-form-input dnd-compendium-search-input"
         });
@@ -3120,7 +3120,7 @@ export class DMToolsWidget {
                 attr: { min: "1", max: "20", title: "Quantity to add to Initiative" }
             });
             const addInitBtn = spawnGroup.createEl("button", {
-                text: "⚔️ Add to Initiative",
+                text: "Add to Initiative",
                 cls: "dnd-dm-small-btn mod-cta"
             });
             addInitBtn.onclick = async () => {
@@ -3131,7 +3131,7 @@ export class DMToolsWidget {
             };
 
             const insertBtn = toolbar.createEl("button", {
-                text: "📋 Insert statblock in Note",
+                text: "Insert statblock in Note",
                 cls: "dnd-dm-small-btn"
             });
             insertBtn.onclick = async () => {
