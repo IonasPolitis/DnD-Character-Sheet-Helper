@@ -1,7 +1,7 @@
 import { App, CachedMetadata, Plugin, PluginSettingTab, Setting, MarkdownPostProcessorContext, parseYaml, MarkdownRenderChild, MarkdownRenderer, TFile, Modal, Notice, MarkdownView, normalizePath, Platform, addIcon, WorkspaceLeaf } from 'obsidian';
 import { getClassData, getSubclassData, getBackgroundData, getRaceData, getRacialSpellsData, getExtraFeat, getAvailableFeats, FeatPoolEntry, toSlug, toNormalizedFeatSlug, getCleanCustomBasePath, readCustomJson, mergeDictionaries, getItemData, getRuleData, getSpellData, getSpellsPoolData, getClassChoiceData, getClassChoiceRouterData, classChoiceRouterRegistry, getFeatMapData, getWeaponMasteriesMap, getWeaponMasteryDescription, buildWeaponMasteriesMarkdown } from './data';
 import { MarkdownNotes, classesMap, racesMap, backgroundsMap, itemsMap } from './registry';
-import { THEMES } from './themes';
+import { THEMES, generateObsidianThemeColors } from './themes';
 import { RIBBON_ICON_SVG } from './ribbon-icon';
 import {
     DM_TOOLS_VIEW_TYPE,
@@ -1572,9 +1572,21 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
         });
 
         this.app.workspace.onLayoutReady(async () => {
+            if (this.settings.selectedTheme === "obsidian") {
+                this.applyTheme();
+            }
             await this.syncWeaponMasteriesMarkdown();
             await this.checkCustomRulebookChanges(false, true);
         });
+
+        this.registerEvent(
+            this.app.workspace.on('css-change', () => {
+                if (this.settings.selectedTheme === "obsidian") {
+                    this.applyTheme();
+                    void this.saveSettings();
+                }
+            })
+        );
 
         // Register custom ribbon icon from ribbon.svg
         addIcon('csh-ribbon', RIBBON_ICON_SVG);
@@ -1898,17 +1910,29 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
             .map(([key, value]) => [`--dnd-ui-${key.replace(/([A-Z])/g, "-$1").toLowerCase()}`, value as string]);
     }
 
+    syncObsidianThemeColors(targetDoc?: Document): boolean {
+        if (this.settings.selectedTheme !== "obsidian") return false;
+        const resolved = generateObsidianThemeColors(targetDoc);
+        Object.assign(this.settings, resolved);
+        return true;
+    }
+
     applyTheme() {
-        // 1. Apply to the main Obsidian window
-        for (const [name, value] of this.colorCssVars()) {
-            document.documentElement.style.setProperty(name, value);
+        const doc = typeof document !== "undefined" ? document : undefined;
+        this.syncObsidianThemeColors(doc);
+
+        if (doc) {
+            // 1. Apply to the main Obsidian window
+            for (const [name, value] of this.colorCssVars()) {
+                doc.documentElement.style.setProperty(name, value);
+            }
         }
 
         // 2. Apply to all popped-out windows (if on Desktop)
-        if (Platform.isDesktop) {
+        if (Platform.isDesktop && this.app?.workspace) {
             this.app.workspace.iterateAllLeaves((leaf) => {
                 const windowDoc = leaf.view.containerEl.ownerDocument;
-                if (windowDoc) {
+                if (windowDoc && (!doc || windowDoc !== doc)) {
                     for (const [name, value] of this.colorCssVars()) {
                         windowDoc.documentElement.style.setProperty(name, value);
                     }
@@ -8786,7 +8810,11 @@ class DnDSettingsTab extends PluginSettingTab {
         // Build the Theme Dropdown
         const themeDropdown = new Setting(containerEl)
             .setName('Theme Preset')
-            .setDesc('Choose a predefined color theme.');
+            .setDesc(
+                this.plugin.settings.selectedTheme === 'obsidian'
+                    ? 'Automatically mirrors your active Obsidian theme, accent color, and light/dark mode.'
+                    : 'Choose a predefined color theme.'
+            );
 
         themeDropdown.addDropdown(drop => {
             Object.entries(THEMES).forEach(([key, theme]) => {
@@ -8797,8 +8825,12 @@ class DnDSettingsTab extends PluginSettingTab {
                 const theme = THEMES[value];
                 if (theme) {
                     this.plugin.settings.selectedTheme = value;
-                    Object.assign(this.plugin.settings, theme.colors);
-                    this.plugin.applyTheme();
+                    if (value === 'obsidian') {
+                        this.plugin.applyTheme();
+                    } else {
+                        Object.assign(this.plugin.settings, theme.colors);
+                        this.plugin.applyTheme();
+                    }
                     await this.plugin.saveSettings();
                     this.display();
                 }
@@ -8806,6 +8838,9 @@ class DnDSettingsTab extends PluginSettingTab {
         });
 
         // Generate Color Pickers
+        if (this.plugin.settings.selectedTheme === "obsidian") {
+            this.plugin.applyTheme();
+        }
         const COLOR_GROUPS: { header: string; keys: (keyof DnDPluginSettings)[] }[] = [
             { header: "Background Colors", keys: ["colorBgPrimary", "colorBgSecondary", "colorBgTertiary", "colorBgHover", "colorBgDarker", "colorBgGroup", "colorBgProficient"] },
             { header: "Text Colors", keys: ["colorTextPrimary", "colorTextSecondary", "colorTextSublabel", "colorTextBright", "colorTextMuted", "colorTextGroup"] },

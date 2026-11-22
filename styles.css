@@ -48,7 +48,7 @@
     background-blend-mode: overlay;
 
     color: var(--dnd-ui-color-text-primary);
-    border-radius: 6px;
+    border-radius: 12px;
     padding: 16px;
     margin: 10px 0;
     font-family: var(--font-text);
@@ -60,7 +60,7 @@
     background-color: rgba(231, 76, 60, 0.1);
     color: #e74c3c;
     padding: 12px 16px;
-    border-radius: 8px;
+    border-radius: 12px;
     margin: 10px 0;
     font-weight: 500;
 }
@@ -129,7 +129,7 @@
     border: 1px solid var(--background-modifier-border);
     color: var(--text-normal);
     padding: 12px 16px;
-    border-radius: 6px;
+    border-radius: 10px;
     cursor: grab;
     font-weight: 500;
     transition: all 0.2s ease;
@@ -306,7 +306,7 @@
     gap: 6px;
     padding: 8px 12px;
     border: 1px solid var(--dnd-ui-color-border-primary);
-    border-radius: 8px;
+    border-radius: 10px;
     background-color: var(--dnd-ui-color-bg-secondary);
     color: var(--dnd-ui-color-text-primary);
     cursor: pointer;
@@ -370,7 +370,7 @@
     border: 1px solid var(--dnd-ui-color-border-primary);
     background-color: var(--dnd-ui-color-bg-primary);
     color: var(--dnd-ui-color-text-primary);
-    border-radius: 6px;
+    border-radius: 12px;
     padding: 16px;
     margin: 10px 0;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
@@ -464,7 +464,7 @@
     background-color: transparent;
     /* Blends perfectly with the main window */
     border: 1px solid var(--dnd-ui-color-border-primary);
-    border-radius: 6px;
+    border-radius: 10px;
     overflow: hidden;
     transition: border-color 0.2s ease, transform 0.15s ease;
 }
@@ -630,7 +630,7 @@
     border: 1px solid var(--dnd-ui-color-border-primary);
     background-color: var(--dnd-ui-color-bg-primary);
     color: var(--dnd-ui-color-text-primary);
-    border-radius: 6px;
+    border-radius: 12px;
     padding: 10px 14px;
     /* Reduced outer padding */
     margin: 10px 0;
@@ -661,7 +661,7 @@
     align-items: center;
     padding: 4px 8px;
     /* Tighter vertical padding */
-    border-radius: 4px;
+    border-radius: 8px;
     position: relative;
     /* Anchors the indicator dot */
 }
@@ -765,7 +765,7 @@
 .notice.dnd-custom-notice {
     background-color: var(--dnd-ui-color-bg-primary);
     border: 1px solid var(--dnd-ui-color-border-primary);
-    border-radius: 12px;
+    border-radius: 16px;
     padding: 16px 18px;
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
     opacity: 1;
@@ -789,7 +789,7 @@
 .dnd-notice-icon {
     width: 48px;
     height: 48px;
-    border-radius: 10px;
+    border-radius: 12px;
     flex-shrink: 0;
     background-color: var(--dnd-ui-color-bg-secondary);
     border: 1px solid var(--dnd-ui-color-border-primary);
@@ -856,7 +856,7 @@
 
 .notice.dnd-custom-notice .dnd-notice-buttons button.dnd-notice-btn-primary {
     padding: 7px 16px;
-    border-radius: 8px;
+    border-radius: 10px;
     font-weight: 600;
     font-size: 0.9em;
     cursor: pointer;
@@ -869,7 +869,7 @@
 
 .notice.dnd-custom-notice .dnd-notice-buttons button.dnd-notice-btn-secondary {
     padding: 7px 16px;
-    border-radius: 8px;
+    border-radius: 10px;
     font-weight: 500;
     font-size: 0.9em;
     cursor: pointer;
@@ -906,7 +906,7 @@
 .dnd-ability-card {
     display: flex;
     flex-direction: column;
-    border-radius: 8px;
+    border-radius: 12px;
     overflow: hidden;
     border: 1px solid var(--dnd-ui-color-border-primary);
     background-color: var(--dnd-ui-color-bg-primary);
@@ -999,7 +999,7 @@
     align-items: center;
     justify-content: flex-start;
     padding: 14px 12px;
-    border-radius: 6px;
+    border-radius: 10px;
     background-color: var(--dnd-ui-color-bg-primary);
     color: var(--dnd-ui-color-text-primary);
     border: 1px solid var(--dnd-ui-color-border-primary);
@@ -1043,7 +1043,7 @@
     align-items: center;
     gap: 8px;
     padding: 5px 10px;
-    border-radius: 6px;
+    border-radius: 10px;
     background-color: var(--dnd-ui-color-bg-primary);
     border: 1px solid var(--dnd-ui-color-border-primary);
 }
@@ -1202,7 +1202,7 @@
     background-color: var(--dnd-ui-color-bg-darker);
     border: 1px solid var(--dnd-ui-color-border-primary);
     color: var(--dnd-ui-color-text-bright);
-    border-radius: 4px;
+    border-radius: 8px;
     padding: 3px 4px;
     font-size: 0.9em;
 }
@@ -1276,7 +1276,7 @@
     justify-content: space-between;
     width: 100%;
     padding: 4px 8px;
-    border-radius: 5px;
+    border-radius: 9px;
     background-color: var(--dnd-ui-color-bg-secondary);
     border: 1px solid var(--dnd-ui-color-border-primary);
     box-sizing: border-box;
@@ -1343,7 +1343,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: 4px;
+    border-radius: 7px;
     cursor: pointer;
     touch-action: manipulation;
     user-select: none;
@@ -1359,7 +1359,7 @@
     justify-content: center;
     background-color: transparent;
     border: 1px solid transparent;
-    border-radius: 4px;
+    border-radius: 7px;
     color: var(--dnd-ui-color-text-muted);
     box-shadow: none;
     cursor: pointer;
@@ -1467,7 +1467,7 @@
     border: 1px solid var(--dnd-ui-color-border-primary);
     background-color: var(--dnd-ui-color-bg-primary);
     color: var(--dnd-ui-color-text-primary);
-    border-radius: 8px;
+    border-radius: 12px;
     padding: 16px 20px;
     margin: 10px 0 8px 0;
     box-sizing: border-box;
@@ -1514,7 +1514,7 @@
     width: 100%;
     height: 8px;
     background-color: var(--dnd-ui-color-bg-secondary);
-    border-radius: 4px;
+    border-radius: 999px;
     overflow: hidden;
     margin-bottom: 14px;
 }
@@ -1522,7 +1522,7 @@
 .dnd-health-bar-fill {
     height: 100%;
     background-color: var(--dnd-ui-color-border-active);
-    border-radius: 4px;
+    border-radius: 999px;
     transition: width 0.25s ease;
 }
 
@@ -1546,7 +1546,7 @@
     background-color: var(--dnd-ui-color-bg-darker);
     border: 1px solid var(--dnd-ui-color-border-primary);
     color: var(--dnd-ui-color-text-bright);
-    border-radius: 6px;
+    border-radius: 9px;
     font-size: 0.95em;
     flex-shrink: 0;
 }
@@ -1556,7 +1556,7 @@
     height: 34px;
     background-color: transparent;
     color: var(--dnd-ui-color-text-bright);
-    border-radius: 6px;
+    border-radius: 9px;
     font-size: 0.92em;
     font-weight: 500;
     cursor: pointer;
@@ -1679,7 +1679,7 @@
     gap: 10px;
     padding: 12px;
     margin: 10px 0 14px 0;
-    border-radius: 8px;
+    border-radius: 12px;
     background-color: var(--dnd-ui-color-bg-secondary);
     border: 1px solid var(--dnd-ui-color-border-primary);
 }
@@ -1741,7 +1741,7 @@
     gap: 4px;
     padding: 10px 12px;
     margin-bottom: 14px;
-    border-radius: 6px;
+    border-radius: 10px;
     background-color: var(--dnd-ui-color-bg-secondary);
     border: 1px solid var(--dnd-ui-color-border-primary);
     max-height: 120px;
@@ -1763,7 +1763,7 @@
 .dnd-health-rest-bar button.dnd-health-rest-btn {
     padding: 6px 14px;
     height: auto;
-    border-radius: 6px;
+    border-radius: 9px;
     background-color: var(--dnd-ui-color-bg-secondary);
     border: 1px solid var(--dnd-ui-color-border-primary);
     color: var(--dnd-ui-color-text-primary);
@@ -1875,6 +1875,16 @@
 .modal.dnd-spellbook-modal {
     width: 720px;
     max-width: 94vw;
+    border-radius: 16px;
+}
+
+.modal.dnd-spellbook-modal input[type="text"],
+.modal.dnd-spellbook-modal input[type="number"],
+.modal.dnd-spellbook-modal input[type="search"],
+.modal.dnd-spellbook-modal textarea,
+.modal.dnd-spellbook-modal select,
+.modal.dnd-spellbook-modal .modal-content button:not(.dnd-modal-del-btn):not(.dnd-slot-pip) {
+    border-radius: 8px;
 }
 
 .dnd-spellbook-body {
@@ -1905,7 +1915,7 @@
     padding: 12px 14px;
     background-color: var(--dnd-ui-color-bg-darker);
     border: 1px solid var(--dnd-ui-color-border-primary);
-    border-radius: 6px;
+    border-radius: 10px;
     box-sizing: border-box;
 }
 
@@ -1918,13 +1928,13 @@
 .dnd-spellbook-list::-webkit-scrollbar-track,
 .dnd-spellbook-preview::-webkit-scrollbar-track {
     background-color: var(--dnd-ui-color-bg-secondary);
-    border-radius: 4px;
+    border-radius: 6px;
 }
 
 .dnd-spellbook-list::-webkit-scrollbar-thumb,
 .dnd-spellbook-preview::-webkit-scrollbar-thumb {
     background-color: var(--dnd-ui-color-border-primary);
-    border-radius: 4px;
+    border-radius: 6px;
     border: 1px solid var(--dnd-ui-color-bg-secondary);
 }
 
@@ -1955,7 +1965,7 @@
     padding: 10px 14px;
     background-color: var(--dnd-ui-color-bg-tertiary);
     border: 1px solid var(--dnd-ui-color-border-primary);
-    border-radius: 6px;
+    border-radius: 10px;
     margin-bottom: 12px;
     flex-wrap: wrap;
     gap: 8px;
@@ -2009,7 +2019,7 @@
 
 .modal.dnd-spellbook-modal .dnd-modal-tabs button.dnd-modal-tab-btn {
     padding: 5px 12px;
-    border-radius: 4px;
+    border-radius: 8px;
     font-size: 0.88em;
     cursor: pointer;
     box-shadow: none;
@@ -2085,7 +2095,7 @@ body .modal-container .modal .dnd-modal-add-bar > button,
     justify-content: space-between;
     align-items: center;
     padding: 6px 10px;
-    border-radius: 6px;
+    border-radius: 9px;
     background-color: var(--dnd-ui-color-bg-tertiary);
     border: 1px solid var(--dnd-ui-color-border-primary);
     gap: 8px;
@@ -2146,7 +2156,7 @@ body .modal-container .modal .dnd-modal-add-bar > button,
     background-color: var(--dnd-ui-color-bg-darker);
     border: 1px solid var(--dnd-ui-color-border-primary);
     color: var(--dnd-ui-color-text-bright);
-    border-radius: 4px;
+    border-radius: 8px;
 }
 
 .modal.dnd-spellbook-modal button.dnd-modal-del-btn {
@@ -2158,7 +2168,7 @@ body .modal-container .modal .dnd-modal-add-bar > button,
     box-shadow: none;
     color: var(--dnd-ui-color-text-muted);
     cursor: pointer;
-    border-radius: 4px;
+    border-radius: 7px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -2248,7 +2258,7 @@ body .modal-container .modal .dnd-modal-add-bar > button,
     background-color: var(--dnd-ui-color-bg-tertiary);
     border: 1px solid var(--dnd-ui-color-border-primary);
     color: var(--dnd-ui-color-text-bright);
-    border-radius: 4px;
+    border-radius: 8px;
 }
 
 .modal.dnd-spellbook-modal textarea.dnd-modal-form-textarea:focus {
@@ -2387,7 +2397,7 @@ body .modal-container .modal .dnd-modal-add-bar > button,
     margin-bottom: 20px;
     padding: 10px;
     background-color: var(--dnd-ui-color-bg-tertiary);
-    border-radius: 6px;
+    border-radius: 10px;
     border: 1px solid var(--dnd-ui-color-border-primary);
     max-width: 100%;
     box-sizing: border-box;
@@ -2397,7 +2407,7 @@ body .modal-container .modal .dnd-modal-add-bar > button,
     margin-bottom: 20px;
     padding: 10px;
     background-color: var(--dnd-ui-color-bg-tertiary);
-    border-radius: 6px;
+    border-radius: 10px;
     border: 1px solid var(--dnd-ui-color-border-active);
     max-width: 100%;
     box-sizing: border-box;
@@ -2474,7 +2484,7 @@ body .modal-container .modal .dnd-modal-add-bar > button,
     margin-bottom: 0;
     background-color: var(--dnd-ui-color-bg-darker);
     border: 1px solid var(--dnd-ui-color-border-primary);
-    border-radius: 4px;
+    border-radius: 8px;
     color: var(--dnd-ui-color-text-muted);
 }
 
@@ -2590,6 +2600,7 @@ body .modal-container .modal .dnd-modal-add-bar > button,
 .modal.dnd-statblock-preview-modal {
     background-color: var(--dnd-ui-color-bg-primary) !important;
     border: 1px solid var(--dnd-ui-color-border-primary) !important;
+    border-radius: 16px !important;
     color: var(--dnd-ui-color-text-primary) !important;
 }
 
@@ -2675,7 +2686,7 @@ body .modal-container .modal .dnd-modal-add-bar > button,
     background-color: var(--dnd-ui-color-bg-darker) !important;
     color: var(--dnd-ui-color-text-bright) !important;
     border: 1px solid var(--dnd-ui-color-border-primary) !important;
-    border-radius: 5px;
+    border-radius: 8px;
     box-shadow: none !important;
 }
 
@@ -2714,6 +2725,7 @@ body .modal-container .modal .dnd-modal-add-bar > button,
     background-color: var(--dnd-ui-color-bg-secondary);
     color: var(--dnd-ui-color-text-primary);
     border: 1px solid var(--dnd-ui-color-border-primary);
+    border-radius: 8px;
     box-shadow: none;
     cursor: pointer;
 }
@@ -2746,7 +2758,7 @@ body .modal-container .modal .dnd-modal-add-bar > button,
 /* Ensure Tab Buttons & Delete Buttons work identically in Modal, Docked Sidebar, and Embedded Blocks */
 .dnd-dm-widget .dnd-modal-tabs button.dnd-modal-tab-btn {
     padding: 5px 12px;
-    border-radius: 4px;
+    border-radius: 8px;
     font-size: 0.88em;
     cursor: pointer;
     box-shadow: none;
@@ -2778,7 +2790,7 @@ body .modal-container .modal .dnd-modal-add-bar > button,
     box-shadow: none;
     color: var(--dnd-ui-color-text-muted);
     cursor: pointer;
-    border-radius: 4px;
+    border-radius: 7px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -2856,13 +2868,13 @@ body .modal-container .modal .dnd-modal-add-bar > button,
 .dnd-dm-sidebar-view::-webkit-scrollbar-track,
 .dnd-dm-body::-webkit-scrollbar-track {
     background-color: var(--dnd-ui-color-bg-secondary);
-    border-radius: 4px;
+    border-radius: 6px;
 }
 
 .dnd-dm-sidebar-view::-webkit-scrollbar-thumb,
 .dnd-dm-body::-webkit-scrollbar-thumb {
     background-color: var(--dnd-ui-color-border-primary);
-    border-radius: 4px;
+    border-radius: 6px;
 }
 
 .dnd-dm-sidebar-view::-webkit-scrollbar-thumb:hover,
@@ -2901,7 +2913,7 @@ body .modal-container .modal .dnd-modal-add-bar > button,
 .dnd-dm-small-btn {
     padding: 4px 10px;
     font-size: 0.85em;
-    border-radius: 5px;
+    border-radius: 8px;
     cursor: pointer;
     border: 1px solid var(--dnd-ui-color-border-active);
     background-color: var(--dnd-ui-color-bg-secondary);
@@ -2953,7 +2965,7 @@ body .modal-container .modal .dnd-modal-add-bar > button,
     gap: 8px;
     background-color: var(--dnd-ui-color-bg-secondary);
     border: 1px solid var(--dnd-ui-color-border-primary);
-    border-radius: 6px;
+    border-radius: 10px;
     padding: 10px;
 }
 
@@ -2980,6 +2992,7 @@ body .modal-container .modal .dnd-modal-add-bar > button,
     gap: 6px;
 }
 
+.dnd-dm-widget button.dnd-compendium-pill,
 .dnd-compendium-pill {
     padding: 4px 10px;
     font-size: 0.8em;
@@ -3116,13 +3129,13 @@ body .modal-container .modal .dnd-modal-add-bar > button,
 .dnd-sidebar-upper-pane::-webkit-scrollbar-track,
 .dnd-sidebar-lower-pane::-webkit-scrollbar-track {
     background-color: var(--dnd-ui-color-bg-secondary);
-    border-radius: 4px;
+    border-radius: 6px;
 }
 
 .dnd-sidebar-upper-pane::-webkit-scrollbar-thumb,
 .dnd-sidebar-lower-pane::-webkit-scrollbar-thumb {
     background-color: var(--dnd-ui-color-border-primary);
-    border-radius: 4px;
+    border-radius: 6px;
 }
 
 .dnd-sidebar-upper-pane::-webkit-scrollbar-thumb:hover,
@@ -3157,7 +3170,7 @@ body .modal-container .modal .dnd-modal-add-bar > button,
     gap: 10px;
     background-color: var(--dnd-ui-color-bg-primary);
     border: 1px solid var(--dnd-ui-color-border-primary);
-    border-radius: 8px;
+    border-radius: 12px;
     padding: 12px;
 }
 
@@ -3170,7 +3183,7 @@ body .modal-container .modal .dnd-modal-add-bar > button,
     padding: 8px 12px;
     background-color: var(--dnd-ui-color-bg-secondary);
     border: 1px solid var(--dnd-ui-color-border-primary);
-    border-radius: 6px;
+    border-radius: 10px;
 }
 
 .dnd-init-round-group,
@@ -3186,7 +3199,7 @@ body .modal-container .modal .dnd-modal-add-bar > button,
     font-size: 1.05em;
     color: var(--dnd-ui-color-text-bright);
     padding: 3px 10px;
-    border-radius: 5px;
+    border-radius: 8px;
     background-color: var(--dnd-ui-color-bg-tertiary);
     border: 1px solid var(--dnd-ui-color-border-active);
 }
@@ -3208,7 +3221,7 @@ body .modal-container .modal .dnd-modal-add-bar > button,
     padding: 10px;
     background-color: var(--dnd-ui-color-bg-secondary);
     border: 1px solid var(--dnd-ui-color-border-primary);
-    border-radius: 6px;
+    border-radius: 10px;
 }
 
 .dnd-init-add-form {
@@ -3254,7 +3267,7 @@ body .modal-container .modal .dnd-modal-add-bar > button,
     flex-direction: column;
     gap: 6px;
     padding: 10px 12px;
-    border-radius: 6px;
+    border-radius: 10px;
     background-color: var(--dnd-ui-color-bg-secondary);
     border: 1px solid var(--dnd-ui-color-border-primary);
     transition: border-color 0.15s ease, box-shadow 0.15s ease;
@@ -3288,6 +3301,7 @@ body .modal-container .modal .dnd-modal-add-bar > button,
     gap: 6px;
 }
 
+.dnd-dm-widget button.dnd-init-turn-indicator,
 .dnd-init-turn-indicator {
     width: 28px;
     height: 28px;
@@ -3313,7 +3327,7 @@ body .modal-container .modal .dnd-modal-add-bar > button,
     font-weight: 700;
     font-size: 1.05em;
     padding: 3px 4px !important;
-    border-radius: 5px;
+    border-radius: 8px;
     border: 1px solid var(--dnd-ui-color-border-active);
     background-color: var(--dnd-ui-color-bg-darker);
     color: var(--dnd-ui-color-text-bright);
@@ -3363,7 +3377,7 @@ body .modal-container .modal .dnd-modal-add-bar > button,
     text-align: center;
     font-weight: 600;
     padding: 3px 4px !important;
-    border-radius: 4px;
+    border-radius: 8px;
     border: 1px solid var(--dnd-ui-color-border-primary);
     background-color: var(--dnd-ui-color-bg-darker);
     color: var(--dnd-ui-color-text-primary);
@@ -3418,7 +3432,7 @@ body .modal-container .modal .dnd-modal-add-bar > button,
     width: 52px !important;
     text-align: center;
     padding: 2px 4px !important;
-    border-radius: 4px;
+    border-radius: 8px;
     border: 1px solid var(--dnd-ui-color-border-primary);
     background-color: var(--dnd-ui-color-bg-darker);
     color: var(--dnd-ui-color-text-bright);
@@ -3437,7 +3451,7 @@ body .modal-container .modal .dnd-modal-add-bar > button,
     width: 44px !important;
     text-align: center;
     padding: 2px 3px !important;
-    border-radius: 4px;
+    border-radius: 8px;
     border: 1px solid var(--dnd-ui-color-border-primary);
     background-color: var(--dnd-ui-color-bg-darker);
     color: var(--dnd-ui-color-text-primary);
@@ -3454,7 +3468,7 @@ body .modal-container .modal .dnd-modal-add-bar > button,
     text-align: center;
     padding: 2px 4px !important;
     font-size: 0.82em;
-    border-radius: 4px;
+    border-radius: 8px;
     border: 1px solid var(--dnd-ui-color-border-primary);
     background-color: var(--dnd-ui-color-bg-darker);
     color: var(--dnd-ui-color-text-primary);
@@ -3477,6 +3491,7 @@ body .modal-container .modal .dnd-modal-add-bar > button,
     gap: 5px;
 }
 
+.dnd-dm-widget button.dnd-init-cond-badge,
 .dnd-init-cond-badge {
     font-size: 0.76em;
     padding: 2px 8px;
@@ -3496,7 +3511,7 @@ body .modal-container .modal .dnd-modal-add-bar > button,
 .dnd-init-cond-select {
     font-size: 0.78em;
     padding: 2px 6px;
-    border-radius: 4px;
+    border-radius: 8px;
     border: 1px solid var(--dnd-ui-color-border-primary);
     background-color: var(--dnd-ui-color-bg-darker);
     color: var(--dnd-ui-color-text-secondary);
@@ -3517,7 +3532,7 @@ body .modal-container .modal .dnd-modal-add-bar > button,
     flex-wrap: wrap;
     gap: 10px;
     padding: 10px 14px;
-    border-radius: 8px;
+    border-radius: 12px;
     background-color: var(--dnd-ui-color-bg-secondary);
     border: 1px solid var(--dnd-ui-color-border-primary);
 }
@@ -3534,7 +3549,7 @@ body .modal-container .modal .dnd-modal-add-bar > button,
     align-items: center;
     gap: 6px;
     padding: 4px 10px;
-    border-radius: 6px;
+    border-radius: 10px;
     background-color: var(--dnd-ui-color-bg-darker);
     border: 1px solid var(--dnd-ui-color-border-primary);
     font-size: 0.85em;
@@ -3566,7 +3581,7 @@ body .modal-container .modal .dnd-modal-add-bar > button,
     flex-direction: column;
     gap: 10px;
     padding: 12px 14px;
-    border-radius: 8px;
+    border-radius: 12px;
     background-color: var(--dnd-ui-color-bg-secondary);
     border: 1px solid var(--dnd-ui-color-border-primary);
 }
@@ -3631,7 +3646,7 @@ body .modal-container .modal .dnd-modal-add-bar > button,
 .dnd-party-vital-box {
     text-align: center;
     padding: 5px 4px;
-    border-radius: 5px;
+    border-radius: 8px;
     background-color: var(--dnd-ui-color-bg-darker);
     border: 1px solid var(--dnd-ui-color-border-primary);
 }
@@ -3658,7 +3673,7 @@ body .modal-container .modal .dnd-modal-add-bar > button,
     align-items: center;
     justify-content: space-between;
     padding: 4px 8px;
-    border-radius: 5px;
+    border-radius: 8px;
     background-color: var(--dnd-ui-color-bg-tertiary);
     border: 1px solid var(--dnd-ui-color-border-active);
     font-size: 0.8em;
@@ -3681,7 +3696,7 @@ body .modal-container .modal .dnd-modal-add-bar > button,
 .dnd-party-ability-cell {
     text-align: center;
     padding: 4px 2px;
-    border-radius: 4px;
+    border-radius: 8px;
     background-color: var(--dnd-ui-color-bg-darker);
     border: 1px solid var(--dnd-ui-color-border-primary);
     font-size: 0.76em;
@@ -3721,7 +3736,7 @@ body .modal-container .modal .dnd-modal-add-bar > button,
     flex-wrap: wrap;
     gap: 8px;
     padding: 8px 12px;
-    border-radius: 6px;
+    border-radius: 10px;
     background-color: var(--dnd-ui-color-bg-secondary);
     border: 1px solid var(--dnd-ui-color-border-primary);
 }
@@ -3742,7 +3757,7 @@ body .modal-container .modal .dnd-modal-add-bar > button,
 .dnd-statblock-card {
     background-color: var(--dnd-ui-color-bg-secondary);
     border: 2px solid var(--dnd-ui-color-border-active);
-    border-radius: 8px;
+    border-radius: 12px;
     padding: 14px 16px;
     color: var(--dnd-ui-color-text-primary);
 }
@@ -3792,7 +3807,7 @@ body .modal-container .modal .dnd-modal-add-bar > button,
 .dnd-statblock-ability-cell {
     background-color: var(--dnd-ui-color-bg-darker);
     border: 1px solid var(--dnd-ui-color-border-primary);
-    border-radius: 4px;
+    border-radius: 8px;
     padding: 4px;
 }
 

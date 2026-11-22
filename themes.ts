@@ -1,5 +1,6 @@
 export interface ColorTheme {
   name: string;
+  isDynamic?: boolean;
   colors: {
     colorBgPrimary: string;
     colorBgSecondary: string;
@@ -26,7 +27,348 @@ export interface ColorTheme {
   };
 }
 
+export type ThemeColors = ColorTheme["colors"];
+
+interface RgbaColor {
+  r: number;
+  g: number;
+  b: number;
+  a: number;
+}
+
+function clampByte(n: number): number {
+  return Math.max(0, Math.min(255, Math.round(n)));
+}
+
+function rgbToHex(c: RgbaColor): string {
+  const toHex = (v: number) => clampByte(v).toString(16).padStart(2, "0");
+  return `#${toHex(c.r)}${toHex(c.g)}${toHex(c.b)}`;
+}
+
+function parseComputedRgbString(raw: string): RgbaColor | null {
+  if (!raw) return null;
+  const s = raw.trim().toLowerCase();
+  if (!s || s === "transparent") return { r: 0, g: 0, b: 0, a: 0 };
+
+  // Matches "rgb(r, g, b)", "rgba(r, g, b, a)", or CSS Color 4 "rgb(r g b / a)"
+  const m = s.match(/^rgba?\(\s*([0-9.]+%?)[,\s]+([0-9.]+%?)[,\s]+([0-9.]+%?)(?:[,/\s]+([0-9.]+%?))?\s*\)$/);
+  if (!m) return null;
+
+  const parseChannel = (token: string): number => {
+    if (token.endsWith("%")) return (parseFloat(token) / 100) * 255;
+    return parseFloat(token);
+  };
+  let alpha = 1;
+  if (m[4] !== undefined) {
+    alpha = m[4].endsWith("%") ? parseFloat(m[4]) / 100 : parseFloat(m[4]);
+  }
+  if (!isFinite(alpha)) alpha = 1;
+  return {
+    r: clampByte(parseChannel(m[1])),
+    g: clampByte(parseChannel(m[2])),
+    b: clampByte(parseChannel(m[3])),
+    a: Math.max(0, Math.min(1, alpha)),
+  };
+}
+
+function compositeOver(fg: RgbaColor, bg: RgbaColor): RgbaColor {
+  const a = fg.a;
+  if (a >= 0.999) return { r: fg.r, g: fg.g, b: fg.b, a: 1 };
+  if (a <= 0.001) return { r: bg.r, g: bg.g, b: bg.b, a: 1 };
+  return {
+    r: clampByte(fg.r * a + bg.r * (1 - a)),
+    g: clampByte(fg.g * a + bg.g * (1 - a)),
+    b: clampByte(fg.b * a + bg.b * (1 - a)),
+    a: 1,
+  };
+}
+
+function mixRgb(a: RgbaColor, b: RgbaColor, weightB: number): RgbaColor {
+  const t = Math.max(0, Math.min(1, weightB));
+  return {
+    r: clampByte(a.r * (1 - t) + b.r * t),
+    g: clampByte(a.g * (1 - t) + b.g * t),
+    b: clampByte(a.b * (1 - t) + b.b * t),
+    a: 1,
+  };
+}
+
+function colorDistance(a: RgbaColor, b: RgbaColor): number {
+  return Math.hypot(a.r - b.r, a.g - b.g, a.b - b.b);
+}
+
+function relativeLuminance(c: RgbaColor): number {
+  const linear = (ch: number) => {
+    const s = clampByte(ch) / 255;
+    return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
+  };
+  return 0.2126 * linear(c.r) + 0.7152 * linear(c.g) + 0.0722 * linear(c.b);
+}
+
+function contrastRatio(a: RgbaColor, b: RgbaColor): number {
+  const l1 = relativeLuminance(a);
+  const l2 = relativeLuminance(b);
+  const lighter = Math.max(l1, l2);
+  const darker = Math.min(l1, l2);
+  return (lighter + 0.05) / (darker + 0.05);
+}
+
+function ensureReadableContrast(fg: RgbaColor, bg: RgbaColor, fallbackTarget: RgbaColor, minRatio: number): RgbaColor {
+  if (contrastRatio(fg, bg) >= minRatio) return fg;
+  let current = fg;
+  for (let step = 0.15; step <= 1.0; step += 0.15) {
+    current = mixRgb(fg, fallbackTarget, step);
+    if (contrastRatio(current, bg) >= minRatio) return current;
+  }
+  return fallbackTarget;
+}
+
+const OBSIDIAN_FALLBACK_COLORS: ThemeColors = {
+  colorBgPrimary: "#1e1e1e",
+  colorBgSecondary: "#262626",
+  colorBgTertiary: "#2f2f2f",
+  colorBgHover: "#363636",
+  colorBgDarker: "#171717",
+  colorBgGroup: "#2b2838",
+  colorBgProficient: "#262334",
+
+  colorTextPrimary: "#dadada",
+  colorTextSecondary: "#a882ff",
+  colorTextSublabel: "#9ab2bf",
+  colorTextBright: "#ffffff",
+  colorTextMuted: "#b3b3b3",
+  colorTextGroup: "#a882ff",
+
+  colorBorderPrimary: "#363636",
+  colorBorderActive: "#8a5cf5",
+  colorBorderFocus: "rgba(138, 92, 245, 0.45)",
+
+  colorAccentTeal: "#53dfdd",
+  colorAccentRed: "#fb464c",
+  colorAccentPurple: "#a882ff",
+};
+
+/**
+ * Samples Obsidian's active CSS variables from `doc.body` (supporting Default, Community Themes,
+ * Dark/Light modes, Accent overrides, and custom CSS snippets) and resolves them into concrete
+ * plugin ThemeColors without creating circular CSS custom property references.
+ */
+export function generateObsidianThemeColors(doc?: Document): ThemeColors {
+  const targetDoc = doc || (typeof document !== "undefined" ? document : undefined);
+  const body = targetDoc?.body;
+  const win = targetDoc?.defaultView || (typeof window !== "undefined" ? window : undefined);
+
+  if (!targetDoc || !body || !win || typeof targetDoc.createElement !== "function" || typeof win.getComputedStyle !== "function") {
+    return { ...OBSIDIAN_FALLBACK_COLORS };
+  }
+
+  const probe = targetDoc.createElement("div");
+  probe.style.position = "absolute";
+  probe.style.visibility = "hidden";
+  probe.style.pointerEvents = "none";
+  probe.style.width = "0";
+  probe.style.height = "0";
+  body.appendChild(probe);
+
+  try {
+    const resolveColor = (cssExpr: string): RgbaColor | null => {
+      try {
+        probe.style.color = "";
+        probe.style.color = cssExpr;
+        if (!probe.style.color) return null;
+        const computed = win.getComputedStyle(probe).color;
+        return parseComputedRgbString(computed);
+      } catch {
+        return null;
+      }
+    };
+
+    const pickFirst = (exprs: string[]): RgbaColor | null => {
+      for (const expr of exprs) {
+        const parsed = resolveColor(expr);
+        if (parsed && parsed.a > 0.005) return parsed;
+      }
+      return null;
+    };
+
+    const pickFirstWithAlpha = (exprs: string[]): RgbaColor | null => {
+      for (const expr of exprs) {
+        const parsed = resolveColor(expr);
+        if (parsed) return parsed;
+      }
+      return null;
+    };
+
+    const isLightClass = body.classList.contains("theme-light") && !body.classList.contains("theme-dark");
+    const defaultBackdrop: RgbaColor = isLightClass
+      ? { r: 255, g: 255, b: 255, a: 1 }
+      : { r: 30, g: 30, b: 30, a: 1 };
+
+    // 1. Background Primary
+    const rawBgPrimary = pickFirst(["var(--background-primary)", "var(--color-base-00)"]);
+    const bgPrimary = rawBgPrimary ? compositeOver(rawBgPrimary, defaultBackdrop) : defaultBackdrop;
+    const isLightBg = relativeLuminance(bgPrimary) > 0.45;
+    const whiteRgb: RgbaColor = { r: 255, g: 255, b: 255, a: 1 };
+    const blackRgb: RgbaColor = { r: 0, g: 0, b: 0, a: 1 };
+    const contrastTargetText: RgbaColor = isLightBg ? blackRgb : whiteRgb;
+    const shiftDirectionTarget: RgbaColor = isLightBg ? blackRgb : whiteRgb;
+
+    // 2. Primary Text & Bright Text
+    const rawTextNormal = pickFirst(["var(--text-normal)", "var(--color-base-100)"]);
+    const textPrimary = rawTextNormal
+      ? compositeOver(rawTextNormal, bgPrimary)
+      : (isLightBg ? { r: 34, g: 34, b: 34, a: 1 } : { r: 218, g: 218, b: 218, a: 1 });
+
+    const rawTextBright = pickFirst(["var(--h1-color)", "var(--bold-color)"]);
+    const candidateBright = rawTextBright ? compositeOver(rawTextBright, bgPrimary) : null;
+    const textBright = (candidateBright && colorDistance(candidateBright, textPrimary) >= 12 && contrastRatio(candidateBright, bgPrimary) >= 4.5)
+      ? candidateBright
+      : mixRgb(textPrimary, contrastTargetText, 0.35);
+
+    // 3. Background Secondary & Tertiary
+    const rawBgSecondary = pickFirst(["var(--background-secondary)", "var(--background-primary-alt)", "var(--color-base-20)"]);
+    let bgSecondary = rawBgSecondary ? compositeOver(rawBgSecondary, bgPrimary) : mixRgb(bgPrimary, shiftDirectionTarget, 0.05);
+    if (colorDistance(bgSecondary, bgPrimary) < 8) {
+      const altBg = pickFirst(["var(--background-primary-alt)", "var(--color-base-20)"]);
+      const compAlt = altBg ? compositeOver(altBg, bgPrimary) : null;
+      bgSecondary = (compAlt && colorDistance(compAlt, bgPrimary) >= 8)
+        ? compAlt
+        : mixRgb(bgPrimary, shiftDirectionTarget, 0.06);
+    }
+
+    const rawBgTertiary = pickFirst(["var(--background-secondary-alt)", "var(--color-base-25)"]);
+    let bgTertiary = rawBgTertiary ? compositeOver(rawBgTertiary, bgSecondary) : mixRgb(bgSecondary, shiftDirectionTarget, 0.06);
+    if (colorDistance(bgTertiary, bgSecondary) < 8) {
+      bgTertiary = mixRgb(bgSecondary, contrastTargetText, 0.07);
+    }
+
+    // 4. Hover Background
+    const rawBgHover = pickFirstWithAlpha(["var(--background-modifier-hover)", "var(--interactive-hover)"]);
+    let bgHover = rawBgHover && rawBgHover.a > 0.01
+      ? compositeOver(rawBgHover, bgSecondary)
+      : mixRgb(bgSecondary, contrastTargetText, 0.09);
+    if (colorDistance(bgHover, bgSecondary) < 6) {
+      bgHover = mixRgb(bgSecondary, contrastTargetText, 0.09);
+    }
+
+    // 5. Darker / Inset Surface (inputs, previews, stat cells)
+    const bgAltRaw = pickFirst(["var(--background-primary-alt)", "var(--color-base-10)"]);
+    const formFieldRaw = pickFirstWithAlpha(["var(--background-modifier-form-field)"]);
+    const bgAltComp = bgAltRaw ? compositeOver(bgAltRaw, bgPrimary) : null;
+    const formFieldComp = formFieldRaw && formFieldRaw.a > 0.02 ? compositeOver(formFieldRaw, bgPrimary) : null;
+    let bgDarker = (bgAltComp && colorDistance(bgAltComp, bgPrimary) >= 8)
+      ? bgAltComp
+      : (formFieldComp && colorDistance(formFieldComp, bgPrimary) >= 6 ? formFieldComp : mixRgb(bgPrimary, blackRgb, isLightBg ? 0.05 : 0.18));
+
+    // 6. Active & Accent Colors from Obsidian
+    const rawAccent = pickFirst(["var(--interactive-accent)", "var(--color-accent)", "var(--text-accent)"]);
+    const accentRgb = rawAccent ? compositeOver(rawAccent, bgPrimary) : { r: 138, g: 92, b: 245, a: 1 };
+
+    const rawTagBg = pickFirstWithAlpha(["var(--tag-background)"]);
+    const bgGroup = (rawTagBg && rawTagBg.a > 0.02)
+      ? compositeOver(rawTagBg, bgSecondary)
+      : mixRgb(bgSecondary, accentRgb, 0.16);
+
+    const rawSelectedBg = pickFirstWithAlpha(["var(--nav-item-background-selected)", "var(--text-selection)"]);
+    let bgProficient = (rawSelectedBg && rawSelectedBg.a > 0.02)
+      ? compositeOver(rawSelectedBg, bgPrimary)
+      : mixRgb(bgPrimary, accentRgb, 0.14);
+    if (colorDistance(bgProficient, bgPrimary) < 7) {
+      bgProficient = mixRgb(bgPrimary, accentRgb, 0.14);
+    }
+
+    // 7. Muted, Group, Secondary, Sublabel Text
+    const rawTextMuted = pickFirst(["var(--text-muted)", "var(--text-faint)", "var(--color-base-70)"]);
+    const textMuted = rawTextMuted
+      ? ensureReadableContrast(compositeOver(rawTextMuted, bgPrimary), bgPrimary, textPrimary, 3.0)
+      : mixRgb(textPrimary, bgPrimary, 0.3);
+
+    const rawTextAccent = pickFirst(["var(--text-accent)", "var(--link-color)", "var(--interactive-accent)"]);
+    const textGroupRaw = rawTextAccent ? compositeOver(rawTextAccent, bgSecondary) : accentRgb;
+    const textGroup = ensureReadableContrast(textGroupRaw, bgSecondary, textBright, 3.3);
+
+    const rawH4Color = pickFirst(["var(--h4-color)", "var(--h3-color)"]);
+    const h4Comp = rawH4Color ? compositeOver(rawH4Color, bgPrimary) : null;
+    const textSecondaryRaw = (h4Comp && colorDistance(h4Comp, textPrimary) >= 14)
+      ? h4Comp
+      : mixRgb(textPrimary, textGroup, 0.55);
+    const textSecondary = ensureReadableContrast(textSecondaryRaw, bgSecondary, textPrimary, 3.6);
+
+    // 8. Borders
+    const rawBorder = pickFirstWithAlpha(["var(--background-modifier-border)", "var(--divider-color)"]);
+    let borderPrimary = (rawBorder && rawBorder.a > 0.02)
+      ? compositeOver(rawBorder, bgPrimary)
+      : mixRgb(bgPrimary, textPrimary, 0.18);
+    if (colorDistance(borderPrimary, bgPrimary) < 8) {
+      borderPrimary = mixRgb(bgPrimary, textPrimary, 0.2);
+    }
+
+    const rawBorderActive = pickFirst(["var(--interactive-accent)", "var(--background-modifier-border-focus)"]);
+    const borderActive = rawBorderActive ? compositeOver(rawBorderActive, bgPrimary) : accentRgb;
+
+    // 9. Semantic Accents (Teal, Red, Purple)
+    const rawTeal = pickFirst(["var(--color-cyan)", "var(--color-green)"]);
+    const accentTeal = ensureReadableContrast(
+      rawTeal ? compositeOver(rawTeal, bgPrimary) : accentRgb,
+      bgPrimary,
+      textBright,
+      3.0
+    );
+
+    const rawRed = pickFirst(["var(--color-red)", "var(--text-error)"]);
+    const accentRed = ensureReadableContrast(
+      rawRed ? compositeOver(rawRed, bgPrimary) : { r: 229, g: 115, b: 115, a: 1 },
+      bgPrimary,
+      textBright,
+      3.0
+    );
+
+    const rawPurple = pickFirst(["var(--color-purple)", "var(--color-pink)", "var(--interactive-accent)"]);
+    const accentPurple = ensureReadableContrast(
+      rawPurple ? compositeOver(rawPurple, bgPrimary) : accentRgb,
+      bgPrimary,
+      textBright,
+      3.0
+    );
+
+    const textSublabelRaw = mixRgb(textMuted, accentTeal, 0.3);
+    const textSublabel = ensureReadableContrast(textSublabelRaw, bgPrimary, textPrimary, 3.2);
+
+    return {
+      colorBgPrimary: rgbToHex(bgPrimary),
+      colorBgSecondary: rgbToHex(bgSecondary),
+      colorBgTertiary: rgbToHex(bgTertiary),
+      colorBgHover: rgbToHex(bgHover),
+      colorBgDarker: rgbToHex(bgDarker),
+      colorBgGroup: rgbToHex(bgGroup),
+      colorBgProficient: rgbToHex(bgProficient),
+
+      colorTextPrimary: rgbToHex(textPrimary),
+      colorTextSecondary: rgbToHex(textSecondary),
+      colorTextSublabel: rgbToHex(textSublabel),
+      colorTextBright: rgbToHex(textBright),
+      colorTextMuted: rgbToHex(textMuted),
+      colorTextGroup: rgbToHex(textGroup),
+
+      colorBorderPrimary: rgbToHex(borderPrimary),
+      colorBorderActive: rgbToHex(borderActive),
+      colorBorderFocus: `rgba(${borderActive.r}, ${borderActive.g}, ${borderActive.b}, 0.45)`,
+
+      colorAccentTeal: rgbToHex(accentTeal),
+      colorAccentRed: rgbToHex(accentRed),
+      colorAccentPurple: rgbToHex(accentPurple),
+    };
+  } finally {
+    probe.remove();
+  }
+}
+
 export const THEMES: { [key: string]: ColorTheme } = {
+  obsidian: {
+    name: "Obsidian Theme (Auto)",
+    isDynamic: true,
+    colors: { ...OBSIDIAN_FALLBACK_COLORS },
+  },
   default: {
     name: "Default Dark",
     colors: {
