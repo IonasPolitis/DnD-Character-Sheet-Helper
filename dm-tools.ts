@@ -337,19 +337,25 @@ export function discoverVaultPartyMembers(
 }
 
 // ============================================================================
-// --- MONSTER & STATBLOCK DISCOVERY (Fantasy Statblocks + DM Compendium + Vault + SRD) ---
+// --- MONSTER & STATBLOCK DISCOVERY ("The DM Compendium" Bestiary + Vault Notes) ---
 // ============================================================================
 
 export interface MonsterTraitEntry {
     name: string;
     desc: string;
+    entries?: string[];
+    displayAs?: string;
 }
 
 export interface DiscoveredMonster {
     id: string;
     name: string;
-    sourcePlugin: "fantasy-statblocks" | "the-dm-compendium" | "vault-note" | "srd-builtin";
+    sourcePlugin: "the-dm-compendium" | "vault-note" | "srd-builtin";
+    sourceCode: string;
+    sourceShort: string;
+    sourceFull: string;
     sourceLabel: string;
+    page?: number | string;
     size: string;
     type: string;
     subtype?: string;
@@ -357,6 +363,7 @@ export interface DiscoveredMonster {
     ac: number;
     acText: string;
     hp: number;
+    hpText?: string;
     hitDice?: string;
     speed: string;
     stats: [number, number, number, number, number, number]; // STR, DEX, CON, INT, WIS, CHA
@@ -370,12 +377,92 @@ export interface DiscoveredMonster {
     resistances?: string;
     immunities?: string;
     conditionImmunities?: string;
+    environment?: string[];
     traits: MonsterTraitEntry[];
+    spellcasting: MonsterTraitEntry[];
     actions: MonsterTraitEntry[];
     bonusActions: MonsterTraitEntry[];
     reactions: MonsterTraitEntry[];
     legendaryActions: MonsterTraitEntry[];
+    mythicActions: MonsterTraitEntry[];
+    lairActions: MonsterTraitEntry[];
     rawYaml?: string;
+}
+
+/**
+ * Official source book dictionary used by "The DM Compendium" (`the-dm-compendium`).
+ */
+export const DM_COMPENDIUM_SOURCES: Record<string, { full: string; short: string }> = {
+    PHB: { full: "Player's Handbook (2014)", short: "PHB'14" },
+    XPHB: { full: "Player's Handbook (2024)", short: "PHB'24" },
+    MM: { full: "Monster Manual (2014)", short: "MM'14" },
+    XMM: { full: "Monster Manual (2025)", short: "MM'25" },
+    DMG: { full: "Dungeon Master's Guide (2014)", short: "DMG'14" },
+    XDMG: { full: "Dungeon Master's Guide (2024)", short: "DMG'24" },
+    MPMM: { full: "Mordenkainen's Presents: Monsters and Minions", short: "MPMM" },
+    TCE: { full: "Tasha's Cauldron of Everything", short: "TCE" },
+    XGE: { full: "Xanathar's Guide to Everything", short: "XGE" },
+    FTD: { full: "Fizban's Treasury of Dragons", short: "FTD" },
+    BGG: { full: "Bigby Presents: Glory of the Giants", short: "BGG" },
+    BMT: { full: "The Book of Many Things", short: "BMT" },
+    BAM: { full: "Boo's Astral Menagerie", short: "BAM" },
+    VGM: { full: "Volo's Guide to Monsters", short: "VGM" },
+    MTF: { full: "Mordenkainen's Tome of Foes", short: "MTF" },
+    VRGR: { full: "Van Richten's Guide to Ravenloft", short: "VRGR" },
+    ERLW: { full: "Eberron: Rising from the Last War", short: "ERLW" },
+    EFA: { full: "Eberron: Forge of the Artificer", short: "EFA" },
+    EGW: { full: "Explorer's Guide to Wildemount", short: "EGW" },
+    GGR: { full: "Guildmasters' Guide to Ravnica", short: "GGR" },
+    MOT: { full: "Mythic Odysseys of Theros", short: "MOT" },
+    SCC: { full: "Strixhaven: A Curriculum of Chaos", short: "SCC" },
+    DSOTDQ: { full: "Dragonlance: Shadow of the Dragon Queen", short: "DSOTDQ" },
+    BGDIA: { full: "Baldur's Gate: Descent Into Avernus", short: "BGDIA" },
+    COS: { full: "Curse of Strahd", short: "COS" },
+    IDROTF: { full: "Icewind Dale: Rime of the Frostmaiden", short: "IDROTF" },
+    TOA: { full: "Tomb of Annihilation", short: "TOA" },
+    WBTW: { full: "The Wild Beyond the Witchlight", short: "WBTW" },
+    WDH: { full: "Waterdeep: Dragon Heist", short: "WDH" },
+    WDMM: { full: "Waterdeep: Dungeon of the Mad Mage", short: "WDMM" },
+    VEOR: { full: "Vecna: Eve of Ruin", short: "VEOR" },
+    QFTIS: { full: "Quests from the Infinite Staircase", short: "QFTIS" },
+    PABTSO: { full: "Phandelver and Below: The Shattered Obelisk", short: "PABTSO" },
+    SATO: { full: "Sigil and the Outlands", short: "SATO" },
+    MPP: { full: "Morte's Planar Parade", short: "MPP" },
+    COA: { full: "Chains of Asmodeus", short: "COA" },
+    KFTGV: { full: "Keys from the Golden Vault", short: "KFTGV" },
+    JTTRC: { full: "Journeys Through the Radiant Citadel", short: "JTTRC" },
+    CM: { full: "Candlekeep Mysteries", short: "CM" },
+    GOS: { full: "Ghosts of Saltmarsh", short: "GOS" },
+    OOTA: { full: "Out of the Abyss", short: "OOTA" },
+    POTA: { full: "Princes of the Apocalypse", short: "POTA" },
+    SKT: { full: "Storm King's Thunder", short: "SKT" },
+    TFTYP: { full: "Tales from the Yawning Portal", short: "TFTYP" },
+    LMOP: { full: "Lost Mine of Phandelver", short: "LMOP" },
+    DOSI: { full: "Dragons of Stormwreck Isle", short: "DOSI" },
+    DIP: { full: "Dragon of Icespire Peak", short: "DIP" },
+    ESK: { full: "Essentials Kit", short: "ESK" }
+};
+
+export function resolveDmCompendiumSourceInfo(rawSource: any): { code: string; short: string; full: string } {
+    const code = String(rawSource || "").trim().toUpperCase();
+    if (!code) {
+        return { code: "CUSTOM", short: "Custom", full: "Custom / Unknown Source" };
+    }
+    const found = DM_COMPENDIUM_SOURCES[code];
+    if (found) {
+        return { code, short: found.short, full: found.full };
+    }
+    return { code, short: code, full: code };
+}
+
+export function parseCrNumericValue(cr: string): number {
+    const clean = String(cr || "").trim();
+    if (!clean || clean === "—" || clean === "-") return -1;
+    if (clean === "1/8") return 0.125;
+    if (clean === "1/4") return 0.25;
+    if (clean === "1/2") return 0.5;
+    const num = Number(clean);
+    return Number.isFinite(num) ? num : 999;
 }
 
 const BUILTIN_SRD_MONSTERS: DiscoveredMonster[] = [
@@ -383,7 +470,10 @@ const BUILTIN_SRD_MONSTERS: DiscoveredMonster[] = [
         id: "srd::goblin-warrior",
         name: "Goblin Warrior",
         sourcePlugin: "srd-builtin",
-        sourceLabel: "5.5e SRD Preset",
+        sourceCode: "SRD",
+        sourceShort: "SRD",
+        sourceFull: "Built-in SRD Preset",
+        sourceLabel: "SRD Preset",
         size: "Small",
         type: "Fey",
         subtype: "Goblinoid",
@@ -400,6 +490,7 @@ const BUILTIN_SRD_MONSTERS: DiscoveredMonster[] = [
         languages: "Common, Goblin",
         skills: "Stealth +6",
         traits: [],
+        spellcasting: [],
         actions: [
             { name: "Scimitar", desc: "Melee Weapon Attack: +4 to hit, reach 5 ft., one target. Hit: 5 (1d6 + 2) Slashing damage, plus 2 (1d4) Slashing damage if the attack roll had Advantage." },
             { name: "Shortbow", desc: "Ranged Weapon Attack: +4 to hit, range 80/320 ft., one target. Hit: 5 (1d6 + 2) Piercing damage, plus 2 (1d4) Piercing damage if the attack roll had Advantage." }
@@ -408,13 +499,18 @@ const BUILTIN_SRD_MONSTERS: DiscoveredMonster[] = [
             { name: "Nimble Escape", desc: "The goblin takes the Disengage or Hide action." }
         ],
         reactions: [],
-        legendaryActions: []
+        legendaryActions: [],
+        mythicActions: [],
+        lairActions: []
     },
     {
         id: "srd::skeleton",
         name: "Skeleton",
         sourcePlugin: "srd-builtin",
-        sourceLabel: "5.5e SRD Preset",
+        sourceCode: "SRD",
+        sourceShort: "SRD",
+        sourceFull: "Built-in SRD Preset",
+        sourceLabel: "SRD Preset",
         size: "Medium",
         type: "Undead",
         alignment: "Lawful Evil",
@@ -430,21 +526,27 @@ const BUILTIN_SRD_MONSTERS: DiscoveredMonster[] = [
         languages: "Understands languages it knew in life but can't speak",
         vulnerabilities: "Bludgeoning",
         immunities: "Poison",
-        conditionImmunities: "Exhausted, Poisoned",
+        conditionImmunities: "Exhaustion, Poisoned",
         traits: [],
+        spellcasting: [],
         actions: [
             { name: "Shortsword", desc: "Melee Weapon Attack: +5 to hit, reach 5 ft., one target. Hit: 6 (1d6 + 3) Piercing damage." },
             { name: "Shortbow", desc: "Ranged Weapon Attack: +5 to hit, range 80/320 ft., one target. Hit: 6 (1d6 + 3) Piercing damage." }
         ],
         bonusActions: [],
         reactions: [],
-        legendaryActions: []
+        legendaryActions: [],
+        mythicActions: [],
+        lairActions: []
     },
     {
         id: "srd::bandit",
         name: "Bandit",
         sourcePlugin: "srd-builtin",
-        sourceLabel: "5.5e SRD Preset",
+        sourceCode: "SRD",
+        sourceShort: "SRD",
+        sourceFull: "Built-in SRD Preset",
+        sourceLabel: "SRD Preset",
         size: "Medium",
         type: "Humanoid",
         alignment: "Neutral",
@@ -459,19 +561,25 @@ const BUILTIN_SRD_MONSTERS: DiscoveredMonster[] = [
         senses: "Passive Perception 10",
         languages: "Common, Thieves' Cant",
         traits: [],
+        spellcasting: [],
         actions: [
             { name: "Scimitar", desc: "Melee Weapon Attack: +3 to hit, reach 5 ft., one target. Hit: 4 (1d6 + 1) Slashing damage." },
             { name: "Light Crossbow", desc: "Ranged Weapon Attack: +3 to hit, range 80/320 ft., one target. Hit: 5 (1d8 + 1) Piercing damage." }
         ],
         bonusActions: [],
         reactions: [],
-        legendaryActions: []
+        legendaryActions: [],
+        mythicActions: [],
+        lairActions: []
     },
     {
         id: "srd::dire-wolf",
         name: "Dire Wolf",
         sourcePlugin: "srd-builtin",
-        sourceLabel: "5.5e SRD Preset",
+        sourceCode: "SRD",
+        sourceShort: "SRD",
+        sourceFull: "Built-in SRD Preset",
+        sourceLabel: "SRD Preset",
         size: "Large",
         type: "Beast",
         alignment: "Unaligned",
@@ -488,18 +596,24 @@ const BUILTIN_SRD_MONSTERS: DiscoveredMonster[] = [
         traits: [
             { name: "Pack Tactics", desc: "The wolf has Advantage on an attack roll against a creature if at least one of the wolf's allies is within 5 feet of the creature and the ally doesn't have the Incapacitated condition." }
         ],
+        spellcasting: [],
         actions: [
             { name: "Bite", desc: "Melee Weapon Attack: +5 to hit, reach 5 ft., one target. Hit: 8 (1d10 + 3) Piercing damage. If the target is a Large or smaller creature, it has the Prone condition." }
         ],
         bonusActions: [],
         reactions: [],
-        legendaryActions: []
+        legendaryActions: [],
+        mythicActions: [],
+        lairActions: []
     },
     {
         id: "srd::ogre",
         name: "Ogre",
         sourcePlugin: "srd-builtin",
-        sourceLabel: "5.5e SRD Preset",
+        sourceCode: "SRD",
+        sourceShort: "SRD",
+        sourceFull: "Built-in SRD Preset",
+        sourceLabel: "SRD Preset",
         size: "Large",
         type: "Giant",
         alignment: "Chaotic Evil",
@@ -514,19 +628,25 @@ const BUILTIN_SRD_MONSTERS: DiscoveredMonster[] = [
         senses: "Darkvision 60 ft., Passive Perception 8",
         languages: "Common, Giant",
         traits: [],
+        spellcasting: [],
         actions: [
             { name: "Greatclub", desc: "Melee Weapon Attack: +6 to hit, reach 5 ft., one target. Hit: 13 (2d8 + 4) Bludgeoning damage." },
             { name: "Javelin", desc: "Melee or Ranged Weapon Attack: +6 to hit, reach 5 ft. or range 30/120 ft., one target. Hit: 11 (2d6 + 4) Piercing damage." }
         ],
         bonusActions: [],
         reactions: [],
-        legendaryActions: []
+        legendaryActions: [],
+        mythicActions: [],
+        lairActions: []
     },
     {
         id: "srd::owlbear",
         name: "Owlbear",
         sourcePlugin: "srd-builtin",
-        sourceLabel: "5.5e SRD Preset",
+        sourceCode: "SRD",
+        sourceShort: "SRD",
+        sourceFull: "Built-in SRD Preset",
+        sourceLabel: "SRD Preset",
         size: "Large",
         type: "Monstrosity",
         alignment: "Unaligned",
@@ -541,19 +661,25 @@ const BUILTIN_SRD_MONSTERS: DiscoveredMonster[] = [
         senses: "Darkvision 60 ft., Passive Perception 15",
         skills: "Perception +5",
         traits: [],
+        spellcasting: [],
         actions: [
             { name: "Multiattack", desc: "The owlbear makes two Rend attacks." },
             { name: "Rend", desc: "Melee Weapon Attack: +7 to hit, reach 5 ft., one target. Hit: 14 (2d8 + 5) Slashing damage." }
         ],
         bonusActions: [],
         reactions: [],
-        legendaryActions: []
+        legendaryActions: [],
+        mythicActions: [],
+        lairActions: []
     },
     {
         id: "srd::troll",
         name: "Troll",
         sourcePlugin: "srd-builtin",
-        sourceLabel: "5.5e SRD Preset",
+        sourceCode: "SRD",
+        sourceShort: "SRD",
+        sourceFull: "Built-in SRD Preset",
+        sourceLabel: "SRD Preset",
         size: "Large",
         type: "Giant",
         alignment: "Chaotic Evil",
@@ -571,19 +697,25 @@ const BUILTIN_SRD_MONSTERS: DiscoveredMonster[] = [
         traits: [
             { name: "Regeneration", desc: "The troll regains 15 Hit Points at the start of each of its turns. If the troll takes Acid or Fire damage, this trait doesn't function on the troll's next turn. The troll dies only if it starts its turn with 0 Hit Points and doesn't regenerate." }
         ],
+        spellcasting: [],
         actions: [
             { name: "Multiattack", desc: "The troll makes three Rend attacks." },
             { name: "Rend", desc: "Melee Weapon Attack: +7 to hit, reach 10 ft., one target. Hit: 11 (2d6 + 4) Slashing damage." }
         ],
         bonusActions: [],
         reactions: [],
-        legendaryActions: []
+        legendaryActions: [],
+        mythicActions: [],
+        lairActions: []
     },
     {
         id: "srd::adult-red-dragon",
         name: "Adult Red Dragon",
         sourcePlugin: "srd-builtin",
-        sourceLabel: "5.5e SRD Preset",
+        sourceCode: "SRD",
+        sourceShort: "SRD",
+        sourceFull: "Built-in SRD Preset",
+        sourceLabel: "SRD Preset",
         size: "Huge",
         type: "Dragon",
         subtype: "Chromatic",
@@ -604,6 +736,7 @@ const BUILTIN_SRD_MONSTERS: DiscoveredMonster[] = [
         traits: [
             { name: "Legendary Resistance (3/Day)", desc: "If the dragon fails a saving throw, it can choose to succeed instead." }
         ],
+        spellcasting: [],
         actions: [
             { name: "Multiattack", desc: "The dragon makes three Rend attacks. It can replace one attack with a casting of Spellcasting (Scorching Ray)." },
             { name: "Rend", desc: "Melee Weapon Attack: +14 to hit, reach 10 ft., one target. Hit: 13 (1d10 + 8) Slashing damage plus 5 (1d10) Fire damage." },
@@ -615,7 +748,9 @@ const BUILTIN_SRD_MONSTERS: DiscoveredMonster[] = [
             { name: "Commanding Presence", desc: "The dragon uses Spellcasting to cast Command." },
             { name: "Fiery Rays", desc: "The dragon uses Spellcasting to cast Scorching Ray." },
             { name: "Pounce", desc: "The dragon moves up to half its Speed, and it makes one Rend attack." }
-        ]
+        ],
+        mythicActions: [],
+        lairActions: []
     }
 ];
 
@@ -625,18 +760,45 @@ function normalizeTraitArray(raw: any): MonsterTraitEntry[] {
     for (const item of raw) {
         if (!item || typeof item !== "object") continue;
         const name = String(item.name || "").trim();
-        const desc = String(item.desc ?? item.description ?? item.text ?? "").trim();
+        const entriesArr = Array.isArray(item.entries)
+            ? item.entries.map((e: any) => String(e ?? "").trim()).filter(Boolean)
+            : [];
+        const desc = entriesArr.length > 0
+            ? entriesArr.join("\n\n")
+            : String(item.desc ?? item.description ?? item.text ?? "").trim();
         if (name || desc) {
-            out.push({ name: name || "Feature", desc });
+            out.push({
+                name: name || "Feature",
+                desc,
+                entries: entriesArr.length > 0 ? entriesArr : (desc ? [desc] : []),
+                displayAs: item.displayAs ? String(item.displayAs) : undefined
+            });
         }
     }
     return out;
 }
 
-function normalizeMonsterRecord(
+function splitMonsterTypeAndSubtype(rawType: any, explicitSubtype?: any): { type: string; subtype?: string } {
+    const str = String(rawType || "Creature").trim();
+    if (explicitSubtype && String(explicitSubtype).trim()) {
+        return { type: str, subtype: String(explicitSubtype).trim() };
+    }
+    const m = str.match(/^(.+?)\s*\((.+)\)$/);
+    if (m) {
+        return { type: m[1].trim(), subtype: m[2].trim() };
+    }
+    return { type: str };
+}
+
+function extractHitDiceFromHpString(hpStr: string): string | undefined {
+    const m = String(hpStr || "").match(/\(([^)]+)\)/);
+    return m ? m[1].trim() : undefined;
+}
+
+export function normalizeMonsterRecord(
     raw: Record<string, any>,
     sourcePlugin: DiscoveredMonster["sourcePlugin"],
-    sourceLabel: string,
+    fallbackSourceLabel: string,
     rawYaml?: string
 ): DiscoveredMonster | null {
     if (!raw || typeof raw !== "object") return null;
@@ -644,7 +806,17 @@ function normalizeMonsterRecord(
     if (!name) return null;
 
     let stats: [number, number, number, number, number, number] = [10, 10, 10, 10, 10, 10];
-    if (Array.isArray(raw.stats) && raw.stats.length >= 6) {
+    if (raw.abilities && typeof raw.abilities === "object" && !Array.isArray(raw.abilities)) {
+        // The DM Compendium bestiary.json schema: { abilities: { str, dex, con, int, wis, cha } }
+        stats = [
+            Number(raw.abilities.str ?? raw.abilities.strength) || 10,
+            Number(raw.abilities.dex ?? raw.abilities.dexterity) || 10,
+            Number(raw.abilities.con ?? raw.abilities.constitution) || 10,
+            Number(raw.abilities.int ?? raw.abilities.intelligence) || 10,
+            Number(raw.abilities.wis ?? raw.abilities.wisdom) || 10,
+            Number(raw.abilities.cha ?? raw.abilities.charisma) || 10
+        ];
+    } else if (Array.isArray(raw.stats) && raw.stats.length >= 6) {
         stats = [
             Number(raw.stats[0]) || 10,
             Number(raw.stats[1]) || 10,
@@ -666,14 +838,16 @@ function normalizeMonsterRecord(
 
     const dexMod = abilityModFromScore(stats[1]);
 
+    // Armor Class (supports The DM Compendium's `armorClass` as well as `ac`)
     let acNum = 10;
     let acText = "10";
-    if (typeof raw.ac === "number") {
-        acNum = raw.ac;
-        acText = String(raw.ac);
-    } else if (typeof raw.ac === "string" && raw.ac.trim()) {
-        acText = raw.ac.trim();
-        const m = acText.match(/\d+/);
+    const rawAcVal = raw.armorClass ?? raw.ac;
+    if (typeof rawAcVal === "number") {
+        acNum = rawAcVal;
+        acText = String(rawAcVal);
+    } else if (typeof rawAcVal === "string" && rawAcVal.trim()) {
+        acText = rawAcVal.trim();
+        const m = acText.match(/^(\d+)/) || acText.match(/\d+/);
         acNum = m ? Number(m[0]) : 10;
     } else if (Array.isArray(raw.armor_class) && raw.armor_class[0]) {
         const firstAc = raw.armor_class[0];
@@ -681,204 +855,279 @@ function normalizeMonsterRecord(
         acText = String(acNum);
     }
 
+    // Hit Points & Hit Dice (supports The DM Compendium's `hitPoints: "66 (12d8 + 12)"` as well as `hp`)
     let hpNum = 10;
-    if (typeof raw.hp === "number") {
-        hpNum = Math.max(1, raw.hp);
-    } else if (typeof raw.hp === "string" && raw.hp.trim()) {
-        const m = raw.hp.trim().match(/\d+/);
+    let hpText: string | undefined;
+    let hitDice = raw.hit_dice ? String(raw.hit_dice).trim() : undefined;
+    const rawHpVal = raw.hitPoints ?? raw.hp ?? raw.hit_points;
+    if (typeof rawHpVal === "number") {
+        hpNum = Math.max(1, rawHpVal);
+        hpText = String(hpNum);
+    } else if (typeof rawHpVal === "string" && rawHpVal.trim()) {
+        hpText = rawHpVal.trim();
+        const m = hpText.match(/^(\d+)/) || hpText.match(/\d+/);
         hpNum = m ? Math.max(1, Number(m[0])) : 10;
-    } else if (typeof raw.hit_points === "number") {
-        hpNum = Math.max(1, raw.hit_points);
+        if (!hitDice) {
+            hitDice = extractHitDiceFromHpString(hpText);
+        }
     }
 
+    // Speed (strip leading "walk " just like The DM Compendium's Ue() helper)
     let speedStr = "30 ft.";
     if (typeof raw.speed === "string" && raw.speed.trim()) {
-        speedStr = raw.speed.trim();
+        speedStr = raw.speed.trim().replace(/\bwalk\s+/gi, "");
     } else if (raw.speed && typeof raw.speed === "object") {
         speedStr = Object.entries(raw.speed)
             .map(([k, v]) => (k === "walk" ? `${v}` : `${k} ${v}`))
             .join(", ");
     }
 
-    const crStr = raw.cr !== undefined && raw.cr !== null && String(raw.cr).trim() !== ""
-        ? String(raw.cr).trim()
-        : (raw.challenge_rating !== undefined ? String(raw.challenge_rating).trim() : "—");
+    // Challenge Rating (supports The DM Compendium's `challengeRating` as well as `cr`)
+    const rawCrVal = raw.challengeRating ?? raw.cr ?? raw.challenge_rating;
+    const crStr = rawCrVal !== undefined && rawCrVal !== null && String(rawCrVal).trim() !== ""
+        ? String(rawCrVal).trim()
+        : "—";
+
+    const { type, subtype } = splitMonsterTypeAndSubtype(raw.type, raw.subtype);
+    const srcInfo = resolveDmCompendiumSourceInfo(raw.sourceKey || raw.source);
+    const sourceCode = sourcePlugin === "the-dm-compendium" ? srcInfo.code : (sourcePlugin === "vault-note" ? "VAULT" : "SRD");
+    const sourceShort = sourcePlugin === "the-dm-compendium" ? srcInfo.short : fallbackSourceLabel;
+    const sourceFull = sourcePlugin === "the-dm-compendium" ? srcInfo.full : fallbackSourceLabel;
+    const sourceLabel = sourcePlugin === "the-dm-compendium" ? srcInfo.short : fallbackSourceLabel;
+
+    const savesStr = raw.savingThrows || raw.saves;
+    const skillsStr = raw.skills || (raw.skillsaves ? JSON.stringify(raw.skillsaves) : undefined);
+    const resStr = raw.damageResistances ?? raw.damage_resistances;
+    const immStr = raw.damageImmunities ?? raw.damage_immunities;
+    const condImmStr = raw.conditionImmunities ?? raw.condition_immunities;
 
     return {
-        id: `${sourcePlugin}::${toSlug(name)}`,
+        id: `${sourcePlugin}::${toSlug(sourceCode)}::${toSlug(name)}`,
         name,
         sourcePlugin,
+        sourceCode,
+        sourceShort,
+        sourceFull,
         sourceLabel,
+        page: raw.page !== undefined && raw.page !== "" ? raw.page : undefined,
         size: String(raw.size || "Medium").trim(),
-        type: String(raw.type || "Creature").trim(),
-        subtype: raw.subtype ? String(raw.subtype).trim() : undefined,
+        type,
+        subtype,
         alignment: String(raw.alignment || "Unaligned").trim(),
         ac: acNum,
         acText,
         hp: hpNum,
-        hitDice: raw.hit_dice ? String(raw.hit_dice).trim() : undefined,
+        hpText,
+        hitDice,
         speed: speedStr,
         stats,
         dexMod,
         cr: crStr,
-        senses: raw.senses ? (typeof raw.senses === "string" ? raw.senses : JSON.stringify(raw.senses)) : undefined,
-        languages: raw.languages ? (Array.isArray(raw.languages) ? raw.languages.join(", ") : String(raw.languages)) : undefined,
-        saves: raw.saves ? (typeof raw.saves === "string" ? raw.saves : JSON.stringify(raw.saves)) : undefined,
-        skills: raw.skillsaves ? JSON.stringify(raw.skillsaves) : (typeof raw.skills === "string" ? raw.skills : undefined),
-        vulnerabilities: raw.damage_vulnerabilities ? String(raw.damage_vulnerabilities) : undefined,
-        resistances: raw.damage_resistances ? String(raw.damage_resistances) : undefined,
-        immunities: raw.damage_immunities ? String(raw.damage_immunities) : undefined,
-        conditionImmunities: raw.condition_immunities ? String(raw.condition_immunities) : undefined,
+        senses: raw.senses ? (typeof raw.senses === "string" ? raw.senses.trim() : JSON.stringify(raw.senses)) : undefined,
+        languages: raw.languages ? (Array.isArray(raw.languages) ? raw.languages.join(", ") : String(raw.languages).trim()) : undefined,
+        saves: savesStr ? (typeof savesStr === "string" ? savesStr.trim() : JSON.stringify(savesStr)) : undefined,
+        skills: skillsStr ? (typeof skillsStr === "string" ? skillsStr.trim() : JSON.stringify(skillsStr)) : undefined,
+        vulnerabilities: raw.damage_vulnerabilities ? String(raw.damage_vulnerabilities).trim() : undefined,
+        resistances: resStr ? String(resStr).trim() : undefined,
+        immunities: immStr ? String(immStr).trim() : undefined,
+        conditionImmunities: condImmStr ? String(condImmStr).trim() : undefined,
+        environment: Array.isArray(raw.environment) ? raw.environment.map((e: any) => String(e).trim()).filter(Boolean) : undefined,
         traits: normalizeTraitArray(raw.traits ?? raw.special_abilities),
+        spellcasting: normalizeTraitArray(raw.spellcasting),
         actions: normalizeTraitArray(raw.actions),
-        bonusActions: normalizeTraitArray(raw.bonus_actions),
+        bonusActions: normalizeTraitArray(raw.bonusActions ?? raw.bonus_actions),
         reactions: normalizeTraitArray(raw.reactions),
-        legendaryActions: normalizeTraitArray(raw.legendary_actions),
+        legendaryActions: normalizeTraitArray(raw.legendaryActions ?? raw.legendary_actions),
+        mythicActions: normalizeTraitArray(raw.mythicActions ?? raw.mythic_actions),
+        lairActions: normalizeTraitArray(raw.lairActions ?? raw.lair_actions),
         rawYaml
     };
 }
 
+const SAVE_KEY_MAP: Record<string, string> = {
+    str: "strength",
+    dex: "dexterity",
+    con: "constitution",
+    int: "intelligence",
+    wis: "wisdom",
+    cha: "charisma"
+};
+
+function formatColonSeparatedPairsYaml(rawStr: string | undefined, keyMap: Record<string, string> = {}): string {
+    if (!rawStr || !rawStr.trim()) return " []";
+    const pairs: [string, string | number][] = [];
+    for (const part of rawStr.split(",")) {
+        const [k, ...rest] = part.split(":");
+        if (!k || rest.length === 0) continue;
+        const cleanKey = k.trim().toLowerCase();
+        const mappedKey = keyMap[cleanKey] ?? cleanKey;
+        const rawVal = rest.join(":").trim();
+        const numVal = Number(rawVal.replace(/^\+/, ""));
+        pairs.push([mappedKey, Number.isFinite(numVal) ? numVal : rawVal]);
+    }
+    if (pairs.length === 0) return " []";
+    return "\n" + pairs.map(([k, v]) => `  - ${k}: ${v}`).join("\n");
+}
+
+function formatIndentedMultilineYaml(text: string, indentSpaces: number): string {
+    const pad = " ".repeat(indentSpaces);
+    return ` |-\n${String(text || "").split(/\r?\n/).map(line => `${pad}${line}`).join("\n")}`;
+}
+
+function formatTraitsBlockYaml(entries: MonsterTraitEntry[]): string {
+    if (!entries || entries.length === 0) return " []";
+    return "\n" + entries.map(item => {
+        const cName = JSON.stringify(String(item.name || ""));
+        const joined = (item.entries && item.entries.length > 0)
+            ? item.entries.map(e => e.trim()).filter(Boolean).join("\n\n")
+            : String(item.desc || "").trim();
+        return `  - name: ${cName}\n    desc:${formatIndentedMultilineYaml(joined, 6)}`;
+    }).join("\n");
+}
+
+function formatSpellcastingYaml(spellEntries: MonsterTraitEntry[]): string {
+    if (!spellEntries || spellEntries.length === 0) return " []";
+    const flatLines = spellEntries.flatMap(entry => {
+        const list = (entry.entries && entry.entries.length > 0 ? entry.entries : [entry.desc])
+            .map(s => String(s || "").trim())
+            .filter(Boolean);
+        if (entry.name && entry.name !== "Spellcasting") {
+            return [`${entry.name}. ${list[0] ?? ""}`.trim(), ...list.slice(1)];
+        }
+        return list;
+    });
+    if (flatLines.length === 0) return " []";
+    return "\n" + flatLines.map(line => `  -${formatIndentedMultilineYaml(line, 4)}`).join("\n");
+}
+
 /**
- * Generates clean Fantasy Statblocks YAML (`statblock` code block content) from a `DiscoveredMonster`.
+ * Generates a `statblock` YAML block matching "The DM Compendium"'s `P.prototype.format` specification.
  */
 export function buildStatblockYaml(monster: DiscoveredMonster): string {
     if (monster.rawYaml && monster.rawYaml.trim()) {
         return monster.rawYaml.trim();
     }
-    const q = (val: string) => JSON.stringify(String(val || ""));
+    const c = (val: any) => (val === undefined || val === null || val === "") ? '""' : JSON.stringify(String(val));
+    const j = (val: any) => (typeof val === "number" ? String(val) : c(val));
+    const stripHitDiceMod = (hd?: string) => hd ? hd.replace(/\s*[+-]\s*\d+$/, "").trim() : "";
+
     const lines: string[] = [
-        `name: ${q(monster.name)}`,
-        `size: ${q(monster.size)}`,
-        `type: ${q(monster.type)}`
-    ];
-    if (monster.subtype) lines.push(`subtype: ${q(monster.subtype)}`);
-    lines.push(
-        `alignment: ${q(monster.alignment)}`,
-        `ac: ${monster.ac}`,
-        `hp: ${monster.hp}`
-    );
-    if (monster.hitDice) lines.push(`hit_dice: ${q(monster.hitDice)}`);
-    lines.push(
-        `speed: ${q(monster.speed)}`,
+        `layout: Basic 5e Layout`,
+        `name: ${c(monster.name)}`,
+        `image: [[${monster.name}.jpg]]`,
+        `size: ${c(monster.size)}`,
+        `type: ${c(monster.type)}`,
+        `subtype: ${c(monster.subtype || "")}`,
+        `alignment: ${c(monster.alignment)}`,
+        `ac: ${j(monster.ac)}`,
+        `hp: ${j(monster.hp)}`,
+        `hit_dice: ${c(stripHitDiceMod(monster.hitDice))}`,
+        `speed: ${c(monster.speed)}`,
         `stats: [${monster.stats.join(", ")}]`,
-        `cr: ${q(monster.cr)}`
-    );
-    if (monster.senses) lines.push(`senses: ${q(monster.senses)}`);
-    if (monster.languages) lines.push(`languages: ${q(monster.languages)}`);
-    if (monster.vulnerabilities) lines.push(`damage_vulnerabilities: ${q(monster.vulnerabilities)}`);
-    if (monster.resistances) lines.push(`damage_resistances: ${q(monster.resistances)}`);
-    if (monster.immunities) lines.push(`damage_immunities: ${q(monster.immunities)}`);
-    if (monster.conditionImmunities) lines.push(`condition_immunities: ${q(monster.conditionImmunities)}`);
-
-    const appendTraitSection = (key: string, list: MonsterTraitEntry[]) => {
-        if (!list || list.length === 0) return;
-        lines.push(`${key}:`);
-        for (const item of list) {
-            lines.push(`  - name: ${q(item.name)}`);
-            lines.push(`    desc: ${q(item.desc)}`);
-        }
-    };
-
-    appendTraitSection("traits", monster.traits);
-    appendTraitSection("actions", monster.actions);
-    appendTraitSection("bonus_actions", monster.bonusActions);
-    appendTraitSection("reactions", monster.reactions);
-    appendTraitSection("legendary_actions", monster.legendaryActions);
+        `saves:${formatColonSeparatedPairsYaml(monster.saves, SAVE_KEY_MAP)}`,
+        `skillsaves:${formatColonSeparatedPairsYaml(monster.skills)}`,
+        `senses: ${c(monster.senses || "")}`,
+        `languages: ${c(monster.languages || "")}`,
+        `damage_resistances: ${c(monster.resistances || "")}`,
+        `damage_immunities: ${c(monster.immunities || "")}`,
+        `condition_immunities: ${c(monster.conditionImmunities || "")}`,
+        `cr: ${c(monster.cr)}`,
+        `traits:${formatTraitsBlockYaml(monster.traits)}`,
+        `actions:${formatTraitsBlockYaml([...(monster.actions || []), ...(monster.bonusActions || [])])}`,
+        `reactions:${formatTraitsBlockYaml(monster.reactions)}`,
+        `legendary_actions:${formatTraitsBlockYaml(monster.legendaryActions)}`,
+        `mythic_actions:${formatTraitsBlockYaml(monster.mythicActions)}`,
+        `lair_actions:${formatTraitsBlockYaml(monster.lairActions)}`,
+        `spells:${formatSpellcastingYaml(monster.spellcasting)}`,
+        `source: ${c(monster.sourceShort || monster.sourceLabel)}`,
+        `page: ${j(monster.page ?? "")}`
+    ];
 
     return lines.join("\n");
 }
 
 /**
- * Discovers monsters across Fantasy Statblocks (`obsidian-5e-statblocks`), The DM Compendium cache (`the-dm-compendium`),
- * vault `statblock` code blocks, and built-in 5.5e SRD presets.
+ * Discovers monsters directly from "The DM Compendium" (`the-dm-compendium/cache/bestiary.json`),
+ * plus any custom `statblock` blocks in vault notes (falling back to built-in presets only if The DM Compendium is not available).
  */
 export async function discoverExternalMonsters(app: App): Promise<{
     monsters: DiscoveredMonster[];
-    hasFantasyStatblocks: boolean;
     hasDmCompendium: boolean;
+    dmCompendiumCount: number;
     vaultStatblockCount: number;
+    availableSources: { code: string; short: string; full: string; count: number }[];
 }> {
     const pluginsObj = (app as any).plugins;
     const enabledSet: Set<string> | undefined = pluginsObj?.enabledPlugins;
-    const hasFantasyStatblocks = Boolean(
-        enabledSet?.has?.("obsidian-5e-statblocks") || pluginsObj?.plugins?.["obsidian-5e-statblocks"]
-    );
-    const hasDmCompendium = Boolean(
-        enabledSet?.has?.("the-dm-compendium") || pluginsObj?.plugins?.["the-dm-compendium"]
-    );
+    const tdcPlugin = pluginsObj?.plugins?.["the-dm-compendium"];
+    let hasDmCompendium = Boolean(enabledSet?.has?.("the-dm-compendium") || tdcPlugin);
 
     const discoveredMap = new Map<string, DiscoveredMonster>();
+    let dmCompendiumCount = 0;
+    const sourceCounts = new Map<string, number>();
 
-    // 1. Fantasy Statblocks Bestiary API
-    const fsPlugin = pluginsObj?.plugins?.["obsidian-5e-statblocks"];
-    if (fsPlugin) {
-        try {
-            let fsCreatures: any[] = [];
-            if (typeof fsPlugin.api?.getBestiaryCreatures === "function") {
-                fsCreatures = fsPlugin.api.getBestiaryCreatures() || [];
-            } else if (typeof fsPlugin.getBestiaryCreatures === "function") {
-                fsCreatures = fsPlugin.getBestiaryCreatures() || [];
-            } else if (fsPlugin.bestiary instanceof Map) {
-                fsCreatures = Array.from(fsPlugin.bestiary.values());
-            } else if (Array.isArray(fsPlugin.bestiary)) {
-                fsCreatures = fsPlugin.bestiary;
-            } else if (Array.isArray(fsPlugin.data?.monsters)) {
-                fsCreatures = fsPlugin.data.monsters;
-            }
-
-            for (const raw of fsCreatures) {
-                const parsed = normalizeMonsterRecord(
-                    raw,
-                    "fantasy-statblocks",
-                    String(raw?.source || "Fantasy Statblocks")
-                );
-                if (parsed) {
-                    discoveredMap.set(parsed.id, parsed);
-                }
-            }
-        } catch (e) {
-            console.warn("D&D Plugin: Could not read Fantasy Statblocks bestiary", e);
-        }
-    }
-
-    // 2. The DM Compendium local cache (.obsidian/plugins/the-dm-compendium/cache/*.json)
+    // 1. Primary Source: The DM Compendium (.obsidian/plugins/the-dm-compendium/cache/bestiary.json)
     try {
-        const configDir = app.vault.configDir || ".obsidian";
-        const tdcCacheDir = normalizePath(`${configDir}/plugins/the-dm-compendium/cache`);
-        if (await app.vault.adapter.exists(tdcCacheDir)) {
-            const listed = await app.vault.adapter.list(tdcCacheDir);
-            for (const filePath of listed.files || []) {
-                if (!filePath.toLowerCase().endsWith(".json")) continue;
-                try {
-                    const rawText = await app.vault.adapter.read(filePath);
-                    const parsedJson = JSON.parse(rawText);
-                    const items: any[] = Array.isArray(parsedJson)
-                        ? parsedJson
-                        : (Array.isArray(parsedJson?.results) ? parsedJson.results : (Array.isArray(parsedJson?.monsters) ? parsedJson.monsters : [parsedJson]));
-                    for (const item of items) {
-                        if (!item || typeof item !== "object") continue;
-                        // Check if it looks like a creature/statblock entry
-                        if (!item.name || (item.ac === undefined && item.armor_class === undefined && item.hp === undefined && item.hit_points === undefined)) {
-                            continue;
-                        }
-                        const mon = normalizeMonsterRecord(item, "the-dm-compendium", "The DM Compendium");
-                        if (mon && !discoveredMap.has(mon.id)) {
-                            discoveredMap.set(mon.id, mon);
-                        }
-                    }
-                } catch {
-                    /* ignore unreadable cache file */
+        if (tdcPlugin && typeof tdcPlugin.ensureDatabaseCache === "function") {
+            try {
+                await tdcPlugin.ensureDatabaseCache();
+            } catch {
+                /* ignore if offline and cache already exists */
+            }
+        }
+
+        const configDir = app.vault?.configDir || ".obsidian";
+        const tdcDir = normalizePath(`${configDir}/plugins/the-dm-compendium`);
+        const bestiaryPath = normalizePath(`${tdcDir}/cache/bestiary.json`);
+        const settingsPath = normalizePath(`${tdcDir}/data.json`);
+
+        // Resolve includedSources from active plugin instance or data.json
+        let includedSourcesSet: Set<string> | null = null;
+        if (Array.isArray(tdcPlugin?.compendiumSettings?.includedSources) && tdcPlugin.compendiumSettings.includedSources.length > 0) {
+            includedSourcesSet = new Set(
+                tdcPlugin.compendiumSettings.includedSources.map((s: any) => String(s).trim().toUpperCase())
+            );
+        } else if (await app.vault.adapter.exists(settingsPath)) {
+            try {
+                const rawSettings = JSON.parse(await app.vault.adapter.read(settingsPath));
+                if (Array.isArray(rawSettings?.includedSources) && rawSettings.includedSources.length > 0) {
+                    includedSourcesSet = new Set(
+                        rawSettings.includedSources.map((s: any) => String(s).trim().toUpperCase())
+                    );
+                }
+            } catch {
+                /* ignore */
+            }
+        }
+
+        if (await app.vault.adapter.exists(bestiaryPath)) {
+            hasDmCompendium = true;
+            const rawText = await app.vault.adapter.read(bestiaryPath);
+            const parsedJson = JSON.parse(rawText);
+            const items: any[] = Array.isArray(parsedJson) ? parsedJson : [];
+
+            for (const item of items) {
+                if (!item || typeof item !== "object" || !item.name) continue;
+                const itemSource = String(item.sourceKey || item.source || "").trim().toUpperCase();
+                if (includedSourcesSet && itemSource && !includedSourcesSet.has(itemSource)) {
+                    continue;
+                }
+                const mon = normalizeMonsterRecord(item, "the-dm-compendium", "The DM Compendium");
+                if (mon && !discoveredMap.has(mon.id)) {
+                    discoveredMap.set(mon.id, mon);
+                    dmCompendiumCount++;
+                    sourceCounts.set(mon.sourceCode, (sourceCounts.get(mon.sourceCode) || 0) + 1);
                 }
             }
         }
-    } catch {
-        /* ignore if cache folder doesn't exist */
+    } catch (e) {
+        console.warn("D&D Plugin: Could not read The DM Compendium bestiary cache", e);
     }
 
-    // 3. Scan Active Note (and up to 60 recently modified vault notes) for ```statblock YAML blocks
+    // 2. Secondary Source: Scan Active Note (and up to 60 recently modified vault notes) for ```statblock YAML blocks
     let vaultStatblockCount = 0;
     const activeFile = app.workspace.getActiveFile();
-    const mdFiles = app.vault.getMarkdownFiles()
+    const mdFiles = (app.vault.getMarkdownFiles() || [])
         .slice()
         .sort((a, b) => (b.stat?.mtime || 0) - (a.stat?.mtime || 0))
         .slice(0, 60);
@@ -920,27 +1169,36 @@ export async function discoverExternalMonsters(app: App): Promise<{
         }
     }
 
-    // 4. Always include built-in 5.5e SRD presets so the Monster Browser & Initiative Tracker work out of the box
-    for (const preset of BUILTIN_SRD_MONSTERS) {
-        const slugName = toSlug(preset.name);
-        const alreadyExists = Array.from(discoveredMap.values()).some(m => toSlug(m.name) === slugName);
-        if (!alreadyExists) {
-            discoveredMap.set(preset.id, preset);
+    // 3. Only fall back to built-in SRD presets if The DM Compendium cache had 0 monsters
+    if (dmCompendiumCount === 0) {
+        for (const preset of BUILTIN_SRD_MONSTERS) {
+            if (!discoveredMap.has(preset.id)) {
+                discoveredMap.set(preset.id, preset);
+            }
         }
     }
 
-    const monsters = Array.from(discoveredMap.values()).sort((a, b) => a.name.localeCompare(b.name));
+    const availableSources = Array.from(sourceCounts.entries())
+        .map(([code, count]) => {
+            const info = resolveDmCompendiumSourceInfo(code);
+            return { code, short: info.short, full: info.full, count };
+        })
+        .sort((a, b) => b.count - a.count || a.full.localeCompare(b.full));
+
+    const monsters = Array.from(discoveredMap.values()).sort(
+        (a, b) => a.name.localeCompare(b.name) || a.sourceShort.localeCompare(b.sourceShort)
+    );
     return {
         monsters,
-        hasFantasyStatblocks,
         hasDmCompendium,
-        vaultStatblockCount
+        dmCompendiumCount,
+        vaultStatblockCount,
+        availableSources
     };
 }
 
 /**
- * Renders a creature statblock using Fantasy Statblocks (`obsidian-5e-statblocks`) if active,
- * or falls back to a themed D&D 5.5e Statblock Card.
+ * Renders a creature statblock card directly from The DM Compendium's statblock data.
  */
 export async function renderStatblockWithFallback(
     app: App,
@@ -951,35 +1209,23 @@ export async function renderStatblockWithFallback(
     component: MarkdownRenderChild
 ): Promise<void> {
     containerEl.empty();
-    const pluginsObj = (app as any).plugins;
-    const isFantasyStatblocksEnabled = Boolean(pluginsObj?.enabledPlugins?.has?.("obsidian-5e-statblocks"));
 
-    if (isFantasyStatblocksEnabled) {
-        const nativeWrap = containerEl.createDiv({ cls: "dnd-statblock-native-wrap" });
-        const yamlStr = buildStatblockYaml(monster);
-        await MarkdownRenderer.render(
-            app,
-            "```statblock\n" + yamlStr + "\n```",
-            nativeWrap,
-            sourcePath || "",
-            component
-        );
-        // If Fantasy Statblocks rendered its container (i.e. didn't just leave a raw <pre><code>statblock), we're done!
-        const hasRawCodeOnly = nativeWrap.querySelector("pre > code.language-statblock") !== null
-            && nativeWrap.children.length === 1;
-        if (!hasRawCodeOnly && nativeWrap.innerHTML.trim() !== "") {
-            return;
-        }
-        nativeWrap.remove();
-    }
-
-    // Themed D&D 5.5e Fallback Statblock Card
     const card = containerEl.createDiv({ cls: "dnd-statblock-card" });
 
     const header = card.createDiv({ cls: "dnd-statblock-header" });
     const titleRow = header.createDiv({ cls: "dnd-statblock-title-row" });
     titleRow.createEl("h3", { text: monster.name, cls: "dnd-statblock-name" });
-    titleRow.createEl("span", { text: `CR ${monster.cr}`, cls: "dnd-level-badge dnd-statblock-cr-badge" });
+
+    const badgesRight = titleRow.createDiv({ cls: "dnd-modal-row-badges" });
+    if (monster.sourceShort) {
+        const pageSuffix = monster.page ? `, p. ${monster.page}` : "";
+        badgesRight.createEl("span", {
+            text: `${monster.sourceShort}${pageSuffix}`,
+            cls: "dnd-level-badge dnd-modal-badge-sm",
+            attr: { title: monster.sourceFull }
+        });
+    }
+    badgesRight.createEl("span", { text: `CR ${monster.cr}`, cls: "dnd-level-badge dnd-statblock-cr-badge" });
 
     const typeSub = `${monster.size} ${monster.type}${monster.subtype ? ` (${monster.subtype})` : ""}, ${monster.alignment}`;
     header.createEl("div", { text: typeSub, cls: "dnd-statblock-sub" });
@@ -987,14 +1233,14 @@ export async function renderStatblockWithFallback(
     card.createDiv({ cls: "dnd-statblock-rule" });
 
     const vitals = card.createDiv({ cls: "dnd-statblock-vitals" });
-    const addVital = (label: string, val: string) => {
-        const row = vitals.createDiv({ cls: "dnd-statblock-vital-row" });
+    const addVital = (target: HTMLElement, label: string, val: string) => {
+        const row = target.createDiv({ cls: "dnd-statblock-vital-row" });
         row.createEl("strong", { text: `${label} ` });
         row.createSpan({ text: val });
     };
-    addVital("Armor Class", monster.acText || String(monster.ac));
-    addVital("Hit Points", `${monster.hp}${monster.hitDice ? ` (${monster.hitDice})` : ""}`);
-    addVital("Speed", `${monster.speed} (Initiative ${formatSignedNumber(monster.dexMod)})`);
+    addVital(vitals, "Armor Class", monster.acText || String(monster.ac));
+    addVital(vitals, "Hit Points", monster.hpText || `${monster.hp}${monster.hitDice ? ` (${monster.hitDice})` : ""}`);
+    addVital(vitals, "Speed", `${monster.speed} (Initiative ${formatSignedNumber(monster.dexMod)})`);
 
     card.createDiv({ cls: "dnd-statblock-rule" });
 
@@ -1011,21 +1257,16 @@ export async function renderStatblockWithFallback(
     card.createDiv({ cls: "dnd-statblock-rule" });
 
     const details = card.createDiv({ cls: "dnd-statblock-details" });
-    if (monster.saves) addVital("Saving Throws", monster.saves);
-    if (monster.skills) addVital("Skills", monster.skills);
-    if (monster.vulnerabilities) addVital("Vulnerabilities", monster.vulnerabilities);
-    if (monster.resistances) addVital("Resistances", monster.resistances);
-    if (monster.immunities) addVital("Immunities", monster.immunities);
-    if (monster.conditionImmunities) addVital("Condition Immunities", monster.conditionImmunities);
-    if (monster.senses) {
-        const row = details.createDiv({ cls: "dnd-statblock-vital-row" });
-        row.createEl("strong", { text: "Senses " });
-        row.createSpan({ text: monster.senses });
-    }
-    if (monster.languages) {
-        const row = details.createDiv({ cls: "dnd-statblock-vital-row" });
-        row.createEl("strong", { text: "Languages " });
-        row.createSpan({ text: monster.languages });
+    if (monster.saves) addVital(details, "Saving Throws", monster.saves);
+    if (monster.skills) addVital(details, "Skills", monster.skills);
+    if (monster.vulnerabilities) addVital(details, "Vulnerabilities", monster.vulnerabilities);
+    if (monster.resistances) addVital(details, "Resistances", monster.resistances);
+    if (monster.immunities) addVital(details, "Immunities", monster.immunities);
+    if (monster.conditionImmunities) addVital(details, "Condition Immunities", monster.conditionImmunities);
+    if (monster.senses) addVital(details, "Senses", monster.senses);
+    if (monster.languages) addVital(details, "Languages", monster.languages);
+    if (monster.environment && monster.environment.length > 0) {
+        addVital(details, "Environment", monster.environment.join(", "));
     }
 
     const renderSection = async (heading: string, entries: MonsterTraitEntry[]) => {
@@ -1039,10 +1280,13 @@ export async function renderStatblockWithFallback(
     };
 
     await renderSection("Traits", monster.traits);
+    await renderSection("Spellcasting", monster.spellcasting);
     await renderSection("Actions", monster.actions);
     await renderSection("Bonus Actions", monster.bonusActions);
     await renderSection("Reactions", monster.reactions);
     await renderSection("Legendary Actions", monster.legendaryActions);
+    await renderSection("Mythic Actions", monster.mythicActions);
+    await renderSection("Lair Actions", monster.lairActions);
 }
 
 // ============================================================================
@@ -1224,10 +1468,16 @@ export class DMToolsWidget {
 
     // Tab 3: Initiative State
     initAddMode: "pc" | "monster" | "custom" = "pc";
+    initMonsterFilterQuery = "";
 
     // Tab 5: Monsters & Statblocks State
     discoveredMonsters: DiscoveredMonster[] = [];
-    monstersMeta = { hasFantasyStatblocks: false, hasDmCompendium: false, vaultStatblockCount: 0 };
+    monstersMeta: {
+        hasDmCompendium: boolean;
+        dmCompendiumCount: number;
+        vaultStatblockCount: number;
+        availableSources: { code: string; short: string; full: string; count: number }[];
+    } = { hasDmCompendium: false, dmCompendiumCount: 0, vaultStatblockCount: 0, availableSources: [] };
     monstersLoaded = false;
     monsterQuery = "";
     monsterSourceFilter = "all";
@@ -2365,15 +2615,54 @@ export class DMToolsWidget {
                 new Notice(added > 0 ? `Imported ${added} PC(s) into Initiative!` : "All vault PCs are already in the tracker.");
             };
         } else if (this.initAddMode === "monster") {
+            const filterInput = addFormRow.createEl("input", {
+                type: "text",
+                placeholder: `Filter ${this.discoveredMonsters.length} DM Compendium monsters...`,
+                value: this.initMonsterFilterQuery,
+                cls: "dnd-modal-form-input dnd-init-name-input"
+            });
+
             const monSelect = addFormRow.createEl("select", {
                 cls: "dnd-modal-form-input dnd-init-add-select"
             });
-            for (const m of this.discoveredMonsters) {
-                monSelect.createEl("option", {
-                    text: `${m.name} (CR ${m.cr} • AC ${m.ac} • HP ${m.hp} • DEX ${formatSignedNumber(m.dexMod)} • ${m.sourceLabel})`,
-                    value: m.id
-                });
-            }
+
+            const populateMonsterDropdown = () => {
+                monSelect.empty();
+                const q = this.initMonsterFilterQuery.trim().toLowerCase();
+                const matches = q
+                    ? this.discoveredMonsters.filter(m =>
+                        m.name.toLowerCase().includes(q)
+                        || m.sourceShort.toLowerCase().includes(q)
+                        || m.sourceCode.toLowerCase().includes(q)
+                        || m.type.toLowerCase().includes(q)
+                    )
+                    : this.discoveredMonsters;
+
+                const capped = matches.slice(0, 250);
+                for (const m of capped) {
+                    monSelect.createEl("option", {
+                        text: `${m.name} (${m.sourceShort} • CR ${m.cr} • AC ${m.ac} • HP ${m.hp} • DEX ${formatSignedNumber(m.dexMod)})`,
+                        value: m.id
+                    });
+                }
+                if (matches.length > 250) {
+                    monSelect.createEl("option", {
+                        text: `...and ${matches.length - 250} more (type above to filter)`,
+                        value: ""
+                    });
+                } else if (matches.length === 0) {
+                    monSelect.createEl("option", {
+                        text: "No matching monsters found",
+                        value: ""
+                    });
+                }
+            };
+
+            populateMonsterDropdown();
+            filterInput.oninput = () => {
+                this.initMonsterFilterQuery = filterInput.value;
+                populateMonsterDropdown();
+            };
 
             const qtyInput = addFormRow.createEl("input", {
                 type: "number",
@@ -3020,25 +3309,45 @@ export class DMToolsWidget {
         await this.ensureMonstersLoaded();
         const root = this.bodyContainer.createDiv({ cls: "dnd-monsters-root" });
 
-        // Integration Status Banner
+        // Integration Status Banner (The DM Compendium)
         const statusBanner = root.createDiv({ cls: "dnd-monsters-status-banner" });
         const badgesLeft = statusBanner.createDiv({ cls: "dnd-monsters-status-badges" });
 
         badgesLeft.createEl("span", {
-            text: `Fantasy Statblocks: ${this.monstersMeta.hasFantasyStatblocks ? "Connected" : "Fallback Active"}`,
-            cls: `dnd-level-badge ${this.monstersMeta.hasFantasyStatblocks ? "dnd-badge-connected" : ""}`.trim()
-        });
-        badgesLeft.createEl("span", {
-            text: `The DM Compendium: ${this.monstersMeta.hasDmCompendium ? "Connected" : "Not Detected"}`,
+            text: this.monstersMeta.hasDmCompendium
+                ? `The DM Compendium: Connected (${this.monstersMeta.dmCompendiumCount} Statblocks)`
+                : "The DM Compendium: Not Detected (Using Built-in Presets)",
             cls: `dnd-level-badge ${this.monstersMeta.hasDmCompendium ? "dnd-badge-connected" : ""}`.trim()
         });
-        badgesLeft.createEl("span", {
-            text: `Vault Statblocks: ${this.monstersMeta.vaultStatblockCount}`,
-            cls: "dnd-level-badge"
-        });
+        if (this.monstersMeta.availableSources.length > 0) {
+            badgesLeft.createEl("span", {
+                text: `Sources: ${this.monstersMeta.availableSources.map(s => s.short).join(", ")}`,
+                cls: "dnd-level-badge"
+            });
+        }
+        if (this.monstersMeta.vaultStatblockCount > 0) {
+            badgesLeft.createEl("span", {
+                text: `Vault Statblocks: ${this.monstersMeta.vaultStatblockCount}`,
+                cls: "dnd-level-badge"
+            });
+        }
 
         const bannerBtns = statusBanner.createDiv({ cls: "dnd-monsters-status-actions" });
         if (this.monstersMeta.hasDmCompendium) {
+            const refreshDbBtn = bannerBtns.createEl("button", {
+                text: "Sync DM Compendium DB",
+                cls: "dnd-dm-small-btn",
+                attr: { title: "Refresh The DM Compendium's cached bestiary from your enabled sources" }
+            });
+            refreshDbBtn.onclick = async () => {
+                const tdcPlugin = (this.app as any).plugins?.plugins?.["the-dm-compendium"];
+                if (tdcPlugin && typeof tdcPlugin.refreshCompendiumDatabase === "function") {
+                    await tdcPlugin.refreshCompendiumDatabase(true);
+                }
+                this.monstersLoaded = false;
+                await this.renderActiveTab();
+            };
+
             const tdcBtn = bannerBtns.createEl("button", {
                 text: "Launch DM Compendium Search",
                 cls: "dnd-dm-small-btn mod-cta",
@@ -3055,13 +3364,13 @@ export class DMToolsWidget {
         }
 
         const rescanBtn = bannerBtns.createEl("button", {
-            text: "Rescan Bestiaries",
+            text: "Reload Statblocks",
             cls: "dnd-dm-small-btn"
         });
         rescanBtn.onclick = async () => {
             this.monstersLoaded = false;
-            await this.renderMonstersTab();
-            new Notice(`Discovered ${this.discoveredMonsters.length} creature statblocks!`);
+            await this.renderActiveTab();
+            new Notice(`Loaded ${this.discoveredMonsters.length} creature statblocks!`);
         };
 
         // Search & Filter Controls
@@ -3070,7 +3379,7 @@ export class DMToolsWidget {
 
         const searchInput = searchRow.createEl("input", {
             type: "text",
-            placeholder: "Search creatures by name, type (Undead, Dragon, Fiend...), CR, or source...",
+            placeholder: `Search ${this.discoveredMonsters.length} creatures by name, type (Undead, Dragon, Fiend...), CR, or source book...`,
             value: this.monsterQuery,
             cls: "dnd-modal-form-input dnd-compendium-search-input"
         });
@@ -3078,14 +3387,23 @@ export class DMToolsWidget {
         const sourceSelect = searchRow.createEl("select", {
             cls: "dnd-modal-form-input dnd-compendium-subfilter-select"
         });
-        sourceSelect.createEl("option", { text: "All Sources", value: "all" });
-        sourceSelect.createEl("option", { text: "Fantasy Statblocks Bestiary", value: "fantasy-statblocks" });
-        sourceSelect.createEl("option", { text: "The DM Compendium Cache", value: "the-dm-compendium" });
-        sourceSelect.createEl("option", { text: "Vault Note Statblocks", value: "vault-note" });
-        sourceSelect.createEl("option", { text: "5.5e SRD Built-in Presets", value: "srd-builtin" });
+        sourceSelect.createEl("option", { text: `All Sources (${this.discoveredMonsters.length})`, value: "all" });
+        for (const src of this.monstersMeta.availableSources) {
+            sourceSelect.createEl("option", {
+                text: `${src.short} — ${src.full} (${src.count})`,
+                value: `source::${src.code}`
+            });
+        }
+        if (this.monstersMeta.vaultStatblockCount > 0) {
+            sourceSelect.createEl("option", {
+                text: `Vault Note Statblocks (${this.monstersMeta.vaultStatblockCount})`,
+                value: "plugin::vault-note"
+            });
+        }
         sourceSelect.value = this.monsterSourceFilter;
 
-        const allCrs = Array.from(new Set(this.discoveredMonsters.map(m => m.cr).filter(Boolean)));
+        const allCrs = Array.from(new Set(this.discoveredMonsters.map(m => m.cr).filter(Boolean)))
+            .sort((a, b) => parseCrNumericValue(a) - parseCrNumericValue(b));
         const crSelect = searchRow.createEl("select", {
             cls: "dnd-modal-form-input dnd-compendium-subfilter-select"
         });
@@ -3127,7 +3445,7 @@ export class DMToolsWidget {
                 const qty = Math.max(1, Math.min(20, Number(qtyInput.value) || 1));
                 this.spawnMonsterIntoInitiative(monster, qty);
                 await this.saveInitiativeState();
-                new Notice(`Rolled Initiative and added ${qty}x ${monster.name} to the Initiative Tracker!`);
+                new Notice(`Rolled Initiative and added ${qty}x ${monster.name} (${monster.sourceShort}) to the Initiative Tracker!`);
             };
 
             const insertBtn = toolbar.createEl("button", {
@@ -3139,7 +3457,7 @@ export class DMToolsWidget {
                 const mdView = this.app.workspace.getActiveViewOfType(MarkdownView);
                 if (mdView && mdView.editor) {
                     mdView.editor.replaceSelection(yamlBlock);
-                    new Notice(`Inserted "${monster.name}" statblock into ${mdView.file?.basename || "active note"}!`);
+                    new Notice(`Inserted "${monster.name} (${monster.sourceShort})" statblock into ${mdView.file?.basename || "active note"}!`);
                 } else {
                     await navigator.clipboard.writeText(yamlBlock);
                     new Notice(`Copied "${monster.name}" statblock code block to clipboard (open a note in Editing view to insert directly).`);
@@ -3153,16 +3471,27 @@ export class DMToolsWidget {
         const updateMonsterList = async () => {
             const q = this.monsterQuery.trim().toLowerCase();
             const filtered = this.discoveredMonsters.filter(m => {
-                if (this.monsterSourceFilter !== "all" && m.sourcePlugin !== this.monsterSourceFilter) return false;
+                if (this.monsterSourceFilter.startsWith("source::")) {
+                    const targetCode = this.monsterSourceFilter.slice("source::".length);
+                    if (m.sourceCode !== targetCode) return false;
+                } else if (this.monsterSourceFilter.startsWith("plugin::")) {
+                    const targetPlugin = this.monsterSourceFilter.slice("plugin::".length);
+                    if (m.sourcePlugin !== targetPlugin) return false;
+                }
                 if (this.monsterCrFilter !== "all" && m.cr !== this.monsterCrFilter) return false;
                 if (q) {
-                    const hay = `${m.name} ${m.type} ${m.subtype || ""} cr ${m.cr} ${m.sourceLabel}`.toLowerCase();
+                    const hay = `${m.name} ${m.type} ${m.subtype || ""} cr ${m.cr} ${m.sourceShort} ${m.sourceCode} ${m.sourceFull}`.toLowerCase();
                     if (!hay.includes(q)) return false;
                 }
                 return true;
             });
 
             listPane.empty();
+            listPane.createEl("div", {
+                text: `${filtered.length} statblock${filtered.length === 1 ? "" : "s"} matching filters`,
+                cls: "dnd-spell-count-banner"
+            });
+
             if (filtered.length === 0) {
                 listPane.createEl("p", {
                     text: "No creatures match your filters.",
@@ -3172,7 +3501,7 @@ export class DMToolsWidget {
                 return;
             }
 
-            const displayList = filtered.slice(0, 200);
+            const displayList = filtered.slice(0, 250);
             if (!this.selectedMonsterId || !displayList.some(m => m.id === this.selectedMonsterId)) {
                 this.selectedMonsterId = displayList[0].id;
             }
@@ -3189,7 +3518,15 @@ export class DMToolsWidget {
                     cls: "dnd-init-sub-hint"
                 });
 
-                row.createEl("span", {
+                const rightBadges = row.createDiv({ cls: "dnd-modal-row-badges" });
+                if (mon.sourceShort) {
+                    rightBadges.createEl("span", {
+                        text: mon.sourceShort,
+                        cls: "dnd-level-badge dnd-modal-badge-sm",
+                        attr: { title: mon.sourceFull }
+                    });
+                }
+                rightBadges.createEl("span", {
                     text: `CR ${mon.cr}`,
                     cls: "dnd-level-badge dnd-modal-badge-sm"
                 });
@@ -3200,6 +3537,13 @@ export class DMToolsWidget {
                     row.addClass("is-active");
                     await renderMonsterPreview(mon);
                 };
+            }
+
+            if (filtered.length > 250) {
+                listPane.createEl("div", {
+                    text: `Showing top 250 of ${filtered.length} matches. Use the search bar or source filter above to narrow results.`,
+                    cls: "dnd-modal-empty-text"
+                });
             }
 
             const activeMon = displayList.find(m => m.id === this.selectedMonsterId) || displayList[0];
