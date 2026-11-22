@@ -1,8 +1,18 @@
-import { App, CachedMetadata, Plugin, PluginSettingTab, Setting, MarkdownPostProcessorContext, parseYaml, MarkdownRenderChild, MarkdownRenderer, TFile, Modal, Notice, MarkdownView, normalizePath, Platform, addIcon } from 'obsidian';
+import { App, CachedMetadata, Plugin, PluginSettingTab, Setting, MarkdownPostProcessorContext, parseYaml, MarkdownRenderChild, MarkdownRenderer, TFile, Modal, Notice, MarkdownView, normalizePath, Platform, addIcon, WorkspaceLeaf } from 'obsidian';
 import { getClassData, getSubclassData, getBackgroundData, getRaceData, getRacialSpellsData, getExtraFeat, getAvailableFeats, FeatPoolEntry, toSlug, toNormalizedFeatSlug, getCleanCustomBasePath, readCustomJson, mergeDictionaries, getItemData, getRuleData, getSpellData, getSpellsPoolData, getClassChoiceData, getClassChoiceRouterData, classChoiceRouterRegistry, getFeatMapData, getWeaponMasteriesMap, getWeaponMasteryDescription, buildWeaponMasteriesMarkdown } from './data';
 import { MarkdownNotes, classesMap, racesMap, backgroundsMap, itemsMap } from './registry';
 import { THEMES } from './themes';
 import { RIBBON_ICON_SVG } from './ribbon-icon';
+import {
+    DM_TOOLS_VIEW_TYPE,
+    DMToolsModal,
+    DMToolsSidebarView,
+    DMToolsTabId,
+    InitiativeState,
+    createDefaultInitiativeState,
+    processDnDInitiativeBlock,
+    processDnDPartyBlock
+} from './dm-tools';
 
 // --- Item cost helpers (PP / GP / SP / CP) ---
 // Item costs are stored as "<amount> <PP|GP|SP|CP>" (e.g. "50 GP", "1 SP", "5 CP").
@@ -1224,6 +1234,11 @@ interface DnDPluginSettings {
     customRulebookPath: string;
     customRulebookPriority: boolean;
 
+    // DM Tools & Compendium Suite Settings
+    showDmToolsRibbon: boolean;
+    defaultDmToolsView: "modal" | "sidebar";
+    savedInitiativeState: InitiativeState;
+
     // Theme Engine Variables
     selectedTheme: string;
     colorBgPrimary: string;
@@ -1254,6 +1269,10 @@ const DEFAULT_SETTINGS: DnDPluginSettings = {
     customRulebookPath: "",
     customRulebookPriority: false,
 
+    showDmToolsRibbon: true,
+    defaultDmToolsView: "modal",
+    savedInitiativeState: createDefaultInitiativeState(),
+
     selectedTheme: "default",
     ...THEMES.default.colors // Spread the default colors directly from the library!
 }
@@ -1263,9 +1282,53 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
     featureRestTypes: Map<string, "short" | "long"> = new Map();
     activeHeroicInspiration: Set<string> = new Set();
     rulebookRevision: number = 0;
+    dmRibbonIconEl: HTMLElement | null = null;
     private lastCustomRulebookFingerprint: string | null = null;
     private isCheckingCustomRulebook = false;
     private lastRulebookCheckTime = 0;
+
+    openDMTools(initialTab: DMToolsTabId = "compendium", forceMode?: "modal" | "sidebar") {
+        const mode = forceMode || this.settings.defaultDmToolsView || "modal";
+        if (mode === "sidebar") {
+            void this.activateDMToolsSidebar(initialTab);
+        } else {
+            new DMToolsModal(this.app, this, initialTab).open();
+        }
+    }
+
+    async activateDMToolsSidebar(initialTab: DMToolsTabId = "compendium"): Promise<void> {
+        const { workspace } = this.app;
+        let leaf: WorkspaceLeaf | null = null;
+        const leaves = workspace.getLeavesOfType(DM_TOOLS_VIEW_TYPE);
+        if (leaves.length > 0) {
+            leaf = leaves[0];
+        } else {
+            leaf = workspace.getRightLeaf(false);
+            if (leaf) {
+                await leaf.setViewState({ type: DM_TOOLS_VIEW_TYPE, active: true });
+            }
+        }
+        if (leaf) {
+            workspace.revealLeaf(leaf);
+            const view = leaf.view;
+            if (view instanceof DMToolsSidebarView) {
+                await view.setActiveTab(initialTab);
+            }
+        }
+    }
+
+    refreshDmToolsRibbonIcon() {
+        if (this.dmRibbonIconEl) {
+            this.dmRibbonIconEl.remove();
+            this.dmRibbonIconEl = null;
+        }
+        if (this.settings.showDmToolsRibbon !== false) {
+            this.dmRibbonIconEl = this.addRibbonIcon('shield', 'Open D&D DM Tools & 5.5e Compendium', () => {
+                this.openDMTools("compendium");
+            });
+            this.dmRibbonIconEl.addClass('csh-dm-ribbon-btn');
+        }
+    }
 
     setHeroicInspiration(sourcePath: string, active: boolean) {
         if (active) this.activeHeroicInspiration.add(sourcePath);
@@ -1446,6 +1509,22 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
             this.processDnDHealthBlock.bind(this)
         );
 
+        // Register DM Tools Sidebar View & Embeddable Session Note Blocks (dnd-initiative, dnd-party)
+        this.registerView(
+            DM_TOOLS_VIEW_TYPE,
+            (leaf) => new DMToolsSidebarView(leaf, this)
+        );
+
+        this.registerMarkdownCodeBlockProcessor(
+            "dnd-initiative",
+            (source, el, ctx) => processDnDInitiativeBlock(this, source, el, ctx)
+        );
+
+        this.registerMarkdownCodeBlockProcessor(
+            "dnd-party",
+            (source, el, ctx) => processDnDPartyBlock(this, source, el, ctx)
+        );
+
         // Automatically refresh open character sheets whenever a file inside the Custom Rulebook folder is edited
         const refreshIfCustomRulebookFile = (filePath: string, oldPath?: string) => {
             const basePath = getCleanCustomBasePath(this.settings);
@@ -1513,6 +1592,51 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
             id: 'csh-launch-character-wizard',
             name: 'Launch Character Creation Wizard',
             callback: launchCharacterWizard
+        });
+
+        // DM Tools & 5.5e Compendium Ribbon Icon and Commands
+        this.refreshDmToolsRibbonIcon();
+
+        this.addCommand({
+            id: 'csh-open-dm-tools',
+            name: 'Open DM Tools & 5.5e Compendium',
+            callback: () => this.openDMTools("compendium")
+        });
+
+        this.addCommand({
+            id: 'csh-open-dm-tools-modal',
+            name: 'Open DM Tools & Compendium (Modal Window)',
+            callback: () => this.openDMTools("compendium", "modal")
+        });
+
+        this.addCommand({
+            id: 'csh-open-dm-tools-sidebar',
+            name: 'Open DM Tools & Compendium (Docked Sidebar)',
+            callback: () => this.openDMTools("compendium", "sidebar")
+        });
+
+        this.addCommand({
+            id: 'csh-open-spell-browser',
+            name: 'Open 5.5e Spell Browser (DM Tools)',
+            callback: () => this.openDMTools("spells")
+        });
+
+        this.addCommand({
+            id: 'csh-open-initiative-tracker',
+            name: 'Open Auto-Sorting Initiative Tracker (DM Tools)',
+            callback: () => this.openDMTools("initiative")
+        });
+
+        this.addCommand({
+            id: 'csh-open-party-dashboard',
+            name: 'Open Live Party Dashboard (DM Tools)',
+            callback: () => this.openDMTools("party")
+        });
+
+        this.addCommand({
+            id: 'csh-open-monster-statblocks',
+            name: 'Open Monster & Statblock Browser (DM Tools)',
+            callback: () => this.openDMTools("monsters")
         });
 
         this.addCommand({
@@ -8519,6 +8643,33 @@ class DnDSettingsTab extends PluginSettingTab {
                     await this.plugin.saveSettings();
                     this.refreshOpenSheets();
                     this.display();
+                }));
+
+        // --- DM Tools & 5.5e Compendium Suite Settings ---
+        containerEl.createEl('h3', { text: 'DM Tools & 5.5e Compendium Suite', cls: 'setting-item-name dnd-settings-header' });
+        containerEl.createEl('p', { text: 'Configure how the DM Tools & 5.5e Compendium (Rulebook Search, Spell Browser, Initiative Tracker, Party Dashboard, and Monster Statblocks) open.', cls: 'setting-item-description' });
+
+        new Setting(containerEl)
+            .setName('Show DM Tools Ribbon Icon')
+            .setDesc('Display a shield icon in the left ribbon sidebar for 1-click access to the DM Tools & 5.5e Compendium.')
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.showDmToolsRibbon !== false)
+                .onChange(async (value) => {
+                    this.plugin.settings.showDmToolsRibbon = value;
+                    await this.plugin.saveSettings();
+                    this.plugin.refreshDmToolsRibbonIcon();
+                }));
+
+        new Setting(containerEl)
+            .setName('Default DM Tools View Mode')
+            .setDesc('Choose whether the DM Tools open as a large centered Modal window or a dockable Right Sidebar panel by default (you can switch between both at any time with 1 click).')
+            .addDropdown(drop => drop
+                .addOption('modal', 'Centered Modal Window')
+                .addOption('sidebar', 'Docked Right Sidebar Panel')
+                .setValue(this.plugin.settings.defaultDmToolsView || 'modal')
+                .onChange(async (value: string) => {
+                    this.plugin.settings.defaultDmToolsView = (value === 'sidebar' ? 'sidebar' : 'modal');
+                    await this.plugin.saveSettings();
                 }));
 
         // --- Custom Rulebook Settings ---

@@ -1,0 +1,45 @@
+{
+    "name": "Combat & Cover Rules",
+    "rules": [
+        {
+            "name": "Cover",
+            "badge": "Combat",
+            "description": "Walls, trees, creatures, and other obstacles can provide cover during combat, making a target more difficult to harm. If a target is behind multiple sources of cover, only the most protective degree of cover applies:\n - **Half Cover (+2 AC & DEX Saves)**: A target has Half Cover if an obstacle blocks at least half of its body.\n - **Three-Quarters Cover (+5 AC & DEX Saves)**: A target has Three-Quarters Cover if an obstacle blocks at least three-quarters of its body.\n - **Total Cover**: A target has Total Cover if it is completely concealed by an obstacle. Can't be targeted directly by an attack or a spell."
+        },
+        {
+            "name": "Concentration",
+            "badge": "Combat",
+            "description": "Some spells and other effects require Concentration to remain active. The following factors break your Concentration:\n - **Another Concentration Effect**: You lose Concentration on an effect the moment you start casting a spell that requires Concentration or activate another effect that requires Concentration.\n - **Damage**: If you take damage, you must succeed on a Constitution saving throw to maintain Concentration. The DC equals 10 or half the damage taken (round down), whichever number is higher, up to a maximum DC of 30.\n - **Incapacitated or Dead**: Your Concentration ends if you have the Incapacitated condition or you die."
+        },
+        {
+            "name": "Opportunity Attacks",
+            "badge": "Combat",
+            "description": "You can make an Opportunity Attack when a creature that you can see leaves your reach using its action, its Bonus Action, its Reaction, or one of its speeds. To make the Opportunity Attack, take a Reaction to make one melee attack with a weapon or an Unarmed Strike against the provoking creature. The attack occurs right before the creature leaves your reach.\n - **Avoiding Opportunity Attacks**: Disengage action, teleportation, or being moved without using your movement, action, Bonus Action, or Reaction."
+        },
+        {
+            "name": "Unarmed Strike Options (Damage, Grapple, Shove)",
+            "badge": "Combat",
+            "description": "Instead of using a weapon to make a melee attack, you can use a punch, kick, head-butt, or similar forceful blow. Whenever you use your Unarmed Strike, choose one of the following options:\n - **Damage**: Make an attack roll against the target. On a hit, you deal Bludgeoning damage equal to 1 + your Strength modifier.\n - **Grapple**: The target must succeed on a Strength or Dexterity saving throw (it chooses which) against a DC equal to 8 + your Strength modifier + your Proficiency Bonus. On a failed save, it has the Grappled condition (one free hand required, target no more than one size larger than you).\n - **Shove**: The target must succeed on a Strength or Dexterity saving throw against the same DC (8 + STR Mod + PB). On a failed save, you either push the target 5 feet away or cause it to have the Prone condition (target no more than one size larger than you)."
+        },
+        {
+            "name": "Death Saving Throws & Stabilizing",
+            "badge": "Combat",
+            "description": "Whenever you start your turn with 0 Hit Points, you must make a Death Saving Throw (a d20 roll with no ability modifier):\n - **10 or Higher**: Success (3 successes = you become Stable at 0 HP).\n - **9 or Lower**: Failure (3 failures = you die).\n - **Rolling a 1**: Counts as 2 failures.\n - **Rolling a 20**: You regain 1 Hit Point.\n - **Damage at 0 HP**: Taking any damage causes 1 Death Save failure (or 2 failures if it's a Critical Hit). If the damage equals or exceeds your Hit Point Maximum, you die.\n - **Stabilizing a Creature**: You can take the Help action to administer first aid to an Unconscious creature at 0 HP within 5 feet, making a DC 10 Wisdom (Medicine) check."
+        },
+        {
+            "name": "Instant Death & Knocking Out a Creature",
+            "badge": "Combat",
+            "description": " - **Instant Death**: When damage reduces you to 0 Hit Points and there is damage remaining, you die if the remaining damage equals or exceeds your Hit Point Maximum.\n - **Knocking Out a Creature**: When you would reduce a creature to 0 Hit Points with a melee attack, you can instead reduce the creature to 1 Hit Point and give it the Unconscious condition, starting a Short Rest for it."
+        },
+        {
+            "name": "Underwater Combat",
+            "badge": "Combat",
+            "description": " - **Melee Weapons**: A creature that doesn't have a Swim Speed has Disadvantage on the attack roll unless the weapon deals Piercing damage.\n - **Ranged Weapons**: A ranged weapon attack automatically misses a target beyond the weapon's normal range, and the attack roll has Disadvantage within normal range unless the weapon is a crossbow, a net, or a weapon that is thrown like a javelin.\n - **Fire Resistance**: Anything fully immersed in water has Resistance to Fire damage."
+        },
+        {
+            "name": "Falling",
+            "badge": "Combat",
+            "description": "A creature that falls takes 1d6 Bludgeoning damage at the end of the fall for every 10 feet it fell, to a maximum of 20d6. When the creature lands, it has the Prone condition unless it avoids taking any damage from the fall."
+        }
+    ]
+}

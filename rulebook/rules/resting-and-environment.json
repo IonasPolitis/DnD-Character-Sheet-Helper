@@ -1,0 +1,40 @@
+{
+    "name": "Resting, Vision & Environment",
+    "rules": [
+        {
+            "name": "Short Rest",
+            "badge": "Resting",
+            "description": "A Short Rest is a 1-hour period of downtime, during which a creature does nothing more strenuous than reading, talking, eating, or standing watch.\n - **Spend Hit Point Dice**: You can spend one or more of your Hit Point Dice at the end of a Short Rest. For each die spent, roll the die and add your Constitution modifier (minimum of 1 Hit Point regained).\n - **Interrupting the Rest**: A Short Rest is interrupted by rolling Initiative, casting a spell other than a cantrip, or taking any damage."
+        },
+        {
+            "name": "Long Rest",
+            "badge": "Resting",
+            "description": "A Long Rest is an extended period of at least 8 hours of downtime, during which a creature sleeps for at least 6 hours and performs no more than 2 hours of light activity. During sleep, you have the Unconscious condition. When you finish a Long Rest:\n - **Regain All HP**: You regain all lost Hit Points and all expended spell slots.\n - **Regain Hit Point Dice**: You regain spent Hit Point Dice, up to half of your total number of them (minimum of 1 die).\n - **Ability Scores Restored**: Any reduced ability scores are restored to normal.\n - **Exhaustion Reduced**: Your Exhaustion level is reduced by 1.\n - **24-Hour Wait**: You must wait at least 16 hours after finishing a Long Rest before starting another one."
+        },
+        {
+            "name": "Light & Obscurement",
+            "badge": "Environment",
+            "description": " - **Bright Light**: Normal vision.\n - **Dim Light (Lightly Obscured)**: Creates a Lightly Obscured area. Creatures have Disadvantage on Wisdom (Perception) checks that rely on sight within it.\n - **Darkness (Heavily Obscured)**: Creates a Heavily Obscured area. Characters have the Blinded condition when trying to see something in a Heavily Obscured area (such as Darkness, opaque fog, or dense foliage)."
+        },
+        {
+            "name": "Special Senses (Blindsight, Darkvision, Tremorsense, Truesight)",
+            "badge": "Environment",
+            "description": " - **Blindsight**: You can see within a specified range without relying on physical sight (seeing Invisible creatures and objects in Darkness unless behind Total Cover).\n - **Darkvision**: You can see in Dim Light within the radius as if it were Bright Light, and in Darkness as if it were Dim Light (discerning colors in Darkness only as shades of gray).\n - **Tremorsense**: You can pinpoint the location of creatures and moving objects within a specific range, provided you and the target are in contact with the same ground or liquid.\n - **Truesight**: Within range, your vision pierces Darkness (normal or magical), sees Invisible creatures and objects, automatically detects visual illusions ( succeeding on saves against them), discerns the true form of shape-shifters, and sees into the Ethereal Plane."
+        },
+        {
+            "name": "Travel Pace",
+            "badge": "Environment",
+            "description": "While traveling outside combat, a group can move at a Fast, Normal, or Slow pace:\n - **Fast Pace (400 ft./min • 4 mph • 30 miles/day)**: Disadvantage on Wisdom (Perception or Survival) and Dexterity (Stealth) checks.\n - **Normal Pace (300 ft./min • 3 mph • 24 miles/day)**: Disadvantage on Dexterity (Stealth) checks.\n - **Slow Pace (200 ft./min • 2 mph • 18 miles/day)**: Advantage on Wisdom (Perception or Survival) checks."
+        },
+        {
+            "name": "Suffocation",
+            "badge": "Environment",
+            "description": "A creature can hold its breath for a number of minutes equal to 1 + its Constitution modifier (minimum of 30 seconds) before suffocation begins. When a creature runs out of breath or is choking, it gains 1 Exhaustion level at the end of each of its turns. When a creature can breathe again, it removes all levels of Exhaustion it gained from suffocating."
+        },
+        {
+            "name": "Typical Difficulty Classes (DCs)",
+            "badge": "DM Reference",
+            "description": "Standard Difficulty Classes for Ability Checks:\n - **Very Easy**: DC 5\n - **Easy**: DC 10\n - **Medium**: DC 15\n - **Hard**: DC 20\n - **Very Hard**: DC 25\n - **Nearly Impossible**: DC 30"
+        }
+    ]
+}

@@ -20,7 +20,26 @@ import {
     pastEditionsRegistry
 } from './registry';
 
-export { classChoiceRouterRegistry, featRouterRegistry };
+export {
+    classRegistry,
+    subclassRegistry,
+    classChoiceRegistry,
+    classChoiceRouterRegistry,
+    featRegistry,
+    featRouterRegistry,
+    raceRegistry,
+    racialSpellsRegistry,
+    itemRegistry,
+    ruleRegistry,
+    spellRegistry,
+    classesMap,
+    backgroundsMap,
+    racesMap,
+    itemsMap,
+    rulesMap,
+    weaponMasteriesMap,
+    spellsMap
+};
 
 import { App, normalizePath } from 'obsidian';
 
@@ -821,4 +840,475 @@ export function buildWeaponMasteriesMarkdown(masteriesMap: Record<string, string
             });
     }
     return lines.join('\n') + '\n';
+}
+
+// ============================================================================
+// --- COMPENDIUM BULK LOADERS (Native Registry + Custom Rulebook Merging) ---
+// ============================================================================
+
+export interface CompendiumRuleEntry {
+    id: string;
+    groupId: string;
+    groupName: string;
+    name: string;
+    badge?: string;
+    description: string;
+}
+
+/**
+ * Loads all Rule groups and individual rules across `ruleRegistry` + Custom Rulebook `rules/*.json`.
+ */
+export async function getAllCompendiumRules(app: App, settings: FetchSettings): Promise<CompendiumRuleEntry[]> {
+    const groupsMap = new Map<string, any>();
+
+    if (ruleRegistry && typeof ruleRegistry === 'object') {
+        for (const [key, data] of Object.entries(ruleRegistry)) {
+            const id = toSlug(key);
+            if (id && data && typeof data === 'object') {
+                groupsMap.set(id, data);
+            }
+        }
+    }
+
+    const basePath = getCleanCustomBasePath(settings);
+    if (basePath) {
+        const rulesDir = normalizePath(`${basePath}/rules`);
+        try {
+            if (await app.vault.adapter.exists(rulesDir)) {
+                const listed = await app.vault.adapter.list(rulesDir);
+                for (const filePath of listed.files || []) {
+                    if (!filePath.toLowerCase().endsWith('.json')) continue;
+                    const fileName = filePath.split('/').pop() || '';
+                    const id = toSlug(fileName);
+                    if (!id) continue;
+                    const customObj = await readCustomJson(app, filePath);
+                    if (!customObj || typeof customObj !== 'object') continue;
+                    if (settings.customRulebookPriority || !groupsMap.has(id)) {
+                        groupsMap.set(id, customObj);
+                    }
+                }
+            }
+        } catch (e) {
+            console.error(`D&D Plugin: Could not list custom rules in "${rulesDir}"`, e);
+        }
+    }
+
+    const entries: CompendiumRuleEntry[] = [];
+    for (const [groupId, groupData] of groupsMap.entries()) {
+        const groupName = String(groupData?.name || groupId).trim();
+        const rulesArr = Array.isArray(groupData?.rules) ? groupData.rules : [];
+        if (rulesArr.length > 0) {
+            for (const ruleItem of rulesArr) {
+                if (!ruleItem || typeof ruleItem !== 'object') continue;
+                const rName = String(ruleItem.name || '').trim();
+                const rDesc = String(ruleItem.description || '').trim();
+                if (!rName && !rDesc) continue;
+                entries.push({
+                    id: `${groupId}::${toSlug(rName || groupName)}`,
+                    groupId,
+                    groupName,
+                    name: rName || groupName,
+                    badge: ruleItem.badge ? String(ruleItem.badge).trim() : groupName,
+                    description: rDesc
+                });
+            }
+        } else if (groupData?.description) {
+            entries.push({
+                id: groupId,
+                groupId,
+                groupName,
+                name: groupName,
+                badge: groupData.badge ? String(groupData.badge).trim() : "Rule",
+                description: String(groupData.description).trim()
+            });
+        }
+    }
+
+    return entries;
+}
+
+export interface CompendiumSpellEntry {
+    id: string;
+    name: string;
+    level: number;
+    school: string;
+    castingTime: string;
+    range: string;
+    components: string[];
+    materials?: string;
+    duration: string;
+    concentration: boolean;
+    ritual: boolean;
+    description: string;
+    pools: string[];
+    classes: string[];
+}
+
+/**
+ * Loads all spells from `spellRegistry` + Custom Rulebook `spells/*.json`, annotated with their spell pools.
+ */
+export async function getAllCompendiumSpells(app: App, settings: FetchSettings): Promise<CompendiumSpellEntry[]> {
+    const spellsById = new Map<string, any>();
+
+    if (spellRegistry && typeof spellRegistry === 'object') {
+        for (const [key, data] of Object.entries(spellRegistry)) {
+            const id = toSlug(key);
+            if (id && data && typeof data === 'object') {
+                spellsById.set(id, data);
+            }
+        }
+    }
+
+    // Build reverse map: spellSlug -> Set of pool names
+    const spellPoolsBySlug = new Map<string, Set<string>>();
+    const registerPoolDict = (poolKey: string, poolObj: any) => {
+        if (!poolObj || typeof poolObj !== 'object') return;
+        const cleanPool = poolKey.replace(/\.json$/i, '');
+        for (const lvlGroup of Object.values(poolObj)) {
+            if (!lvlGroup || typeof lvlGroup !== 'object') continue;
+            for (const spellKey of Object.keys(lvlGroup as Record<string, string>)) {
+                const sSlug = toSlug(spellKey);
+                if (!sSlug) continue;
+                if (!spellPoolsBySlug.has(sSlug)) spellPoolsBySlug.set(sSlug, new Set());
+                spellPoolsBySlug.get(sSlug)!.add(cleanPool);
+            }
+        }
+    };
+
+    if (spellsMap && typeof spellsMap === 'object') {
+        for (const [poolKey, poolObj] of Object.entries(spellsMap)) {
+            registerPoolDict(poolKey, poolObj);
+        }
+    }
+    if (racialSpellsRegistry && typeof racialSpellsRegistry === 'object') {
+        for (const [poolKey, poolObj] of Object.entries(racialSpellsRegistry)) {
+            registerPoolDict(poolKey, poolObj);
+        }
+    }
+
+    const basePath = getCleanCustomBasePath(settings);
+    if (basePath) {
+        const spellsDir = normalizePath(`${basePath}/spells`);
+        try {
+            if (await app.vault.adapter.exists(spellsDir)) {
+                const listed = await app.vault.adapter.list(spellsDir);
+                for (const filePath of listed.files || []) {
+                    if (!filePath.toLowerCase().endsWith('.json')) continue;
+                    const fileName = filePath.split('/').pop() || '';
+                    const id = toSlug(fileName);
+                    if (!id) continue;
+                    const customObj = await readCustomJson(app, filePath);
+                    if (!customObj || typeof customObj !== 'object' || Array.isArray(customObj)) continue;
+                    // Skip router pool files inside /spells if they don't look like a spell object
+                    if (customObj.name === undefined && customObj.description === undefined) {
+                        registerPoolDict(id, customObj);
+                        continue;
+                    }
+                    if (settings.customRulebookPriority || !spellsById.has(id)) {
+                        spellsById.set(id, customObj);
+                    }
+                }
+            }
+        } catch (e) {
+            console.error(`D&D Plugin: Could not list custom spells in "${spellsDir}"`, e);
+        }
+
+        const poolsDir = normalizePath(`${basePath}/spells/spellPools`);
+        try {
+            if (await app.vault.adapter.exists(poolsDir)) {
+                const listed = await app.vault.adapter.list(poolsDir);
+                for (const filePath of listed.files || []) {
+                    if (!filePath.toLowerCase().endsWith('.json')) continue;
+                    const fileName = filePath.split('/').pop() || '';
+                    const id = toSlug(fileName);
+                    const poolObj = await readCustomJson(app, filePath);
+                    if (id && poolObj) registerPoolDict(id, poolObj);
+                }
+            }
+        } catch {
+            /* ignore */
+        }
+    }
+
+    const result: CompendiumSpellEntry[] = [];
+    for (const [id, data] of spellsById.entries()) {
+        if (!data || typeof data !== 'object') continue;
+        const pools = Array.from(spellPoolsBySlug.get(id) || []);
+        const inferredClasses = pools
+            .filter(p => p.endsWith('-spells'))
+            .map(p => p.replace(/-spells$/i, ''))
+            .map(c => c.charAt(0).toUpperCase() + c.slice(1));
+        const rawClasses = Array.isArray(data.classes)
+            ? data.classes.map((c: any) => String(c).trim()).filter(Boolean)
+            : (typeof data.classes === 'string' ? data.classes.split(',').map((c: string) => c.trim()).filter(Boolean) : []);
+        const allClasses = Array.from(new Set([...rawClasses, ...inferredClasses]));
+
+        result.push({
+            id,
+            name: String(data.name || id).trim(),
+            level: Number(data.level) || 0,
+            school: String(data.school || 'Universal').trim(),
+            castingTime: String(data.castingTime || 'Action').trim(),
+            range: String(data.range || 'Self').trim(),
+            components: Array.isArray(data.components)
+                ? data.components.map((c: any) => String(c).trim())
+                : (typeof data.components === 'string' ? [data.components] : []),
+            materials: data.materials ? String(data.materials).trim() : undefined,
+            duration: String(data.duration || 'Instantaneous').trim(),
+            concentration: Boolean(data.concentration),
+            ritual: Boolean(data.ritual),
+            description: String(data.description || '').trim(),
+            pools,
+            classes: allClasses
+        });
+    }
+
+    return result.sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/**
+ * Loads all Classes and their Subclasses across `classRegistry`/`subclassRegistry` + Custom Rulebook.
+ */
+export async function getAllCompendiumClasses(app: App, settings: FetchSettings): Promise<{
+    classes: { id: string; name: string; data: any }[];
+    subclasses: { id: string; name: string; parentClassName: string; subclassFile: string; data: any }[];
+}> {
+    let mergedClassMap: Record<string, string> = { ...(classesMap as Record<string, string>) };
+    const basePath = getCleanCustomBasePath(settings);
+    if (basePath) {
+        const customClassesRouter = await readCustomJson(app, `${basePath}/classes.json`);
+        if (customClassesRouter && typeof customClassesRouter === 'object') {
+            mergedClassMap = mergeDictionaries(mergedClassMap, customClassesRouter, settings.customRulebookPriority) || mergedClassMap;
+        }
+    }
+
+    const classes: { id: string; name: string; data: any }[] = [];
+    const subclasses: { id: string; name: string; parentClassName: string; subclassFile: string; data: any }[] = [];
+    const seenSubclassFiles = new Set<string>();
+
+    for (const [fileId, displayName] of Object.entries(mergedClassMap)) {
+        const cleanId = toSlug(fileId);
+        const classData = await getClassData(app, settings, displayName || cleanId);
+        if (!classData || typeof classData !== 'object') continue;
+        const cName = String(classData.name || displayName || cleanId).trim();
+        classes.push({ id: cleanId, name: cName, data: classData });
+
+        // Discover subclass file referenced by any level in the class progression
+        let subclassFile = '';
+        for (const [lvlKey, lvlObj] of Object.entries(classData)) {
+            if (!/^\d+$/.test(lvlKey) || !lvlObj || typeof lvlObj !== 'object') continue;
+            if ((lvlObj as any).subclass && typeof (lvlObj as any).subclass === 'string') {
+                subclassFile = String((lvlObj as any).subclass).trim().replace(/\.json$/i, '');
+                break;
+            }
+        }
+        if (!subclassFile) subclassFile = `${cleanId}-subclasses`;
+
+        if (subclassFile && !seenSubclassFiles.has(subclassFile)) {
+            seenSubclassFiles.add(subclassFile);
+            const subDict = await getSubclassData(app, settings, subclassFile);
+            if (subDict && typeof subDict === 'object') {
+                for (const [subKey, subObj] of Object.entries(subDict)) {
+                    if (!subObj || typeof subObj !== 'object') continue;
+                    const subName = String((subObj as any).name || subKey).trim();
+                    subclasses.push({
+                        id: `${cleanId}::${toSlug(subKey)}`,
+                        name: subName,
+                        parentClassName: cName,
+                        subclassFile,
+                        data: subObj
+                    });
+                }
+            }
+        }
+    }
+
+    classes.sort((a, b) => a.name.localeCompare(b.name));
+    subclasses.sort((a, b) => a.name.localeCompare(b.name));
+    return { classes, subclasses };
+}
+
+/**
+ * Loads all Class Choices (Eldritch Invocations, Metamagic, Maneuvers, etc.) from `classChoiceRegistry` + Custom Rulebook.
+ */
+export async function getAllCompendiumClassChoices(app: App, settings: FetchSettings): Promise<{
+    id: string;
+    name: string;
+    category: string;
+    prerequisite?: string;
+    description: string;
+    data: any;
+}[]> {
+    const choicePoolBySlug = new Map<string, string>();
+    if (classChoiceRouterRegistry && typeof classChoiceRouterRegistry === 'object') {
+        for (const [routerKey, routerDict] of Object.entries(classChoiceRouterRegistry)) {
+            if (!routerDict || typeof routerDict !== 'object') continue;
+            const poolLabel = routerKey
+                .replace(/\.json$/i, '')
+                .replace(/-/g, ' ')
+                .replace(/\b\w/g, c => c.toUpperCase());
+            for (const itemKey of Object.keys(routerDict)) {
+                choicePoolBySlug.set(toSlug(itemKey), poolLabel);
+            }
+        }
+    }
+
+    const choicesMap = new Map<string, any>();
+    if (classChoiceRegistry && typeof classChoiceRegistry === 'object') {
+        for (const [key, data] of Object.entries(classChoiceRegistry)) {
+            const id = toSlug(key);
+            if (id && data && typeof data === 'object' && (data.name !== undefined || data.description !== undefined)) {
+                choicesMap.set(id, data);
+            }
+        }
+    }
+
+    const basePath = getCleanCustomBasePath(settings);
+    if (basePath) {
+        const choicesDir = normalizePath(`${basePath}/classes/classChoices`);
+        try {
+            if (await app.vault.adapter.exists(choicesDir)) {
+                const listed = await app.vault.adapter.list(choicesDir);
+                for (const filePath of listed.files || []) {
+                    if (!filePath.toLowerCase().endsWith('.json')) continue;
+                    const fileName = filePath.split('/').pop() || '';
+                    const id = toSlug(fileName);
+                    if (!id) continue;
+                    const customObj = await readCustomJson(app, filePath);
+                    if (!customObj || typeof customObj !== 'object' || Array.isArray(customObj)) continue;
+                    if (customObj.name === undefined && customObj.description === undefined) continue;
+                    if (settings.customRulebookPriority || !choicesMap.has(id)) {
+                        choicesMap.set(id, customObj);
+                    }
+                }
+            }
+        } catch {
+            /* ignore */
+        }
+    }
+
+    const out: {
+        id: string;
+        name: string;
+        category: string;
+        prerequisite?: string;
+        description: string;
+        data: any;
+    }[] = [];
+
+    for (const [id, data] of choicesMap.entries()) {
+        const name = String(data.name || id).trim();
+        const category = String(data.category || choicePoolBySlug.get(id) || 'Class Option').trim();
+        out.push({
+            id,
+            name,
+            category,
+            prerequisite: data.prerequisite ? String(data.prerequisite).trim() : undefined,
+            description: String(data.description || '').trim(),
+            data
+        });
+    }
+
+    return out.sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/**
+ * Loads all Races & Lineages across `racesMap`/`raceRegistry` + Custom Rulebook.
+ */
+export async function getAllCompendiumRaces(app: App, settings: FetchSettings): Promise<{ id: string; name: string; data: any }[]> {
+    let mergedRacesMap: Record<string, string> = { ...(racesMap as Record<string, string>) };
+    const basePath = getCleanCustomBasePath(settings);
+    if (basePath) {
+        const customRacesRouter = await readCustomJson(app, `${basePath}/races.json`);
+        if (customRacesRouter && typeof customRacesRouter === 'object') {
+            mergedRacesMap = mergeDictionaries(mergedRacesMap, customRacesRouter, settings.customRulebookPriority) || mergedRacesMap;
+        }
+    }
+
+    const races: { id: string; name: string; data: any }[] = [];
+    for (const [fileId, displayName] of Object.entries(mergedRacesMap)) {
+        const cleanId = toSlug(fileId);
+        const raceData = await getRaceData(app, settings, displayName || cleanId);
+        if (!raceData || typeof raceData !== 'object') continue;
+        races.push({
+            id: cleanId,
+            name: String(raceData.name || displayName || cleanId).trim(),
+            data: raceData
+        });
+    }
+
+    return races.sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/**
+ * Loads all Backgrounds across `backgroundsMap` + Custom Rulebook `backgrounds.json`.
+ */
+export async function getAllCompendiumBackgrounds(app: App, settings: FetchSettings): Promise<{ id: string; name: string; data: any }[]> {
+    let mergedBgMap: Record<string, any> = { ...(backgroundsMap as Record<string, any>) };
+    const basePath = getCleanCustomBasePath(settings);
+    if (basePath) {
+        const customBg = await readCustomJson(app, `${basePath}/backgrounds.json`);
+        if (customBg && typeof customBg === 'object') {
+            mergedBgMap = mergeDictionaries(mergedBgMap, customBg, settings.customRulebookPriority) || mergedBgMap;
+        }
+    }
+
+    const out: { id: string; name: string; data: any }[] = [];
+    for (const [bgName, bgData] of Object.entries(mergedBgMap)) {
+        if (!bgData || typeof bgData !== 'object') continue;
+        out.push({
+            id: toSlug(bgName),
+            name: String(bgData.name || bgName).trim(),
+            data: bgData
+        });
+    }
+    return out.sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/**
+ * Loads all Equipment Items across `itemRegistry` + Custom Rulebook `items/*.json`.
+ */
+export async function getAllCompendiumItems(app: App, settings: FetchSettings): Promise<{ id: string; name: string; data: any }[]> {
+    const itemsById = new Map<string, any>();
+    if (itemRegistry && typeof itemRegistry === 'object') {
+        for (const [key, data] of Object.entries(itemRegistry)) {
+            const id = toSlug(key);
+            if (id && data && typeof data === 'object') {
+                itemsById.set(id, data);
+            }
+        }
+    }
+
+    const basePath = getCleanCustomBasePath(settings);
+    if (basePath) {
+        const itemsDir = normalizePath(`${basePath}/items`);
+        try {
+            if (await app.vault.adapter.exists(itemsDir)) {
+                const listed = await app.vault.adapter.list(itemsDir);
+                for (const filePath of listed.files || []) {
+                    if (!filePath.toLowerCase().endsWith('.json')) continue;
+                    const fileName = filePath.split('/').pop() || '';
+                    const id = toSlug(fileName);
+                    if (!id) continue;
+                    const customObj = await readCustomJson(app, filePath);
+                    if (!customObj || typeof customObj !== 'object' || Array.isArray(customObj)) continue;
+                    if (settings.customRulebookPriority || !itemsById.has(id)) {
+                        itemsById.set(id, customObj);
+                    }
+                }
+            }
+        } catch {
+            /* ignore */
+        }
+    }
+
+    const out: { id: string; name: string; data: any }[] = [];
+    for (const [id, data] of itemsById.entries()) {
+        out.push({
+            id,
+            name: String(data.name || id).trim(),
+            data
+        });
+    }
+    return out.sort((a, b) => a.name.localeCompare(b.name));
 }
