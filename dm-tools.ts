@@ -1121,7 +1121,7 @@ export async function discoverExternalMonsters(app: App): Promise<{
             }
         }
     } catch (e) {
-        console.warn("D&D Plugin: Could not read The DM Compendium bestiary cache", e);
+        console.warn("DnD Plugin: Could not read The DM Compendium bestiary cache", e);
     }
 
     // 2. Secondary Source: Scan Active Note (and up to 60 recently modified vault notes) for ```statblock YAML blocks
@@ -1484,6 +1484,9 @@ export class DMToolsWidget {
     monsterCrFilter = "all";
     selectedMonsterId: string | null = null;
 
+    // Sidebar Resizable Vertical Split State (default 2/3 upper selection, 1/3 lower preview)
+    sidebarSplitPercent = 66.67;
+
     // Layout Containers
     bodyContainer!: HTMLElement;
 
@@ -1637,6 +1640,101 @@ export class DMToolsWidget {
                 await this.renderMonstersTab();
                 break;
         }
+    }
+
+    /**
+     * Builds the master-detail split layout.
+     * - In Modal mode: side-by-side 2-column grid.
+     * - In Sidebar mode: vertical split-pane (default 2/3 upper selection area + 1/3 scrollable preview area)
+     *   with a draggable horizontal divider handle between them.
+     */
+    private createMasterDetailSplitLayout(
+        root: HTMLElement,
+        upperControls: HTMLElement[]
+    ): {
+        listPane: HTMLElement;
+        previewPane: HTMLElement;
+        setPreviewActive: (active: boolean) => void;
+    } {
+        if (this.hostMode !== "sidebar") {
+            const splitGrid = root.createDiv({ cls: "dnd-spellbook-body dnd-compendium-grid" });
+            const listPane = splitGrid.createDiv({ cls: "dnd-spellbook-list dnd-compendium-list" });
+            const previewPane = splitGrid.createDiv({ cls: "dnd-spellbook-preview dnd-compendium-preview" });
+            return {
+                listPane,
+                previewPane,
+                setPreviewActive: () => {}
+            };
+        }
+
+        const splitContainer = root.createDiv({ cls: "dnd-sidebar-split-container" });
+        splitContainer.style.setProperty("--dnd-sidebar-split", `${this.sidebarSplitPercent}%`);
+
+        const upperPane = splitContainer.createDiv({ cls: "dnd-sidebar-upper-pane" });
+        for (const el of upperControls) {
+            upperPane.appendChild(el);
+        }
+        const listPane = upperPane.createDiv({ cls: "dnd-spellbook-list dnd-compendium-list" });
+
+        const resizer = splitContainer.createDiv({
+            cls: "dnd-sidebar-resizer",
+            attr: { title: "Drag up or down to resize preview (double-click to reset to 2/3 & 1/3)" }
+        });
+        resizer.createDiv({ cls: "dnd-sidebar-resizer-grip" });
+
+        const previewPane = splitContainer.createDiv({
+            cls: "dnd-spellbook-preview dnd-compendium-preview dnd-sidebar-lower-pane"
+        });
+
+        let isDragging = false;
+        resizer.addEventListener("pointerdown", (e: PointerEvent) => {
+            e.preventDefault();
+            isDragging = true;
+            resizer.addClass("is-dragging");
+            try {
+                resizer.setPointerCapture(e.pointerId);
+            } catch {
+                /* ignore */
+            }
+        });
+
+        resizer.addEventListener("pointermove", (e: PointerEvent) => {
+            if (!isDragging) return;
+            const rect = splitContainer.getBoundingClientRect();
+            if (rect.height <= 40) return;
+            const rawPct = ((e.clientY - rect.top) / rect.height) * 100;
+            const clamped = Math.max(15, Math.min(85, Math.round(rawPct * 100) / 100));
+            this.sidebarSplitPercent = clamped;
+            splitContainer.style.setProperty("--dnd-sidebar-split", `${clamped}%`);
+        });
+
+        const endDrag = (e: PointerEvent) => {
+            if (!isDragging) return;
+            isDragging = false;
+            resizer.removeClass("is-dragging");
+            try {
+                if (resizer.hasPointerCapture(e.pointerId)) {
+                    resizer.releasePointerCapture(e.pointerId);
+                }
+            } catch {
+                /* ignore */
+            }
+        };
+
+        resizer.addEventListener("pointerup", endDrag);
+        resizer.addEventListener("pointercancel", endDrag);
+        resizer.addEventListener("dblclick", () => {
+            this.sidebarSplitPercent = 66.67;
+            splitContainer.style.setProperty("--dnd-sidebar-split", "66.67%");
+        });
+
+        return {
+            listPane,
+            previewPane,
+            setPreviewActive: (active: boolean) => {
+                splitContainer.classList.toggle("has-active-preview", active);
+            }
+        };
     }
 
     // ========================================================================
@@ -1980,10 +2078,8 @@ export class DMToolsWidget {
             { id: "items", label: "Items & Masteries" }
         ];
 
-        // Master-Detail Grid
-        const splitGrid = root.createDiv({ cls: "dnd-spellbook-body dnd-compendium-grid" });
-        const listPane = splitGrid.createDiv({ cls: "dnd-spellbook-list dnd-compendium-list" });
-        const previewPane = splitGrid.createDiv({ cls: "dnd-spellbook-preview dnd-compendium-preview" });
+        // Master-Detail Grid (or 2/3 & 1/3 Resizable Vertical Split in Sidebar)
+        const { listPane, previewPane, setPreviewActive } = this.createMasterDetailSplitLayout(root, [controls]);
 
         const populateSubFilters = () => {
             subFilterSelect.empty();
@@ -2003,9 +2099,10 @@ export class DMToolsWidget {
 
         const renderPreview = async (item: CompendiumUnifiedItem | null) => {
             previewPane.empty();
+            setPreviewActive(Boolean(item));
             if (!item) {
                 previewPane.createEl("p", {
-                    text: "Select any rule, class, feat, item, or trait on the left to inspect its full 5.5e details.",
+                    text: "Select any rule, class, feat, item, or trait to inspect its full details.",
                     cls: "dnd-modal-preview-empty"
                 });
                 return;
@@ -2017,7 +2114,8 @@ export class DMToolsWidget {
                 cls: "dnd-level-badge"
             });
 
-            const copyBtn = toolbar.createEl("button", {
+            const rightActions = toolbar.createDiv({ cls: "dnd-modal-preview-badges" });
+            const copyBtn = rightActions.createEl("button", {
                 text: "Copy Markdown",
                 cls: "dnd-dm-small-btn"
             });
@@ -2026,6 +2124,19 @@ export class DMToolsWidget {
                 await navigator.clipboard.writeText(mdText);
                 new Notice(`Copied "${item.name}" to clipboard!`);
             };
+
+            if (this.hostMode === "sidebar") {
+                const closeBtn = rightActions.createEl("button", {
+                    text: "✕",
+                    cls: "dnd-modal-del-btn",
+                    attr: { title: "Close preview" }
+                });
+                closeBtn.onclick = async () => {
+                    this.selectedCompendiumId = null;
+                    listPane.querySelectorAll(".dnd-compendium-row").forEach(el => el.removeClass("is-active"));
+                    await renderPreview(null);
+                };
+            }
 
             const contentBox = previewPane.createDiv({ cls: "dnd-compendium-preview-content" });
             await this.plugin.renderDndMarkdown(mdText, contentBox, this.sourcePath, this.renderChild);
@@ -2075,7 +2186,11 @@ export class DMToolsWidget {
 
             // Cap visible DOM rows at 200 for instant typing responsiveness
             const displayList = filtered.slice(0, 200);
-            if (!this.selectedCompendiumId || !displayList.some(i => i.id === this.selectedCompendiumId)) {
+            if (this.hostMode === "sidebar") {
+                if (this.selectedCompendiumId && !displayList.some(i => i.id === this.selectedCompendiumId)) {
+                    this.selectedCompendiumId = null;
+                }
+            } else if (!this.selectedCompendiumId || !displayList.some(i => i.id === this.selectedCompendiumId)) {
                 this.selectedCompendiumId = displayList[0].id;
             }
 
@@ -2092,6 +2207,12 @@ export class DMToolsWidget {
                 });
 
                 row.onclick = async () => {
+                    if (this.hostMode === "sidebar" && this.selectedCompendiumId === item.id) {
+                        this.selectedCompendiumId = null;
+                        row.removeClass("is-active");
+                        await renderPreview(null);
+                        return;
+                    }
                     this.selectedCompendiumId = item.id;
                     listPane.querySelectorAll(".dnd-compendium-row").forEach(el => el.removeClass("is-active"));
                     row.addClass("is-active");
@@ -2106,7 +2227,9 @@ export class DMToolsWidget {
                 });
             }
 
-            const activeItem = displayList.find(i => i.id === this.selectedCompendiumId) || displayList[0];
+            const activeItem = this.selectedCompendiumId
+                ? (displayList.find(i => i.id === this.selectedCompendiumId) || null)
+                : (this.hostMode === "sidebar" ? null : displayList[0]);
             await renderPreview(activeItem);
         };
 
@@ -2196,15 +2319,14 @@ export class DMToolsWidget {
             cls: "dnd-dm-small-btn"
         });
 
-        const splitGrid = root.createDiv({ cls: "dnd-spellbook-body dnd-compendium-grid" });
-        const listPane = splitGrid.createDiv({ cls: "dnd-spellbook-list dnd-compendium-list" });
-        const previewPane = splitGrid.createDiv({ cls: "dnd-spellbook-preview dnd-compendium-preview" });
+        const { listPane, previewPane, setPreviewActive } = this.createMasterDetailSplitLayout(root, [controls]);
 
         const renderSpellPreview = async (spell: CompendiumSpellEntry | null) => {
             previewPane.empty();
+            setPreviewActive(Boolean(spell));
             if (!spell) {
                 previewPane.createEl("p", {
-                    text: "Select a spell from the list to view its full 5.5e description.",
+                    text: "Select a spell from the list to view its full description.",
                     cls: "dnd-modal-preview-empty"
                 });
                 return;
@@ -2232,6 +2354,19 @@ export class DMToolsWidget {
                 await navigator.clipboard.writeText(md);
                 new Notice(`Copied "${spell.name}" to clipboard!`);
             };
+
+            if (this.hostMode === "sidebar") {
+                const closeBtn = badgesDiv.createEl("button", {
+                    text: "✕",
+                    cls: "dnd-modal-del-btn",
+                    attr: { title: "Close preview" }
+                });
+                closeBtn.onclick = async () => {
+                    this.selectedSpellId = null;
+                    listPane.querySelectorAll(".dnd-compendium-row").forEach(el => el.removeClass("is-active"));
+                    await renderSpellPreview(null);
+                };
+            }
 
             const lvlText = spell.level === 0 ? `${spell.school} Cantrip` : `Level ${spell.level} ${spell.school}`;
             previewPane.createEl("div", { text: lvlText, cls: "dnd-modal-preview-sub" });
@@ -2303,7 +2438,11 @@ export class DMToolsWidget {
                 return;
             }
 
-            if (!this.selectedSpellId || !matches.some(s => s.id === this.selectedSpellId)) {
+            if (this.hostMode === "sidebar") {
+                if (this.selectedSpellId && !matches.some(s => s.id === this.selectedSpellId)) {
+                    this.selectedSpellId = null;
+                }
+            } else if (!this.selectedSpellId || !matches.some(s => s.id === this.selectedSpellId)) {
                 this.selectedSpellId = matches[0].id;
             }
 
@@ -2329,6 +2468,12 @@ export class DMToolsWidget {
                 });
 
                 row.onclick = async () => {
+                    if (this.hostMode === "sidebar" && this.selectedSpellId === sp.id) {
+                        this.selectedSpellId = null;
+                        row.removeClass("is-active");
+                        await renderSpellPreview(null);
+                        return;
+                    }
                     this.selectedSpellId = sp.id;
                     listPane.querySelectorAll(".dnd-compendium-row").forEach(el => el.removeClass("is-active"));
                     row.addClass("is-active");
@@ -2336,7 +2481,9 @@ export class DMToolsWidget {
                 };
             }
 
-            const currentSpell = matches.find(s => s.id === this.selectedSpellId) || matches[0];
+            const currentSpell = this.selectedSpellId
+                ? (matches.find(s => s.id === this.selectedSpellId) || null)
+                : (this.hostMode === "sidebar" ? null : matches[0]);
             await renderSpellPreview(currentSpell);
         };
 
@@ -3413,16 +3560,15 @@ export class DMToolsWidget {
         }
         crSelect.value = this.monsterCrFilter;
 
-        // Split Grid
-        const splitGrid = root.createDiv({ cls: "dnd-spellbook-body dnd-compendium-grid" });
-        const listPane = splitGrid.createDiv({ cls: "dnd-spellbook-list dnd-compendium-list" });
-        const previewPane = splitGrid.createDiv({ cls: "dnd-spellbook-preview dnd-compendium-preview" });
+        // Split Grid (or 2/3 & 1/3 Resizable Vertical Split in Sidebar)
+        const { listPane, previewPane, setPreviewActive } = this.createMasterDetailSplitLayout(root, [statusBanner, controls]);
 
         const renderMonsterPreview = async (monster: DiscoveredMonster | null) => {
             previewPane.empty();
+            setPreviewActive(Boolean(monster));
             if (!monster) {
                 previewPane.createEl("p", {
-                    text: "Select a creature on the left to inspect its statblock, send it to the Initiative Tracker, or insert a ```statblock block into your active note.",
+                    text: "Select a creature to inspect its statblock, send it to the Initiative Tracker, or insert a ```statblock block into your active note.",
                     cls: "dnd-modal-preview-empty"
                 });
                 return;
@@ -3448,7 +3594,8 @@ export class DMToolsWidget {
                 new Notice(`Rolled Initiative and added ${qty}x ${monster.name} (${monster.sourceShort}) to the Initiative Tracker!`);
             };
 
-            const insertBtn = toolbar.createEl("button", {
+            const rightActions = toolbar.createDiv({ cls: "dnd-modal-preview-badges" });
+            const insertBtn = rightActions.createEl("button", {
                 text: "Insert statblock in Note",
                 cls: "dnd-dm-small-btn"
             });
@@ -3463,6 +3610,19 @@ export class DMToolsWidget {
                     new Notice(`Copied "${monster.name}" statblock code block to clipboard (open a note in Editing view to insert directly).`);
                 }
             };
+
+            if (this.hostMode === "sidebar") {
+                const closeBtn = rightActions.createEl("button", {
+                    text: "✕",
+                    cls: "dnd-modal-del-btn",
+                    attr: { title: "Close preview" }
+                });
+                closeBtn.onclick = async () => {
+                    this.selectedMonsterId = null;
+                    listPane.querySelectorAll(".dnd-compendium-row").forEach(el => el.removeClass("is-active"));
+                    await renderMonsterPreview(null);
+                };
+            }
 
             const statblockWrap = previewPane.createDiv({ cls: "dnd-monster-preview-statblock" });
             await renderStatblockWithFallback(this.app, this.plugin, monster, statblockWrap, this.sourcePath, this.renderChild);
@@ -3502,7 +3662,11 @@ export class DMToolsWidget {
             }
 
             const displayList = filtered.slice(0, 250);
-            if (!this.selectedMonsterId || !displayList.some(m => m.id === this.selectedMonsterId)) {
+            if (this.hostMode === "sidebar") {
+                if (this.selectedMonsterId && !displayList.some(m => m.id === this.selectedMonsterId)) {
+                    this.selectedMonsterId = null;
+                }
+            } else if (!this.selectedMonsterId || !displayList.some(m => m.id === this.selectedMonsterId)) {
                 this.selectedMonsterId = displayList[0].id;
             }
 
@@ -3532,6 +3696,12 @@ export class DMToolsWidget {
                 });
 
                 row.onclick = async () => {
+                    if (this.hostMode === "sidebar" && this.selectedMonsterId === mon.id) {
+                        this.selectedMonsterId = null;
+                        row.removeClass("is-active");
+                        await renderMonsterPreview(null);
+                        return;
+                    }
                     this.selectedMonsterId = mon.id;
                     listPane.querySelectorAll(".dnd-compendium-row").forEach(el => el.removeClass("is-active"));
                     row.addClass("is-active");
@@ -3546,7 +3716,9 @@ export class DMToolsWidget {
                 });
             }
 
-            const activeMon = displayList.find(m => m.id === this.selectedMonsterId) || displayList[0];
+            const activeMon = this.selectedMonsterId
+                ? (displayList.find(m => m.id === this.selectedMonsterId) || null)
+                : (this.hostMode === "sidebar" ? null : displayList[0]);
             await renderMonsterPreview(activeMon);
         };
 
@@ -3630,7 +3802,7 @@ export class DMToolsSidebarView extends ItemView {
     }
 
     getDisplayText(): string {
-        return "D&D DM Tools";
+        return "DnD DM Tools";
     }
 
     getIcon(): string {

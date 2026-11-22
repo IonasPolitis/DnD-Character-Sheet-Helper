@@ -1323,7 +1323,7 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
             this.dmRibbonIconEl = null;
         }
         if (this.settings.showDmToolsRibbon !== false) {
-            this.dmRibbonIconEl = this.addRibbonIcon('shield', 'Open D&D DM Tools & Compendium', () => {
+            this.dmRibbonIconEl = this.addRibbonIcon('shield', 'Open DnD DM Tools & Compendium', () => {
                 this.openDMTools("compendium");
             });
             this.dmRibbonIconEl.addClass('csh-dm-ribbon-btn');
@@ -3632,7 +3632,7 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
             if (Array.isArray(dndClass) && dndClass.length > 1) {
                 if (!Array.isArray(classLevels) || classLevels.length !== dndClass.length) {
                     const errorBox = wrapper.createDiv({ cls: "dnd-error-window" });
-                    errorBox.createEl("strong", { text: "D&D Features Plugin Error:" });
+                    errorBox.createEl("strong", { text: "DnD Features Plugin Error:" });
                     errorBox.createEl("p", {
                         text: `You have multiple classes listed, but the "class-levels" variable is missing or is invalid. Please provide a level for each class.`
                     });
@@ -3643,7 +3643,7 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                 const totalClassLevels = classLevels.reduce((sum, current) => sum + Number(current), 0);
                 if (totalClassLevels !== parsedLevel) {
                     const errorBox = wrapper.createDiv({ cls: "dnd-error-window" });
-                    errorBox.createEl("strong", { text: "D&D Features Plugin Error:" });
+                    errorBox.createEl("strong", { text: "DnD Features Plugin Error:" });
                     errorBox.createEl("p", {
                         text: `The sum of class-levels (${totalClassLevels}) does not match the total level (${parsedLevel}).`
                     });
@@ -8630,7 +8630,7 @@ class DnDSettingsTab extends PluginSettingTab {
     display(): void {
         const { containerEl } = this;
         containerEl.empty();
-        containerEl.createEl('h2', { text: 'D&D 5.5e Features Settings' });
+        containerEl.createEl('h2', { text: 'DnD 5.5e Features Settings' });
 
         // Toggle for Combining Class & Subclass
         new Setting(containerEl)
@@ -10499,7 +10499,7 @@ class ManageCharacterModal extends Modal {
             updatePreview();
 
             this.contentContainer.createEl("p", {
-                text: "Note: In D&D 5.5e, Monk Unarmored Movement scales automatically and replaces earlier tiers. Speedy and other feats stack additively with class speed.",
+                text: "Note: In DnD 5.5e, Monk Unarmored Movement scales automatically and replaces earlier tiers. Speedy and other feats stack additively with class speed.",
                 cls: "dnd-form-note"
             });
 
