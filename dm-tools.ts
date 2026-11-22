@@ -12,6 +12,7 @@ import {
     normalizePath
 } from 'obsidian';
 import type DnDCharacterSheetHelperPlugin from './main';
+import { DM_RIBBON_ICON_SVG } from './ribbon-icon';
 import {
     ALL_ABILITIES,
     AbilityKey,
@@ -3806,7 +3807,7 @@ export class DMToolsSidebarView extends ItemView {
     }
 
     getIcon(): string {
-        return "shield";
+        return DM_RIBBON_ICON_SVG ? "csh-dm-ribbon" : "shield";
     }
 
     async onOpen() {

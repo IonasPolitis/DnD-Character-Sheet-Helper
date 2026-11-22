@@ -3,6 +3,7 @@
    ========================================== */
 :root {
     /* Backgrounds */
+    --dnd-ui-color-note-bg: #262a36;
     --dnd-ui-color-bg-primary: #262a36;
     --dnd-ui-color-bg-secondary: #323748;
     --dnd-ui-color-bg-tertiary: #3a4055;
@@ -2575,7 +2576,12 @@ body .modal-container .modal .dnd-modal-add-bar > button,
 .workspace-leaf-content[data-type="dnd-dm-tools-view"],
 .dnd-dm-sidebar-view,
 .dnd-dm-widget {
-    --background-primary: var(--dnd-ui-color-bg-primary);
+    --dnd-dm-text: var(--dnd-ui-color-note-text, var(--dnd-ui-color-text-primary));
+    --dnd-dm-text-bright: var(--dnd-ui-color-note-text-bright, var(--dnd-ui-color-text-bright));
+    --dnd-dm-text-muted: var(--dnd-ui-color-note-text-muted, var(--dnd-ui-color-text-muted));
+    --dnd-dm-text-secondary: var(--dnd-ui-color-note-text-secondary, var(--dnd-ui-color-text-secondary));
+    --dnd-dm-link: var(--dnd-ui-color-note-link, var(--dnd-ui-color-accent-teal));
+    --background-primary: var(--dnd-ui-color-note-bg, var(--dnd-ui-color-bg-primary));
     --background-primary-alt: var(--dnd-ui-color-bg-darker);
     --background-secondary: var(--dnd-ui-color-bg-secondary);
     --background-secondary-alt: var(--dnd-ui-color-bg-tertiary);
@@ -2585,29 +2591,29 @@ body .modal-container .modal .dnd-modal-add-bar > button,
     --background-modifier-form-field: var(--dnd-ui-color-bg-darker);
     --background-modifier-hover: var(--dnd-ui-color-bg-hover);
     --background-modifier-active-hover: var(--dnd-ui-color-bg-tertiary);
-    --modal-background: var(--dnd-ui-color-bg-primary);
+    --modal-background: var(--dnd-ui-color-note-bg, var(--dnd-ui-color-bg-primary));
     --modal-border-color: var(--dnd-ui-color-border-primary);
-    --text-normal: var(--dnd-ui-color-text-primary);
-    --text-muted: var(--dnd-ui-color-text-muted);
-    --text-faint: var(--dnd-ui-color-text-muted);
-    --text-accent: var(--dnd-ui-color-accent-teal);
-    --text-accent-hover: var(--dnd-ui-color-text-bright);
+    --text-normal: var(--dnd-dm-text);
+    --text-muted: var(--dnd-dm-text-muted);
+    --text-faint: var(--dnd-dm-text-muted);
+    --text-accent: var(--dnd-dm-link);
+    --text-accent-hover: var(--dnd-dm-text-bright);
     --text-on-accent: var(--dnd-ui-color-text-bright);
     --interactive-normal: var(--dnd-ui-color-bg-secondary);
     --interactive-hover: var(--dnd-ui-color-bg-hover);
     --interactive-accent: var(--dnd-ui-color-border-active);
     --interactive-accent-hover: var(--dnd-ui-color-bg-tertiary);
-    --h1-color: var(--dnd-ui-color-text-bright);
-    --h2-color: var(--dnd-ui-color-text-bright);
-    --h3-color: var(--dnd-ui-color-text-bright);
-    --h4-color: var(--dnd-ui-color-text-bright);
-    --h5-color: var(--dnd-ui-color-text-bright);
-    --h6-color: var(--dnd-ui-color-text-secondary);
-    --bold-color: var(--dnd-ui-color-text-bright);
-    --italic-color: var(--dnd-ui-color-text-secondary);
-    --link-color: var(--dnd-ui-color-accent-teal);
-    --link-color-hover: var(--dnd-ui-color-text-bright);
-    --link-external-color: var(--dnd-ui-color-accent-teal);
+    --h1-color: var(--dnd-dm-text-bright);
+    --h2-color: var(--dnd-dm-text-bright);
+    --h3-color: var(--dnd-dm-text-bright);
+    --h4-color: var(--dnd-dm-text-bright);
+    --h5-color: var(--dnd-dm-text-bright);
+    --h6-color: var(--dnd-dm-text-secondary);
+    --bold-color: var(--dnd-dm-text-bright);
+    --italic-color: var(--dnd-dm-text-secondary);
+    --link-color: var(--dnd-dm-link);
+    --link-color-hover: var(--dnd-dm-text-bright);
+    --link-external-color: var(--dnd-dm-link);
     --hr-color: var(--dnd-ui-color-border-primary);
     --table-border-color: var(--dnd-ui-color-border-primary);
     --table-header-background: var(--dnd-ui-color-bg-secondary);
@@ -2615,12 +2621,24 @@ body .modal-container .modal .dnd-modal-add-bar > button,
     --code-background: var(--dnd-ui-color-bg-darker);
     --code-normal: var(--dnd-ui-color-text-sublabel);
     --blockquote-border-color: var(--dnd-ui-color-border-active);
-    --icon-color: var(--dnd-ui-color-text-muted);
-    --icon-color-hover: var(--dnd-ui-color-text-bright);
+    --icon-color: var(--dnd-dm-text-muted);
+    --icon-color-hover: var(--dnd-dm-text-bright);
     --scrollbar-bg: var(--dnd-ui-color-bg-secondary);
     --scrollbar-thumb-bg: var(--dnd-ui-color-border-primary);
     --scrollbar-active-thumb-bg: var(--dnd-ui-color-border-active);
 
+    background-color: var(--dnd-ui-color-note-bg, var(--dnd-ui-color-bg-primary));
+    color: var(--dnd-dm-text);
+}
+
+.dnd-dm-widget.is-mode-embed-initiative,
+.dnd-dm-widget.is-mode-embed-party {
+    --dnd-dm-text: var(--dnd-ui-color-text-primary);
+    --dnd-dm-text-bright: var(--dnd-ui-color-text-bright);
+    --dnd-dm-text-muted: var(--dnd-ui-color-text-muted);
+    --dnd-dm-text-secondary: var(--dnd-ui-color-text-secondary);
+    --dnd-dm-link: var(--dnd-ui-color-accent-teal);
+    --background-primary: var(--dnd-ui-color-bg-primary);
     background-color: var(--dnd-ui-color-bg-primary);
     color: var(--dnd-ui-color-text-primary);
 }
@@ -2628,16 +2646,16 @@ body .modal-container .modal .dnd-modal-add-bar > button,
 .modal.dnd-dm-modal,
 .modal.dnd-condition-modal,
 .modal.dnd-statblock-preview-modal {
-    background-color: var(--dnd-ui-color-bg-primary) !important;
+    background-color: var(--dnd-ui-color-note-bg, var(--dnd-ui-color-bg-primary)) !important;
     border: 1px solid var(--dnd-ui-color-border-primary) !important;
     border-radius: 16px !important;
-    color: var(--dnd-ui-color-text-primary) !important;
+    color: var(--dnd-dm-text) !important;
 }
 
 .modal.dnd-dm-modal .modal-close-button,
 .modal.dnd-condition-modal .modal-close-button,
 .modal.dnd-statblock-preview-modal .modal-close-button {
-    color: var(--dnd-ui-color-text-muted);
+    color: var(--dnd-dm-text-muted);
 }
 
 .modal.dnd-dm-modal .modal-close-button:hover,
@@ -2659,8 +2677,8 @@ body .modal-container .modal .dnd-modal-add-bar > button,
 .modal.dnd-dm-modal .modal-content,
 .modal.dnd-condition-modal .modal-content,
 .modal.dnd-statblock-preview-modal .modal-content {
-    background-color: var(--dnd-ui-color-bg-primary);
-    color: var(--dnd-ui-color-text-primary);
+    background-color: var(--dnd-ui-color-note-bg, var(--dnd-ui-color-bg-primary));
+    color: var(--dnd-dm-text);
 }
 
 .modal.dnd-dm-modal .modal-content {
@@ -2673,8 +2691,8 @@ body .modal-container .modal .dnd-modal-add-bar > button,
 
 .workspace-leaf-content[data-type="dnd-dm-tools-view"],
 .workspace-leaf-content[data-type="dnd-dm-tools-view"] > .view-content {
-    background-color: var(--dnd-ui-color-bg-primary) !important;
-    color: var(--dnd-ui-color-text-primary) !important;
+    background-color: var(--dnd-ui-color-note-bg, var(--dnd-ui-color-bg-primary)) !important;
+    color: var(--dnd-dm-text) !important;
 }
 
 .dnd-dm-sidebar-view {
@@ -2684,16 +2702,16 @@ body .modal-container .modal .dnd-modal-add-bar > button,
     flex-direction: column;
     overflow: hidden;
     box-sizing: border-box;
-    background-color: var(--dnd-ui-color-bg-primary);
-    color: var(--dnd-ui-color-text-primary);
+    background-color: var(--dnd-ui-color-note-bg, var(--dnd-ui-color-bg-primary));
+    color: var(--dnd-dm-text);
 }
 
 .dnd-dm-widget {
     display: flex;
     flex-direction: column;
     gap: 10px;
-    color: var(--dnd-ui-color-text-primary);
-    background-color: var(--dnd-ui-color-bg-primary);
+    color: var(--dnd-dm-text);
+    background-color: var(--dnd-ui-color-note-bg, var(--dnd-ui-color-bg-primary));
 }
 
 .dnd-dm-widget.is-mode-sidebar {
@@ -2845,6 +2863,24 @@ body .modal-container .modal .dnd-modal-add-bar > button,
     color: oklch(from var(--dnd-btn-bg) clamp(0, (0.63 - l) * 9999, 1) 0 0 / 1);
 }
 
+/* Keep card containers synced back to Plugin Theme text palette */
+.dnd-dm-widget .dnd-compendium-controls,
+.dnd-dm-widget .dnd-spellbook-preview,
+.dnd-dm-widget .dnd-modal-list-row,
+.dnd-dm-widget .dnd-init-top-bar,
+.dnd-dm-widget .dnd-init-add-panel,
+.dnd-dm-widget .dnd-init-card,
+.dnd-dm-widget .dnd-party-banner,
+.dnd-dm-widget .dnd-party-card,
+.dnd-dm-widget .dnd-monsters-status-banner,
+.dnd-dm-widget .dnd-statblock-card {
+    --dnd-dm-text: var(--dnd-ui-color-text-primary);
+    --dnd-dm-text-bright: var(--dnd-ui-color-text-bright);
+    --dnd-dm-text-muted: var(--dnd-ui-color-text-muted);
+    --dnd-dm-text-secondary: var(--dnd-ui-color-text-secondary);
+    --dnd-dm-link: var(--dnd-ui-color-accent-teal);
+}
+
 /* Strictly theme all rendered Markdown elements and scrollbars inside DM Tools */
 .dnd-dm-widget h1,
 .dnd-dm-widget h2,
@@ -2858,7 +2894,7 @@ body .modal-container .modal .dnd-modal-add-bar > button,
 .modal.dnd-condition-modal h4,
 .modal.dnd-statblock-preview-modal h3,
 .modal.dnd-statblock-preview-modal h4 {
-    color: var(--dnd-ui-color-text-bright);
+    color: var(--dnd-dm-text-bright, var(--dnd-ui-color-text-bright));
 }
 
 .dnd-dm-widget p,
@@ -2866,25 +2902,25 @@ body .modal-container .modal .dnd-modal-add-bar > button,
 .dnd-dm-widget td,
 .modal.dnd-condition-modal p,
 .modal.dnd-condition-modal li {
-    color: var(--dnd-ui-color-text-primary);
+    color: var(--dnd-dm-text, var(--dnd-ui-color-text-primary));
 }
 
 .dnd-dm-widget strong,
 .modal.dnd-condition-modal strong,
 .modal.dnd-statblock-preview-modal strong {
-    color: var(--dnd-ui-color-text-bright);
+    color: var(--dnd-dm-text-bright, var(--dnd-ui-color-text-bright));
 }
 
 .dnd-dm-widget em,
 .modal.dnd-condition-modal em,
 .modal.dnd-statblock-preview-modal em {
-    color: var(--dnd-ui-color-text-secondary);
+    color: var(--dnd-dm-text-secondary, var(--dnd-ui-color-text-secondary));
 }
 
 .dnd-dm-widget a,
 .modal.dnd-condition-modal a,
 .modal.dnd-statblock-preview-modal a {
-    color: var(--dnd-ui-color-accent-teal);
+    color: var(--dnd-dm-link, var(--dnd-ui-color-accent-teal));
 }
 
 .dnd-dm-widget hr,
@@ -3089,7 +3125,7 @@ body .modal-container .modal .dnd-modal-add-bar > button,
 
 .dnd-spell-count-banner {
     font-size: 0.8em;
-    color: var(--dnd-ui-color-text-muted);
+    color: var(--dnd-dm-text-muted, var(--dnd-ui-color-text-muted));
     padding: 4px 8px 6px 8px;
     border-bottom: 1px solid var(--dnd-ui-color-border-primary);
     margin-bottom: 4px;
@@ -3229,6 +3265,11 @@ body .modal-container .modal .dnd-modal-add-bar > button,
     border: 1px solid var(--dnd-ui-color-border-primary);
     border-radius: 12px;
     padding: 12px;
+}
+
+.dnd-dm-widget.is-mode-modal .dnd-init-root,
+.dnd-dm-widget.is-mode-sidebar .dnd-init-root {
+    background-color: var(--dnd-ui-color-note-bg, var(--dnd-ui-color-bg-primary));
 }
 
 .dnd-init-top-bar {

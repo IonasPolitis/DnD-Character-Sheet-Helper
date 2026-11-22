@@ -1,7 +1,7 @@
 import { App, CachedMetadata, Plugin, PluginSettingTab, Setting, MarkdownPostProcessorContext, parseYaml, MarkdownRenderChild, MarkdownRenderer, TFile, Modal, Notice, MarkdownView, normalizePath, Platform, addIcon, WorkspaceLeaf } from 'obsidian';
 import { getClassData, getSubclassData, getBackgroundData, getRaceData, getRacialSpellsData, getExtraFeat, getAvailableFeats, FeatPoolEntry, toSlug, toNormalizedFeatSlug, getCleanCustomBasePath, readCustomJson, mergeDictionaries, getItemData, getRuleData, getSpellData, getSpellsPoolData, getClassChoiceData, getClassChoiceRouterData, classChoiceRouterRegistry, getFeatMapData, getWeaponMasteriesMap, getWeaponMasteryDescription, buildWeaponMasteriesMarkdown } from './data';
 import { MarkdownNotes, classesMap, racesMap, backgroundsMap, itemsMap } from './registry';
-import { THEMES, generateObsidianThemeColors } from './themes';
+import { THEMES, generateObsidianThemeColors, resolveObsidianNoteSurfaceVars } from './themes';
 import { WIZARD_RIBBON_ICON_SVG, DM_RIBBON_ICON_SVG } from './ribbon-icon';
 import {
     DM_TOOLS_VIEW_TYPE,
@@ -1517,6 +1517,14 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
             this.processDnDHealthBlock.bind(this)
         );
 
+        // Register custom ribbon icons from wizard-ribbon.png & dm-ribbon.png before registering views
+        if (WIZARD_RIBBON_ICON_SVG) {
+            addIcon('csh-ribbon', WIZARD_RIBBON_ICON_SVG);
+        }
+        if (DM_RIBBON_ICON_SVG) {
+            addIcon('csh-dm-ribbon', DM_RIBBON_ICON_SVG);
+        }
+
         // Register DM Tools Sidebar View & Embeddable Session Note Blocks (dnd-initiative, dnd-party)
         this.registerView(
             DM_TOOLS_VIEW_TYPE,
@@ -1573,29 +1581,19 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
         });
 
         this.app.workspace.onLayoutReady(async () => {
-            if (this.settings.selectedTheme === "obsidian") {
-                this.applyTheme();
-            }
+            this.applyTheme();
             await this.syncWeaponMasteriesMarkdown();
             await this.checkCustomRulebookChanges(false, true);
         });
 
         this.registerEvent(
             this.app.workspace.on('css-change', () => {
+                this.applyTheme();
                 if (this.settings.selectedTheme === "obsidian") {
-                    this.applyTheme();
                     void this.saveSettings();
                 }
             })
         );
-
-        // Register custom ribbon icons from wizard-ribbon.png & dm-ribbon.png
-        if (WIZARD_RIBBON_ICON_SVG) {
-            addIcon('csh-ribbon', WIZARD_RIBBON_ICON_SVG);
-        }
-        if (DM_RIBBON_ICON_SVG) {
-            addIcon('csh-dm-ribbon', DM_RIBBON_ICON_SVG);
-        }
 
         const launchCharacterWizard = () => {
             const view = this.app.workspace.getActiveViewOfType(MarkdownView);
@@ -1926,10 +1924,14 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
     applyTheme() {
         const doc = typeof document !== "undefined" ? document : undefined;
         this.syncObsidianThemeColors(doc);
+        const allVars: [string, string][] = [
+            ...this.colorCssVars(),
+            ...resolveObsidianNoteSurfaceVars(this.settings, doc)
+        ];
 
         if (doc) {
             // 1. Apply to the main Obsidian window
-            for (const [name, value] of this.colorCssVars()) {
+            for (const [name, value] of allVars) {
                 doc.documentElement.style.setProperty(name, value);
             }
         }
@@ -1939,7 +1941,7 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
             this.app.workspace.iterateAllLeaves((leaf) => {
                 const windowDoc = leaf.view.containerEl.ownerDocument;
                 if (windowDoc && (!doc || windowDoc !== doc)) {
-                    for (const [name, value] of this.colorCssVars()) {
+                    for (const [name, value] of allVars) {
                         windowDoc.documentElement.style.setProperty(name, value);
                     }
                 }

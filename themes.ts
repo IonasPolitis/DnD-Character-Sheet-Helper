@@ -71,6 +71,52 @@ function parseComputedRgbString(raw: string): RgbaColor | null {
   };
 }
 
+function parseColorString(raw: string): RgbaColor | null {
+  if (!raw) return null;
+  const s = raw.trim().toLowerCase();
+  if (s.startsWith("#")) {
+    const hex = s.slice(1);
+    if (hex.length === 3) {
+      return {
+        r: parseInt(hex[0] + hex[0], 16),
+        g: parseInt(hex[1] + hex[1], 16),
+        b: parseInt(hex[2] + hex[2], 16),
+        a: 1,
+      };
+    }
+    if (hex.length === 6) {
+      return {
+        r: parseInt(hex.slice(0, 2), 16),
+        g: parseInt(hex.slice(2, 4), 16),
+        b: parseInt(hex.slice(4, 6), 16),
+        a: 1,
+      };
+    }
+  }
+  const hslMatch = s.match(/^hsla?\(\s*([0-9.]+)[,\s]+([0-9.]+)%[,\s]+([0-9.]+)%(?:[,/\s]+([0-9.]+%?))?\s*\)$/);
+  if (hslMatch) {
+    const h = ((parseFloat(hslMatch[1]) % 360) + 360) % 360;
+    const sat = Math.max(0, Math.min(100, parseFloat(hslMatch[2]))) / 100;
+    const lig = Math.max(0, Math.min(100, parseFloat(hslMatch[3]))) / 100;
+    const c = (1 - Math.abs(2 * lig - 1)) * sat;
+    const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
+    const m = lig - c / 2;
+    let r1 = 0, g1 = 0, b1 = 0;
+    if (h < 60) [r1, g1, b1] = [c, x, 0];
+    else if (h < 120) [r1, g1, b1] = [x, c, 0];
+    else if (h < 180) [r1, g1, b1] = [0, c, x];
+    else if (h < 240) [r1, g1, b1] = [0, x, c];
+    else if (h < 300) [r1, g1, b1] = [x, 0, c];
+    else [r1, g1, b1] = [c, 0, x];
+    let alpha = 1;
+    if (hslMatch[4] !== undefined) {
+      alpha = hslMatch[4].endsWith("%") ? parseFloat(hslMatch[4]) / 100 : parseFloat(hslMatch[4]);
+    }
+    return { r: clampByte((r1 + m) * 255), g: clampByte((g1 + m) * 255), b: clampByte((b1 + m) * 255), a: isFinite(alpha) ? alpha : 1 };
+  }
+  return parseComputedRgbString(s);
+}
+
 function compositeOver(fg: RgbaColor, bg: RgbaColor): RgbaColor {
   const a = fg.a;
   if (a >= 0.999) return { r: fg.r, g: fg.g, b: fg.b, a: 1 };
@@ -124,13 +170,13 @@ function ensureReadableContrast(fg: RgbaColor, bg: RgbaColor, fallbackTarget: Rg
 }
 
 const OBSIDIAN_FALLBACK_COLORS: ThemeColors = {
-  colorBgPrimary: "#262626",
-  colorBgSecondary: "#404040",
-  colorBgTertiary: "#515151",
-  colorBgHover: "#595959",
-  colorBgDarker: "#1b1b1b",
-  colorBgGroup: "#352e45",
-  colorBgProficient: "#322c40",
+  colorBgPrimary: "#323232",
+  colorBgSecondary: "#4d4d4d",
+  colorBgTertiary: "#5a5a5a",
+  colorBgHover: "#636363",
+  colorBgDarker: "#1e1e1e",
+  colorBgGroup: "#403950",
+  colorBgProficient: "#3c364b",
 
   colorTextPrimary: "#dadada",
   colorTextSecondary: "#c4a8ff",
@@ -139,7 +185,7 @@ const OBSIDIAN_FALLBACK_COLORS: ThemeColors = {
   colorTextMuted: "#bdbdbd",
   colorTextGroup: "#cbb4ff",
 
-  colorBorderPrimary: "#4f4f4f",
+  colorBorderPrimary: "#585858",
   colorBorderActive: "#8a5cf5",
   colorBorderFocus: "rgba(138, 92, 245, 0.45)",
 
@@ -148,20 +194,126 @@ const OBSIDIAN_FALLBACK_COLORS: ThemeColors = {
   colorAccentPurple: "#a882ff",
 };
 
-function lightenForButtonBg(base: RgbaColor): RgbaColor {
+function lightenSurface(base: RgbaColor, minWeight = 0.09, minDist = 28): RgbaColor {
   const white: RgbaColor = { r: 255, g: 255, b: 255, a: 1 };
   const black: RgbaColor = { r: 0, g: 0, b: 0, a: 1 };
   const distToWhite = colorDistance(base, white);
   if (distToWhite < 14) {
-    // Base is already near pure white (#f9f9f9-#ffffff): nudge slightly off-white so buttons remain visible
+    // Base is already near pure white (#f9f9f9-#ffffff): nudge slightly off-white so surfaces stay distinct
     return mixRgb(base, black, 0.06);
   }
-  if (distToWhite < 36) {
-    // Very light base (#eaeaea-#f8f8f8): step cleanly up to crisp white
+  if (distToWhite < minDist) {
     return white;
   }
-  const weight = Math.min(0.65, Math.max(0.12, 36 / distToWhite));
+  const weight = Math.min(0.65, Math.max(minWeight, minDist / distToWhite));
   return mixRgb(base, white, weight);
+}
+
+function lightenForButtonBg(base: RgbaColor): RgbaColor {
+  return lightenSurface(base, 0.12, 36);
+}
+
+function createBodyProbe(doc: Document): {
+  probe: HTMLElement;
+  resolveColor: (cssExpr: string) => RgbaColor | null;
+  isLightMode: boolean;
+} | null {
+  const body = doc?.body;
+  const win = doc?.defaultView || (typeof window !== "undefined" ? window : undefined);
+  if (!doc || !body || !win || typeof doc.createElement !== "function" || typeof win.getComputedStyle !== "function") {
+    return null;
+  }
+  const probe = doc.createElement("div");
+  probe.style.position = "absolute";
+  probe.style.visibility = "hidden";
+  probe.style.pointerEvents = "none";
+  probe.style.width = "0";
+  probe.style.height = "0";
+  body.appendChild(probe);
+
+  const resolveColor = (cssExpr: string): RgbaColor | null => {
+    try {
+      probe.style.color = "";
+      probe.style.color = cssExpr;
+      if (!probe.style.color) return null;
+      return parseComputedRgbString(win.getComputedStyle(probe).color);
+    } catch {
+      return null;
+    }
+  };
+  const isLightMode = body.classList.contains("theme-light") && !body.classList.contains("theme-dark");
+  return { probe, resolveColor, isLightMode };
+}
+
+function resolveNoteColorFromProbe(probeCtx: ReturnType<typeof createBodyProbe>): RgbaColor {
+  if (!probeCtx) return { r: 30, g: 30, b: 30, a: 1 };
+  const defaultBackdrop: RgbaColor = probeCtx.isLightMode
+    ? { r: 255, g: 255, b: 255, a: 1 }
+    : { r: 30, g: 30, b: 30, a: 1 };
+  for (const expr of ["var(--background-primary)", "var(--color-base-00)"]) {
+    const parsed = probeCtx.resolveColor(expr);
+    if (parsed && parsed.a > 0.005) return compositeOver(parsed, defaultBackdrop);
+  }
+  return defaultBackdrop;
+}
+
+/**
+ * Resolves Obsidian's live note background (`--background-primary`) into a solid hex string.
+ */
+export function resolveObsidianNoteBg(doc?: Document): string {
+  const targetDoc = doc || (typeof document !== "undefined" ? document : undefined);
+  const probeCtx = targetDoc ? createBodyProbe(targetDoc) : null;
+  if (!probeCtx) return "#1e1e1e";
+  try {
+    return rgbToHex(resolveNoteColorFromProbe(probeCtx));
+  } finally {
+    probeCtx.probe.remove();
+  }
+}
+
+/**
+ * Computes DM Tools' note-matching surface background and guarantees readable outer text contrast
+ * even when the user's selected plugin theme preset has opposite polarity to their Obsidian note.
+ */
+export function resolveObsidianNoteSurfaceVars(colors: Partial<ThemeColors>, doc?: Document): [string, string][] {
+  const targetDoc = doc || (typeof document !== "undefined" ? document : undefined);
+  const probeCtx = targetDoc ? createBodyProbe(targetDoc) : null;
+  let noteRgb: RgbaColor = { r: 30, g: 30, b: 30, a: 1 };
+  if (probeCtx) {
+    try {
+      noteRgb = resolveNoteColorFromProbe(probeCtx);
+    } finally {
+      probeCtx.probe.remove();
+    }
+  }
+
+  const isLightNote = relativeLuminance(noteRgb) > 0.45;
+  const fallbackPrimary: RgbaColor = isLightNote ? { r: 34, g: 34, b: 34, a: 1 } : { r: 226, g: 230, b: 239, a: 1 };
+  const fallbackBright: RgbaColor = isLightNote ? { r: 0, g: 0, b: 0, a: 1 } : { r: 255, g: 255, b: 255, a: 1 };
+  const fallbackMuted: RgbaColor = isLightNote ? { r: 92, g: 92, b: 92, a: 1 } : { r: 168, g: 176, b: 190, a: 1 };
+
+  const resolveReadableOrFallback = (raw: string | undefined, fallback: RgbaColor, minRatio: number): string => {
+    const parsed = raw ? parseColorString(raw) : null;
+    if (parsed) {
+      const comp = compositeOver(parsed, noteRgb);
+      if (contrastRatio(comp, noteRgb) >= minRatio) return rgbToHex(comp);
+    }
+    return rgbToHex(fallback);
+  };
+
+  const rawLink = colors.colorAccentTeal ? parseColorString(colors.colorAccentTeal) : null;
+  const noteLink = rawLink
+    ? rgbToHex(ensureReadableContrast(compositeOver(rawLink, noteRgb), noteRgb, fallbackBright, 3.2))
+    : (isLightNote ? "#0e7490" : "#53dfdd");
+
+  return [
+    ["--dnd-ui-color-note-bg", rgbToHex(noteRgb)],
+    ["--dnd-ui-color-note-text", resolveReadableOrFallback(colors.colorTextPrimary, fallbackPrimary, 4.5)],
+    ["--dnd-ui-color-note-text-bright", resolveReadableOrFallback(colors.colorTextBright, fallbackBright, 4.5)],
+    ["--dnd-ui-color-note-text-muted", resolveReadableOrFallback(colors.colorTextMuted, fallbackMuted, 3.0)],
+    ["--dnd-ui-color-note-text-secondary", resolveReadableOrFallback(colors.colorTextSecondary, fallbackMuted, 3.2)],
+    ["--dnd-ui-color-note-link", noteLink],
+  ];
 }
 
 /**
@@ -171,34 +323,15 @@ function lightenForButtonBg(base: RgbaColor): RgbaColor {
  */
 export function generateObsidianThemeColors(doc?: Document): ThemeColors {
   const targetDoc = doc || (typeof document !== "undefined" ? document : undefined);
-  const body = targetDoc?.body;
-  const win = targetDoc?.defaultView || (typeof window !== "undefined" ? window : undefined);
+  const probeCtx = targetDoc ? createBodyProbe(targetDoc) : null;
 
-  if (!targetDoc || !body || !win || typeof targetDoc.createElement !== "function" || typeof win.getComputedStyle !== "function") {
+  if (!probeCtx) {
     return { ...OBSIDIAN_FALLBACK_COLORS };
   }
 
-  const probe = targetDoc.createElement("div");
-  probe.style.position = "absolute";
-  probe.style.visibility = "hidden";
-  probe.style.pointerEvents = "none";
-  probe.style.width = "0";
-  probe.style.height = "0";
-  body.appendChild(probe);
+  const { probe, resolveColor } = probeCtx;
 
   try {
-    const resolveColor = (cssExpr: string): RgbaColor | null => {
-      try {
-        probe.style.color = "";
-        probe.style.color = cssExpr;
-        if (!probe.style.color) return null;
-        const computed = win.getComputedStyle(probe).color;
-        return parseComputedRgbString(computed);
-      } catch {
-        return null;
-      }
-    };
-
     const pickFirst = (exprs: string[]): RgbaColor | null => {
       for (const expr of exprs) {
         const parsed = resolveColor(expr);
@@ -215,60 +348,14 @@ export function generateObsidianThemeColors(doc?: Document): ThemeColors {
       return null;
     };
 
-    const isLightClass = body.classList.contains("theme-light") && !body.classList.contains("theme-dark");
-    const defaultBackdrop: RgbaColor = isLightClass
-      ? { r: 255, g: 255, b: 255, a: 1 }
-      : { r: 30, g: 30, b: 30, a: 1 };
     const whiteRgb: RgbaColor = { r: 255, g: 255, b: 255, a: 1 };
     const blackRgb: RgbaColor = { r: 0, g: 0, b: 0, a: 1 };
 
-    // Page canvas backdrop used to composite translucent theme variables cleanly
-    const rawPageBg = pickFirst(["var(--background-primary)", "var(--color-base-00)"]);
-    const pageBackdrop = rawPageBg ? compositeOver(rawPageBg, defaultBackdrop) : defaultBackdrop;
+    // Obsidian note canvas (--background-primary)
+    const pageBackdrop = resolveNoteColorFromProbe(probeCtx);
 
-    // 1. Widget Background Primary = Obsidian Theme's Sidebar background
-    // Sample live rendered sidebar DOM first (excluding our own isolated DM Tools panel),
-    // falling back to Obsidian's core sidebar variable (--background-secondary).
-    let sidebarDomBg: RgbaColor | null = null;
-    if (typeof targetDoc.querySelector === "function") {
-      const sidebarSelectors = [
-        ".workspace-split.mod-left-split .workspace-tabs .workspace-leaf-content:not([data-type='dnd-dm-tools-view'])",
-        ".workspace-split.mod-left-split .workspace-tabs .workspace-leaf",
-        ".workspace-split.mod-left-split .workspace-tabs",
-        ".workspace-split.mod-left-split",
-        ".workspace-split.mod-right-split .workspace-tabs .workspace-leaf-content:not([data-type='dnd-dm-tools-view'])",
-        ".workspace-split.mod-sidedock",
-      ];
-      for (const sel of sidebarSelectors) {
-        try {
-          const el = targetDoc.querySelector(sel) as Element | null;
-          if (!el) continue;
-          if (typeof el.closest === "function" && el.closest(".dnd-dm-sidebar-view, .dnd-dm-widget, [data-type='dnd-dm-tools-view']")) {
-            continue;
-          }
-          const computedBg = parseComputedRgbString(win.getComputedStyle(el).backgroundColor);
-          if (computedBg && computedBg.a > 0.05) {
-            sidebarDomBg = compositeOver(computedBg, pageBackdrop);
-            break;
-          }
-        } catch {
-          // Ignore selector lookup failures in lightweight mock DOMs
-        }
-      }
-    }
-
-    const rawSidebarBgVar = pickFirstWithAlpha([
-      "var(--background-secondary)",
-      "var(--background-primary-alt)",
-      "var(--color-base-20)",
-    ]);
-    const sidebarVarComp = rawSidebarBgVar && rawSidebarBgVar.a > 0.01
-      ? compositeOver(rawSidebarBgVar, pageBackdrop)
-      : null;
-
-    const bgPrimary: RgbaColor = sidebarDomBg
-      || sidebarVarComp
-      || mixRgb(pageBackdrop, relativeLuminance(pageBackdrop) > 0.45 ? blackRgb : whiteRgb, 0.06);
+    // 1. Widget Background Primary = a lighter version of Obsidian's note background
+    const bgPrimary: RgbaColor = lightenSurface(pageBackdrop, 0.09, 28);
 
     const isLightBg = relativeLuminance(bgPrimary) > 0.45;
     const contrastTargetText: RgbaColor = isLightBg ? blackRgb : whiteRgb;
@@ -286,7 +373,7 @@ export function generateObsidianThemeColors(doc?: Document): ThemeColors {
       ? candidateBright
       : ensureReadableContrast(mixRgb(textPrimary, contrastTargetText, 0.35), bgPrimary, contrastTargetText, 5.0);
 
-    // 3. Button Background Secondary (lighter step from sidebar base) & Tertiary
+    // 3. Button Background Secondary (lighter step above widget background) & Tertiary
     const bgSecondary = lightenForButtonBg(bgPrimary);
 
     let bgTertiary = mixRgb(bgSecondary, contrastTargetText, 0.09);
@@ -301,8 +388,9 @@ export function generateObsidianThemeColors(doc?: Document): ThemeColors {
       ? hoverComp
       : lightenForButtonBg(bgSecondary);
 
-    // 5. Darker / Inset Surface (inputs, previews, stat cells — darker than the sidebar base)
+    // 5. Darker / Inset Surface (inputs, previews, stat cells — strictly darker than widget background)
     const rawBgDarkerVar = pickFirstWithAlpha([
+      "var(--background-secondary)",
       "var(--background-secondary-alt)",
       "var(--color-base-00)",
       "var(--background-modifier-form-field)",
@@ -310,10 +398,12 @@ export function generateObsidianThemeColors(doc?: Document): ThemeColors {
     const darkerVarComp = rawBgDarkerVar && rawBgDarkerVar.a > 0.02
       ? compositeOver(rawBgDarkerVar, bgPrimary)
       : null;
-    const darkerFallback = mixRgb(bgPrimary, blackRgb, isLightBg ? 0.06 : 0.28);
+    const darkerFallback = colorDistance(pageBackdrop, bgPrimary) >= 8 && relativeLuminance(pageBackdrop) < relativeLuminance(bgPrimary)
+      ? pageBackdrop
+      : mixRgb(bgPrimary, blackRgb, isLightBg ? 0.06 : 0.28);
     const bgDarker = (darkerVarComp
       && colorDistance(darkerVarComp, bgPrimary) >= 6
-      && relativeLuminance(darkerVarComp) <= relativeLuminance(bgPrimary))
+      && relativeLuminance(darkerVarComp) < relativeLuminance(bgPrimary))
       ? darkerVarComp
       : darkerFallback;
 
