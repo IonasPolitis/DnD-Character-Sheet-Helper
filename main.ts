@@ -1237,6 +1237,8 @@ interface DnDPluginSettings {
     // DM Tools & Compendium Suite Settings
     showDmToolsRibbon: boolean;
     defaultDmToolsView: "modal" | "sidebar";
+    defaultDmToolsViewDesktop: "modal" | "sidebar";
+    defaultDmToolsViewMobile: "modal" | "sidebar";
     savedInitiativeState: InitiativeState;
 
     // Theme Engine Variables
@@ -1270,7 +1272,9 @@ const DEFAULT_SETTINGS: DnDPluginSettings = {
     customRulebookPriority: false,
 
     showDmToolsRibbon: true,
-    defaultDmToolsView: "modal",
+    defaultDmToolsView: "sidebar",
+    defaultDmToolsViewDesktop: "sidebar",
+    defaultDmToolsViewMobile: "modal",
     savedInitiativeState: createDefaultInitiativeState(),
 
     selectedTheme: "default",
@@ -1288,7 +1292,10 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
     private lastRulebookCheckTime = 0;
 
     openDMTools(initialTab: DMToolsTabId = "compendium", forceMode?: "modal" | "sidebar") {
-        const mode = forceMode || this.settings.defaultDmToolsView || "modal";
+        const platformDefault = Platform.isMobile
+            ? (this.settings.defaultDmToolsViewMobile || "modal")
+            : (this.settings.defaultDmToolsViewDesktop || "sidebar");
+        const mode = forceMode || platformDefault;
         if (mode === "sidebar") {
             void this.activateDMToolsSidebar(initialTab);
         } else {
@@ -8630,7 +8637,7 @@ class DnDSettingsTab extends PluginSettingTab {
     display(): void {
         const { containerEl } = this;
         containerEl.empty();
-        containerEl.createEl('h2', { text: 'DnD 5.5e Features Settings' });
+        containerEl.createEl('h2', { text: 'DnD Features' });
 
         // Toggle for Combining Class & Subclass
         new Setting(containerEl)
@@ -8645,68 +8652,8 @@ class DnDSettingsTab extends PluginSettingTab {
                     this.display();
                 }));
 
-        // --- DM Tools & Compendium Settings ---
-        containerEl.createEl('h3', { text: 'DM Tools & Compendium', cls: 'setting-item-name dnd-settings-header' });
-        containerEl.createEl('p', { text: 'Configure how the DM Tools & Compendium (Rulebook Search, Spell Browser, Initiative Tracker, Party Dashboard, and Monster Statblocks) open.', cls: 'setting-item-description' });
-
-        new Setting(containerEl)
-            .setName('Show DM Tools Ribbon Icon')
-            .setDesc('Display a shield icon in the left ribbon sidebar for 1-click access to the DM Tools & Compendium.')
-            .addToggle(toggle => toggle
-                .setValue(this.plugin.settings.showDmToolsRibbon !== false)
-                .onChange(async (value) => {
-                    this.plugin.settings.showDmToolsRibbon = value;
-                    await this.plugin.saveSettings();
-                    this.plugin.refreshDmToolsRibbonIcon();
-                }));
-
-        new Setting(containerEl)
-            .setName('Default DM Tools View Mode')
-            .setDesc('Choose whether the DM Tools open as a large centered Modal window or a dockable Right Sidebar panel by default (you can switch between both at any time with 1 click).')
-            .addDropdown(drop => drop
-                .addOption('modal', 'Centered Modal Window')
-                .addOption('sidebar', 'Docked Right Sidebar Panel')
-                .setValue(this.plugin.settings.defaultDmToolsView || 'modal')
-                .onChange(async (value: string) => {
-                    this.plugin.settings.defaultDmToolsView = (value === 'sidebar' ? 'sidebar' : 'modal');
-                    await this.plugin.saveSettings();
-                }));
-
-        // --- Custom Rulebook Settings ---
-        containerEl.createEl('h3', { text: 'Homebrew & Custom Data', cls: 'setting-item-name dnd-settings-header' });
-        containerEl.createEl('p', { text: 'Add your own custom JSON files to expand or overwrite the native rulebook.', cls: 'setting-item-description' });
-
-        new Setting(containerEl)
-            .setName('Custom Rulebook Folder Path')
-            .setDesc('Enter the path to your custom rulebook folder within your vault (e.g., "TTRPG/My Rulebook"). Leave blank to disable.')
-            .addText(text => text
-                .setPlaceholder('Folder path...')
-                .setValue(this.plugin.settings.customRulebookPath)
-                .onChange(async (value) => {
-                    this.plugin.settings.customRulebookPath = value;
-                    await this.plugin.saveSettings();
-                    this.plugin.resetCustomRulebookWatcherState();
-                    await this.plugin.checkCustomRulebookChanges(false, true);
-                    await this.plugin.syncWeaponMasteriesMarkdown();
-                    this.refreshOpenSheets();
-                }));
-
-        new Setting(containerEl)
-            .setName('Custom Rulebook Priority')
-            .setDesc('If enabled, custom homebrew files will completely overwrite native files with the same name. If disabled, native files take priority.')
-            .addToggle(toggle => toggle
-                .setValue(this.plugin.settings.customRulebookPriority)
-                .onChange(async (value) => {
-                    this.plugin.settings.customRulebookPriority = value;
-                    await this.plugin.saveSettings();
-                    this.plugin.resetCustomRulebookWatcherState();
-                    await this.plugin.checkCustomRulebookChanges(false, true);
-                    await this.plugin.syncWeaponMasteriesMarkdown();
-                    this.refreshOpenSheets();
-                }));
-
-        // Draggable List for Section Order
-        containerEl.createEl('h3', { text: 'DnD-Features Section Order', cls: 'setting-item-name dnd-settings-header' });
+        // Sub-header & Draggable List for Section Order
+        containerEl.createEl('h4', { text: 'Section Order', cls: 'dnd-settings-subgroup' });
         containerEl.createEl('p', { text: 'Drag and drop the sections below to change their display order. If "Combine Class and Subclass" is enabled, the Subclass block will be hidden.', cls: 'setting-item-description' });
 
         const listContainer = containerEl.createDiv({ cls: 'dnd-draggable-list' });
@@ -8759,6 +8706,78 @@ class DnDSettingsTab extends PluginSettingTab {
                 item.style.opacity = '1';
             });
         });
+
+        // --- DM Tools & Compendium Settings ---
+        containerEl.createEl('h3', { text: 'DM Tools & Compendium', cls: 'setting-item-name dnd-settings-header' });
+        containerEl.createEl('p', { text: 'Configure how the DM Tools & Compendium (Rulebook Search, Spell Browser, Initiative Tracker, Party Dashboard, and Monster Statblocks) open.', cls: 'setting-item-description' });
+
+        new Setting(containerEl)
+            .setName('Show DM Tools Ribbon Icon')
+            .setDesc('Display a shield icon in the left ribbon sidebar for 1-click access to the DM Tools & Compendium.')
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.showDmToolsRibbon !== false)
+                .onChange(async (value) => {
+                    this.plugin.settings.showDmToolsRibbon = value;
+                    await this.plugin.saveSettings();
+                    this.plugin.refreshDmToolsRibbonIcon();
+                }));
+
+        new Setting(containerEl)
+            .setName('Default DM Tools View Mode (Desktop)')
+            .setDesc('Choose whether the DM Tools open in the docked Right Sidebar panel or as a centered Modal window by default on Desktop (you can switch between both at any time with 1 click).')
+            .addDropdown(drop => drop
+                .addOption('sidebar', 'Docked Right Sidebar Panel')
+                .addOption('modal', 'Centered Modal Window')
+                .setValue(this.plugin.settings.defaultDmToolsViewDesktop || 'sidebar')
+                .onChange(async (value: string) => {
+                    this.plugin.settings.defaultDmToolsViewDesktop = (value === 'modal' ? 'modal' : 'sidebar');
+                    await this.plugin.saveSettings();
+                }));
+
+        new Setting(containerEl)
+            .setName('Default DM Tools View Mode (Mobile)')
+            .setDesc('Choose whether the DM Tools open as a centered Modal window or in the Right Sidebar panel by default on Mobile.')
+            .addDropdown(drop => drop
+                .addOption('modal', 'Centered Modal Window')
+                .addOption('sidebar', 'Docked Right Sidebar Panel')
+                .setValue(this.plugin.settings.defaultDmToolsViewMobile || 'modal')
+                .onChange(async (value: string) => {
+                    this.plugin.settings.defaultDmToolsViewMobile = (value === 'sidebar' ? 'sidebar' : 'modal');
+                    await this.plugin.saveSettings();
+                }));
+
+        // --- Custom Rulebook Settings ---
+        containerEl.createEl('h3', { text: 'Homebrew & Custom Data', cls: 'setting-item-name dnd-settings-header' });
+        containerEl.createEl('p', { text: 'Add your own custom JSON files to expand or overwrite the native rulebook.', cls: 'setting-item-description' });
+
+        new Setting(containerEl)
+            .setName('Custom Rulebook Folder Path')
+            .setDesc('Enter the path to your custom rulebook folder within your vault (e.g., "TTRPG/My Rulebook"). Leave blank to disable.')
+            .addText(text => text
+                .setPlaceholder('Folder path...')
+                .setValue(this.plugin.settings.customRulebookPath)
+                .onChange(async (value) => {
+                    this.plugin.settings.customRulebookPath = value;
+                    await this.plugin.saveSettings();
+                    this.plugin.resetCustomRulebookWatcherState();
+                    await this.plugin.checkCustomRulebookChanges(false, true);
+                    await this.plugin.syncWeaponMasteriesMarkdown();
+                    this.refreshOpenSheets();
+                }));
+
+        new Setting(containerEl)
+            .setName('Custom Rulebook Priority')
+            .setDesc('If enabled, custom homebrew files will completely overwrite native files with the same name. If disabled, native files take priority.')
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.customRulebookPriority)
+                .onChange(async (value) => {
+                    this.plugin.settings.customRulebookPriority = value;
+                    await this.plugin.saveSettings();
+                    this.plugin.resetCustomRulebookWatcherState();
+                    await this.plugin.checkCustomRulebookChanges(false, true);
+                    await this.plugin.syncWeaponMasteriesMarkdown();
+                    this.refreshOpenSheets();
+                }));
 
         // --- Theme Engine UI ---
         containerEl.createEl('h3', { text: 'Appearance & Theming', cls: 'setting-item-name dnd-settings-header' });
