@@ -10,6 +10,7 @@ import {
     DMToolsTabId,
     InitiativeState,
     createDefaultInitiativeState,
+    listVaultFolderPaths,
     processDnDInitiativeBlock,
     processDnDPartyBlock
 } from './dm-tools';
@@ -1239,6 +1240,7 @@ interface DnDPluginSettings {
     defaultDmToolsView: "modal" | "sidebar";
     defaultDmToolsViewDesktop: "modal" | "sidebar";
     defaultDmToolsViewMobile: "modal" | "sidebar";
+    partyFolderPath: string;
     savedInitiativeState: InitiativeState;
 
     // Theme Engine Variables
@@ -1275,6 +1277,7 @@ const DEFAULT_SETTINGS: DnDPluginSettings = {
     defaultDmToolsView: "sidebar",
     defaultDmToolsViewDesktop: "sidebar",
     defaultDmToolsViewMobile: "modal",
+    partyFolderPath: "",
     savedInitiativeState: createDefaultInitiativeState(),
 
     selectedTheme: "default",
@@ -8777,6 +8780,28 @@ class DnDSettingsTab extends PluginSettingTab {
                     this.plugin.settings.defaultDmToolsViewMobile = (value === 'sidebar' ? 'sidebar' : 'modal');
                     await this.plugin.saveSettings();
                 }));
+
+        new Setting(containerEl)
+            .setName('Party Character Sheets Folder')
+            .setDesc('Select the vault folder containing your party\'s character sheets. Used by the Party Dashboard and 1-click Initiative party import.')
+            .addDropdown(drop => {
+                drop.addOption('', '— Select Party Folder —');
+                drop.addOption('/', 'Vault Root (/)');
+                const folderPaths = listVaultFolderPaths(this.app);
+                const savedPath = (this.plugin.settings.partyFolderPath || '').trim();
+                if (savedPath && savedPath !== '/' && !folderPaths.some(p => p.toLowerCase() === savedPath.toLowerCase())) {
+                    folderPaths.unshift(savedPath);
+                }
+                for (const fp of folderPaths) {
+                    drop.addOption(fp, fp);
+                }
+                drop.setValue(savedPath);
+                drop.onChange(async (value: string) => {
+                    this.plugin.settings.partyFolderPath = value;
+                    await this.plugin.saveSettings();
+                    window.dispatchEvent(new CustomEvent('dnd-dm-party-folder-updated'));
+                });
+            });
 
         // --- Custom Rulebook Settings ---
         containerEl.createEl('h3', { text: 'Homebrew & Custom Data', cls: 'setting-item-name dnd-settings-header' });

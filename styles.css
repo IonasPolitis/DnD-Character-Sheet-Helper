@@ -3300,9 +3300,17 @@ body .modal-container .modal .dnd-modal-add-bar > button,
     padding: 12px;
 }
 
+.dnd-dm-widget .dnd-modal-empty-text,
+.dnd-dm-widget .dnd-modal-preview-empty {
+    color: var(--dnd-dm-text-muted, var(--dnd-ui-color-text-muted));
+}
+
 .dnd-dm-widget.is-mode-modal .dnd-init-root,
 .dnd-dm-widget.is-mode-sidebar .dnd-init-root {
-    background-color: var(--dnd-ui-color-note-bg, var(--dnd-ui-color-bg-primary));
+    background-color: transparent;
+    border: none;
+    border-radius: 0;
+    padding: 0;
 }
 
 .dnd-init-top-bar {
@@ -3312,7 +3320,7 @@ body .modal-container .modal .dnd-modal-add-bar > button,
     flex-wrap: wrap;
     gap: 10px;
     padding: 8px 12px;
-    background-color: var(--dnd-ui-color-bg-secondary);
+    background-color: var(--dnd-ui-color-bg-primary);
     border: 1px solid var(--dnd-ui-color-border-primary);
     border-radius: 10px;
 }
@@ -3331,8 +3339,8 @@ body .modal-container .modal .dnd-modal-add-bar > button,
     color: var(--dnd-ui-color-text-bright);
     padding: 3px 10px;
     border-radius: 8px;
-    background-color: var(--dnd-ui-color-bg-tertiary);
-    border: 1px solid var(--dnd-ui-color-border-active);
+    background-color: var(--dnd-ui-color-bg-secondary);
+    border: 1px solid var(--dnd-ui-color-border-primary);
 }
 
 .dnd-init-sync-toggle {
@@ -3350,9 +3358,21 @@ body .modal-container .modal .dnd-modal-add-bar > button,
     flex-direction: column;
     gap: 8px;
     padding: 10px;
-    background-color: var(--dnd-ui-color-bg-secondary);
+    background-color: var(--dnd-ui-color-bg-primary);
     border: 1px solid var(--dnd-ui-color-border-primary);
     border-radius: 10px;
+}
+
+.dnd-dm-widget .dnd-init-add-panel input.dnd-init-name-input {
+    background-color: var(--dnd-ui-color-bg-secondary) !important;
+    color: var(--dnd-ui-color-text-bright) !important;
+    color: oklch(from var(--dnd-ui-color-bg-secondary) clamp(0, (0.63 - l) * 9999, 1) 0 0 / 1) !important;
+}
+
+.dnd-dm-widget .dnd-init-add-panel input.dnd-init-name-input::placeholder {
+    color: var(--dnd-ui-color-text-muted) !important;
+    color: oklch(from var(--dnd-ui-color-bg-secondary) clamp(0, (0.63 - l) * 9999, 1) 0 0 / 0.65) !important;
+    opacity: 1;
 }
 
 .dnd-init-add-form {
@@ -3405,9 +3425,9 @@ body .modal-container .modal .dnd-modal-add-bar > button,
 }
 
 .dnd-init-card.is-active-turn {
-    border: 2px solid var(--dnd-ui-color-accent-teal);
+    border: 1px solid var(--dnd-ui-color-border-primary);
     background-color: var(--dnd-ui-color-bg-primary);
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.25);
+    box-shadow: none;
 }
 
 .dnd-init-card.is-defeated {
@@ -3464,7 +3484,7 @@ body .modal-container .modal .dnd-modal-add-bar > button,
     font-size: 1.05em;
     padding: 3px 4px !important;
     border-radius: 8px;
-    border: 1px solid var(--dnd-ui-color-border-active);
+    border: 1px solid var(--dnd-ui-color-border-primary);
     background-color: var(--dnd-ui-color-bg-darker);
     color: var(--dnd-ui-color-text-bright);
 }
@@ -3663,6 +3683,21 @@ body .modal-container .modal .dnd-modal-add-bar > button,
     gap: 12px;
 }
 
+.dnd-party-folder-label {
+    font-weight: 600;
+    font-size: 0.9em;
+    color: var(--dnd-ui-color-text-bright);
+    white-space: nowrap;
+}
+
+.dnd-dm-widget .dnd-party-folder-bar select.dnd-party-folder-select {
+    flex: 1 1 200px;
+    min-width: 160px;
+    background-color: var(--dnd-ui-color-bg-secondary) !important;
+    color: var(--dnd-ui-color-text-bright) !important;
+    color: oklch(from var(--dnd-ui-color-bg-secondary) clamp(0, (0.63 - l) * 9999, 1) 0 0 / 1) !important;
+}
+
 .dnd-party-banner {
     display: flex;
     align-items: center;
@@ -3671,7 +3706,7 @@ body .modal-container .modal .dnd-modal-add-bar > button,
     gap: 10px;
     padding: 10px 14px;
     border-radius: 12px;
-    background-color: var(--dnd-ui-color-bg-secondary);
+    background-color: var(--dnd-ui-color-bg-primary);
     border: 1px solid var(--dnd-ui-color-border-primary);
 }
 
@@ -3878,7 +3913,7 @@ body .modal-container .modal .dnd-modal-add-bar > button,
     gap: 8px;
     padding: 8px 12px;
     border-radius: 10px;
-    background-color: var(--dnd-ui-color-bg-secondary);
+    background-color: var(--dnd-ui-color-bg-primary);
     border: 1px solid var(--dnd-ui-color-border-primary);
 }
 

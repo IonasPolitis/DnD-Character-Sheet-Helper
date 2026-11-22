@@ -226,6 +226,66 @@ export function calculateCharacterPassiveSenses(frontmatter: Record<string, any>
 }
 
 /**
+ * Lists unique, sorted vault folder paths (excluding hidden dot-folders such as `.obsidian`).
+ */
+export function listVaultFolderPaths(app: App): string[] {
+    const paths = new Set<string>();
+    const vaultAny = app?.vault as any;
+    if (typeof vaultAny?.getAllFolders === "function") {
+        for (const f of vaultAny.getAllFolders(false) || []) {
+            if (f?.path) paths.add(normalizePath(String(f.path)));
+        }
+    } else if (typeof vaultAny?.getAllLoadedFiles === "function") {
+        for (const f of vaultAny.getAllLoadedFiles() || []) {
+            if (f && Array.isArray((f as any).children) && f.path && f.path !== "/") {
+                paths.add(normalizePath(String(f.path)));
+            }
+        }
+    }
+    if (paths.size === 0 && typeof vaultAny?.getMarkdownFiles === "function") {
+        for (const file of vaultAny.getMarkdownFiles() || []) {
+            const fp = normalizePath(String(file?.path || ""));
+            const idx = fp.lastIndexOf("/");
+            if (idx > 0) paths.add(fp.slice(0, idx));
+        }
+    }
+    return Array.from(paths)
+        .map(p => p.replace(/^\/+|\/+$/g, ""))
+        .filter(p => p && !p.startsWith(".") && !p.includes("/."))
+        .sort((a, b) => a.localeCompare(b));
+}
+
+/**
+ * Resolves the party character sheet list for the configured DM Tools Party Folder
+ * (or embedded block overrides), avoiding dumping every vault character note when unset.
+ */
+export function getConfiguredPartyMembers(
+    app: App,
+    plugin: DnDCharacterSheetHelperPlugin,
+    embedFilterFolder?: string,
+    embedFilterPlayers?: string[]
+): { activeFolder: string; members: PartyMemberSummary[]; isConfigured: boolean } {
+    const hasExplicitEmbedPlayers = Boolean(embedFilterPlayers && embedFilterPlayers.length > 0);
+    const activeFolder = embedFilterFolder !== undefined
+        ? embedFilterFolder.trim()
+        : (plugin.settings?.partyFolderPath || "").trim();
+
+    if (!activeFolder && !hasExplicitEmbedPlayers) {
+        return { activeFolder: "", members: [], isConfigured: false };
+    }
+    return {
+        activeFolder,
+        members: discoverVaultPartyMembers(
+            app,
+            plugin,
+            activeFolder || undefined,
+            hasExplicitEmbedPlayers ? embedFilterPlayers : undefined
+        ),
+        isConfigured: true
+    };
+}
+
+/**
  * Discovers all character sheet notes in the vault (or filtered by folder / player list).
  */
 export function discoverVaultPartyMembers(
@@ -235,7 +295,11 @@ export function discoverVaultPartyMembers(
     filterPlayers?: string[]
 ): PartyMemberSummary[] {
     const files = app.vault.getMarkdownFiles();
-    const normFolder = filterFolder ? normalizePath(filterFolder).toLowerCase().replace(/^\/+|\/+$/g, "") : "";
+    const rawFolder = typeof filterFolder === "string" ? filterFolder.trim() : "";
+    const isRootOnly = rawFolder === "/";
+    const normFolder = (!isRootOnly && rawFolder)
+        ? normalizePath(rawFolder).toLowerCase().replace(/^\/+|\/+$/g, "")
+        : "";
     const playerFilterSet = filterPlayers && filterPlayers.length > 0
         ? new Set(filterPlayers.map(p => p.trim().toLowerCase()).filter(Boolean))
         : null;
@@ -243,9 +307,11 @@ export function discoverVaultPartyMembers(
     const party: PartyMemberSummary[] = [];
 
     for (const file of files) {
-        if (normFolder) {
-            const filePathLower = normalizePath(file.path).toLowerCase();
-            if (!filePathLower.startsWith(normFolder + "/")) continue;
+        const filePathNormalized = normalizePath(file.path);
+        if (isRootOnly) {
+            if (filePathNormalized.includes("/")) continue;
+        } else if (normFolder) {
+            if (!filePathNormalized.toLowerCase().startsWith(normFolder + "/")) continue;
         }
 
         const cache = app.metadataCache.getFileCache(file);
@@ -1490,6 +1556,7 @@ export class DMToolsWidget {
 
     // Layout Containers
     bodyContainer!: HTMLElement;
+    private partyFolderListenerRegistered = false;
 
     constructor(options: {
         app: App;
@@ -1545,6 +1612,19 @@ export class DMToolsWidget {
     }
 
     async render(): Promise<void> {
+        if (!this.partyFolderListenerRegistered) {
+            this.partyFolderListenerRegistered = true;
+            const onPartyFolderUpdated = () => {
+                if (this.activeTab === "party" || this.activeTab === "initiative") {
+                    void this.renderActiveTab();
+                }
+            };
+            window.addEventListener("dnd-dm-party-folder-updated", onPartyFolderUpdated);
+            this.renderChild.register(() => {
+                window.removeEventListener("dnd-dm-party-folder-updated", onPartyFolderUpdated);
+            });
+        }
+
         this.containerEl.empty();
         this.containerEl.addClass("dnd-dm-widget", `is-mode-${this.hostMode}`);
 
@@ -2670,14 +2750,20 @@ export class DMToolsWidget {
         }
 
         const addFormRow = addPanel.createDiv({ cls: "dnd-init-add-form" });
-        const partyPcs = discoverVaultPartyMembers(this.app, this.plugin);
+        const {
+            activeFolder: initPartyFolder,
+            members: partyPcs,
+            isConfigured: hasPartyFolder
+        } = getConfiguredPartyMembers(this.app, this.plugin, this.embedFilterFolder, this.embedFilterPlayers);
 
         if (this.initAddMode === "pc") {
             const pcSelect = addFormRow.createEl("select", {
                 cls: "dnd-modal-form-input dnd-init-add-select"
             });
-            if (partyPcs.length === 0) {
-                pcSelect.createEl("option", { text: "No character sheet notes found in vault", value: "" });
+            if (!hasPartyFolder) {
+                pcSelect.createEl("option", { text: "Select a Party Folder in Party Dashboard first...", value: "" });
+            } else if (partyPcs.length === 0) {
+                pcSelect.createEl("option", { text: `No character sheets found in "${initPartyFolder}"`, value: "" });
             } else {
                 for (const pc of partyPcs) {
                     pcSelect.createEl("option", {
@@ -2733,11 +2819,23 @@ export class DMToolsWidget {
             };
 
             const importAllBtn = addFormRow.createEl("button", {
-                text: "Import All Party PCs",
+                text: hasPartyFolder ? `Import All Party PCs (${partyPcs.length})` : "Import All Party PCs",
                 cls: "dnd-dm-small-btn",
-                attr: { title: "Import all vault PCs not yet in the tracker and auto-roll their initiative" }
+                attr: {
+                    title: hasPartyFolder
+                        ? `Import all party PCs from "${initPartyFolder}" not yet in the tracker and auto-roll their initiative`
+                        : "Select a Party Folder in the Party Dashboard tab first"
+                }
             });
             importAllBtn.onclick = async () => {
+                if (!hasPartyFolder) {
+                    new Notice("Select a Party Folder in the Party Dashboard tab first.");
+                    return;
+                }
+                if (partyPcs.length === 0) {
+                    new Notice(`No character sheet notes found in "${initPartyFolder}".`);
+                    return;
+                }
                 let added = 0;
                 for (const pc of partyPcs) {
                     if (state.combatants.some(c => c.sourcePath === pc.sourcePath)) continue;
@@ -2760,7 +2858,7 @@ export class DMToolsWidget {
                 }
                 await this.saveInitiativeState();
                 await this.renderActiveTab();
-                new Notice(added > 0 ? `Imported ${added} PC(s) into Initiative!` : "All vault PCs are already in the tracker.");
+                new Notice(added > 0 ? `Imported ${added} PC(s) from "${initPartyFolder}" into Initiative!` : "All party PCs from that folder are already in the tracker.");
             };
         } else if (this.initAddMode === "monster") {
             const filterInput = addFormRow.createEl("input", {
@@ -3205,14 +3303,47 @@ export class DMToolsWidget {
     // ========================================================================
 
     private async renderPartyTab(): Promise<void> {
-        const party = discoverVaultPartyMembers(
-            this.app,
-            this.plugin,
-            this.embedFilterFolder,
-            this.embedFilterPlayers
-        );
+        const {
+            activeFolder,
+            members: party,
+            isConfigured
+        } = getConfiguredPartyMembers(this.app, this.plugin, this.embedFilterFolder, this.embedFilterPlayers);
 
         const root = this.bodyContainer.createDiv({ cls: "dnd-party-root" });
+
+        // Party Folder Selector (lets DM choose which vault folder contains active party character sheets)
+        if (this.hostMode === "modal" || this.hostMode === "sidebar") {
+            const folderBar = root.createDiv({ cls: "dnd-compendium-controls dnd-party-folder-bar" });
+            const folderRow = folderBar.createDiv({ cls: "dnd-compendium-search-row" });
+            folderRow.createEl("span", {
+                text: "Party Folder:",
+                cls: "dnd-party-folder-label"
+            });
+
+            const folderSelect = folderRow.createEl("select", {
+                cls: "dnd-modal-form-input dnd-party-folder-select",
+                attr: { title: "Select the vault folder containing your party's character sheets" }
+            });
+            folderSelect.createEl("option", { text: "— Select Party Folder —", value: "" });
+            folderSelect.createEl("option", { text: "Vault Root (/)", value: "/" });
+
+            const folderPaths = listVaultFolderPaths(this.app);
+            const savedPath = (this.plugin.settings.partyFolderPath || "").trim();
+            if (savedPath && savedPath !== "/" && !folderPaths.some(p => p.toLowerCase() === savedPath.toLowerCase())) {
+                folderPaths.unshift(savedPath);
+            }
+            for (const fp of folderPaths) {
+                folderSelect.createEl("option", { text: fp, value: fp });
+            }
+            folderSelect.value = savedPath;
+
+            folderSelect.onchange = async () => {
+                this.plugin.settings.partyFolderPath = folderSelect.value;
+                await this.plugin.saveSettings();
+                window.dispatchEvent(new CustomEvent("dnd-dm-party-folder-updated"));
+                await this.renderActiveTab();
+            };
+        }
 
         // Top Summary Banner
         const banner = root.createDiv({ cls: "dnd-party-banner" });
@@ -3239,6 +3370,10 @@ export class DMToolsWidget {
             cls: "dnd-dm-small-btn mod-cta"
         });
         sendToInitBtn.onclick = async () => {
+            if (!isConfigured) {
+                new Notice("Select a Party Folder above first.");
+                return;
+            }
             const state = this.getInitiativeState();
             let added = 0;
             for (const pc of party) {
@@ -3277,7 +3412,9 @@ export class DMToolsWidget {
 
         if (party.length === 0) {
             root.createEl("div", {
-                text: "No character sheet notes found in the vault. Create a character sheet with the Character Creation Wizard or Set Character Sheet Template command!",
+                text: !isConfigured
+                    ? "Select a Party Folder above to display your party's character sheets here and enable automatic whole-party import in the Initiative Tracker."
+                    : `No character sheet notes found in "${activeFolder || "/"}". Pick another folder above or create character sheets in that folder.`,
                 cls: "dnd-modal-empty-text"
             });
             return;
@@ -3898,6 +4035,11 @@ export async function processDnDInitiativeBlock(
         };
     }
 
+    const filterFolder = typeof parsed.folder === "string" ? parsed.folder.trim() : undefined;
+    const filterPlayers = Array.isArray(parsed.players)
+        ? parsed.players.map((p: any) => String(p))
+        : (typeof parsed.players === "string" ? parseStringArray(parsed.players) : undefined);
+
     const widget = new DMToolsWidget({
         app: plugin.app,
         plugin,
@@ -3906,6 +4048,8 @@ export async function processDnDInitiativeBlock(
         hostMode: "embed-initiative",
         initialTab: "initiative",
         sourcePath: ctx.sourcePath,
+        embedFilterFolder: filterFolder,
+        embedFilterPlayers: filterPlayers,
         customInitiativeState: customState,
         onSaveCustomInitiativeState: onSaveCustom
     });
