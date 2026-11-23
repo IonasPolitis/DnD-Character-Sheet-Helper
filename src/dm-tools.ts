@@ -36,6 +36,7 @@ import {
 import {
     CANONICAL_SKILL_KEYS,
     DND_55E_CONDITIONS,
+    FolderInputSuggest,
     InitiativeCombatant,
     InitiativeState,
     PartyMemberSummary,
@@ -49,7 +50,6 @@ import {
     getConfiguredPartyMembers,
     getConfiguredPartyMembersAsync,
     getNextCombatantNames,
-    listVaultFolderPaths,
     normalizeInitiativeStateInPlace,
     parseNumericMod,
     removeCombatantsUpdatingTurn,
@@ -77,17 +77,75 @@ export const DM_TOOLS_VIEW_TYPE = "dnd-dm-tools-view";
 
 export type DMToolsTabId = "compendium" | "spells" | "initiative" | "party" | "monsters";
 
-async function copyTextToClipboard(text: string, successMessage: string): Promise<void> {
-    try {
-        if (!navigator?.clipboard?.writeText) {
-            throw new Error("Clipboard API unavailable");
-        }
-        await navigator.clipboard.writeText(text);
-        new Notice(successMessage);
-    } catch (err) {
-        console.warn("DnD Plugin: Failed to copy text to clipboard", err);
-        new Notice("Could not copy to clipboard in this environment.");
+/**
+ * Pre-selected read-only Markdown source modal used when no active note is in Editing view.
+ */
+export class MarkdownSourceModal extends Modal {
+    private readonly headingTitle: string;
+    private readonly markdownText: string;
+
+    constructor(app: App, headingTitle: string, markdownText: string) {
+        super(app);
+        this.headingTitle = headingTitle;
+        this.markdownText = markdownText;
     }
+
+    onOpen(): void {
+        const { contentEl } = this;
+        contentEl.empty();
+        this.modalEl.addClass("dnd-spellbook-modal");
+        contentEl.addClass("dnd-modal", "dnd-markdown-export-modal");
+
+        contentEl.createEl("h3", {
+            text: this.headingTitle,
+            cls: "dnd-modal-title"
+        });
+        contentEl.createEl("p", {
+            text: "Active note is not in Editing view. Press Cmd/Ctrl+C to use the selected Markdown, or switch a note to Editing view to insert directly.",
+            cls: "dnd-markdown-export-hint"
+        });
+
+        const textArea = contentEl.createEl("textarea", {
+            cls: "dnd-modal-form-input dnd-markdown-export-textarea",
+            attr: { readonly: "true", rows: "14" }
+        });
+        textArea.value = this.markdownText;
+
+        const footer = contentEl.createDiv({ cls: "dnd-modal-footer" });
+        const selectBtn = footer.createEl("button", { text: "Select All" });
+        selectBtn.onclick = () => {
+            textArea.focus();
+            textArea.select();
+        };
+        const closeBtn = footer.createEl("button", { text: "Close", cls: "mod-cta" });
+        closeBtn.onclick = () => this.close();
+
+        if (typeof window !== "undefined") {
+            window.setTimeout(() => {
+                textArea.focus();
+                textArea.select();
+            }, 20);
+        }
+    }
+
+    onClose(): void {
+        this.contentEl.empty();
+    }
+}
+
+function insertOrShowMarkdown(
+    app: App,
+    modalTitle: string,
+    markdownText: string,
+    itemLabel: string
+): void {
+    const mdView = app.workspace.getActiveViewOfType(MarkdownView);
+    if (mdView && mdView.editor && mdView.getMode() === "source") {
+        mdView.editor.replaceSelection(markdownText);
+        new Notice(`Inserted "${itemLabel}" into ${mdView.file?.basename || "active note"}!`);
+        return;
+    }
+    new MarkdownSourceModal(app, modalTitle, markdownText).open();
 }
 
 function makeKeyboardClickable(el: HTMLElement, onActivate: (evt: Event) => void): void {
@@ -343,9 +401,10 @@ export class DMToolsWidget {
     monstersMeta: {
         hasDmCompendium: boolean;
         dmCompendiumCount: number;
+        fantasyStatblocksCount: number;
         vaultStatblockCount: number;
         availableSources: { code: string; short: string; full: string; count: number }[];
-    } = { hasDmCompendium: false, dmCompendiumCount: 0, vaultStatblockCount: 0, availableSources: [] };
+    } = { hasDmCompendium: false, dmCompendiumCount: 0, fantasyStatblocksCount: 0, vaultStatblockCount: 0, availableSources: [] };
     monstersLoaded = false;
     monsterQuery = "";
     monsterSourceFilter = "all";
@@ -365,6 +424,8 @@ export class DMToolsWidget {
     private monsterPreviewToken = 0;
 
     private partySaveTimer: number | null = null;
+    private statblocksSaveTimer: number | null = null;
+    private statblocksRefreshTimer: number | null = null;
     private metadataRefreshTimer: number | null = null;
     private compendiumSearchTimer: number | null = null;
     private spellSearchTimer: number | null = null;
@@ -373,6 +434,7 @@ export class DMToolsWidget {
 
     private activePartyRefreshHook: (() => Promise<void>) | null = null;
     private activeInitRefreshHook: ((refreshPartyFromCache: boolean) => Promise<void>) | null = null;
+    private activeMonstersRefreshHook: (() => Promise<void>) | null = null;
 
     constructor(options: {
         app: App;
@@ -413,6 +475,8 @@ export class DMToolsWidget {
 
     private clearAllTimers(): void {
         this.partySaveTimer = this.clearTimer(this.partySaveTimer);
+        this.statblocksSaveTimer = this.clearTimer(this.statblocksSaveTimer);
+        this.statblocksRefreshTimer = this.clearTimer(this.statblocksRefreshTimer);
         this.metadataRefreshTimer = this.clearTimer(this.metadataRefreshTimer);
         this.compendiumSearchTimer = this.clearTimer(this.compendiumSearchTimer);
         this.spellSearchTimer = this.clearTimer(this.spellSearchTimer);
@@ -464,9 +528,10 @@ export class DMToolsWidget {
             this.clearAllTimers();
             this.activePartyRefreshHook = null;
             this.activeInitRefreshHook = null;
+            this.activeMonstersRefreshHook = null;
         });
 
-        const scheduleTabSync = (target: "party" | "initiative", refreshPartyFromCache: boolean) => {
+        const scheduleTabSync = (target: "party" | "initiative" | "monsters", refreshPartyFromCache: boolean) => {
             if (this.isWidgetUnloaded) return;
             this.metadataRefreshTimer = this.clearTimer(this.metadataRefreshTimer);
             this.metadataRefreshTimer = window.setTimeout(() => {
@@ -484,6 +549,13 @@ export class DMToolsWidget {
                     } else {
                         void this.renderActiveTab();
                     }
+                } else if (target === "monsters" && this.activeTab === "monsters") {
+                    this.monstersLoaded = false;
+                    if (this.activeMonstersRefreshHook) {
+                        void this.activeMonstersRefreshHook();
+                    } else {
+                        void this.renderActiveTab();
+                    }
                 }
             }, 80);
         };
@@ -497,6 +569,22 @@ export class DMToolsWidget {
             } else if (this.activeTab === "initiative") {
                 if (this.activeInitRefreshHook) void this.activeInitRefreshHook(true);
                 else void this.renderActiveTab();
+            }
+        };
+
+        const onStatblocksFolderUpdated = (evt: Event) => {
+            const detail = (evt as CustomEvent<{ sourceWidget?: DMToolsWidget }>)?.detail;
+            if (detail?.sourceWidget === this || this.isWidgetUnloaded) return;
+            this.monstersLoaded = false;
+            if (this.activeTab === "monsters") {
+                if (this.activeMonstersRefreshHook) void this.activeMonstersRefreshHook();
+                else void this.renderActiveTab();
+            } else if (this.activeTab === "initiative") {
+                if (this.initAddMode === "monster" || !this.activeInitRefreshHook) {
+                    void this.renderActiveTab();
+                } else {
+                    void this.activeInitRefreshHook(false);
+                }
             }
         };
 
@@ -532,10 +620,12 @@ export class DMToolsWidget {
 
         if (typeof window !== "undefined") {
             window.addEventListener("dnd-dm-party-folder-updated", onPartyFolderUpdated);
+            window.addEventListener("dnd-dm-statblocks-folder-updated", onStatblocksFolderUpdated);
             window.addEventListener("dnd-dm-initiative-updated", onInitiativeUpdated);
             window.addEventListener("dnd-heroic-inspiration-changed", onHeroicInspirationChanged);
             this.renderChild.register(() => {
                 window.removeEventListener("dnd-dm-party-folder-updated", onPartyFolderUpdated);
+                window.removeEventListener("dnd-dm-statblocks-folder-updated", onStatblocksFolderUpdated);
                 window.removeEventListener("dnd-dm-initiative-updated", onInitiativeUpdated);
                 window.removeEventListener("dnd-heroic-inspiration-changed", onHeroicInspirationChanged);
             });
@@ -550,6 +640,18 @@ export class DMToolsWidget {
                         scheduleTabSync("initiative", true);
                         return;
                     }
+                    const normPath = file.path.toLowerCase();
+                    if (this.activeTab === "monsters") {
+                        const activeFile = this.app.workspace?.getActiveFile?.();
+                        const sbFolder = (this.plugin.settings?.statblocksFolderPath || "").trim().toLowerCase().replace(/^\/+|\/+$/g, "");
+                        const matchesSbFolder = sbFolder === ""
+                            ? false
+                            : (sbFolder === "/" ? !file.path.includes("/") : normPath.startsWith(sbFolder + "/"));
+                        if ((activeFile && activeFile.path === file.path) || matchesSbFolder) {
+                            scheduleTabSync("monsters", false);
+                        }
+                        return;
+                    }
                     if (this.activeTab !== "party" && this.activeTab !== "initiative") return;
 
                     const activeFolder = (this.embedFilterFolder !== undefined
@@ -557,7 +659,6 @@ export class DMToolsWidget {
                         : (this.plugin.settings?.partyFolderPath || "")
                     ).trim().toLowerCase().replace(/^\/+|\/+$/g, "");
 
-                    const normPath = file.path.toLowerCase();
                     const matchesFolder = activeFolder === ""
                         ? false
                         : (activeFolder === "/" ? !file.path.includes("/") : normPath.startsWith(activeFolder + "/"));
@@ -664,12 +765,17 @@ export class DMToolsWidget {
 
         this.activePartyRefreshHook = null;
         this.activeInitRefreshHook = null;
+        this.activeMonstersRefreshHook = null;
         this.compendiumSearchTimer = this.clearTimer(this.compendiumSearchTimer);
         this.spellSearchTimer = this.clearTimer(this.spellSearchTimer);
         this.monsterSearchTimer = this.clearTimer(this.monsterSearchTimer);
         this.partySearchTimer = this.clearTimer(this.partySearchTimer);
         if (this.activeTab !== "party") {
             this.partySaveTimer = this.clearTimer(this.partySaveTimer);
+        }
+        if (this.activeTab !== "monsters") {
+            this.statblocksSaveTimer = this.clearTimer(this.statblocksSaveTimer);
+            this.statblocksRefreshTimer = this.clearTimer(this.statblocksRefreshTimer);
         }
 
         this.bodyContainer.empty();
@@ -1134,12 +1240,13 @@ export class DMToolsWidget {
             });
 
             const rightActions = toolbar.createDiv({ cls: "dnd-modal-preview-badges" });
-            const copyBtn = rightActions.createEl("button", {
-                text: "Copy Markdown",
-                cls: "dnd-dm-small-btn"
+            const insertBtn = rightActions.createEl("button", {
+                text: "Insert in Note",
+                cls: "dnd-dm-small-btn",
+                attr: { title: "Insert Markdown into the active Editing note, or open export view" }
             });
-            copyBtn.onclick = () => {
-                void copyTextToClipboard(mdText, `Copied "${item.name}" to clipboard!`);
+            insertBtn.onclick = () => {
+                insertOrShowMarkdown(this.app, item.name, mdText, item.name);
             };
 
             if (this.hostMode === "sidebar") {
@@ -1374,15 +1481,15 @@ export class DMToolsWidget {
                 badgesDiv.createEl("span", { text: "R", cls: "dnd-level-badge dnd-badge-combined dnd-spell-badge-sm", attr: { title: "Ritual" } });
             }
 
-            const copyBtn = badgesDiv.createEl("button", {
-                text: "Copy",
+            const insertBtn = badgesDiv.createEl("button", {
+                text: "Insert",
                 cls: "dnd-dm-small-btn",
-                attr: { title: "Copy Spell Markdown" }
+                attr: { title: "Insert Spell Markdown into the active Editing note, or open export view" }
             });
-            copyBtn.onclick = () => {
+            insertBtn.onclick = () => {
                 const lvlLabel = spell.level === 0 ? `${spell.school} Cantrip` : `Level ${spell.level} ${spell.school}`;
                 const md = `### ${spell.name}\n*${lvlLabel}*\n- **Casting Time:** ${spell.castingTime}\n- **Range:** ${spell.range}\n- **Components:** ${spell.components.join(", ")}${spell.materials ? ` (${spell.materials})` : ""}\n- **Duration:** ${spell.duration}\n\n${spell.description}`;
-                void copyTextToClipboard(md, `Copied "${spell.name}" to clipboard!`);
+                insertOrShowMarkdown(this.app, spell.name, md, spell.name);
             };
 
             if (this.hostMode === "sidebar") {
@@ -1604,19 +1711,15 @@ export class DMToolsWidget {
     }
 
     private async renderInitiativeTab(tabToken: number): Promise<void> {
-        if (!this.monstersLoaded) {
-            const res = await discoverExternalMonsters(this.app);
-            if (this.isStaleTabRender(tabToken)) return;
-            this.discoveredMonsters = res.monsters;
-            this.monstersMeta = res;
-            this.monstersLoaded = true;
-        }
+        await this.ensureMonstersLoaded();
+        if (this.isStaleTabRender(tabToken)) return;
 
         let partyResult = await getConfiguredPartyMembersAsync(
             this.app,
             this.plugin,
             this.embedFilterFolder,
-            this.embedFilterPlayers
+            this.embedFilterPlayers,
+            this.sourcePath
         );
         if (this.isStaleTabRender(tabToken)) return;
 
@@ -1720,7 +1823,8 @@ export class DMToolsWidget {
                 this.app,
                 this.plugin,
                 this.embedFilterFolder,
-                this.embedFilterPlayers
+                this.embedFilterPlayers,
+                this.sourcePath
             );
             if (this.isStaleTabRender(tabToken)) return;
             state = this.getInitiativeState();
@@ -2394,7 +2498,8 @@ export class DMToolsWidget {
                     this.app,
                     this.plugin,
                     this.embedFilterFolder,
-                    this.embedFilterPlayers
+                    this.embedFilterPlayers,
+                    this.sourcePath
                 );
                 if (this.isStaleTabRender(tabToken)) return;
                 partyResult = nextParty;
@@ -2456,22 +2561,16 @@ export class DMToolsWidget {
                 cls: "dnd-party-folder-label"
             });
 
-            const datalistId = `dnd-party-folders-${Math.random().toString(36).slice(2, 8)}`;
             folderInputRef = folderRow.createEl("input", {
                 type: "text",
                 placeholder: 'Type or paste folder path (e.g. "Campaign/Party", "/" for root)...',
                 value: this.plugin.settings.partyFolderPath || "",
                 cls: "dnd-modal-form-input dnd-party-folder-input",
                 attr: {
-                    list: datalistId,
                     title: 'Enter the vault folder path containing your party\'s character sheets (or "/" for vault root)'
                 }
             });
-            const dataListEl = folderRow.createEl("datalist", { attr: { id: datalistId } });
-            dataListEl.createEl("option", { attr: { value: "/" } });
-            for (const fp of listVaultFolderPaths(this.app)) {
-                dataListEl.createEl("option", { attr: { value: fp } });
-            }
+            new FolderInputSuggest(this.app, folderInputRef);
         }
 
         const partyBody = root.createDiv({ cls: "dnd-party-body" });
@@ -2495,7 +2594,8 @@ export class DMToolsWidget {
                 this.app,
                 this.plugin,
                 this.embedFilterFolder,
-                this.embedFilterPlayers
+                this.embedFilterPlayers,
+                this.sourcePath
             );
             if (renderToken !== partyRenderVersion || this.isStaleTabRender(tabToken)) return;
             partyBody.empty();
@@ -2784,7 +2884,11 @@ export class DMToolsWidget {
 
     private async ensureMonstersLoaded(forceReload: boolean = false): Promise<void> {
         if (this.monstersLoaded && !forceReload) return;
-        const res = await discoverExternalMonsters(this.app, forceReload);
+        const res = await discoverExternalMonsters(
+            this.app,
+            forceReload,
+            this.plugin.settings?.statblocksFolderPath || ""
+        );
         this.discoveredMonsters = res.monsters;
         this.monstersMeta = res;
         this.monstersLoaded = true;
@@ -2796,28 +2900,40 @@ export class DMToolsWidget {
 
         const root = this.bodyContainer.createDiv({ cls: "dnd-monsters-root" });
 
-        // Integration Status Banner (The DM Compendium)
+        // Integration Status Banner (The DM Compendium, Fantasy Statblocks, Scoped Note Statblocks)
         const statusBanner = root.createDiv({ cls: "dnd-monsters-status-banner" });
         const badgesLeft = statusBanner.createDiv({ cls: "dnd-monsters-status-badges" });
 
-        badgesLeft.createEl("span", {
-            text: this.monstersMeta.hasDmCompendium
-                ? `The DM Compendium: Connected (${this.monstersMeta.dmCompendiumCount} Statblocks)`
-                : "The DM Compendium: Not Detected (Using Built-in Presets)",
-            cls: `dnd-level-badge ${this.monstersMeta.hasDmCompendium ? "dnd-badge-connected" : ""}`.trim()
-        });
-        if (this.monstersMeta.availableSources.length > 0) {
+        const renderStatusBadges = () => {
+            badgesLeft.empty();
             badgesLeft.createEl("span", {
-                text: `Sources: ${this.monstersMeta.availableSources.map(s => s.short).join(", ")}`,
-                cls: "dnd-level-badge"
+                text: this.monstersMeta.hasDmCompendium
+                    ? `The DM Compendium: Connected (${this.monstersMeta.dmCompendiumCount} Statblocks)`
+                    : (this.monstersMeta.fantasyStatblocksCount > 0
+                        ? "The DM Compendium: Not Detected"
+                        : "The DM Compendium: Not Detected (Using Built-in Presets)"),
+                cls: `dnd-level-badge ${this.monstersMeta.hasDmCompendium ? "dnd-badge-connected" : ""}`.trim()
             });
-        }
-        if (this.monstersMeta.vaultStatblockCount > 0) {
-            badgesLeft.createEl("span", {
-                text: `Vault Statblocks: ${this.monstersMeta.vaultStatblockCount}`,
-                cls: "dnd-level-badge"
-            });
-        }
+            if (this.monstersMeta.fantasyStatblocksCount > 0) {
+                badgesLeft.createEl("span", {
+                    text: `Fantasy Statblocks: ${this.monstersMeta.fantasyStatblocksCount}`,
+                    cls: "dnd-level-badge dnd-badge-connected"
+                });
+            }
+            if (this.monstersMeta.availableSources.length > 0) {
+                badgesLeft.createEl("span", {
+                    text: `Sources: ${this.monstersMeta.availableSources.map(s => s.short).join(", ")}`,
+                    cls: "dnd-level-badge"
+                });
+            }
+            if (this.monstersMeta.vaultStatblockCount > 0) {
+                badgesLeft.createEl("span", {
+                    text: `Note Statblocks: ${this.monstersMeta.vaultStatblockCount}`,
+                    cls: "dnd-level-badge"
+                });
+            }
+        };
+        renderStatusBadges();
 
         const bannerBtns = statusBanner.createDiv({ cls: "dnd-monsters-status-actions" });
         if (this.monstersMeta.hasDmCompendium) {
@@ -2862,6 +2978,24 @@ export class DMToolsWidget {
             new Notice(`Loaded ${this.discoveredMonsters.length} creature statblocks!`);
         };
 
+        // Optional Statblocks Folder Input (scoped ```statblock note discovery + active note)
+        const statblocksFolderBar = root.createDiv({ cls: "dnd-compendium-controls dnd-party-folder-bar" });
+        const statblocksFolderRow = statblocksFolderBar.createDiv({ cls: "dnd-compendium-search-row" });
+        statblocksFolderRow.createEl("span", {
+            text: "Statblocks Folder:",
+            cls: "dnd-party-folder-label"
+        });
+        const statblocksFolderInput = statblocksFolderRow.createEl("input", {
+            type: "text",
+            placeholder: 'Optional folder with ```statblock notes (active note always scanned)...',
+            value: this.plugin.settings?.statblocksFolderPath || "",
+            cls: "dnd-modal-form-input dnd-party-folder-input",
+            attr: {
+                title: 'Optional vault folder containing Markdown notes with ```statblock blocks (the currently active note is also scanned)'
+            }
+        });
+        new FolderInputSuggest(this.app, statblocksFolderInput);
+
         // Search & Filter Controls
         const controls = root.createDiv({ cls: "dnd-compendium-controls" });
         const searchRow = controls.createDiv({ cls: "dnd-compendium-search-row" });
@@ -2876,34 +3010,52 @@ export class DMToolsWidget {
         const sourceSelect = searchRow.createEl("select", {
             cls: "dnd-modal-form-input dnd-compendium-subfilter-select"
         });
-        sourceSelect.createEl("option", { text: `All Sources (${this.discoveredMonsters.length})`, value: "all" });
-        for (const src of this.monstersMeta.availableSources) {
-            sourceSelect.createEl("option", {
-                text: `${src.short} — ${src.full} (${src.count})`,
-                value: `source::${src.code}`
-            });
-        }
-        if (this.monstersMeta.vaultStatblockCount > 0) {
-            sourceSelect.createEl("option", {
-                text: `Vault Note Statblocks (${this.monstersMeta.vaultStatblockCount})`,
-                value: "plugin::vault-note"
-            });
-        }
-        sourceSelect.value = this.monsterSourceFilter;
-
-        const allCrs = Array.from(new Set(this.discoveredMonsters.map(m => m.cr).filter(Boolean)))
-            .sort((a, b) => parseCrNumericValue(a) - parseCrNumericValue(b));
         const crSelect = searchRow.createEl("select", {
             cls: "dnd-modal-form-input dnd-compendium-subfilter-select"
         });
-        crSelect.createEl("option", { text: "All CRs", value: "all" });
-        for (const cr of allCrs) {
-            crSelect.createEl("option", { text: `CR ${cr}`, value: cr });
-        }
-        crSelect.value = this.monsterCrFilter;
+
+        const populateFilterSelects = () => {
+            sourceSelect.empty();
+            sourceSelect.createEl("option", { text: `All Sources (${this.discoveredMonsters.length})`, value: "all" });
+            for (const src of this.monstersMeta.availableSources) {
+                sourceSelect.createEl("option", {
+                    text: `${src.short} — ${src.full} (${src.count})`,
+                    value: `source::${src.code}`
+                });
+            }
+            if (this.monstersMeta.fantasyStatblocksCount > 0) {
+                sourceSelect.createEl("option", {
+                    text: `Fantasy Statblocks (${this.monstersMeta.fantasyStatblocksCount})`,
+                    value: "plugin::fantasy-statblocks"
+                });
+            }
+            if (this.monstersMeta.vaultStatblockCount > 0) {
+                sourceSelect.createEl("option", {
+                    text: `Vault Note Statblocks (${this.monstersMeta.vaultStatblockCount})`,
+                    value: "plugin::vault-note"
+                });
+            }
+            const hasCurrentSrc = Array.from(sourceSelect.options).some(opt => opt.value === this.monsterSourceFilter);
+            if (!hasCurrentSrc) this.monsterSourceFilter = "all";
+            sourceSelect.value = this.monsterSourceFilter;
+
+            const allCrs = Array.from(new Set(this.discoveredMonsters.map(m => m.cr).filter(Boolean)))
+                .sort((a, b) => parseCrNumericValue(a) - parseCrNumericValue(b));
+            crSelect.empty();
+            crSelect.createEl("option", { text: "All CRs", value: "all" });
+            for (const cr of allCrs) {
+                crSelect.createEl("option", { text: `CR ${cr}`, value: cr });
+            }
+            const hasCurrentCr = Array.from(crSelect.options).some(opt => opt.value === this.monsterCrFilter);
+            if (!hasCurrentCr) this.monsterCrFilter = "all";
+            crSelect.value = this.monsterCrFilter;
+
+            searchInput.placeholder = `Search ${this.discoveredMonsters.length} creatures by name, type (Undead, Dragon, Fiend...), CR, or source book...`;
+        };
+        populateFilterSelects();
 
         // Split Grid (or 2/3 & 1/3 Resizable Vertical Split in Sidebar)
-        const { listPane, previewPane, setPreviewActive } = this.createMasterDetailSplitLayout(root, [statusBanner, controls]);
+        const { listPane, previewPane, setPreviewActive } = this.createMasterDetailSplitLayout(root, [statusBanner, statblocksFolderBar, controls]);
 
         const renderMonsterPreview = async (monster: DiscoveredMonster | null) => {
             const pToken = ++this.monsterPreviewToken;
@@ -2942,20 +3094,17 @@ export class DMToolsWidget {
             const rightActions = toolbar.createDiv({ cls: "dnd-modal-preview-badges" });
             const insertBtn = rightActions.createEl("button", {
                 text: "Insert statblock in Note",
-                cls: "dnd-dm-small-btn"
+                cls: "dnd-dm-small-btn",
+                attr: { title: "Insert ```statblock block into active Editing note, or open Markdown export view" }
             });
             insertBtn.onclick = () => {
                 const yamlBlock = "```statblock\n" + buildStatblockYaml(monster) + "\n```\n";
-                const mdView = this.app.workspace.getActiveViewOfType(MarkdownView);
-                if (mdView && mdView.editor && mdView.getMode() === "source") {
-                    mdView.editor.replaceSelection(yamlBlock);
-                    new Notice(`Inserted "${monster.name} (${monster.sourceShort})" statblock into ${mdView.file?.basename || "active note"}!`);
-                } else {
-                    const reason = mdView && mdView.getMode() !== "source"
-                        ? "active note is in Reading view; switch to Editing view to insert directly"
-                        : "open a note in Editing view to insert directly";
-                    void copyTextToClipboard(yamlBlock, `Copied "${monster.name}" statblock code block to clipboard (${reason}).`);
-                }
+                insertOrShowMarkdown(
+                    this.app,
+                    `${monster.name} (${monster.sourceShort}) Statblock`,
+                    yamlBlock,
+                    `${monster.name} (${monster.sourceShort}) statblock`
+                );
             };
 
             if (this.hostMode === "sidebar") {
@@ -3072,6 +3221,56 @@ export class DMToolsWidget {
                 : (this.hostMode === "sidebar" ? null : displayList[0]);
             await renderMonsterPreview(activeMon);
         };
+
+        const refreshMonstersView = async () => {
+            if (this.isStaleTabRender(tabToken)) return;
+            await this.ensureMonstersLoaded(false);
+            if (this.isStaleTabRender(tabToken)) return;
+            if (document.activeElement !== statblocksFolderInput) {
+                statblocksFolderInput.value = this.plugin.settings?.statblocksFolderPath || "";
+            }
+            renderStatusBadges();
+            populateFilterSelects();
+            await updateMonsterList();
+        };
+
+        const commitStatblocksFolder = async (refreshNow: boolean) => {
+            this.statblocksSaveTimer = this.clearTimer(this.statblocksSaveTimer);
+            if (this.isStaleTabRender(tabToken)) return;
+            this.plugin.settings.statblocksFolderPath = statblocksFolderInput.value.trim();
+            await this.plugin.saveSettings();
+            if (typeof window !== "undefined") {
+                window.dispatchEvent(new CustomEvent("dnd-dm-statblocks-folder-updated", { detail: { sourceWidget: this } }));
+            }
+            if (refreshNow) {
+                this.monstersLoaded = false;
+                await refreshMonstersView();
+            }
+        };
+
+        statblocksFolderInput.oninput = () => {
+            this.plugin.settings.statblocksFolderPath = statblocksFolderInput.value.trim();
+            this.statblocksRefreshTimer = this.clearTimer(this.statblocksRefreshTimer);
+            this.statblocksRefreshTimer = window.setTimeout(() => {
+                this.statblocksRefreshTimer = null;
+                this.monstersLoaded = false;
+                void refreshMonstersView();
+            }, 180);
+            this.statblocksSaveTimer = this.clearTimer(this.statblocksSaveTimer);
+            this.statblocksSaveTimer = window.setTimeout(() => {
+                this.statblocksSaveTimer = null;
+                void commitStatblocksFolder(false);
+            }, 350);
+        };
+        statblocksFolderInput.onchange = () => { void commitStatblocksFolder(true); };
+        statblocksFolderInput.onkeydown = (evt: KeyboardEvent) => {
+            if (evt.key === "Enter") {
+                evt.preventDefault();
+                void commitStatblocksFolder(true);
+            }
+        };
+
+        this.activeMonstersRefreshHook = refreshMonstersView;
 
         searchInput.oninput = () => {
             this.monsterQuery = searchInput.value;

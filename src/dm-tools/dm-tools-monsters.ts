@@ -1,8 +1,8 @@
-import { App, MarkdownRenderChild, normalizePath } from 'obsidian';
+import { App, MarkdownRenderChild, TFile, normalizePath } from 'obsidian';
 import type DnDCharacterSheetHelperPlugin from '../../main';
 import { parseBlockYaml } from '../helpers';
 import { toSlug } from '../../data';
-import { abilityModFromScore, formatSignedNumber } from './dm-tools-party';
+import { abilityModFromScore, collectMarkdownFilesInFolder, formatSignedNumber } from './dm-tools-party';
 
 export interface MonsterTraitEntry {
     name: string;
@@ -14,7 +14,7 @@ export interface MonsterTraitEntry {
 export interface DiscoveredMonster {
     id: string;
     name: string;
-    sourcePlugin: "the-dm-compendium" | "vault-note" | "srd-builtin";
+    sourcePlugin: "the-dm-compendium" | "fantasy-statblocks" | "vault-note" | "srd-builtin";
     sourceCode: string;
     sourceShort: string;
     sourceFull: string;
@@ -111,6 +111,9 @@ export function resolveDmCompendiumSourceInfo(rawSource: any): { code: string; s
     const code = String(rawSource || "").trim().toUpperCase();
     if (!code) {
         return { code: "CUSTOM", short: "Custom", full: "Custom / Unknown Source" };
+    }
+    if (code === "FS") {
+        return { code: "FS", short: "Fantasy Statblocks", full: "Fantasy Statblocks Bestiary" };
     }
     const found = DM_COMPENDIUM_SOURCES[code];
     if (found) {
@@ -709,11 +712,26 @@ export function normalizeMonsterRecord(
         : "—";
 
     const { type, subtype } = splitMonsterTypeAndSubtype(raw.type, raw.subtype);
-    const srcInfo = resolveDmCompendiumSourceInfo(raw.sourceKey || raw.source);
-    const sourceCode = sourcePlugin === "the-dm-compendium" ? srcInfo.code : (sourcePlugin === "vault-note" ? "VAULT" : "SRD");
-    const sourceShort = sourcePlugin === "the-dm-compendium" ? srcInfo.short : fallbackSourceLabel;
-    const sourceFull = sourcePlugin === "the-dm-compendium" ? srcInfo.full : fallbackSourceLabel;
-    const sourceLabel = sourcePlugin === "the-dm-compendium" ? srcInfo.short : fallbackSourceLabel;
+    const rawSourceVal = Array.isArray(raw.source) ? raw.source[0] : (raw.sourceKey || raw.source);
+    const hasExplicitSource = rawSourceVal !== undefined && rawSourceVal !== null && String(rawSourceVal).trim() !== "";
+    const srcInfo = resolveDmCompendiumSourceInfo(rawSourceVal);
+    let sourceCode = "SRD";
+    let sourceShort = fallbackSourceLabel;
+    let sourceFull = fallbackSourceLabel;
+    let sourceLabel = fallbackSourceLabel;
+    if (sourcePlugin === "the-dm-compendium") {
+        sourceCode = srcInfo.code;
+        sourceShort = srcInfo.short;
+        sourceFull = srcInfo.full;
+        sourceLabel = srcInfo.short;
+    } else if (sourcePlugin === "fantasy-statblocks") {
+        sourceCode = hasExplicitSource ? srcInfo.code : "FS";
+        sourceShort = hasExplicitSource ? srcInfo.short : "FS";
+        sourceFull = hasExplicitSource ? srcInfo.full : fallbackSourceLabel;
+        sourceLabel = hasExplicitSource ? srcInfo.short : "FS";
+    } else if (sourcePlugin === "vault-note") {
+        sourceCode = "VAULT";
+    }
 
     const savesStr = formatSavesOrSkillsField(raw.savingThrows ?? raw.saves ?? raw.save);
     const skillsStr = formatSavesOrSkillsField(raw.skills ?? raw.skillsaves ?? raw.skill);
@@ -908,16 +926,20 @@ export function clearDiscoveredMonstersCache(): void {
 }
 
 /**
- * Discovers monsters directly from "The DM Compendium" (`the-dm-compendium/cache/bestiary.json`),
- * plus any custom `statblock` blocks in vault notes (falling back to built-in presets only if The DM Compendium is not available).
+ * Discovers monsters from "The DM Compendium" (`the-dm-compendium/cache/bestiary.json`),
+ * optional loaded Fantasy Statblocks bestiary entries (`obsidian-5e-statblocks`),
+ * and scoped Markdown notes containing `statblock` code blocks (the active note and an optional configured folder),
+ * falling back to built-in presets only when external bestiaries are empty.
  */
 export async function discoverExternalMonsters(
     app: App,
-    forceReload: boolean = false
+    forceReload: boolean = false,
+    statblocksFolderPath: string = ""
 ): Promise<{
     monsters: DiscoveredMonster[];
     hasDmCompendium: boolean;
     dmCompendiumCount: number;
+    fantasyStatblocksCount: number;
     vaultStatblockCount: number;
     availableSources: { code: string; short: string; full: string; count: number }[];
 }> {
@@ -1033,15 +1055,62 @@ export async function discoverExternalMonsters(
         console.warn("DnD Plugin: Could not read The DM Compendium bestiary cache", e);
     }
 
-    // 2. Secondary Source: Scan Vault Markdown Notes containing code sections (and active .md note) for ```statblock YAML blocks
-    let vaultStatblockCount = 0;
-    const allMdFiles = (app.vault.getMarkdownFiles() || []).slice();
-    const activeFile = app.workspace.getActiveFile();
-    if (activeFile && activeFile.extension === "md" && !allMdFiles.some(f => f.path === activeFile.path)) {
-        allMdFiles.unshift(activeFile);
+    // 2. Secondary Source A: Fantasy Statblocks in-memory bestiary (when plugin is loaded)
+    let fantasyStatblocksCount = 0;
+    try {
+        const fsPlugin = pluginsObj?.plugins?.["obsidian-5e-statblocks"];
+        if (fsPlugin) {
+            let fsRawEntries: any[] = [];
+            if (typeof fsPlugin.getBestiaryCreatures === "function") {
+                const res = fsPlugin.getBestiaryCreatures();
+                if (Array.isArray(res)) fsRawEntries = res;
+                else if (res && typeof res[Symbol.iterator] === "function") fsRawEntries = Array.from(res);
+            } else if (fsPlugin.bestiary instanceof Map) {
+                fsRawEntries = Array.from(fsPlugin.bestiary.values());
+            } else if (Array.isArray(fsPlugin.bestiary)) {
+                fsRawEntries = fsPlugin.bestiary;
+            } else if (fsPlugin.bestiary && typeof fsPlugin.bestiary[Symbol.iterator] === "function") {
+                fsRawEntries = Array.from(fsPlugin.bestiary);
+            } else if (Array.isArray(fsPlugin.data?.monsters)) {
+                fsRawEntries = fsPlugin.data.monsters;
+            }
+
+            for (const item of fsRawEntries) {
+                if (!item || typeof item !== "object" || !item.name) continue;
+                const mon = normalizeMonsterRecord(item, "fantasy-statblocks", "Fantasy Statblocks Bestiary");
+                if (mon && !discoveredMap.has(mon.id)) {
+                    discoveredMap.set(mon.id, mon);
+                    fantasyStatblocksCount++;
+                    sourceCounts.set(mon.sourceCode, (sourceCounts.get(mon.sourceCode) || 0) + 1);
+                }
+            }
+        }
+    } catch (e) {
+        console.warn("DnD Plugin: Could not read Fantasy Statblocks bestiary", e);
     }
 
-    const candidateFiles = allMdFiles.filter(file => {
+    // 3. Secondary Source B: Scoped Markdown Notes (active .md note + configured Statblocks folder) for ```statblock YAML blocks
+    let vaultStatblockCount = 0;
+    const scopedMdFiles: TFile[] = [];
+    const seenScopedPaths = new Set<string>();
+    const pushScopedMdFile = (f: any) => {
+        if (f && f.extension === "md" && typeof f.path === "string" && !seenScopedPaths.has(f.path)) {
+            seenScopedPaths.add(f.path);
+            scopedMdFiles.push(f as TFile);
+        }
+    };
+
+    const activeFile = app.workspace?.getActiveFile?.();
+    pushScopedMdFile(activeFile);
+
+    const trimmedFolder = typeof statblocksFolderPath === "string" ? statblocksFolderPath.trim() : "";
+    if (trimmedFolder) {
+        for (const f of collectMarkdownFilesInFolder(app, trimmedFolder)) {
+            pushScopedMdFile(f);
+        }
+    }
+
+    const candidateFiles = scopedMdFiles.filter(file => {
         const cache = app.metadataCache.getFileCache(file);
         if (!cache || !Array.isArray(cache.sections)) return true; // Keep unindexed notes & minimal test mocks
         return cache.sections.some(sec => sec.type === "code");
@@ -1094,8 +1163,8 @@ export async function discoverExternalMonsters(
         }
     }
 
-    // 3. Only fall back to built-in SRD presets if The DM Compendium cache had 0 monsters
-    if (dmCompendiumCount === 0) {
+    // 4. Only fall back to built-in SRD presets if no external bestiary entries were loaded
+    if (dmCompendiumCount === 0 && fantasyStatblocksCount === 0) {
         for (const preset of BUILTIN_SRD_MONSTERS) {
             if (!discoveredMap.has(preset.id)) {
                 discoveredMap.set(preset.id, preset);
@@ -1117,6 +1186,7 @@ export async function discoverExternalMonsters(
         monsters,
         hasDmCompendium,
         dmCompendiumCount,
+        fantasyStatblocksCount,
         vaultStatblockCount,
         availableSources
     };

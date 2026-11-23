@@ -57,7 +57,7 @@ function syncWeaponMasteriesMarkdownFile() {
 
 syncWeaponMasteriesMarkdownFile();
 
-// --- AUTO-GENERATE ribbon-icon.ts FROM wizard-ribbon.png & dm-ribbon.png ---
+// --- AUTO-GENERATE ribbon-icon.ts FROM media/wizard-ribbon.png & media/dm-tools-ribbon.png ---
 function buildRibbonIconInner(candidates, filterId) {
     let base64Str = '';
     let w = 100;
@@ -113,12 +113,16 @@ function buildRibbonIconInner(candidates, filterId) {
 function syncRibbonIcons() {
     const ribbonTsPath = path.join(__dirname, 'ribbon-icon.ts');
     try {
-        const wizardSvg = buildRibbonIconInner(['wizard-ribbon.png', 'ribbon.png', 'ribbon.svg'], 'csh-wizard-ribbon-tint');
-        const dmSvg = buildRibbonIconInner(['dm-ribbon.png'], 'csh-dm-ribbon-tint');
+        const wizardIconRelPath = path.join('media', 'wizard-ribbon.png');
+        const dmIconRelPath = path.join('media', 'dm-tools-ribbon.png');
+        const wizardSvg = buildRibbonIconInner([wizardIconRelPath], 'csh-wizard-ribbon-tint');
+        const dmSvg = buildRibbonIconInner([dmIconRelPath], 'csh-dm-ribbon-tint');
 
+        if (!wizardSvg) console.warn(`⚠️ Missing or empty ribbon icon source: ${wizardIconRelPath}`);
+        if (!dmSvg) console.warn(`⚠️ Missing or empty ribbon icon source: ${dmIconRelPath}`);
         if (!wizardSvg && !dmSvg) return;
 
-        const lines = ['// Auto-generated from wizard-ribbon.png & dm-ribbon.png by generate-registry.js'];
+        const lines = ['// Auto-generated from media/wizard-ribbon.png & media/dm-tools-ribbon.png by generate-registry.js'];
         if (wizardSvg) {
             lines.push(`export const WIZARD_RIBBON_ICON_SVG = ${JSON.stringify(wizardSvg)};`);
             lines.push(`export const RIBBON_ICON_SVG = WIZARD_RIBBON_ICON_SVG;`);

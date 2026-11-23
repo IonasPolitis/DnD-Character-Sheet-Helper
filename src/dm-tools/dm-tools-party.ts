@@ -1,4 +1,4 @@
-import { App, TFile, normalizePath } from 'obsidian';
+import { AbstractInputSuggest, App, TAbstractFile, TFile, TFolder, normalizePath } from 'obsidian';
 import type DnDCharacterSheetHelperPlugin from '../../main';
 import {
     ALL_ABILITIES,
@@ -508,34 +508,311 @@ export function calculateCharacterPassiveSenses(frontmatter: Record<string, any>
     };
 }
 
-/**
- * Lists unique, sorted vault folder paths (excluding hidden dot-folders such as `.obsidian`).
- */
-export function listVaultFolderPaths(app: App): string[] {
-    const paths = new Set<string>();
-    const vaultAny = app?.vault as any;
-    if (typeof vaultAny?.getAllFolders === "function") {
-        for (const f of vaultAny.getAllFolders(false) || []) {
-            if (f?.path) paths.add(normalizePath(String(f.path)));
+const BaseFolderInputSuggest = (typeof AbstractInputSuggest === "function"
+    ? AbstractInputSuggest
+    : class {
+        app: App;
+        constructor(app: App, _textInputEl: HTMLInputElement | HTMLDivElement) {
+            this.app = app;
         }
-    } else if (typeof vaultAny?.getAllLoadedFiles === "function") {
-        for (const f of vaultAny.getAllLoadedFiles() || []) {
-            if (f && Array.isArray((f as any).children) && f.path && f.path !== "/") {
-                paths.add(normalizePath(String(f.path)));
+        setValue(_value: string): void {}
+        close(): void {}
+    }) as unknown as (new (app: App, textInputEl: HTMLInputElement | HTMLDivElement) => AbstractInputSuggest<TFolder>);
+
+function isFolderNode(node: any): node is TFolder {
+    if (!node) return false;
+    if (typeof TFolder === "function" && node instanceof TFolder) return true;
+    return Array.isArray(node.children);
+}
+
+function isMarkdownFileNode(node: any): node is TFile {
+    if (!node || Array.isArray(node.children)) return false;
+    if (typeof TFile === "function" && node instanceof TFile) {
+        return node.extension === "md";
+    }
+    return typeof node.extension === "string" && node.extension === "md";
+}
+
+function isHiddenVaultSubpath(rawPath: string): boolean {
+    const clean = normalizePath(String(rawPath || "")).replace(/^\/+|\/+$/g, "");
+    return Boolean(clean && (clean.startsWith(".") || clean.includes("/.")));
+}
+
+function stripPlayerLinkSyntax(rawEntry: string): { linkTarget: string; tokens: string[] } {
+    const trimmed = String(rawEntry || "").trim();
+    const unwrapped = trimmed.replace(/^\[\[/, "").replace(/\]\]$/, "");
+    const beforeAlias = unwrapped.split("|")[0].trim();
+    const withoutHeading = beforeAlias.split("#")[0].trim();
+    const cleanTarget = withoutHeading.replace(/^\/+|\/+$/g, "");
+    const withoutExt = cleanTarget.replace(/\.md$/i, "");
+    const basenameOnly = withoutExt.includes("/")
+        ? withoutExt.slice(withoutExt.lastIndexOf("/") + 1)
+        : withoutExt;
+
+    const tokens = [
+        trimmed.toLowerCase(),
+        cleanTarget.toLowerCase(),
+        withoutExt.toLowerCase(),
+        basenameOnly.toLowerCase()
+    ].filter(Boolean);
+
+    return { linkTarget: withoutExt || cleanTarget, tokens };
+}
+
+/**
+ * Resolves a user-entered folder path (`"/"` for vault root or a normalized subpath)
+ * to its `TFolder` node without scanning vault files globally.
+ */
+export function resolveVaultFolder(app: App, rawFolderPath: string): TFolder | null {
+    const trimmed = String(rawFolderPath || "").trim();
+    if (!trimmed) return null;
+    const vaultAny = app?.vault as any;
+    const root = typeof vaultAny?.getRoot === "function" ? vaultAny.getRoot() : null;
+
+    if (trimmed === "/") {
+        return isFolderNode(root) ? root : null;
+    }
+
+    const norm = normalizePath(trimmed).replace(/^\/+|\/+$/g, "");
+    if (!norm) {
+        return isFolderNode(root) ? root : null;
+    }
+
+    if (typeof vaultAny?.getFolderByPath === "function") {
+        const directFolder = vaultAny.getFolderByPath(norm);
+        if (isFolderNode(directFolder)) return directFolder;
+    }
+
+    if (typeof vaultAny?.getAbstractFileByPath === "function") {
+        const directAbstract = vaultAny.getAbstractFileByPath(norm);
+        if (isFolderNode(directAbstract)) return directAbstract;
+    }
+
+    // Fallback: traverse folder segments from root for minimal mock vaults
+    if (isFolderNode(root)) {
+        const segments = norm.split("/").filter(Boolean);
+        let current: TFolder | null = root;
+        for (const seg of segments) {
+            const curPath: string = String(current.path || "");
+            const expectedPath: string = curPath && curPath !== "/" ? `${curPath}/${seg}` : seg;
+            const children: TAbstractFile[] = current.children || [];
+            const next: TAbstractFile | undefined = children.find(
+                (child: TAbstractFile) => isFolderNode(child) && (
+                    child.name === seg
+                    || normalizePath(String(child.path || "")).replace(/^\/+|\/+$/g, "") === expectedPath
+                )
+            );
+            if (!isFolderNode(next)) {
+                current = null;
+                break;
+            }
+            current = next;
+        }
+        if (isFolderNode(current)) return current;
+    }
+
+    return null;
+}
+
+/**
+ * Collects `.md` files scoped strictly inside `rawFolderPath`.
+ * `"/"` reads only direct root-level notes (non-recursive); named folders traverse only their subtree.
+ */
+export function collectMarkdownFilesInFolder(app: App, rawFolderPath: string): TFile[] {
+    const trimmed = String(rawFolderPath || "").trim();
+    if (!trimmed) return [];
+    const folder = resolveVaultFolder(app, trimmed);
+    if (!folder) return [];
+
+    const files: TFile[] = [];
+    const seenPaths = new Set<string>();
+    const pushFile = (file: TFile) => {
+        if (!seenPaths.has(file.path)) {
+            seenPaths.add(file.path);
+            files.push(file);
+        }
+    };
+
+    if (trimmed === "/") {
+        for (const child of folder.children || []) {
+            if (isMarkdownFileNode(child)) {
+                pushFile(child);
+            }
+        }
+        return files;
+    }
+
+    const stack: TFolder[] = [folder];
+    const visitedFolders = new Set<string>();
+    while (stack.length > 0) {
+        const current = stack.pop()!;
+        const folderKey = current.path || "/";
+        if (visitedFolders.has(folderKey)) continue;
+        visitedFolders.add(folderKey);
+
+        for (const child of current.children || []) {
+            if (isFolderNode(child)) {
+                if (isHiddenVaultSubpath(child.path)) continue;
+                stack.push(child);
+            } else if (isMarkdownFileNode(child)) {
+                pushFile(child);
             }
         }
     }
-    if (paths.size === 0 && typeof vaultAny?.getMarkdownFiles === "function") {
-        for (const file of vaultAny.getMarkdownFiles() || []) {
-            const fp = normalizePath(String(file?.path || ""));
-            const idx = fp.lastIndexOf("/");
-            if (idx > 0) paths.add(fp.slice(0, idx));
+
+    return files;
+}
+
+/**
+ * Traverses strictly `TFolder` child nodes starting at vault root (never enumerating `TFile` objects).
+ */
+export function listVaultFolders(app: App): TFolder[] {
+    const vaultAny = app?.vault as any;
+    const root = typeof vaultAny?.getRoot === "function" ? vaultAny.getRoot() : null;
+    if (!isFolderNode(root)) return [];
+
+    const folders: TFolder[] = [];
+    const stack: TFolder[] = [...(root.children || []).filter(isFolderNode)];
+    const visited = new Set<string>();
+
+    while (stack.length > 0) {
+        const current = stack.pop()!;
+        const normPath = normalizePath(String(current.path || "")).replace(/^\/+|\/+$/g, "");
+        if (!normPath || visited.has(normPath) || isHiddenVaultSubpath(normPath)) continue;
+        visited.add(normPath);
+        folders.push(current);
+
+        for (const child of current.children || []) {
+            if (isFolderNode(child)) {
+                stack.push(child);
+            }
         }
     }
-    return Array.from(paths)
-        .map(p => p.replace(/^\/+|\/+$/g, ""))
-        .filter(p => p && !p.startsWith(".") && !p.includes("/."))
+
+    return folders.sort((a, b) => a.path.localeCompare(b.path));
+}
+
+/**
+ * Lists unique, sorted vault folder paths (excluding hidden dot-folders such as `.obsidian`)
+ * via strictly `TFolder` child traversal.
+ */
+export function listVaultFolderPaths(app: App): string[] {
+    return listVaultFolders(app)
+        .map(f => normalizePath(String(f.path || "")).replace(/^\/+|\/+$/g, ""))
+        .filter(p => Boolean(p) && !isHiddenVaultSubpath(p))
         .sort((a, b) => a.localeCompare(b));
+}
+
+/**
+ * Obsidian-native folder autocomplete suggester scoped exclusively to `TFolder` nodes.
+ */
+export class FolderInputSuggest extends BaseFolderInputSuggest {
+    private readonly targetInputEl: HTMLInputElement;
+    private readonly onPickPath?: (path: string) => void;
+
+    constructor(app: App, inputEl: HTMLInputElement, onPickPath?: (path: string) => void) {
+        super(app, inputEl);
+        this.targetInputEl = inputEl;
+        this.onPickPath = onPickPath;
+    }
+
+    getSuggestions(query: string): TFolder[] {
+        const rawQuery = String(query || "").trim().toLowerCase();
+        const normQuery = rawQuery.replace(/^\/+|\/+$/g, "");
+        const results: TFolder[] = [];
+
+        const vaultAny = this.app?.vault as any;
+        const root = typeof vaultAny?.getRoot === "function" ? vaultAny.getRoot() : null;
+        if (isFolderNode(root) && (!normQuery || rawQuery === "/" || "root".includes(normQuery))) {
+            results.push(root);
+        }
+
+        const cap = (this as any).limit > 0 ? Number((this as any).limit) : 100;
+        for (const folder of listVaultFolders(this.app)) {
+            const cleanPath = normalizePath(String(folder.path || "")).replace(/^\/+|\/+$/g, "");
+            if (!cleanPath || isHiddenVaultSubpath(cleanPath)) continue;
+            if (!normQuery || cleanPath.toLowerCase().includes(normQuery)) {
+                results.push(folder);
+                if (results.length >= cap) break;
+            }
+        }
+
+        return results;
+    }
+
+    renderSuggestion(folder: TFolder, el: HTMLElement): void {
+        const cleanPath = normalizePath(String(folder?.path || "")).replace(/^\/+|\/+$/g, "");
+        el.setText(!cleanPath || folder?.path === "/" ? "/ (Vault Root)" : cleanPath);
+    }
+
+    selectSuggestion(folder: TFolder, _evt: MouseEvent | KeyboardEvent): void {
+        const cleanPath = normalizePath(String(folder?.path || "")).replace(/^\/+|\/+$/g, "");
+        const chosenPath = !cleanPath || folder?.path === "/" ? "/" : cleanPath;
+        if (typeof (this as any).setValue === "function") {
+            (this as any).setValue(chosenPath);
+        }
+        this.targetInputEl.value = chosenPath;
+        if (typeof Event === "function") {
+            this.targetInputEl.dispatchEvent(new Event("input", { bubbles: true }));
+        }
+        this.onPickPath?.(chosenPath);
+        if (typeof (this as any).close === "function") {
+            (this as any).close();
+        }
+    }
+}
+
+function resolveExplicitPlayerFiles(
+    app: App,
+    plugin: DnDCharacterSheetHelperPlugin,
+    filterPlayers: string[],
+    sourcePath?: string
+): TFile[] {
+    const out: TFile[] = [];
+    const seenPaths = new Set<string>();
+    const addCandidate = (candidate: any) => {
+        if (isMarkdownFileNode(candidate) && !seenPaths.has(candidate.path)) {
+            seenPaths.add(candidate.path);
+            out.push(candidate);
+        }
+    };
+
+    const configuredFolder = String(plugin?.settings?.partyFolderPath || "").trim();
+    if (configuredFolder) {
+        for (const f of collectMarkdownFilesInFolder(app, configuredFolder)) {
+            addCandidate(f);
+        }
+    }
+
+    const vaultAny = app?.vault as any;
+    const metadataAny = app?.metadataCache as any;
+
+    for (const rawEntry of filterPlayers) {
+        const { linkTarget } = stripPlayerLinkSyntax(rawEntry);
+        if (!linkTarget) continue;
+
+        const normTarget = normalizePath(linkTarget);
+        const pathCandidates = [
+            normTarget,
+            normTarget.toLowerCase().endsWith(".md") ? normTarget : `${normTarget}.md`
+        ];
+        if (configuredFolder && configuredFolder !== "/") {
+            const relBase = normalizePath(`${configuredFolder}/${normTarget}`);
+            pathCandidates.push(relBase, relBase.toLowerCase().endsWith(".md") ? relBase : `${relBase}.md`);
+        }
+
+        if (typeof vaultAny?.getAbstractFileByPath === "function") {
+            for (const candidatePath of pathCandidates) {
+                addCandidate(vaultAny.getAbstractFileByPath(candidatePath));
+            }
+        }
+
+        if (typeof metadataAny?.getFirstLinkpathDest === "function") {
+            addCandidate(metadataAny.getFirstLinkpathDest(linkTarget, sourcePath || ""));
+        }
+    }
+
+    return out;
 }
 
 /**
@@ -546,7 +823,8 @@ export function getConfiguredPartyMembers(
     app: App,
     plugin: DnDCharacterSheetHelperPlugin,
     embedFilterFolder?: string,
-    embedFilterPlayers?: string[]
+    embedFilterPlayers?: string[],
+    sourcePath?: string
 ): { activeFolder: string; members: PartyMemberSummary[]; isConfigured: boolean } {
     const hasExplicitEmbedPlayers = Boolean(embedFilterPlayers && embedFilterPlayers.length > 0);
     const activeFolder = embedFilterFolder !== undefined
@@ -562,7 +840,8 @@ export function getConfiguredPartyMembers(
             app,
             plugin,
             activeFolder || undefined,
-            hasExplicitEmbedPlayers ? embedFilterPlayers : undefined
+            hasExplicitEmbedPlayers ? embedFilterPlayers : undefined,
+            sourcePath
         ),
         isConfigured: true
     };
@@ -577,9 +856,10 @@ export async function getConfiguredPartyMembersAsync(
     app: App,
     plugin: DnDCharacterSheetHelperPlugin,
     embedFilterFolder?: string,
-    embedFilterPlayers?: string[]
+    embedFilterPlayers?: string[],
+    sourcePath?: string
 ): Promise<{ activeFolder: string; members: PartyMemberSummary[]; isConfigured: boolean }> {
-    const result = getConfiguredPartyMembers(app, plugin, embedFilterFolder, embedFilterPlayers);
+    const result = getConfiguredPartyMembers(app, plugin, embedFilterFolder, embedFilterPlayers, sourcePath);
     if (!result.isConfigured || result.members.length === 0) return result;
     if (typeof plugin?.resolveCharacterInitiativeModifiers !== "function") return result;
 
@@ -618,22 +898,36 @@ export async function getConfiguredPartyMembersAsync(
 }
 
 /**
- * Discovers all character sheet notes in the vault (or filtered by folder / player list).
+ * Discovers character sheet notes strictly inside a configured folder or resolved from an explicit player list.
  */
 export function discoverVaultPartyMembers(
     app: App,
     plugin: DnDCharacterSheetHelperPlugin,
     filterFolder?: string,
-    filterPlayers?: string[]
+    filterPlayers?: string[],
+    sourcePath?: string
 ): PartyMemberSummary[] {
-    const files = app.vault.getMarkdownFiles();
     const rawFolder = typeof filterFolder === "string" ? filterFolder.trim() : "";
     const isRootOnly = rawFolder === "/";
     const normFolder = (!isRootOnly && rawFolder)
         ? normalizePath(rawFolder).toLowerCase().replace(/^\/+|\/+$/g, "")
         : "";
-    const playerFilterSet = filterPlayers && filterPlayers.length > 0
-        ? new Set(filterPlayers.map(p => p.trim().toLowerCase()).filter(Boolean))
+    const files: TFile[] = rawFolder
+        ? collectMarkdownFilesInFolder(app, rawFolder)
+        : (filterPlayers && filterPlayers.length > 0
+            ? resolveExplicitPlayerFiles(app, plugin, filterPlayers, sourcePath)
+            : []);
+
+    const playerFilterTokens: string[] = [];
+    if (filterPlayers && filterPlayers.length > 0) {
+        for (const p of filterPlayers) {
+            for (const tok of stripPlayerLinkSyntax(p).tokens) {
+                playerFilterTokens.push(tok);
+            }
+        }
+    }
+    const playerFilterSet = playerFilterTokens.length > 0
+        ? new Set(playerFilterTokens)
         : null;
 
     const party: PartyMemberSummary[] = [];
@@ -676,9 +970,11 @@ export function discoverVaultPartyMembers(
             : file.basename;
 
         if (playerFilterSet) {
+            const pathWithoutExt = file.path.replace(/\.md$/i, "").toLowerCase();
             const matchesName = playerFilterSet.has(cleanName.toLowerCase())
                 || playerFilterSet.has(file.basename.toLowerCase())
-                || playerFilterSet.has(file.path.toLowerCase());
+                || playerFilterSet.has(file.path.toLowerCase())
+                || playerFilterSet.has(pathWithoutExt);
             if (!matchesName) continue;
         }
 

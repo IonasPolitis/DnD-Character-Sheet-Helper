@@ -1,7 +1,7 @@
 import { App, PluginSettingTab, Setting } from 'obsidian';
 import type DnDCharacterSheetHelperPlugin from '../main';
 import { THEMES } from '../themes';
-import { InitiativeState, createDefaultInitiativeState } from './dm-tools/dm-tools-party';
+import { InitiativeState, FolderInputSuggest, createDefaultInitiativeState } from './dm-tools/dm-tools-party';
 
 // 1. Define the shape of our settings
 export interface DnDPluginSettings {
@@ -16,6 +16,7 @@ export interface DnDPluginSettings {
     defaultDmToolsViewDesktop: "modal" | "sidebar";
     defaultDmToolsViewMobile: "modal" | "sidebar";
     partyFolderPath: string;
+    statblocksFolderPath: string;
     savedInitiativeState: InitiativeState;
 
     // Theme Engine Variables
@@ -53,6 +54,7 @@ export const DEFAULT_SETTINGS: DnDPluginSettings = {
     defaultDmToolsViewDesktop: "sidebar",
     defaultDmToolsViewMobile: "modal",
     partyFolderPath: "",
+    statblocksFolderPath: "",
     savedInitiativeState: createDefaultInitiativeState(),
 
     selectedTheme: "default",
@@ -188,14 +190,32 @@ export class DnDSettingsTab extends PluginSettingTab {
         new Setting(containerEl)
             .setName('Party Character Sheets Folder')
             .setDesc('Enter the vault folder path containing your party\'s character sheets (e.g., "Campaign/Party", or "/" for vault root). Used by the Party Dashboard and 1-click Initiative party import.')
-            .addText(text => text
-                .setPlaceholder('Folder path...')
-                .setValue(this.plugin.settings.partyFolderPath || '')
-                .onChange(async (value) => {
-                    this.plugin.settings.partyFolderPath = value.trim();
-                    await this.plugin.saveSettings();
-                    window.dispatchEvent(new CustomEvent('dnd-dm-party-folder-updated'));
-                }));
+            .addText(text => {
+                text
+                    .setPlaceholder('Folder path...')
+                    .setValue(this.plugin.settings.partyFolderPath || '')
+                    .onChange(async (value) => {
+                        this.plugin.settings.partyFolderPath = value.trim();
+                        await this.plugin.saveSettings();
+                        window.dispatchEvent(new CustomEvent('dnd-dm-party-folder-updated'));
+                    });
+                new FolderInputSuggest(this.app, text.inputEl);
+            });
+
+        new Setting(containerEl)
+            .setName('Statblocks / Bestiary Folder')
+            .setDesc('Optional vault folder containing Markdown notes with ```statblock YAML blocks (scanned alongside your currently active note for the Monsters & Statblocks tab).')
+            .addText(text => {
+                text
+                    .setPlaceholder('Folder path...')
+                    .setValue(this.plugin.settings.statblocksFolderPath || '')
+                    .onChange(async (value) => {
+                        this.plugin.settings.statblocksFolderPath = value.trim();
+                        await this.plugin.saveSettings();
+                        window.dispatchEvent(new CustomEvent('dnd-dm-statblocks-folder-updated'));
+                    });
+                new FolderInputSuggest(this.app, text.inputEl);
+            });
 
         // --- Custom Rulebook Settings ---
         containerEl.createEl('h3', { text: 'Homebrew & Custom Data', cls: 'setting-item-name dnd-settings-header' });
@@ -204,17 +224,20 @@ export class DnDSettingsTab extends PluginSettingTab {
         new Setting(containerEl)
             .setName('Custom Rulebook Folder Path')
             .setDesc('Enter the path to your custom rulebook folder within your vault (e.g., "TTRPG/My Rulebook"). Leave blank to disable.')
-            .addText(text => text
-                .setPlaceholder('Folder path...')
-                .setValue(this.plugin.settings.customRulebookPath)
-                .onChange(async (value) => {
-                    this.plugin.settings.customRulebookPath = value;
-                    await this.plugin.saveSettings();
-                    this.plugin.resetCustomRulebookWatcherState();
-                    await this.plugin.checkCustomRulebookChanges(false, true);
-                    await this.plugin.syncWeaponMasteriesMarkdown();
-                    this.refreshOpenSheets();
-                }));
+            .addText(text => {
+                text
+                    .setPlaceholder('Folder path...')
+                    .setValue(this.plugin.settings.customRulebookPath)
+                    .onChange(async (value) => {
+                        this.plugin.settings.customRulebookPath = value;
+                        await this.plugin.saveSettings();
+                        this.plugin.resetCustomRulebookWatcherState();
+                        await this.plugin.checkCustomRulebookChanges(false, true);
+                        await this.plugin.syncWeaponMasteriesMarkdown();
+                        this.refreshOpenSheets();
+                    });
+                new FolderInputSuggest(this.app, text.inputEl);
+            });
 
         new Setting(containerEl)
             .setName('Custom Rulebook Priority')
