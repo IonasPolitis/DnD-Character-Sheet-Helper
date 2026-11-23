@@ -1,7 +1,7 @@
 import { App, MarkdownRenderChild, normalizePath } from 'obsidian';
-import type DnDCharacterSheetHelperPlugin from './main';
-import { parseBlockYaml } from './main';
-import { toSlug } from './data';
+import type DnDCharacterSheetHelperPlugin from '../../main';
+import { parseBlockYaml } from '../helpers';
+import { toSlug } from '../../data';
 import { abilityModFromScore, formatSignedNumber } from './dm-tools-party';
 
 export interface MonsterTraitEntry {

@@ -1,5 +1,5 @@
 import { App, TFile, normalizePath } from 'obsidian';
-import type DnDCharacterSheetHelperPlugin from './main';
+import type DnDCharacterSheetHelperPlugin from '../../main';
 import {
     ALL_ABILITIES,
     AbilityKey,
@@ -8,7 +8,7 @@ import {
     parseJsonArrayProp,
     parseSavingThrows,
     parseStringArray
-} from './main';
+} from '../helpers';
 
 export const DND_55E_CONDITIONS: readonly string[] = [
     "Blinded",

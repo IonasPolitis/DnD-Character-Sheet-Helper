@@ -9,8 +9,8 @@ import {
     TFile,
     WorkspaceLeaf
 } from 'obsidian';
-import type DnDCharacterSheetHelperPlugin from './main';
-import { DM_RIBBON_ICON_SVG } from './ribbon-icon';
+import type DnDCharacterSheetHelperPlugin from '../main';
+import { DM_RIBBON_ICON_SVG } from '../ribbon-icon';
 import {
     ALL_ABILITIES,
     AbilityKey,
@@ -18,7 +18,7 @@ import {
     formatPoolDisplayName,
     parseBlockYaml,
     parseStringArray
-} from './main';
+} from './helpers';
 import {
     CompendiumSpellEntry,
     getAllCompendiumBackgrounds,
@@ -32,7 +32,7 @@ import {
     getWeaponMasteriesMap,
     getWeaponMasteryDescription,
     toSlug
-} from './data';
+} from '../data';
 import {
     CANONICAL_SKILL_KEYS,
     DND_55E_CONDITIONS,
@@ -56,7 +56,7 @@ import {
     resolvePartyMemberLevel,
     rollD20,
     sortInitiativeCombatants
-} from './dm-tools-party';
+} from './dm-tools/dm-tools-party';
 import {
     DM_COMPENDIUM_SOURCES,
     DiscoveredMonster,
@@ -68,10 +68,10 @@ import {
     parseCrNumericValue,
     renderStatblockWithFallback,
     resolveDmCompendiumSourceInfo
-} from './dm-tools-monsters';
+} from './dm-tools/dm-tools-monsters';
 
-export * from './dm-tools-party';
-export * from './dm-tools-monsters';
+export * from './dm-tools/dm-tools-party';
+export * from './dm-tools/dm-tools-monsters';
 
 export const DM_TOOLS_VIEW_TYPE = "dnd-dm-tools-view";
 
