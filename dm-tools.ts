@@ -127,6 +127,13 @@ function abilityModFromScore(score: number): number {
     return Math.floor(((Number(score) || 10) - 10) / 2);
 }
 
+function parseNumericMod(rawVal: any, fallback: number = 0): number {
+    if (rawVal === undefined || rawVal === null || rawVal === "") return fallback;
+    const cleaned = String(rawVal).trim().replace(/^\+/, "");
+    const num = Number(cleaned);
+    return isNaN(num) ? fallback : num;
+}
+
 // ============================================================================
 // --- PARTY DISCOVERY & PASSIVE SENSES CALCULATOR ---
 // ============================================================================
@@ -286,6 +293,55 @@ export function getConfiguredPartyMembers(
 }
 
 /**
+ * Resolves the configured party list using the full `dnd-info` (`mode: combat`)
+ * Initiative calculation: `dexMod + DnD_initiativeMod` when present, or automatic
+ * feat/class/race/custom Initiative modifiers via `plugin.resolveCharacterInitiativeModifiers`.
+ */
+export async function getConfiguredPartyMembersAsync(
+    app: App,
+    plugin: DnDCharacterSheetHelperPlugin,
+    embedFilterFolder?: string,
+    embedFilterPlayers?: string[]
+): Promise<{ activeFolder: string; members: PartyMemberSummary[]; isConfigured: boolean }> {
+    const result = getConfiguredPartyMembers(app, plugin, embedFilterFolder, embedFilterPlayers);
+    if (!result.isConfigured || result.members.length === 0) return result;
+    if (typeof plugin?.resolveCharacterInitiativeModifiers !== "function") return result;
+
+    for (const member of result.members) {
+        const cache = app.metadataCache.getFileCache(member.file);
+        const fm = cache?.frontmatter;
+        if (!fm || typeof fm !== "object") continue;
+
+        const rawInitMod = fm["DnD_initiativeMod"];
+        if (rawInitMod !== undefined && rawInitMod !== null && String(rawInitMod).trim() !== "") {
+            continue;
+        }
+
+        const profBonus = parseNumericMod(fm["DnD_proficiencyBonus"], 0) || Math.ceil(1 + (member.level / 4));
+        const bgFeatForInit = typeof plugin.resolveBackgroundFeatId === "function"
+            ? await plugin.resolveBackgroundFeatId(fm["DnD_background"], fm["DnD_backgroundFeat"], plugin.settings)
+            : fm["DnD_backgroundFeat"];
+        const initCalc = await plugin.resolveCharacterInitiativeModifiers(
+            fm["DnD_class"],
+            fm["DnD_classLevels"],
+            member.level,
+            fm["DnD_extraFeats"],
+            bgFeatForInit,
+            fm["DnD_subclass"] ?? fm["DnD_Subclass"],
+            fm["DnD_race"],
+            fm["DnD_raceLineage"],
+            member.abilities,
+            profBonus,
+            fm["DnD_customInitiativeMod"],
+            plugin.settings
+        );
+        member.initBonus = member.dexMod + initCalc.totalInitiativeMod;
+    }
+
+    return result;
+}
+
+/**
  * Discovers all character sheet notes in the vault (or filtered by folder / player list).
  */
 export function discoverVaultPartyMembers(
@@ -356,13 +412,6 @@ export function discoverVaultPartyMembers(
             : maxHp;
         const tempHp = Math.max(0, Number(fm["DnD_tempHealth"]) || 0);
 
-        const parseNumericMod = (rawVal: any, fallback: number = 0): number => {
-            if (rawVal === undefined || rawVal === null || rawVal === "") return fallback;
-            const cleaned = String(rawVal).trim().replace(/^\+/, "");
-            const num = Number(cleaned);
-            return isNaN(num) ? fallback : num;
-        };
-
         const rawArmorAc = fm["DnD_armorAc"];
         const hasArmorAc = rawArmorAc !== undefined && rawArmorAc !== null && String(rawArmorAc).trim() !== "";
         const rawArmorAcBonus = fm["DnD_armorAcBonus"];
@@ -387,8 +436,11 @@ export function discoverVaultPartyMembers(
         const baseSpeed = fm["DnD_speed"] !== undefined && !isNaN(Number(fm["DnD_speed"]))
             ? Number(fm["DnD_speed"])
             : 30;
-        const speedMod = Number(fm["DnD_speedMod"]) || 0;
-        const initMod = Number(fm["DnD_initiativeMod"]) || 0;
+        const speedMod = parseNumericMod(fm["DnD_speedMod"], 0);
+        const rawInitMod = fm["DnD_initiativeMod"];
+        const initMod = (rawInitMod !== undefined && rawInitMod !== null && String(rawInitMod).trim() !== "")
+            ? parseNumericMod(rawInitMod, 0)
+            : parseNumericMod(fm["DnD_customInitiativeMod"], 0);
         const exhaustion = Math.max(0, Math.min(6, Number(fm["DnD_exhaustion"]) || 0));
 
         const senses = calculateCharacterPassiveSenses(fm);
@@ -2653,7 +2705,24 @@ export class DMToolsWidget {
             this.monstersLoaded = true;
         }
 
+        const {
+            activeFolder: initPartyFolder,
+            members: partyPcs,
+            isConfigured: hasPartyFolder
+        } = await getConfiguredPartyMembersAsync(this.app, this.plugin, this.embedFilterFolder, this.embedFilterPlayers);
+
         const state = this.getInitiativeState();
+        if (partyPcs.length > 0 && state.combatants.length > 0) {
+            const pcByPath = new Map(partyPcs.map(p => [p.sourcePath, p]));
+            for (const c of state.combatants) {
+                if (!c.isPC || !c.sourcePath) continue;
+                const freshPc = pcByPath.get(c.sourcePath);
+                if (freshPc) {
+                    c.dexMod = freshPc.dexMod;
+                    c.initBonus = freshPc.initBonus;
+                }
+            }
+        }
         state.combatants = sortInitiativeCombatants(state.combatants);
         if (state.combatants.length > 0 && (!state.activeCombatantId || !state.combatants.some(c => c.id === state.activeCombatantId))) {
             state.activeCombatantId = state.combatants[0].id;
@@ -2776,11 +2845,6 @@ export class DMToolsWidget {
         }
 
         const addFormRow = addPanel.createDiv({ cls: "dnd-init-add-form" });
-        const {
-            activeFolder: initPartyFolder,
-            members: partyPcs,
-            isConfigured: hasPartyFolder
-        } = getConfiguredPartyMembers(this.app, this.plugin, this.embedFilterFolder, this.embedFilterPlayers);
 
         if (this.initAddMode === "pc") {
             const pcSelect = addFormRow.createEl("select", {
@@ -3333,7 +3397,8 @@ export class DMToolsWidget {
         const hasExplicitEmbedFilter = this.embedFilterFolder !== undefined
             || (this.embedFilterPlayers !== undefined && this.embedFilterPlayers.length > 0);
         let saveTimer: number | null = null;
-        let renderPartyContent!: () => void;
+        let partyRenderVersion = 0;
+        let renderPartyContent!: () => Promise<void>;
 
         // Party Folder Input (lets DM type or paste the vault folder containing active party sheets)
         if ((this.hostMode === "modal" || this.hostMode === "sidebar") && !hasExplicitEmbedFilter) {
@@ -3369,12 +3434,12 @@ export class DMToolsWidget {
                 this.plugin.settings.partyFolderPath = folderInput.value.trim();
                 await this.plugin.saveSettings();
                 window.dispatchEvent(new CustomEvent("dnd-dm-party-folder-updated", { detail: { sourceWidget: this } }));
-                if (rerenderBody) renderPartyContent();
+                if (rerenderBody) await renderPartyContent();
             };
 
             folderInput.oninput = () => {
                 this.plugin.settings.partyFolderPath = folderInput.value.trim();
-                renderPartyContent();
+                void renderPartyContent();
                 if (saveTimer !== null) window.clearTimeout(saveTimer);
                 saveTimer = window.setTimeout(() => { void commitFolderPath(false); }, 350);
             };
@@ -3397,13 +3462,15 @@ export class DMToolsWidget {
             charisma: "CHA"
         };
 
-        renderPartyContent = () => {
-            partyBody.empty();
+        renderPartyContent = async () => {
+            const renderToken = ++partyRenderVersion;
             const {
                 activeFolder,
                 members: party,
                 isConfigured
-            } = getConfiguredPartyMembers(this.app, this.plugin, this.embedFilterFolder, this.embedFilterPlayers);
+            } = await getConfiguredPartyMembersAsync(this.app, this.plugin, this.embedFilterFolder, this.embedFilterPlayers);
+            if (renderToken !== partyRenderVersion) return;
+            partyBody.empty();
 
             // Top Summary Banner
             const banner = partyBody.createDiv({ cls: "dnd-party-banner" });
@@ -3634,7 +3701,7 @@ export class DMToolsWidget {
             }
         };
 
-        renderPartyContent();
+        await renderPartyContent();
     }
 
     // ========================================================================
