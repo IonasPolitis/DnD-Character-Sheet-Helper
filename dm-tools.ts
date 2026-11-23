@@ -356,9 +356,33 @@ export function discoverVaultPartyMembers(
             : maxHp;
         const tempHp = Math.max(0, Number(fm["DnD_tempHealth"]) || 0);
 
-        const baseAc = fm["DnD_armorClass"] !== undefined && !isNaN(Number(fm["DnD_armorClass"]))
-            ? Number(fm["DnD_armorClass"])
-            : (10 + dexMod + (Number(fm["DnD_armorAcMod"]) || 0));
+        const parseNumericMod = (rawVal: any, fallback: number = 0): number => {
+            if (rawVal === undefined || rawVal === null || rawVal === "") return fallback;
+            const cleaned = String(rawVal).trim().replace(/^\+/, "");
+            const num = Number(cleaned);
+            return isNaN(num) ? fallback : num;
+        };
+
+        const rawArmorAc = fm["DnD_armorAc"];
+        const hasArmorAc = rawArmorAc !== undefined && rawArmorAc !== null && String(rawArmorAc).trim() !== "";
+        const rawArmorAcBonus = fm["DnD_armorAcBonus"];
+        const hasArmorAcBonus = rawArmorAcBonus !== undefined && rawArmorAcBonus !== null && String(rawArmorAcBonus).trim() !== "";
+        const rawArmorAcMod = fm["DnD_armorAcMod"];
+        const hasArmorAcMod = rawArmorAcMod !== undefined && rawArmorAcMod !== null && String(rawArmorAcMod).trim() !== "";
+
+        let baseAc: number;
+        if (hasArmorAc || hasArmorAcBonus || hasArmorAcMod) {
+            const armorAcVal = hasArmorAc ? parseNumericMod(rawArmorAc, 10) : 10;
+            const armorAcBonusVal = hasArmorAcBonus
+                ? parseNumericMod(rawArmorAcBonus, 0)
+                : (hasArmorAc ? 0 : dexMod);
+            const armorAcModVal = hasArmorAcMod ? parseNumericMod(rawArmorAcMod, 0) : 0;
+            baseAc = armorAcVal + armorAcBonusVal + armorAcModVal;
+        } else if (fm["DnD_armorClass"] !== undefined && !isNaN(Number(fm["DnD_armorClass"]))) {
+            baseAc = Number(fm["DnD_armorClass"]);
+        } else {
+            baseAc = 10 + dexMod;
+        }
 
         const baseSpeed = fm["DnD_speed"] !== undefined && !isNaN(Number(fm["DnD_speed"]))
             ? Number(fm["DnD_speed"])
