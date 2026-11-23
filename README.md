@@ -1,7 +1,7 @@
-# DnD Character Sheet Helper
+# DnD Vault Companion
 
 > [!NOTE]
-> DnD Character Sheet Helper is an Obsidian Plugin that brings the DnD Rulebook 5.5e (2024) right inside your Digital Character Sheet. This is not a replacement for the DnD Player's Handbook, but just a handy tool that gives you the information you might need, or you wouldn't remember on top of your mind, while playing.
+> DnD Vault Companion is an Obsidian Plugin that brings the DnD Rulebook 5.5e (2024) right inside your Digital Character Sheet with additional DM Tools to help with managing sessions and campaigns. This is not a replacement for the DnD Player's Handbook, but just a handy tool that gives you the information you might need, or you wouldn't remember on top of your mind, while playing.
 
 > [!NOTE]
 > **Player Self-Policing & Modularity:**

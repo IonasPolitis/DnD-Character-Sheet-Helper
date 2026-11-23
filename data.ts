@@ -1312,3 +1312,85 @@ export async function getAllCompendiumItems(app: App, settings: FetchSettings): 
     }
     return out.sort((a, b) => a.name.localeCompare(b.name));
 }
+
+export interface CompendiumFeatEntry {
+    id: string;
+    name: string;
+    category: string;
+    prerequisite?: string;
+    description: string;
+    data: any;
+}
+
+/**
+ * Loads all Selectable Feats across `featRegistry` + Custom Rulebook `feats/*.json` in a single pass.
+ */
+export async function getAllCompendiumFeats(app: App, settings: FetchSettings): Promise<CompendiumFeatEntry[]> {
+    const featsById = new Map<string, any>();
+    const excludedIds = new Set<string>(NON_SELECTABLE_FEAT_IDS);
+    Object.keys(featRouterRegistry || {}).forEach(k => {
+        const s = toSlug(k);
+        if (s) excludedIds.add(s);
+    });
+
+    const targetRegistry = (settings.edition && pastEditionsRegistry[settings.edition])
+        ? pastEditionsRegistry[settings.edition].featRegistry
+        : featRegistry;
+
+    if (targetRegistry && typeof targetRegistry === 'object') {
+        for (const [rawKey, rawObj] of Object.entries(targetRegistry)) {
+            const id = toSlug(rawKey);
+            if (!id || excludedIds.has(id)) continue;
+            const featObj = rawObj as Record<string, any>;
+            if (!featObj || typeof featObj !== 'object' || featObj.hide === true) continue;
+            featsById.set(id, featObj);
+        }
+    }
+
+    const basePath = getCleanCustomBasePath(settings);
+    if (basePath) {
+        const customRouters = await listCustomFeatRouters(app, basePath);
+        customRouters.forEach(r => { if (r.id) excludedIds.add(r.id); });
+
+        const featsDir = normalizePath(`${basePath}/feats`);
+        try {
+            if (await app.vault.adapter.exists(featsDir)) {
+                const listed = await app.vault.adapter.list(featsDir);
+                for (const filePath of listed.files || []) {
+                    if (!filePath.toLowerCase().endsWith('.json')) continue;
+                    const fileName = filePath.split('/').pop() || '';
+                    const id = toSlug(fileName);
+                    if (!id || excludedIds.has(id)) continue;
+
+                    const featObj = await readCustomJson(app, filePath);
+                    if (!featObj || typeof featObj !== 'object' || Array.isArray(featObj) || isFeatRouterObject(featObj)) continue;
+
+                    if (featObj.hide === true) {
+                        if (settings.customRulebookPriority) featsById.delete(id);
+                        continue;
+                    }
+
+                    if (settings.customRulebookPriority || !featsById.has(id)) {
+                        featsById.set(id, featObj);
+                    }
+                }
+            }
+        } catch (e) {
+            console.error(`D&D Plugin: Could not list custom feats in "${featsDir}"`, e);
+        }
+    }
+
+    const out: CompendiumFeatEntry[] = [];
+    for (const [id, data] of featsById.entries()) {
+        if (!data || typeof data !== 'object' || data.hide === true) continue;
+        out.push({
+            id,
+            name: String(data.name || id).trim(),
+            category: String(data.category || 'Feat').trim(),
+            prerequisite: data.prerequisite ? String(data.prerequisite).trim() : undefined,
+            description: String(data.description || '').trim(),
+            data
+        });
+    }
+    return out.sort((a, b) => a.name.localeCompare(b.name));
+}

@@ -3,1433 +3,152 @@ import {
     ItemView,
     MarkdownPostProcessorContext,
     MarkdownRenderChild,
-    MarkdownRenderer,
     MarkdownView,
     Modal,
     Notice,
     TFile,
-    WorkspaceLeaf,
-    normalizePath
+    WorkspaceLeaf
 } from 'obsidian';
 import type DnDCharacterSheetHelperPlugin from './main';
 import { DM_RIBBON_ICON_SVG } from './ribbon-icon';
 import {
     ALL_ABILITIES,
     AbilityKey,
-    extractAbilityScores,
     formatFeatureOrSlug,
     formatPoolDisplayName,
     parseBlockYaml,
-    parseExtraFeatsList,
-    parseJsonArrayProp,
-    parseSavingThrows,
     parseStringArray
 } from './main';
 import {
-    CompendiumRuleEntry,
     CompendiumSpellEntry,
-    FeatPoolEntry,
     getAllCompendiumBackgrounds,
     getAllCompendiumClassChoices,
     getAllCompendiumClasses,
+    getAllCompendiumFeats,
     getAllCompendiumItems,
     getAllCompendiumRaces,
     getAllCompendiumRules,
     getAllCompendiumSpells,
-    getAvailableFeats,
-    getExtraFeat,
     getWeaponMasteriesMap,
     getWeaponMasteryDescription,
     toSlug
 } from './data';
+import {
+    CANONICAL_SKILL_KEYS,
+    DND_55E_CONDITIONS,
+    InitiativeCombatant,
+    InitiativeState,
+    PartyMemberSummary,
+    abilityModFromScore,
+    applyDamageWithTempHp,
+    calculateCharacterPassiveSenses,
+    createCombatantFromPartyMember,
+    createDefaultInitiativeState,
+    discoverVaultPartyMembers,
+    formatSignedNumber,
+    getConfiguredPartyMembers,
+    getConfiguredPartyMembersAsync,
+    getNextCombatantNames,
+    listVaultFolderPaths,
+    normalizeInitiativeStateInPlace,
+    parseNumericMod,
+    removeCombatantsUpdatingTurn,
+    resolvePartyMemberLevel,
+    rollD20,
+    sortInitiativeCombatants
+} from './dm-tools-party';
+import {
+    DM_COMPENDIUM_SOURCES,
+    DiscoveredMonster,
+    MonsterTraitEntry,
+    buildStatblockYaml,
+    clearDiscoveredMonstersCache,
+    discoverExternalMonsters,
+    normalizeMonsterRecord,
+    parseCrNumericValue,
+    renderStatblockWithFallback,
+    resolveDmCompendiumSourceInfo
+} from './dm-tools-monsters';
+
+export * from './dm-tools-party';
+export * from './dm-tools-monsters';
 
 export const DM_TOOLS_VIEW_TYPE = "dnd-dm-tools-view";
 
 export type DMToolsTabId = "compendium" | "spells" | "initiative" | "party" | "monsters";
 
-export const DND_55E_CONDITIONS: readonly string[] = [
-    "Blinded",
-    "Charmed",
-    "Deafened",
-    "Exhaustion",
-    "Frightened",
-    "Grappled",
-    "Incapacitated",
-    "Invisible",
-    "Paralyzed",
-    "Petrified",
-    "Poisoned",
-    "Prone",
-    "Restrained",
-    "Stunned",
-    "Unconscious"
-];
-
-export interface InitiativeCombatant {
-    id: string;
-    name: string;
-    initiative: number;
-    initBonus: number;
-    dexMod: number;
-    hp: number;
-    maxHp: number;
-    tempHp: number;
-    ac: number;
-    isPC: boolean;
-    conditions: string[];
-    concentrating?: boolean;
-    sourcePath?: string;
-    monsterId?: string;
-    notes?: string;
-}
-
-export interface InitiativeState {
-    round: number;
-    activeCombatantId: string | null;
-    syncPcHpToFrontmatter: boolean;
-    combatants: InitiativeCombatant[];
-}
-
-export function createDefaultInitiativeState(): InitiativeState {
-    return {
-        round: 1,
-        activeCombatantId: null,
-        syncPcHpToFrontmatter: true,
-        combatants: []
-    };
-}
-
-/**
- * Sorts combatants descending by `initiative` total, tie-breaking by `dexMod` (then `initBonus`, then `name`).
- */
-export function sortInitiativeCombatants(combatants: InitiativeCombatant[]): InitiativeCombatant[] {
-    return [...combatants].sort((a, b) => {
-        const diffInit = (Number(b.initiative) || 0) - (Number(a.initiative) || 0);
-        if (diffInit !== 0) return diffInit;
-        const diffDex = (Number(b.dexMod) || 0) - (Number(a.dexMod) || 0);
-        if (diffDex !== 0) return diffDex;
-        const diffBonus = (Number(b.initBonus) || 0) - (Number(a.initBonus) || 0);
-        if (diffBonus !== 0) return diffBonus;
-        return String(a.name || "").localeCompare(String(b.name || ""));
-    });
-}
-
-function rollD20(): number {
-    return Math.floor(Math.random() * 20) + 1;
-}
-
-function formatSignedNumber(n: number): string {
-    const val = Number(n) || 0;
-    return val >= 0 ? `+${val}` : `${val}`;
-}
-
-function abilityModFromScore(score: number): number {
-    return Math.floor(((Number(score) || 10) - 10) / 2);
-}
-
-function parseNumericMod(rawVal: any, fallback: number = 0): number {
-    if (rawVal === undefined || rawVal === null || rawVal === "") return fallback;
-    const cleaned = String(rawVal).trim().replace(/^\+/, "");
-    const num = Number(cleaned);
-    return isNaN(num) ? fallback : num;
-}
-
-// ============================================================================
-// --- PARTY DISCOVERY & PASSIVE SENSES CALCULATOR ---
-// ============================================================================
-
-export interface PartyMemberSummary {
-    file: TFile;
-    sourcePath: string;
-    name: string;
-    level: number;
-    dndClass: string;
-    subclass: string;
-    race: string;
-    background: string;
-    currentHp: number;
-    maxHp: number;
-    tempHp: number;
-    ac: number;
-    speed: number;
-    dexMod: number;
-    initBonus: number;
-    exhaustion: number;
-    heroicInspiration: boolean;
-    passivePerception: number;
-    passiveInvestigation: number;
-    passiveInsight: number;
-    savingThrows: AbilityKey[];
-    languages: string[];
-    toolProficiencies: string[];
-    abilities: Record<AbilityKey, number>;
-}
-
-/**
- * Calculates 5.5e Passive Perception, Passive Investigation, and Passive Insight
- * from character sheet frontmatter (`10 + AbilityMod + Prof/Exp/HalfProf + SkillItemBonuses`).
- */
-export function calculateCharacterPassiveSenses(frontmatter: Record<string, any>): {
-    passivePerception: number;
-    passiveInvestigation: number;
-    passiveInsight: number;
-} {
-    const level = Math.max(1, Number(frontmatter["DnD_level"]) || 1);
-    const profBonus = Math.ceil(level / 4) + 1;
-    const stats = extractAbilityScores(frontmatter);
-
-    const wisMod = abilityModFromScore(stats.wisdom);
-    const intMod = abilityModFromScore(stats.intelligence);
-
-    const proficientSkills = new Set<string>();
-    for (const entry of parseJsonArrayProp(frontmatter["DnD_skillProficiencies"])) {
-        if (Array.isArray(entry) && entry[0]) {
-            proficientSkills.add(String(entry[0]).trim().toLowerCase());
-        } else if (typeof entry === "string" && entry.trim()) {
-            proficientSkills.add(entry.trim().toLowerCase());
-        }
-    }
-
-    const expertiseSkills = new Set<string>(
-        parseStringArray(frontmatter["DnD_expertise"]).map(s => s.toLowerCase())
-    );
-    const halfProfRaw = frontmatter["DnD_halfProficiency"];
-    const hasGlobalHalfProf = halfProfRaw === true || String(halfProfRaw).toLowerCase() === "true";
-    const halfProfSkills = new Set<string>(
-        Array.isArray(halfProfRaw) || (typeof halfProfRaw === "string" && halfProfRaw.trim() !== "true")
-            ? parseStringArray(halfProfRaw).map(s => s.toLowerCase())
-            : []
-    );
-
-    const itemBonusBySkill: Record<string, number> = {};
-    for (const bonusTuple of parseJsonArrayProp(frontmatter["DnD_skillBonuses"])) {
-        if (Array.isArray(bonusTuple) && bonusTuple.length >= 3) {
-            const skillKey = String(bonusTuple[0] || "").trim().toLowerCase();
-            const amount = Number(bonusTuple[2]) || 0;
-            if (skillKey && amount) {
-                itemBonusBySkill[skillKey] = (itemBonusBySkill[skillKey] || 0) + amount;
-            }
-        }
-    }
-
-    const computeForSkill = (skillLower: string, abilityMod: number): number => {
-        let profAdd = 0;
-        if (expertiseSkills.has(skillLower)) {
-            profAdd = profBonus * 2;
-        } else if (proficientSkills.has(skillLower)) {
-            profAdd = profBonus;
-        } else if (hasGlobalHalfProf || halfProfSkills.has(skillLower)) {
-            profAdd = Math.floor(profBonus / 2);
-        }
-        const itemAdd = itemBonusBySkill[skillLower] || 0;
-        return 10 + abilityMod + profAdd + itemAdd;
-    };
-
-    return {
-        passivePerception: computeForSkill("perception", wisMod),
-        passiveInvestigation: computeForSkill("investigation", intMod),
-        passiveInsight: computeForSkill("insight", wisMod)
-    };
-}
-
-/**
- * Lists unique, sorted vault folder paths (excluding hidden dot-folders such as `.obsidian`).
- */
-export function listVaultFolderPaths(app: App): string[] {
-    const paths = new Set<string>();
-    const vaultAny = app?.vault as any;
-    if (typeof vaultAny?.getAllFolders === "function") {
-        for (const f of vaultAny.getAllFolders(false) || []) {
-            if (f?.path) paths.add(normalizePath(String(f.path)));
-        }
-    } else if (typeof vaultAny?.getAllLoadedFiles === "function") {
-        for (const f of vaultAny.getAllLoadedFiles() || []) {
-            if (f && Array.isArray((f as any).children) && f.path && f.path !== "/") {
-                paths.add(normalizePath(String(f.path)));
-            }
-        }
-    }
-    if (paths.size === 0 && typeof vaultAny?.getMarkdownFiles === "function") {
-        for (const file of vaultAny.getMarkdownFiles() || []) {
-            const fp = normalizePath(String(file?.path || ""));
-            const idx = fp.lastIndexOf("/");
-            if (idx > 0) paths.add(fp.slice(0, idx));
-        }
-    }
-    return Array.from(paths)
-        .map(p => p.replace(/^\/+|\/+$/g, ""))
-        .filter(p => p && !p.startsWith(".") && !p.includes("/."))
-        .sort((a, b) => a.localeCompare(b));
-}
-
-/**
- * Resolves the party character sheet list for the configured DM Tools Party Folder
- * (or embedded block overrides), avoiding dumping every vault character note when unset.
- */
-export function getConfiguredPartyMembers(
-    app: App,
-    plugin: DnDCharacterSheetHelperPlugin,
-    embedFilterFolder?: string,
-    embedFilterPlayers?: string[]
-): { activeFolder: string; members: PartyMemberSummary[]; isConfigured: boolean } {
-    const hasExplicitEmbedPlayers = Boolean(embedFilterPlayers && embedFilterPlayers.length > 0);
-    const activeFolder = embedFilterFolder !== undefined
-        ? embedFilterFolder.trim()
-        : (plugin.settings?.partyFolderPath || "").trim();
-
-    if (!activeFolder && !hasExplicitEmbedPlayers) {
-        return { activeFolder: "", members: [], isConfigured: false };
-    }
-    return {
-        activeFolder,
-        members: discoverVaultPartyMembers(
-            app,
-            plugin,
-            activeFolder || undefined,
-            hasExplicitEmbedPlayers ? embedFilterPlayers : undefined
-        ),
-        isConfigured: true
-    };
-}
-
-/**
- * Resolves the configured party list using the full `dnd-info` (`mode: combat`)
- * Initiative calculation: `dexMod + DnD_initiativeMod` when present, or automatic
- * feat/class/race/custom Initiative modifiers via `plugin.resolveCharacterInitiativeModifiers`.
- */
-export async function getConfiguredPartyMembersAsync(
-    app: App,
-    plugin: DnDCharacterSheetHelperPlugin,
-    embedFilterFolder?: string,
-    embedFilterPlayers?: string[]
-): Promise<{ activeFolder: string; members: PartyMemberSummary[]; isConfigured: boolean }> {
-    const result = getConfiguredPartyMembers(app, plugin, embedFilterFolder, embedFilterPlayers);
-    if (!result.isConfigured || result.members.length === 0) return result;
-    if (typeof plugin?.resolveCharacterInitiativeModifiers !== "function") return result;
-
-    for (const member of result.members) {
-        const cache = app.metadataCache.getFileCache(member.file);
-        const fm = cache?.frontmatter;
-        if (!fm || typeof fm !== "object") continue;
-
-        const rawInitMod = fm["DnD_initiativeMod"];
-        if (rawInitMod !== undefined && rawInitMod !== null && String(rawInitMod).trim() !== "") {
-            continue;
-        }
-
-        const profBonus = parseNumericMod(fm["DnD_proficiencyBonus"], 0) || Math.ceil(1 + (member.level / 4));
-        const bgFeatForInit = typeof plugin.resolveBackgroundFeatId === "function"
-            ? await plugin.resolveBackgroundFeatId(fm["DnD_background"], fm["DnD_backgroundFeat"], plugin.settings)
-            : fm["DnD_backgroundFeat"];
-        const initCalc = await plugin.resolveCharacterInitiativeModifiers(
-            fm["DnD_class"],
-            fm["DnD_classLevels"],
-            member.level,
-            fm["DnD_extraFeats"],
-            bgFeatForInit,
-            fm["DnD_subclass"] ?? fm["DnD_Subclass"],
-            fm["DnD_race"],
-            fm["DnD_raceLineage"],
-            member.abilities,
-            profBonus,
-            fm["DnD_customInitiativeMod"],
-            plugin.settings
-        );
-        member.initBonus = member.dexMod + initCalc.totalInitiativeMod;
-    }
-
-    return result;
-}
-
-/**
- * Discovers all character sheet notes in the vault (or filtered by folder / player list).
- */
-export function discoverVaultPartyMembers(
-    app: App,
-    plugin: DnDCharacterSheetHelperPlugin,
-    filterFolder?: string,
-    filterPlayers?: string[]
-): PartyMemberSummary[] {
-    const files = app.vault.getMarkdownFiles();
-    const rawFolder = typeof filterFolder === "string" ? filterFolder.trim() : "";
-    const isRootOnly = rawFolder === "/";
-    const normFolder = (!isRootOnly && rawFolder)
-        ? normalizePath(rawFolder).toLowerCase().replace(/^\/+|\/+$/g, "")
-        : "";
-    const playerFilterSet = filterPlayers && filterPlayers.length > 0
-        ? new Set(filterPlayers.map(p => p.trim().toLowerCase()).filter(Boolean))
-        : null;
-
-    const party: PartyMemberSummary[] = [];
-
-    for (const file of files) {
-        const filePathNormalized = normalizePath(file.path);
-        if (isRootOnly) {
-            if (filePathNormalized.includes("/")) continue;
-        } else if (normFolder) {
-            if (!filePathNormalized.toLowerCase().startsWith(normFolder + "/")) continue;
-        }
-
-        const cache = app.metadataCache.getFileCache(file);
-        const fm = cache?.frontmatter;
-        if (!fm || typeof fm !== "object") continue;
-
-        const cssClasses = [
-            ...parseStringArray(fm["cssclasses"]),
-            ...parseStringArray(fm["cssclass"])
-        ].map(c => c.toLowerCase());
-        const hasCharacterCss = cssClasses.includes("character-sheet");
-        const hasDndKeys = fm["DnD_level"] !== undefined || fm["DnD_class"] !== undefined || fm["DnD_maxHealth"] !== undefined;
-        if (!hasCharacterCss && !hasDndKeys) continue;
-
-        const rawName = fm["DnD_name"] ?? fm["name"];
-        const cleanName = (typeof rawName === "string" && rawName.trim() && !rawName.trim().startsWith("<"))
-            ? rawName.trim()
-            : file.basename;
-
-        if (playerFilterSet) {
-            const matchesName = playerFilterSet.has(cleanName.toLowerCase())
-                || playerFilterSet.has(file.basename.toLowerCase())
-                || playerFilterSet.has(file.path.toLowerCase());
-            if (!matchesName) continue;
-        }
-
-        const level = Math.max(1, Number(fm["DnD_level"]) || 1);
-        const classArr = parseStringArray(fm["DnD_class"]);
-        const subclassArr = parseStringArray(fm["DnD_subclass"] ?? fm["DnD_Subclass"]);
-        const raceArr = parseStringArray(fm["DnD_race"]);
-        const bgArr = parseStringArray(fm["DnD_background"]);
-
-        const abilities = extractAbilityScores(fm);
-        const dexMod = abilityModFromScore(abilities.dexterity);
-        const conMod = abilityModFromScore(abilities.constitution);
-
-        const maxHp = fm["DnD_maxHealth"] !== undefined && !isNaN(Number(fm["DnD_maxHealth"]))
-            ? Math.max(1, Number(fm["DnD_maxHealth"]))
-            : Math.max(1, 8 + conMod + (level - 1) * (5 + conMod));
-        const currentHp = fm["DnD_currentHealth"] !== undefined && !isNaN(Number(fm["DnD_currentHealth"]))
-            ? Number(fm["DnD_currentHealth"])
-            : maxHp;
-        const tempHp = Math.max(0, Number(fm["DnD_tempHealth"]) || 0);
-
-        const rawArmorAc = fm["DnD_armorAc"];
-        const hasArmorAc = rawArmorAc !== undefined && rawArmorAc !== null && String(rawArmorAc).trim() !== "";
-        const rawArmorAcBonus = fm["DnD_armorAcBonus"];
-        const hasArmorAcBonus = rawArmorAcBonus !== undefined && rawArmorAcBonus !== null && String(rawArmorAcBonus).trim() !== "";
-        const rawArmorAcMod = fm["DnD_armorAcMod"];
-        const hasArmorAcMod = rawArmorAcMod !== undefined && rawArmorAcMod !== null && String(rawArmorAcMod).trim() !== "";
-
-        let baseAc: number;
-        if (hasArmorAc || hasArmorAcBonus || hasArmorAcMod) {
-            const armorAcVal = hasArmorAc ? parseNumericMod(rawArmorAc, 10) : 10;
-            const armorAcBonusVal = hasArmorAcBonus
-                ? parseNumericMod(rawArmorAcBonus, 0)
-                : (hasArmorAc ? 0 : dexMod);
-            const armorAcModVal = hasArmorAcMod ? parseNumericMod(rawArmorAcMod, 0) : 0;
-            baseAc = armorAcVal + armorAcBonusVal + armorAcModVal;
-        } else if (fm["DnD_armorClass"] !== undefined && !isNaN(Number(fm["DnD_armorClass"]))) {
-            baseAc = Number(fm["DnD_armorClass"]);
-        } else {
-            baseAc = 10 + dexMod;
-        }
-
-        const baseSpeed = fm["DnD_speed"] !== undefined && !isNaN(Number(fm["DnD_speed"]))
-            ? Number(fm["DnD_speed"])
-            : 30;
-        const speedMod = parseNumericMod(fm["DnD_speedMod"], 0);
-        const rawInitMod = fm["DnD_initiativeMod"];
-        const initMod = (rawInitMod !== undefined && rawInitMod !== null && String(rawInitMod).trim() !== "")
-            ? parseNumericMod(rawInitMod, 0)
-            : parseNumericMod(fm["DnD_customInitiativeMod"], 0);
-        const exhaustion = Math.max(0, Math.min(6, Number(fm["DnD_exhaustion"]) || 0));
-
-        const senses = calculateCharacterPassiveSenses(fm);
-        const savingThrows = parseSavingThrows(fm["DnD_classProficiencies"]);
-        const languages = parseStringArray(fm["DnD_languages"]);
-        const toolProficiencies = parseStringArray(fm["DnD_toolProficiencies"]);
-
-        party.push({
-            file,
-            sourcePath: file.path,
-            name: cleanName,
-            level,
-            dndClass: classArr.join(" / ") || "Adventurer",
-            subclass: subclassArr.join(" / "),
-            race: raceArr.join(" / ") || "Unknown Race",
-            background: bgArr.join(" / "),
-            currentHp,
-            maxHp,
-            tempHp,
-            ac: baseAc,
-            speed: Math.max(0, baseSpeed + speedMod),
-            dexMod,
-            initBonus: dexMod + initMod,
-            exhaustion,
-            heroicInspiration: plugin.activeHeroicInspiration.has(file.path),
-            passivePerception: senses.passivePerception,
-            passiveInvestigation: senses.passiveInvestigation,
-            passiveInsight: senses.passiveInsight,
-            savingThrows,
-            languages,
-            toolProficiencies,
-            abilities
-        });
-    }
-
-    return party.sort((a, b) => a.name.localeCompare(b.name));
-}
-
-// ============================================================================
-// --- MONSTER & STATBLOCK DISCOVERY ("The DM Compendium" Bestiary + Vault Notes) ---
-// ============================================================================
-
-export interface MonsterTraitEntry {
-    name: string;
-    desc: string;
-    entries?: string[];
-    displayAs?: string;
-}
-
-export interface DiscoveredMonster {
-    id: string;
-    name: string;
-    sourcePlugin: "the-dm-compendium" | "vault-note" | "srd-builtin";
-    sourceCode: string;
-    sourceShort: string;
-    sourceFull: string;
-    sourceLabel: string;
-    page?: number | string;
-    size: string;
-    type: string;
-    subtype?: string;
-    alignment: string;
-    ac: number;
-    acText: string;
-    hp: number;
-    hpText?: string;
-    hitDice?: string;
-    speed: string;
-    stats: [number, number, number, number, number, number]; // STR, DEX, CON, INT, WIS, CHA
-    dexMod: number;
-    cr: string;
-    senses?: string;
-    languages?: string;
-    saves?: string;
-    skills?: string;
-    vulnerabilities?: string;
-    resistances?: string;
-    immunities?: string;
-    conditionImmunities?: string;
-    environment?: string[];
-    traits: MonsterTraitEntry[];
-    spellcasting: MonsterTraitEntry[];
-    actions: MonsterTraitEntry[];
-    bonusActions: MonsterTraitEntry[];
-    reactions: MonsterTraitEntry[];
-    legendaryActions: MonsterTraitEntry[];
-    mythicActions: MonsterTraitEntry[];
-    lairActions: MonsterTraitEntry[];
-    rawYaml?: string;
-}
-
-/**
- * Official source book dictionary used by "The DM Compendium" (`the-dm-compendium`).
- */
-export const DM_COMPENDIUM_SOURCES: Record<string, { full: string; short: string }> = {
-    PHB: { full: "Player's Handbook (2014)", short: "PHB'14" },
-    XPHB: { full: "Player's Handbook (2024)", short: "PHB'24" },
-    MM: { full: "Monster Manual (2014)", short: "MM'14" },
-    XMM: { full: "Monster Manual (2025)", short: "MM'25" },
-    DMG: { full: "Dungeon Master's Guide (2014)", short: "DMG'14" },
-    XDMG: { full: "Dungeon Master's Guide (2024)", short: "DMG'24" },
-    MPMM: { full: "Mordenkainen's Presents: Monsters and Minions", short: "MPMM" },
-    TCE: { full: "Tasha's Cauldron of Everything", short: "TCE" },
-    XGE: { full: "Xanathar's Guide to Everything", short: "XGE" },
-    FTD: { full: "Fizban's Treasury of Dragons", short: "FTD" },
-    BGG: { full: "Bigby Presents: Glory of the Giants", short: "BGG" },
-    BMT: { full: "The Book of Many Things", short: "BMT" },
-    BAM: { full: "Boo's Astral Menagerie", short: "BAM" },
-    VGM: { full: "Volo's Guide to Monsters", short: "VGM" },
-    MTF: { full: "Mordenkainen's Tome of Foes", short: "MTF" },
-    VRGR: { full: "Van Richten's Guide to Ravenloft", short: "VRGR" },
-    ERLW: { full: "Eberron: Rising from the Last War", short: "ERLW" },
-    EFA: { full: "Eberron: Forge of the Artificer", short: "EFA" },
-    EGW: { full: "Explorer's Guide to Wildemount", short: "EGW" },
-    GGR: { full: "Guildmasters' Guide to Ravnica", short: "GGR" },
-    MOT: { full: "Mythic Odysseys of Theros", short: "MOT" },
-    SCC: { full: "Strixhaven: A Curriculum of Chaos", short: "SCC" },
-    DSOTDQ: { full: "Dragonlance: Shadow of the Dragon Queen", short: "DSOTDQ" },
-    BGDIA: { full: "Baldur's Gate: Descent Into Avernus", short: "BGDIA" },
-    COS: { full: "Curse of Strahd", short: "COS" },
-    IDROTF: { full: "Icewind Dale: Rime of the Frostmaiden", short: "IDROTF" },
-    TOA: { full: "Tomb of Annihilation", short: "TOA" },
-    WBTW: { full: "The Wild Beyond the Witchlight", short: "WBTW" },
-    WDH: { full: "Waterdeep: Dragon Heist", short: "WDH" },
-    WDMM: { full: "Waterdeep: Dungeon of the Mad Mage", short: "WDMM" },
-    VEOR: { full: "Vecna: Eve of Ruin", short: "VEOR" },
-    QFTIS: { full: "Quests from the Infinite Staircase", short: "QFTIS" },
-    PABTSO: { full: "Phandelver and Below: The Shattered Obelisk", short: "PABTSO" },
-    SATO: { full: "Sigil and the Outlands", short: "SATO" },
-    MPP: { full: "Morte's Planar Parade", short: "MPP" },
-    COA: { full: "Chains of Asmodeus", short: "COA" },
-    KFTGV: { full: "Keys from the Golden Vault", short: "KFTGV" },
-    JTTRC: { full: "Journeys Through the Radiant Citadel", short: "JTTRC" },
-    CM: { full: "Candlekeep Mysteries", short: "CM" },
-    GOS: { full: "Ghosts of Saltmarsh", short: "GOS" },
-    OOTA: { full: "Out of the Abyss", short: "OOTA" },
-    POTA: { full: "Princes of the Apocalypse", short: "POTA" },
-    SKT: { full: "Storm King's Thunder", short: "SKT" },
-    TFTYP: { full: "Tales from the Yawning Portal", short: "TFTYP" },
-    LMOP: { full: "Lost Mine of Phandelver", short: "LMOP" },
-    DOSI: { full: "Dragons of Stormwreck Isle", short: "DOSI" },
-    DIP: { full: "Dragon of Icespire Peak", short: "DIP" },
-    ESK: { full: "Essentials Kit", short: "ESK" }
-};
-
-export function resolveDmCompendiumSourceInfo(rawSource: any): { code: string; short: string; full: string } {
-    const code = String(rawSource || "").trim().toUpperCase();
-    if (!code) {
-        return { code: "CUSTOM", short: "Custom", full: "Custom / Unknown Source" };
-    }
-    const found = DM_COMPENDIUM_SOURCES[code];
-    if (found) {
-        return { code, short: found.short, full: found.full };
-    }
-    return { code, short: code, full: code };
-}
-
-export function parseCrNumericValue(cr: string): number {
-    const clean = String(cr || "").trim();
-    if (!clean || clean === "—" || clean === "-") return -1;
-    if (clean === "1/8") return 0.125;
-    if (clean === "1/4") return 0.25;
-    if (clean === "1/2") return 0.5;
-    const num = Number(clean);
-    return Number.isFinite(num) ? num : 999;
-}
-
-const BUILTIN_SRD_MONSTERS: DiscoveredMonster[] = [
-    {
-        id: "srd::goblin-warrior",
-        name: "Goblin Warrior",
-        sourcePlugin: "srd-builtin",
-        sourceCode: "SRD",
-        sourceShort: "SRD",
-        sourceFull: "Built-in SRD Preset",
-        sourceLabel: "SRD Preset",
-        size: "Small",
-        type: "Fey",
-        subtype: "Goblinoid",
-        alignment: "Chaotic Neutral",
-        ac: 15,
-        acText: "15 (Leather Armor, Shield)",
-        hp: 10,
-        hitDice: "3d6",
-        speed: "30 ft.",
-        stats: [8, 15, 10, 10, 8, 8],
-        dexMod: 2,
-        cr: "1/4",
-        senses: "Darkvision 60 ft., Passive Perception 9",
-        languages: "Common, Goblin",
-        skills: "Stealth +6",
-        traits: [],
-        spellcasting: [],
-        actions: [
-            { name: "Scimitar", desc: "Melee Weapon Attack: +4 to hit, reach 5 ft., one target. Hit: 5 (1d6 + 2) Slashing damage, plus 2 (1d4) Slashing damage if the attack roll had Advantage." },
-            { name: "Shortbow", desc: "Ranged Weapon Attack: +4 to hit, range 80/320 ft., one target. Hit: 5 (1d6 + 2) Piercing damage, plus 2 (1d4) Piercing damage if the attack roll had Advantage." }
-        ],
-        bonusActions: [
-            { name: "Nimble Escape", desc: "The goblin takes the Disengage or Hide action." }
-        ],
-        reactions: [],
-        legendaryActions: [],
-        mythicActions: [],
-        lairActions: []
-    },
-    {
-        id: "srd::skeleton",
-        name: "Skeleton",
-        sourcePlugin: "srd-builtin",
-        sourceCode: "SRD",
-        sourceShort: "SRD",
-        sourceFull: "Built-in SRD Preset",
-        sourceLabel: "SRD Preset",
-        size: "Medium",
-        type: "Undead",
-        alignment: "Lawful Evil",
-        ac: 14,
-        acText: "14 (Armor Scraps)",
-        hp: 13,
-        hitDice: "2d8 + 4",
-        speed: "30 ft.",
-        stats: [10, 16, 15, 6, 8, 5],
-        dexMod: 3,
-        cr: "1/4",
-        senses: "Darkvision 60 ft., Passive Perception 9",
-        languages: "Understands languages it knew in life but can't speak",
-        vulnerabilities: "Bludgeoning",
-        immunities: "Poison",
-        conditionImmunities: "Exhaustion, Poisoned",
-        traits: [],
-        spellcasting: [],
-        actions: [
-            { name: "Shortsword", desc: "Melee Weapon Attack: +5 to hit, reach 5 ft., one target. Hit: 6 (1d6 + 3) Piercing damage." },
-            { name: "Shortbow", desc: "Ranged Weapon Attack: +5 to hit, range 80/320 ft., one target. Hit: 6 (1d6 + 3) Piercing damage." }
-        ],
-        bonusActions: [],
-        reactions: [],
-        legendaryActions: [],
-        mythicActions: [],
-        lairActions: []
-    },
-    {
-        id: "srd::bandit",
-        name: "Bandit",
-        sourcePlugin: "srd-builtin",
-        sourceCode: "SRD",
-        sourceShort: "SRD",
-        sourceFull: "Built-in SRD Preset",
-        sourceLabel: "SRD Preset",
-        size: "Medium",
-        type: "Humanoid",
-        alignment: "Neutral",
-        ac: 12,
-        acText: "12 (Leather Armor)",
-        hp: 11,
-        hitDice: "2d8 + 2",
-        speed: "30 ft.",
-        stats: [11, 12, 12, 10, 10, 10],
-        dexMod: 1,
-        cr: "1/8",
-        senses: "Passive Perception 10",
-        languages: "Common, Thieves' Cant",
-        traits: [],
-        spellcasting: [],
-        actions: [
-            { name: "Scimitar", desc: "Melee Weapon Attack: +3 to hit, reach 5 ft., one target. Hit: 4 (1d6 + 1) Slashing damage." },
-            { name: "Light Crossbow", desc: "Ranged Weapon Attack: +3 to hit, range 80/320 ft., one target. Hit: 5 (1d8 + 1) Piercing damage." }
-        ],
-        bonusActions: [],
-        reactions: [],
-        legendaryActions: [],
-        mythicActions: [],
-        lairActions: []
-    },
-    {
-        id: "srd::dire-wolf",
-        name: "Dire Wolf",
-        sourcePlugin: "srd-builtin",
-        sourceCode: "SRD",
-        sourceShort: "SRD",
-        sourceFull: "Built-in SRD Preset",
-        sourceLabel: "SRD Preset",
-        size: "Large",
-        type: "Beast",
-        alignment: "Unaligned",
-        ac: 14,
-        acText: "14 (Natural Armor)",
-        hp: 22,
-        hitDice: "3d10 + 6",
-        speed: "50 ft.",
-        stats: [17, 15, 15, 3, 12, 7],
-        dexMod: 2,
-        cr: "1",
-        senses: "Darkvision 60 ft., Passive Perception 15",
-        skills: "Perception +5, Stealth +4",
-        traits: [
-            { name: "Pack Tactics", desc: "The wolf has Advantage on an attack roll against a creature if at least one of the wolf's allies is within 5 feet of the creature and the ally doesn't have the Incapacitated condition." }
-        ],
-        spellcasting: [],
-        actions: [
-            { name: "Bite", desc: "Melee Weapon Attack: +5 to hit, reach 5 ft., one target. Hit: 8 (1d10 + 3) Piercing damage. If the target is a Large or smaller creature, it has the Prone condition." }
-        ],
-        bonusActions: [],
-        reactions: [],
-        legendaryActions: [],
-        mythicActions: [],
-        lairActions: []
-    },
-    {
-        id: "srd::ogre",
-        name: "Ogre",
-        sourcePlugin: "srd-builtin",
-        sourceCode: "SRD",
-        sourceShort: "SRD",
-        sourceFull: "Built-in SRD Preset",
-        sourceLabel: "SRD Preset",
-        size: "Large",
-        type: "Giant",
-        alignment: "Chaotic Evil",
-        ac: 11,
-        acText: "11 (Hide Armor)",
-        hp: 68,
-        hitDice: "8d10 + 24",
-        speed: "40 ft.",
-        stats: [19, 8, 16, 5, 7, 7],
-        dexMod: -1,
-        cr: "2",
-        senses: "Darkvision 60 ft., Passive Perception 8",
-        languages: "Common, Giant",
-        traits: [],
-        spellcasting: [],
-        actions: [
-            { name: "Greatclub", desc: "Melee Weapon Attack: +6 to hit, reach 5 ft., one target. Hit: 13 (2d8 + 4) Bludgeoning damage." },
-            { name: "Javelin", desc: "Melee or Ranged Weapon Attack: +6 to hit, reach 5 ft. or range 30/120 ft., one target. Hit: 11 (2d6 + 4) Piercing damage." }
-        ],
-        bonusActions: [],
-        reactions: [],
-        legendaryActions: [],
-        mythicActions: [],
-        lairActions: []
-    },
-    {
-        id: "srd::owlbear",
-        name: "Owlbear",
-        sourcePlugin: "srd-builtin",
-        sourceCode: "SRD",
-        sourceShort: "SRD",
-        sourceFull: "Built-in SRD Preset",
-        sourceLabel: "SRD Preset",
-        size: "Large",
-        type: "Monstrosity",
-        alignment: "Unaligned",
-        ac: 13,
-        acText: "13 (Natural Armor)",
-        hp: 59,
-        hitDice: "7d10 + 21",
-        speed: "40 ft., Climb 40 ft.",
-        stats: [20, 12, 17, 3, 12, 7],
-        dexMod: 1,
-        cr: "3",
-        senses: "Darkvision 60 ft., Passive Perception 15",
-        skills: "Perception +5",
-        traits: [],
-        spellcasting: [],
-        actions: [
-            { name: "Multiattack", desc: "The owlbear makes two Rend attacks." },
-            { name: "Rend", desc: "Melee Weapon Attack: +7 to hit, reach 5 ft., one target. Hit: 14 (2d8 + 5) Slashing damage." }
-        ],
-        bonusActions: [],
-        reactions: [],
-        legendaryActions: [],
-        mythicActions: [],
-        lairActions: []
-    },
-    {
-        id: "srd::troll",
-        name: "Troll",
-        sourcePlugin: "srd-builtin",
-        sourceCode: "SRD",
-        sourceShort: "SRD",
-        sourceFull: "Built-in SRD Preset",
-        sourceLabel: "SRD Preset",
-        size: "Large",
-        type: "Giant",
-        alignment: "Chaotic Evil",
-        ac: 15,
-        acText: "15 (Natural Armor)",
-        hp: 94,
-        hitDice: "9d10 + 45",
-        speed: "30 ft.",
-        stats: [18, 13, 20, 7, 9, 7],
-        dexMod: 1,
-        cr: "5",
-        senses: "Darkvision 60 ft., Passive Perception 13",
-        languages: "Giant",
-        skills: "Perception +3",
-        traits: [
-            { name: "Regeneration", desc: "The troll regains 15 Hit Points at the start of each of its turns. If the troll takes Acid or Fire damage, this trait doesn't function on the troll's next turn. The troll dies only if it starts its turn with 0 Hit Points and doesn't regenerate." }
-        ],
-        spellcasting: [],
-        actions: [
-            { name: "Multiattack", desc: "The troll makes three Rend attacks." },
-            { name: "Rend", desc: "Melee Weapon Attack: +7 to hit, reach 10 ft., one target. Hit: 11 (2d6 + 4) Slashing damage." }
-        ],
-        bonusActions: [],
-        reactions: [],
-        legendaryActions: [],
-        mythicActions: [],
-        lairActions: []
-    },
-    {
-        id: "srd::adult-red-dragon",
-        name: "Adult Red Dragon",
-        sourcePlugin: "srd-builtin",
-        sourceCode: "SRD",
-        sourceShort: "SRD",
-        sourceFull: "Built-in SRD Preset",
-        sourceLabel: "SRD Preset",
-        size: "Huge",
-        type: "Dragon",
-        subtype: "Chromatic",
-        alignment: "Chaotic Evil",
-        ac: 19,
-        acText: "19 (Natural Armor)",
-        hp: 256,
-        hitDice: "19d12 + 133",
-        speed: "40 ft., Climb 40 ft., Fly 80 ft.",
-        stats: [27, 10, 25, 16, 13, 23],
-        dexMod: 0,
-        cr: "17",
-        senses: "Blindsight 60 ft., Darkvision 120 ft., Passive Perception 23",
-        languages: "Common, Draconic",
-        saves: "Dex +6, Wis +7",
-        skills: "Perception +13, Stealth +6",
-        immunities: "Fire",
-        traits: [
-            { name: "Legendary Resistance (3/Day)", desc: "If the dragon fails a saving throw, it can choose to succeed instead." }
-        ],
-        spellcasting: [],
-        actions: [
-            { name: "Multiattack", desc: "The dragon makes three Rend attacks. It can replace one attack with a casting of Spellcasting (Scorching Ray)." },
-            { name: "Rend", desc: "Melee Weapon Attack: +14 to hit, reach 10 ft., one target. Hit: 13 (1d10 + 8) Slashing damage plus 5 (1d10) Fire damage." },
-            { name: "Fire Breath (Recharge 5-6)", desc: "Dexterity Saving Throw: DC 21, each creature in a 60-foot Cone. Failure: 59 (17d6) Fire damage. Success: Half damage." }
-        ],
-        bonusActions: [],
-        reactions: [],
-        legendaryActions: [
-            { name: "Commanding Presence", desc: "The dragon uses Spellcasting to cast Command." },
-            { name: "Fiery Rays", desc: "The dragon uses Spellcasting to cast Scorching Ray." },
-            { name: "Pounce", desc: "The dragon moves up to half its Speed, and it makes one Rend attack." }
-        ],
-        mythicActions: [],
-        lairActions: []
-    }
-];
-
-function normalizeTraitArray(raw: any): MonsterTraitEntry[] {
-    if (!Array.isArray(raw)) return [];
-    const out: MonsterTraitEntry[] = [];
-    for (const item of raw) {
-        if (!item || typeof item !== "object") continue;
-        const name = String(item.name || "").trim();
-        const entriesArr = Array.isArray(item.entries)
-            ? item.entries.map((e: any) => String(e ?? "").trim()).filter(Boolean)
-            : [];
-        const desc = entriesArr.length > 0
-            ? entriesArr.join("\n\n")
-            : String(item.desc ?? item.description ?? item.text ?? "").trim();
-        if (name || desc) {
-            out.push({
-                name: name || "Feature",
-                desc,
-                entries: entriesArr.length > 0 ? entriesArr : (desc ? [desc] : []),
-                displayAs: item.displayAs ? String(item.displayAs) : undefined
-            });
-        }
-    }
-    return out;
-}
-
-function splitMonsterTypeAndSubtype(rawType: any, explicitSubtype?: any): { type: string; subtype?: string } {
-    const str = String(rawType || "Creature").trim();
-    if (explicitSubtype && String(explicitSubtype).trim()) {
-        return { type: str, subtype: String(explicitSubtype).trim() };
-    }
-    const m = str.match(/^(.+?)\s*\((.+)\)$/);
-    if (m) {
-        return { type: m[1].trim(), subtype: m[2].trim() };
-    }
-    return { type: str };
-}
-
-function extractHitDiceFromHpString(hpStr: string): string | undefined {
-    const m = String(hpStr || "").match(/\(([^)]+)\)/);
-    return m ? m[1].trim() : undefined;
-}
-
-export function normalizeMonsterRecord(
-    raw: Record<string, any>,
-    sourcePlugin: DiscoveredMonster["sourcePlugin"],
-    fallbackSourceLabel: string,
-    rawYaml?: string
-): DiscoveredMonster | null {
-    if (!raw || typeof raw !== "object") return null;
-    const name = String(raw.name || "").trim();
-    if (!name) return null;
-
-    let stats: [number, number, number, number, number, number] = [10, 10, 10, 10, 10, 10];
-    if (raw.abilities && typeof raw.abilities === "object" && !Array.isArray(raw.abilities)) {
-        // The DM Compendium bestiary.json schema: { abilities: { str, dex, con, int, wis, cha } }
-        stats = [
-            Number(raw.abilities.str ?? raw.abilities.strength) || 10,
-            Number(raw.abilities.dex ?? raw.abilities.dexterity) || 10,
-            Number(raw.abilities.con ?? raw.abilities.constitution) || 10,
-            Number(raw.abilities.int ?? raw.abilities.intelligence) || 10,
-            Number(raw.abilities.wis ?? raw.abilities.wisdom) || 10,
-            Number(raw.abilities.cha ?? raw.abilities.charisma) || 10
-        ];
-    } else if (Array.isArray(raw.stats) && raw.stats.length >= 6) {
-        stats = [
-            Number(raw.stats[0]) || 10,
-            Number(raw.stats[1]) || 10,
-            Number(raw.stats[2]) || 10,
-            Number(raw.stats[3]) || 10,
-            Number(raw.stats[4]) || 10,
-            Number(raw.stats[5]) || 10
-        ];
-    } else if (raw.strength !== undefined || raw.str !== undefined) {
-        stats = [
-            Number(raw.strength ?? raw.str) || 10,
-            Number(raw.dexterity ?? raw.dex) || 10,
-            Number(raw.constitution ?? raw.con) || 10,
-            Number(raw.intelligence ?? raw.int) || 10,
-            Number(raw.wisdom ?? raw.wis) || 10,
-            Number(raw.charisma ?? raw.cha) || 10
-        ];
-    }
-
-    const dexMod = abilityModFromScore(stats[1]);
-
-    // Armor Class (supports The DM Compendium's `armorClass` as well as `ac`)
-    let acNum = 10;
-    let acText = "10";
-    const rawAcVal = raw.armorClass ?? raw.ac;
-    if (typeof rawAcVal === "number") {
-        acNum = rawAcVal;
-        acText = String(rawAcVal);
-    } else if (typeof rawAcVal === "string" && rawAcVal.trim()) {
-        acText = rawAcVal.trim();
-        const m = acText.match(/^(\d+)/) || acText.match(/\d+/);
-        acNum = m ? Number(m[0]) : 10;
-    } else if (Array.isArray(raw.armor_class) && raw.armor_class[0]) {
-        const firstAc = raw.armor_class[0];
-        acNum = Number(firstAc.value ?? firstAc) || 10;
-        acText = String(acNum);
-    }
-
-    // Hit Points & Hit Dice (supports The DM Compendium's `hitPoints: "66 (12d8 + 12)"` as well as `hp`)
-    let hpNum = 10;
-    let hpText: string | undefined;
-    let hitDice = raw.hit_dice ? String(raw.hit_dice).trim() : undefined;
-    const rawHpVal = raw.hitPoints ?? raw.hp ?? raw.hit_points;
-    if (typeof rawHpVal === "number") {
-        hpNum = Math.max(1, rawHpVal);
-        hpText = String(hpNum);
-    } else if (typeof rawHpVal === "string" && rawHpVal.trim()) {
-        hpText = rawHpVal.trim();
-        const m = hpText.match(/^(\d+)/) || hpText.match(/\d+/);
-        hpNum = m ? Math.max(1, Number(m[0])) : 10;
-        if (!hitDice) {
-            hitDice = extractHitDiceFromHpString(hpText);
-        }
-    }
-
-    // Speed (strip leading "walk " just like The DM Compendium's Ue() helper)
-    let speedStr = "30 ft.";
-    if (typeof raw.speed === "string" && raw.speed.trim()) {
-        speedStr = raw.speed.trim().replace(/\bwalk\s+/gi, "");
-    } else if (raw.speed && typeof raw.speed === "object") {
-        speedStr = Object.entries(raw.speed)
-            .map(([k, v]) => (k === "walk" ? `${v}` : `${k} ${v}`))
-            .join(", ");
-    }
-
-    // Challenge Rating (supports The DM Compendium's `challengeRating` as well as `cr`)
-    const rawCrVal = raw.challengeRating ?? raw.cr ?? raw.challenge_rating;
-    const crStr = rawCrVal !== undefined && rawCrVal !== null && String(rawCrVal).trim() !== ""
-        ? String(rawCrVal).trim()
-        : "—";
-
-    const { type, subtype } = splitMonsterTypeAndSubtype(raw.type, raw.subtype);
-    const srcInfo = resolveDmCompendiumSourceInfo(raw.sourceKey || raw.source);
-    const sourceCode = sourcePlugin === "the-dm-compendium" ? srcInfo.code : (sourcePlugin === "vault-note" ? "VAULT" : "SRD");
-    const sourceShort = sourcePlugin === "the-dm-compendium" ? srcInfo.short : fallbackSourceLabel;
-    const sourceFull = sourcePlugin === "the-dm-compendium" ? srcInfo.full : fallbackSourceLabel;
-    const sourceLabel = sourcePlugin === "the-dm-compendium" ? srcInfo.short : fallbackSourceLabel;
-
-    const savesStr = raw.savingThrows || raw.saves;
-    const skillsStr = raw.skills || (raw.skillsaves ? JSON.stringify(raw.skillsaves) : undefined);
-    const resStr = raw.damageResistances ?? raw.damage_resistances;
-    const immStr = raw.damageImmunities ?? raw.damage_immunities;
-    const condImmStr = raw.conditionImmunities ?? raw.condition_immunities;
-
-    return {
-        id: `${sourcePlugin}::${toSlug(sourceCode)}::${toSlug(name)}`,
-        name,
-        sourcePlugin,
-        sourceCode,
-        sourceShort,
-        sourceFull,
-        sourceLabel,
-        page: raw.page !== undefined && raw.page !== "" ? raw.page : undefined,
-        size: String(raw.size || "Medium").trim(),
-        type,
-        subtype,
-        alignment: String(raw.alignment || "Unaligned").trim(),
-        ac: acNum,
-        acText,
-        hp: hpNum,
-        hpText,
-        hitDice,
-        speed: speedStr,
-        stats,
-        dexMod,
-        cr: crStr,
-        senses: raw.senses ? (typeof raw.senses === "string" ? raw.senses.trim() : JSON.stringify(raw.senses)) : undefined,
-        languages: raw.languages ? (Array.isArray(raw.languages) ? raw.languages.join(", ") : String(raw.languages).trim()) : undefined,
-        saves: savesStr ? (typeof savesStr === "string" ? savesStr.trim() : JSON.stringify(savesStr)) : undefined,
-        skills: skillsStr ? (typeof skillsStr === "string" ? skillsStr.trim() : JSON.stringify(skillsStr)) : undefined,
-        vulnerabilities: raw.damage_vulnerabilities ? String(raw.damage_vulnerabilities).trim() : undefined,
-        resistances: resStr ? String(resStr).trim() : undefined,
-        immunities: immStr ? String(immStr).trim() : undefined,
-        conditionImmunities: condImmStr ? String(condImmStr).trim() : undefined,
-        environment: Array.isArray(raw.environment) ? raw.environment.map((e: any) => String(e).trim()).filter(Boolean) : undefined,
-        traits: normalizeTraitArray(raw.traits ?? raw.special_abilities),
-        spellcasting: normalizeTraitArray(raw.spellcasting),
-        actions: normalizeTraitArray(raw.actions),
-        bonusActions: normalizeTraitArray(raw.bonusActions ?? raw.bonus_actions),
-        reactions: normalizeTraitArray(raw.reactions),
-        legendaryActions: normalizeTraitArray(raw.legendaryActions ?? raw.legendary_actions),
-        mythicActions: normalizeTraitArray(raw.mythicActions ?? raw.mythic_actions),
-        lairActions: normalizeTraitArray(raw.lairActions ?? raw.lair_actions),
-        rawYaml
-    };
-}
-
-const SAVE_KEY_MAP: Record<string, string> = {
-    str: "strength",
-    dex: "dexterity",
-    con: "constitution",
-    int: "intelligence",
-    wis: "wisdom",
-    cha: "charisma"
-};
-
-function formatColonSeparatedPairsYaml(rawStr: string | undefined, keyMap: Record<string, string> = {}): string {
-    if (!rawStr || !rawStr.trim()) return " []";
-    const pairs: [string, string | number][] = [];
-    for (const part of rawStr.split(",")) {
-        const [k, ...rest] = part.split(":");
-        if (!k || rest.length === 0) continue;
-        const cleanKey = k.trim().toLowerCase();
-        const mappedKey = keyMap[cleanKey] ?? cleanKey;
-        const rawVal = rest.join(":").trim();
-        const numVal = Number(rawVal.replace(/^\+/, ""));
-        pairs.push([mappedKey, Number.isFinite(numVal) ? numVal : rawVal]);
-    }
-    if (pairs.length === 0) return " []";
-    return "\n" + pairs.map(([k, v]) => `  - ${k}: ${v}`).join("\n");
-}
-
-function formatIndentedMultilineYaml(text: string, indentSpaces: number): string {
-    const pad = " ".repeat(indentSpaces);
-    return ` |-\n${String(text || "").split(/\r?\n/).map(line => `${pad}${line}`).join("\n")}`;
-}
-
-function formatTraitsBlockYaml(entries: MonsterTraitEntry[]): string {
-    if (!entries || entries.length === 0) return " []";
-    return "\n" + entries.map(item => {
-        const cName = JSON.stringify(String(item.name || ""));
-        const joined = (item.entries && item.entries.length > 0)
-            ? item.entries.map(e => e.trim()).filter(Boolean).join("\n\n")
-            : String(item.desc || "").trim();
-        return `  - name: ${cName}\n    desc:${formatIndentedMultilineYaml(joined, 6)}`;
-    }).join("\n");
-}
-
-function formatSpellcastingYaml(spellEntries: MonsterTraitEntry[]): string {
-    if (!spellEntries || spellEntries.length === 0) return " []";
-    const flatLines = spellEntries.flatMap(entry => {
-        const list = (entry.entries && entry.entries.length > 0 ? entry.entries : [entry.desc])
-            .map(s => String(s || "").trim())
-            .filter(Boolean);
-        if (entry.name && entry.name !== "Spellcasting") {
-            return [`${entry.name}. ${list[0] ?? ""}`.trim(), ...list.slice(1)];
-        }
-        return list;
-    });
-    if (flatLines.length === 0) return " []";
-    return "\n" + flatLines.map(line => `  -${formatIndentedMultilineYaml(line, 4)}`).join("\n");
-}
-
-/**
- * Generates a `statblock` YAML block matching "The DM Compendium"'s `P.prototype.format` specification.
- */
-export function buildStatblockYaml(monster: DiscoveredMonster): string {
-    if (monster.rawYaml && monster.rawYaml.trim()) {
-        return monster.rawYaml.trim();
-    }
-    const c = (val: any) => (val === undefined || val === null || val === "") ? '""' : JSON.stringify(String(val));
-    const j = (val: any) => (typeof val === "number" ? String(val) : c(val));
-    const stripHitDiceMod = (hd?: string) => hd ? hd.replace(/\s*[+-]\s*\d+$/, "").trim() : "";
-
-    const lines: string[] = [
-        `layout: Basic 5e Layout`,
-        `name: ${c(monster.name)}`,
-        `image: [[${monster.name}.jpg]]`,
-        `size: ${c(monster.size)}`,
-        `type: ${c(monster.type)}`,
-        `subtype: ${c(monster.subtype || "")}`,
-        `alignment: ${c(monster.alignment)}`,
-        `ac: ${j(monster.ac)}`,
-        `hp: ${j(monster.hp)}`,
-        `hit_dice: ${c(stripHitDiceMod(monster.hitDice))}`,
-        `speed: ${c(monster.speed)}`,
-        `stats: [${monster.stats.join(", ")}]`,
-        `saves:${formatColonSeparatedPairsYaml(monster.saves, SAVE_KEY_MAP)}`,
-        `skillsaves:${formatColonSeparatedPairsYaml(monster.skills)}`,
-        `senses: ${c(monster.senses || "")}`,
-        `languages: ${c(monster.languages || "")}`,
-        `damage_resistances: ${c(monster.resistances || "")}`,
-        `damage_immunities: ${c(monster.immunities || "")}`,
-        `condition_immunities: ${c(monster.conditionImmunities || "")}`,
-        `cr: ${c(monster.cr)}`,
-        `traits:${formatTraitsBlockYaml(monster.traits)}`,
-        `actions:${formatTraitsBlockYaml([...(monster.actions || []), ...(monster.bonusActions || [])])}`,
-        `reactions:${formatTraitsBlockYaml(monster.reactions)}`,
-        `legendary_actions:${formatTraitsBlockYaml(monster.legendaryActions)}`,
-        `mythic_actions:${formatTraitsBlockYaml(monster.mythicActions)}`,
-        `lair_actions:${formatTraitsBlockYaml(monster.lairActions)}`,
-        `spells:${formatSpellcastingYaml(monster.spellcasting)}`,
-        `source: ${c(monster.sourceShort || monster.sourceLabel)}`,
-        `page: ${j(monster.page ?? "")}`
-    ];
-
-    return lines.join("\n");
-}
-
-/**
- * Discovers monsters directly from "The DM Compendium" (`the-dm-compendium/cache/bestiary.json`),
- * plus any custom `statblock` blocks in vault notes (falling back to built-in presets only if The DM Compendium is not available).
- */
-export async function discoverExternalMonsters(app: App): Promise<{
-    monsters: DiscoveredMonster[];
-    hasDmCompendium: boolean;
-    dmCompendiumCount: number;
-    vaultStatblockCount: number;
-    availableSources: { code: string; short: string; full: string; count: number }[];
-}> {
-    const pluginsObj = (app as any).plugins;
-    const enabledSet: Set<string> | undefined = pluginsObj?.enabledPlugins;
-    const tdcPlugin = pluginsObj?.plugins?.["the-dm-compendium"];
-    let hasDmCompendium = Boolean(enabledSet?.has?.("the-dm-compendium") || tdcPlugin);
-
-    const discoveredMap = new Map<string, DiscoveredMonster>();
-    let dmCompendiumCount = 0;
-    const sourceCounts = new Map<string, number>();
-
-    // 1. Primary Source: The DM Compendium (.obsidian/plugins/the-dm-compendium/cache/bestiary.json)
+async function copyTextToClipboard(text: string, successMessage: string): Promise<void> {
     try {
-        if (tdcPlugin && typeof tdcPlugin.ensureDatabaseCache === "function") {
-            try {
-                await tdcPlugin.ensureDatabaseCache();
-            } catch {
-                /* ignore if offline and cache already exists */
-            }
+        if (!navigator?.clipboard?.writeText) {
+            throw new Error("Clipboard API unavailable");
         }
+        await navigator.clipboard.writeText(text);
+        new Notice(successMessage);
+    } catch (err) {
+        console.warn("DnD Plugin: Failed to copy text to clipboard", err);
+        new Notice("Could not copy to clipboard in this environment.");
+    }
+}
 
-        const configDir = app.vault?.configDir || ".obsidian";
-        const tdcDir = normalizePath(`${configDir}/plugins/the-dm-compendium`);
-        const bestiaryPath = normalizePath(`${tdcDir}/cache/bestiary.json`);
-        const settingsPath = normalizePath(`${tdcDir}/data.json`);
-
-        // Resolve includedSources from active plugin instance or data.json
-        let includedSourcesSet: Set<string> | null = null;
-        if (Array.isArray(tdcPlugin?.compendiumSettings?.includedSources) && tdcPlugin.compendiumSettings.includedSources.length > 0) {
-            includedSourcesSet = new Set(
-                tdcPlugin.compendiumSettings.includedSources.map((s: any) => String(s).trim().toUpperCase())
-            );
-        } else if (await app.vault.adapter.exists(settingsPath)) {
-            try {
-                const rawSettings = JSON.parse(await app.vault.adapter.read(settingsPath));
-                if (Array.isArray(rawSettings?.includedSources) && rawSettings.includedSources.length > 0) {
-                    includedSourcesSet = new Set(
-                        rawSettings.includedSources.map((s: any) => String(s).trim().toUpperCase())
-                    );
-                }
-            } catch {
-                /* ignore */
-            }
+function makeKeyboardClickable(el: HTMLElement, onActivate: (evt: Event) => void): void {
+    el.setAttribute("tabindex", "0");
+    el.setAttribute("role", "button");
+    el.addEventListener("keydown", (evt: KeyboardEvent) => {
+        if (evt.key === "Enter" || evt.key === " ") {
+            evt.preventDefault();
+            onActivate(evt);
         }
+    });
+}
 
-        if (await app.vault.adapter.exists(bestiaryPath)) {
-            hasDmCompendium = true;
-            const rawText = await app.vault.adapter.read(bestiaryPath);
-            const parsedJson = JSON.parse(rawText);
-            const items: any[] = Array.isArray(parsedJson) ? parsedJson : [];
+function formatClassLevelFeaturesMarkdown(
+    data: Record<string, any>,
+    headingLevelPrefix: string = "####"
+): { levelSections: string[]; featureNames: string[] } {
+    const featureNames: string[] = [];
+    const levelSections: string[] = [];
+    const subHeadingPrefix = `${headingLevelPrefix}#`;
 
-            for (const item of items) {
-                if (!item || typeof item !== "object" || !item.name) continue;
-                const itemSource = String(item.sourceKey || item.source || "").trim().toUpperCase();
-                if (includedSourcesSet && itemSource && !includedSourcesSet.has(itemSource)) {
-                    continue;
-                }
-                const mon = normalizeMonsterRecord(item, "the-dm-compendium", "The DM Compendium");
-                if (mon && !discoveredMap.has(mon.id)) {
-                    discoveredMap.set(mon.id, mon);
-                    dmCompendiumCount++;
-                    sourceCounts.set(mon.sourceCode, (sourceCounts.get(mon.sourceCode) || 0) + 1);
-                }
-            }
+    const sortedLevels = Object.keys(data || {})
+        .filter(k => /^\d+$/.test(k))
+        .sort((a, b) => Number(a) - Number(b));
+
+    for (const lvl of sortedLevels) {
+        const lvlObj = data[lvl];
+        if (!lvlObj || typeof lvlObj !== "object") continue;
+        const feats = Array.isArray(lvlObj.features) ? lvlObj.features : [];
+        if (feats.length === 0) continue;
+        const lines: string[] = [`${headingLevelPrefix} Level ${lvl}`];
+        for (const f of feats) {
+            if (!f || typeof f !== "object") continue;
+            const fName = String(f.name || "Feature").trim();
+            const fDesc = String(f.description || "").trim();
+            featureNames.push(fName, fDesc);
+            lines.push(`${subHeadingPrefix} ${fName}\n${fDesc}`);
         }
-    } catch (e) {
-        console.warn("DnD Plugin: Could not read The DM Compendium bestiary cache", e);
+        levelSections.push(lines.join("\n\n"));
     }
 
-    // 2. Secondary Source: Scan Active Note (and up to 60 recently modified vault notes) for ```statblock YAML blocks
-    let vaultStatblockCount = 0;
-    const activeFile = app.workspace.getActiveFile();
-    const mdFiles = (app.vault.getMarkdownFiles() || [])
-        .slice()
-        .sort((a, b) => (b.stat?.mtime || 0) - (a.stat?.mtime || 0))
-        .slice(0, 60);
-    if (activeFile && !mdFiles.some(f => f.path === activeFile.path)) {
-        mdFiles.unshift(activeFile);
-    }
+    return { levelSections, featureNames };
+}
 
-    const statblockRegex = /```statblock[ \t]*\r?\n([\s\S]*?)```/g;
-    for (const file of mdFiles) {
+function readNoteInitiativeState(plugin: DnDCharacterSheetHelperPlugin, sourcePath: string): InitiativeState {
+    if (!sourcePath) return createDefaultInitiativeState();
+    const cache = plugin.app.metadataCache.getCache(sourcePath);
+    const fm = cache?.frontmatter || {};
+    if (fm["DnD_initiativeState"]) {
         try {
-            const content = await app.vault.cachedRead(file);
-            if (!content.includes("```statblock")) continue;
-            statblockRegex.lastIndex = 0;
-            let match: RegExpExecArray | null;
-            while ((match = statblockRegex.exec(content)) !== null) {
-                const yamlBody = match[1];
-                try {
-                    const parsedYaml = parseBlockYaml(yamlBody);
-                    const mon = normalizeMonsterRecord(
-                        parsedYaml,
-                        "vault-note",
-                        `Note: ${file.basename}`,
-                        yamlBody
-                    );
-                    if (mon) {
-                        const key = `vault-note::${toSlug(mon.name)}`;
-                        mon.id = key;
-                        if (!discoveredMap.has(key)) {
-                            discoveredMap.set(key, mon);
-                            vaultStatblockCount++;
-                        }
-                    }
-                } catch {
-                    /* ignore malformed YAML block */
-                }
+            const rawState = typeof fm["DnD_initiativeState"] === "string"
+                ? JSON.parse(fm["DnD_initiativeState"])
+                : fm["DnD_initiativeState"];
+            if (rawState && typeof rawState === "object" && Array.isArray(rawState.combatants)) {
+                return normalizeInitiativeStateInPlace(rawState);
             }
         } catch {
-            /* ignore unreadable file */
+            /* fallback to default */
         }
     }
-
-    // 3. Only fall back to built-in SRD presets if The DM Compendium cache had 0 monsters
-    if (dmCompendiumCount === 0) {
-        for (const preset of BUILTIN_SRD_MONSTERS) {
-            if (!discoveredMap.has(preset.id)) {
-                discoveredMap.set(preset.id, preset);
-            }
-        }
-    }
-
-    const availableSources = Array.from(sourceCounts.entries())
-        .map(([code, count]) => {
-            const info = resolveDmCompendiumSourceInfo(code);
-            return { code, short: info.short, full: info.full, count };
-        })
-        .sort((a, b) => b.count - a.count || a.full.localeCompare(b.full));
-
-    const monsters = Array.from(discoveredMap.values()).sort(
-        (a, b) => a.name.localeCompare(b.name) || a.sourceShort.localeCompare(b.sourceShort)
-    );
-    return {
-        monsters,
-        hasDmCompendium,
-        dmCompendiumCount,
-        vaultStatblockCount,
-        availableSources
-    };
-}
-
-/**
- * Renders a creature statblock card directly from The DM Compendium's statblock data.
- */
-export async function renderStatblockWithFallback(
-    app: App,
-    plugin: DnDCharacterSheetHelperPlugin,
-    monster: DiscoveredMonster,
-    containerEl: HTMLElement,
-    sourcePath: string,
-    component: MarkdownRenderChild
-): Promise<void> {
-    containerEl.empty();
-
-    const card = containerEl.createDiv({ cls: "dnd-statblock-card" });
-
-    const header = card.createDiv({ cls: "dnd-statblock-header" });
-    const titleRow = header.createDiv({ cls: "dnd-statblock-title-row" });
-    titleRow.createEl("h3", { text: monster.name, cls: "dnd-statblock-name" });
-
-    const badgesRight = titleRow.createDiv({ cls: "dnd-modal-row-badges" });
-    if (monster.sourceShort) {
-        const pageSuffix = monster.page ? `, p. ${monster.page}` : "";
-        badgesRight.createEl("span", {
-            text: `${monster.sourceShort}${pageSuffix}`,
-            cls: "dnd-level-badge dnd-modal-badge-sm",
-            attr: { title: monster.sourceFull }
-        });
-    }
-    badgesRight.createEl("span", { text: `CR ${monster.cr}`, cls: "dnd-level-badge dnd-statblock-cr-badge" });
-
-    const typeSub = `${monster.size} ${monster.type}${monster.subtype ? ` (${monster.subtype})` : ""}, ${monster.alignment}`;
-    header.createEl("div", { text: typeSub, cls: "dnd-statblock-sub" });
-
-    card.createDiv({ cls: "dnd-statblock-rule" });
-
-    const vitals = card.createDiv({ cls: "dnd-statblock-vitals" });
-    const addVital = (target: HTMLElement, label: string, val: string) => {
-        const row = target.createDiv({ cls: "dnd-statblock-vital-row" });
-        row.createEl("strong", { text: `${label} ` });
-        row.createSpan({ text: val });
-    };
-    addVital(vitals, "Armor Class", monster.acText || String(monster.ac));
-    addVital(vitals, "Hit Points", monster.hpText || `${monster.hp}${monster.hitDice ? ` (${monster.hitDice})` : ""}`);
-    addVital(vitals, "Speed", `${monster.speed} (Initiative ${formatSignedNumber(monster.dexMod)})`);
-
-    card.createDiv({ cls: "dnd-statblock-rule" });
-
-    const abilityLabels = ["STR", "DEX", "CON", "INT", "WIS", "CHA"];
-    const abilitiesGrid = card.createDiv({ cls: "dnd-statblock-abilities" });
-    abilityLabels.forEach((lbl, idx) => {
-        const score = monster.stats[idx] ?? 10;
-        const mod = abilityModFromScore(score);
-        const cell = abilitiesGrid.createDiv({ cls: "dnd-statblock-ability-cell" });
-        cell.createEl("div", { text: lbl, cls: "dnd-statblock-ability-label" });
-        cell.createEl("div", { text: `${score} (${formatSignedNumber(mod)})`, cls: "dnd-statblock-ability-val" });
-    });
-
-    card.createDiv({ cls: "dnd-statblock-rule" });
-
-    const details = card.createDiv({ cls: "dnd-statblock-details" });
-    if (monster.saves) addVital(details, "Saving Throws", monster.saves);
-    if (monster.skills) addVital(details, "Skills", monster.skills);
-    if (monster.vulnerabilities) addVital(details, "Vulnerabilities", monster.vulnerabilities);
-    if (monster.resistances) addVital(details, "Resistances", monster.resistances);
-    if (monster.immunities) addVital(details, "Immunities", monster.immunities);
-    if (monster.conditionImmunities) addVital(details, "Condition Immunities", monster.conditionImmunities);
-    if (monster.senses) addVital(details, "Senses", monster.senses);
-    if (monster.languages) addVital(details, "Languages", monster.languages);
-    if (monster.environment && monster.environment.length > 0) {
-        addVital(details, "Environment", monster.environment.join(", "));
-    }
-
-    const renderSection = async (heading: string, entries: MonsterTraitEntry[]) => {
-        if (!entries || entries.length === 0) return;
-        card.createEl("h4", { text: heading, cls: "dnd-statblock-section-title" });
-        for (const entry of entries) {
-            const block = card.createDiv({ cls: "dnd-statblock-trait" });
-            const md = `***${entry.name}.*** ${entry.desc}`;
-            await plugin.renderDndMarkdown(md, block, sourcePath, component);
-        }
-    };
-
-    await renderSection("Traits", monster.traits);
-    await renderSection("Spellcasting", monster.spellcasting);
-    await renderSection("Actions", monster.actions);
-    await renderSection("Bonus Actions", monster.bonusActions);
-    await renderSection("Reactions", monster.reactions);
-    await renderSection("Legendary Actions", monster.legendaryActions);
-    await renderSection("Mythic Actions", monster.mythicActions);
-    await renderSection("Lair Actions", monster.lairActions);
+    return createDefaultInitiativeState();
 }
 
 // ============================================================================
@@ -1467,7 +186,10 @@ export class ConditionRuleModal extends Modal {
 
         const rules = await getAllCompendiumRules(this.app, this.plugin.settings);
         const searchLower = this.conditionName.trim().toLowerCase();
+        const searchSlug = toSlug(this.conditionName);
         const matched = rules.find(r => r.name.toLowerCase() === searchLower)
+            || (searchSlug ? rules.find(r => toSlug(r.name) === searchSlug) : undefined)
+            || rules.find(r => r.groupId === "conditions" && r.name.toLowerCase().includes(searchLower))
             || rules.find(r => r.name.toLowerCase().includes(searchLower));
 
         const body = contentEl.createDiv({ cls: "dnd-condition-modal-body" });
@@ -1589,10 +311,12 @@ export class DMToolsWidget {
     embedFilterPlayers?: string[];
     customInitiativeState?: InitiativeState;
     onSaveCustomInitiativeState?: (state: InitiativeState) => Promise<void>;
+    onReloadCustomInitiativeState?: () => InitiativeState;
 
     // Tab 1: Compendium State
     compendiumItems: CompendiumUnifiedItem[] = [];
     compendiumLoaded = false;
+    loadedCompendiumRevision = -1;
     compendiumQuery = "";
     compendiumCategory: "all" | CompendiumUnifiedItem["category"] = "all";
     compendiumSubFilter = "all";
@@ -1601,6 +325,7 @@ export class DMToolsWidget {
     // Tab 2: Spell Browser State
     allSpells: CompendiumSpellEntry[] = [];
     spellsLoaded = false;
+    loadedSpellsRevision = -1;
     spellQuery = "";
     spellLevelFilter: string = "all";
     spellPoolFilter: string = "all";
@@ -1630,9 +355,24 @@ export class DMToolsWidget {
     // Sidebar Resizable Vertical Split State (default 2/3 upper selection, 1/3 lower preview)
     sidebarSplitPercent = 66.67;
 
-    // Layout Containers
+    // Layout & Lifecycle Guards
     bodyContainer!: HTMLElement;
-    private partyFolderListenerRegistered = false;
+    private listenersRegistered = false;
+    private isWidgetUnloaded = false;
+    private tabRenderVersion = 0;
+    private compendiumPreviewToken = 0;
+    private spellPreviewToken = 0;
+    private monsterPreviewToken = 0;
+
+    private partySaveTimer: number | null = null;
+    private metadataRefreshTimer: number | null = null;
+    private compendiumSearchTimer: number | null = null;
+    private spellSearchTimer: number | null = null;
+    private monsterSearchTimer: number | null = null;
+    private partySearchTimer: number | null = null;
+
+    private activePartyRefreshHook: (() => Promise<void>) | null = null;
+    private activeInitRefreshHook: ((refreshPartyFromCache: boolean) => Promise<void>) | null = null;
 
     constructor(options: {
         app: App;
@@ -1647,6 +387,7 @@ export class DMToolsWidget {
         embedFilterPlayers?: string[];
         customInitiativeState?: InitiativeState;
         onSaveCustomInitiativeState?: (state: InitiativeState) => Promise<void>;
+        onReloadCustomInitiativeState?: () => InitiativeState;
     }) {
         this.app = options.app;
         this.plugin = options.plugin;
@@ -1660,14 +401,33 @@ export class DMToolsWidget {
         this.embedFilterPlayers = options.embedFilterPlayers;
         this.customInitiativeState = options.customInitiativeState;
         this.onSaveCustomInitiativeState = options.onSaveCustomInitiativeState;
+        this.onReloadCustomInitiativeState = options.onReloadCustomInitiativeState;
+    }
+
+    private clearTimer(timerId: number | null): null {
+        if (timerId !== null && typeof window !== "undefined") {
+            window.clearTimeout(timerId);
+        }
+        return null;
+    }
+
+    private clearAllTimers(): void {
+        this.partySaveTimer = this.clearTimer(this.partySaveTimer);
+        this.metadataRefreshTimer = this.clearTimer(this.metadataRefreshTimer);
+        this.compendiumSearchTimer = this.clearTimer(this.compendiumSearchTimer);
+        this.spellSearchTimer = this.clearTimer(this.spellSearchTimer);
+        this.monsterSearchTimer = this.clearTimer(this.monsterSearchTimer);
+        this.partySearchTimer = this.clearTimer(this.partySearchTimer);
     }
 
     getInitiativeState(): InitiativeState {
-        if (this.customInitiativeState) return this.customInitiativeState;
+        if (this.customInitiativeState) {
+            return normalizeInitiativeStateInPlace(this.customInitiativeState);
+        }
         if (!this.plugin.settings.savedInitiativeState) {
             this.plugin.settings.savedInitiativeState = createDefaultInitiativeState();
         }
-        return this.plugin.settings.savedInitiativeState;
+        return normalizeInitiativeStateInPlace(this.plugin.settings.savedInitiativeState);
     }
 
     async saveInitiativeState(): Promise<void> {
@@ -1684,37 +444,156 @@ export class DMToolsWidget {
         } else {
             await this.plugin.saveSettings();
         }
-        window.dispatchEvent(new CustomEvent("dnd-dm-initiative-updated"));
+        if (typeof window !== "undefined") {
+            window.dispatchEvent(new CustomEvent("dnd-dm-initiative-updated", {
+                detail: {
+                    sourceWidget: this,
+                    isCustomNoteState: Boolean(this.customInitiativeState),
+                    sourcePath: this.sourcePath
+                }
+            }));
+        }
+    }
+
+    private registerSyncListenersOnce(): void {
+        if (this.listenersRegistered) return;
+        this.listenersRegistered = true;
+
+        this.renderChild.register(() => {
+            this.isWidgetUnloaded = true;
+            this.clearAllTimers();
+            this.activePartyRefreshHook = null;
+            this.activeInitRefreshHook = null;
+        });
+
+        const scheduleTabSync = (target: "party" | "initiative", refreshPartyFromCache: boolean) => {
+            if (this.isWidgetUnloaded) return;
+            this.metadataRefreshTimer = this.clearTimer(this.metadataRefreshTimer);
+            this.metadataRefreshTimer = window.setTimeout(() => {
+                this.metadataRefreshTimer = null;
+                if (this.isWidgetUnloaded) return;
+                if (target === "party" && this.activeTab === "party") {
+                    if (this.activePartyRefreshHook) {
+                        void this.activePartyRefreshHook();
+                    } else {
+                        void this.renderActiveTab();
+                    }
+                } else if (target === "initiative" && this.activeTab === "initiative") {
+                    if (this.activeInitRefreshHook) {
+                        void this.activeInitRefreshHook(refreshPartyFromCache);
+                    } else {
+                        void this.renderActiveTab();
+                    }
+                }
+            }, 80);
+        };
+
+        const onPartyFolderUpdated = (evt: Event) => {
+            const detail = (evt as CustomEvent<{ sourceWidget?: DMToolsWidget }>)?.detail;
+            if (detail?.sourceWidget === this || this.isWidgetUnloaded) return;
+            if (this.activeTab === "party") {
+                if (this.activePartyRefreshHook) void this.activePartyRefreshHook();
+                else void this.renderActiveTab();
+            } else if (this.activeTab === "initiative") {
+                if (this.activeInitRefreshHook) void this.activeInitRefreshHook(true);
+                else void this.renderActiveTab();
+            }
+        };
+
+        const onInitiativeUpdated = (evt: Event) => {
+            const detail = (evt as CustomEvent<{
+                sourceWidget?: DMToolsWidget;
+                isCustomNoteState?: boolean;
+                sourcePath?: string;
+            }>)?.detail;
+            if (detail?.sourceWidget === this || this.isWidgetUnloaded) return;
+            if (this.activeTab !== "initiative") return;
+
+            const isThisCustom = Boolean(this.customInitiativeState);
+            const isEventCustom = Boolean(detail?.isCustomNoteState);
+            if (isThisCustom !== isEventCustom) return;
+            if (isThisCustom && detail?.sourcePath !== this.sourcePath) return;
+
+            if (isThisCustom && this.onReloadCustomInitiativeState) {
+                this.customInitiativeState = this.onReloadCustomInitiativeState();
+            }
+            if (this.activeInitRefreshHook) {
+                void this.activeInitRefreshHook(false);
+            } else {
+                void this.renderActiveTab();
+            }
+        };
+
+        const onHeroicInspirationChanged = () => {
+            if (this.isWidgetUnloaded || this.activeTab !== "party") return;
+            if (this.activePartyRefreshHook) void this.activePartyRefreshHook();
+            else void this.renderActiveTab();
+        };
+
+        if (typeof window !== "undefined") {
+            window.addEventListener("dnd-dm-party-folder-updated", onPartyFolderUpdated);
+            window.addEventListener("dnd-dm-initiative-updated", onInitiativeUpdated);
+            window.addEventListener("dnd-heroic-inspiration-changed", onHeroicInspirationChanged);
+            this.renderChild.register(() => {
+                window.removeEventListener("dnd-dm-party-folder-updated", onPartyFolderUpdated);
+                window.removeEventListener("dnd-dm-initiative-updated", onInitiativeUpdated);
+                window.removeEventListener("dnd-heroic-inspiration-changed", onHeroicInspirationChanged);
+            });
+        }
+
+        if (typeof this.app?.metadataCache?.on === "function") {
+            this.renderChild.registerEvent(
+                this.app.metadataCache.on("changed", (file: TFile) => {
+                    if (this.isWidgetUnloaded || !file) return;
+                    if (this.customInitiativeState && file.path === this.sourcePath && this.onReloadCustomInitiativeState) {
+                        this.customInitiativeState = this.onReloadCustomInitiativeState();
+                        scheduleTabSync("initiative", true);
+                        return;
+                    }
+                    if (this.activeTab !== "party" && this.activeTab !== "initiative") return;
+
+                    const activeFolder = (this.embedFilterFolder !== undefined
+                        ? this.embedFilterFolder
+                        : (this.plugin.settings?.partyFolderPath || "")
+                    ).trim().toLowerCase().replace(/^\/+|\/+$/g, "");
+
+                    const normPath = file.path.toLowerCase();
+                    const matchesFolder = activeFolder === ""
+                        ? false
+                        : (activeFolder === "/" ? !file.path.includes("/") : normPath.startsWith(activeFolder + "/"));
+                    const matchesEmbedPlayer = Boolean(
+                        this.embedFilterPlayers?.some(p => {
+                            const lp = p.trim().toLowerCase();
+                            return lp && (normPath === lp || file.basename.toLowerCase() === lp);
+                        })
+                    );
+                    const matchesCombatant = this.activeTab === "initiative"
+                        && this.getInitiativeState().combatants.some(c => c.sourcePath === file.path);
+
+                    if (matchesFolder || matchesEmbedPlayer || matchesCombatant) {
+                        scheduleTabSync(this.activeTab, true);
+                    }
+                })
+            );
+        }
     }
 
     async render(): Promise<void> {
-        if (!this.partyFolderListenerRegistered) {
-            this.partyFolderListenerRegistered = true;
-            const onPartyFolderUpdated = (evt: Event) => {
-                const detail = (evt as CustomEvent<{ sourceWidget?: DMToolsWidget }>)?.detail;
-                if (detail?.sourceWidget === this) return;
-                if (this.activeTab === "party" || this.activeTab === "initiative") {
-                    void this.renderActiveTab();
-                }
-            };
-            window.addEventListener("dnd-dm-party-folder-updated", onPartyFolderUpdated);
-            this.renderChild.register(() => {
-                window.removeEventListener("dnd-dm-party-folder-updated", onPartyFolderUpdated);
-            });
-        }
+        this.isWidgetUnloaded = false;
+        this.registerSyncListenersOnce();
 
         this.containerEl.empty();
         this.containerEl.addClass("dnd-dm-widget", `is-mode-${this.hostMode}`);
 
         if (this.hostMode === "embed-initiative") {
             this.bodyContainer = this.containerEl.createDiv({ cls: "dnd-dm-body" });
-            await this.renderInitiativeTab();
+            await this.renderActiveTab();
             return;
         }
 
         if (this.hostMode === "embed-party") {
             this.bodyContainer = this.containerEl.createDiv({ cls: "dnd-dm-body" });
-            await this.renderPartyTab();
+            await this.renderActiveTab();
             return;
         }
 
@@ -1736,6 +615,7 @@ export class DMToolsWidget {
             this.compendiumLoaded = false;
             this.spellsLoaded = false;
             this.monstersLoaded = false;
+            clearDiscoveredMonstersCache();
             await this.renderActiveTab();
             new Notice("DM Tools data refreshed!");
         };
@@ -1779,26 +659,42 @@ export class DMToolsWidget {
     }
 
     async renderActiveTab(): Promise<void> {
-        if (!this.bodyContainer) return;
+        if (!this.bodyContainer || this.isWidgetUnloaded) return;
+        const renderToken = ++this.tabRenderVersion;
+
+        this.activePartyRefreshHook = null;
+        this.activeInitRefreshHook = null;
+        this.compendiumSearchTimer = this.clearTimer(this.compendiumSearchTimer);
+        this.spellSearchTimer = this.clearTimer(this.spellSearchTimer);
+        this.monsterSearchTimer = this.clearTimer(this.monsterSearchTimer);
+        this.partySearchTimer = this.clearTimer(this.partySearchTimer);
+        if (this.activeTab !== "party") {
+            this.partySaveTimer = this.clearTimer(this.partySaveTimer);
+        }
+
         this.bodyContainer.empty();
 
         switch (this.activeTab) {
             case "compendium":
-                await this.renderCompendiumTab();
+                await this.renderCompendiumTab(renderToken);
                 break;
             case "spells":
-                await this.renderSpellBrowserTab();
+                await this.renderSpellBrowserTab(renderToken);
                 break;
             case "initiative":
-                await this.renderInitiativeTab();
+                await this.renderInitiativeTab(renderToken);
                 break;
             case "party":
-                await this.renderPartyTab();
+                await this.renderPartyTab(renderToken);
                 break;
             case "monsters":
-                await this.renderMonstersTab();
+                await this.renderMonstersTab(renderToken);
                 break;
         }
+    }
+
+    private isStaleTabRender(renderToken: number): boolean {
+        return this.isWidgetUnloaded || renderToken !== this.tabRenderVersion;
     }
 
     /**
@@ -1901,7 +797,9 @@ export class DMToolsWidget {
     // ========================================================================
 
     private async ensureCompendiumLoaded(): Promise<void> {
-        if (this.compendiumLoaded) return;
+        const currentRev = this.plugin.rulebookRevision ?? 0;
+        if (this.compendiumLoaded && this.loadedCompendiumRevision === currentRev) return;
+
         const settings = this.plugin.settings;
         const items: CompendiumUnifiedItem[] = [];
 
@@ -1926,28 +824,7 @@ export class DMToolsWidget {
         const { classes, subclasses } = await getAllCompendiumClasses(this.app, settings);
         for (const cls of classes) {
             const data = cls.data || {};
-            const featureNames: string[] = [];
-            const levelSections: string[] = [];
-
-            const sortedLevels = Object.keys(data)
-                .filter(k => /^\d+$/.test(k))
-                .sort((a, b) => Number(a) - Number(b));
-
-            for (const lvl of sortedLevels) {
-                const lvlObj = data[lvl];
-                if (!lvlObj || typeof lvlObj !== "object") continue;
-                const feats = Array.isArray(lvlObj.features) ? lvlObj.features : [];
-                if (feats.length === 0) continue;
-                const lines: string[] = [`#### Level ${lvl}`];
-                for (const f of feats) {
-                    if (!f || typeof f !== "object") continue;
-                    const fName = String(f.name || "Feature").trim();
-                    const fDesc = String(f.description || "").trim();
-                    featureNames.push(fName, fDesc);
-                    lines.push(`##### ${fName}\n${fDesc}`);
-                }
-                levelSections.push(lines.join("\n\n"));
-            }
+            const { levelSections, featureNames } = formatClassLevelFeaturesMarkdown(data);
 
             const profSaves = Array.isArray(data.proficiencySavingThrow)
                 ? data.proficiencySavingThrow.map((s: any) => String(s)).join(", ")
@@ -1975,28 +852,7 @@ export class DMToolsWidget {
 
         for (const sub of subclasses) {
             const data = sub.data || {};
-            const featureNames: string[] = [];
-            const levelSections: string[] = [];
-
-            const sortedLevels = Object.keys(data)
-                .filter(k => /^\d+$/.test(k))
-                .sort((a, b) => Number(a) - Number(b));
-
-            for (const lvl of sortedLevels) {
-                const lvlObj = data[lvl];
-                if (!lvlObj || typeof lvlObj !== "object") continue;
-                const feats = Array.isArray(lvlObj.features) ? lvlObj.features : [];
-                if (feats.length === 0) continue;
-                const lines: string[] = [`#### Level ${lvl}`];
-                for (const f of feats) {
-                    if (!f || typeof f !== "object") continue;
-                    const fName = String(f.name || "Feature").trim();
-                    const fDesc = String(f.description || "").trim();
-                    featureNames.push(fName, fDesc);
-                    lines.push(`##### ${fName}\n${fDesc}`);
-                }
-                levelSections.push(lines.join("\n\n"));
-            }
+            const { levelSections, featureNames } = formatClassLevelFeaturesMarkdown(data);
 
             items.push({
                 id: `subclass::${sub.id}`,
@@ -2117,26 +973,21 @@ export class DMToolsWidget {
             });
         }
 
-        // 6. Feats
-        const availFeats: FeatPoolEntry[] = await getAvailableFeats(this.app, settings);
-        for (const fEntry of availFeats) {
-            const featData = await getExtraFeat(this.app, settings, fEntry.id);
-            const desc = String(featData?.description || "").trim();
-            const cat = String(featData?.category || fEntry.category || "Feat").trim();
-            const prereq = featData?.prerequisite ? String(featData.prerequisite).trim() : "";
-
+        // 6. Feats (single-pass loader in data.ts)
+        const allFeats = await getAllCompendiumFeats(this.app, settings);
+        for (const fEntry of allFeats) {
             items.push({
                 id: `feat::${fEntry.id}`,
                 category: "feats",
                 categoryLabel: "Feats",
-                subFilter: cat,
+                subFilter: fEntry.category,
                 name: fEntry.name,
-                badge: cat,
-                searchBlob: `${fEntry.name} ${cat} ${prereq} ${desc}`.toLowerCase(),
+                badge: fEntry.category,
+                searchBlob: `${fEntry.name} ${fEntry.category} ${fEntry.prerequisite || ""} ${fEntry.description}`.toLowerCase(),
                 renderMarkdown: async () => {
-                    const lines = [`### ${fEntry.name}`, `*${cat}*`];
-                    if (prereq) lines.push(`*Prerequisite: ${prereq}*`);
-                    lines.push("\n---\n", desc || "*No description available.*");
+                    const lines = [`### ${fEntry.name}`, `*${fEntry.category}*`];
+                    if (fEntry.prerequisite) lines.push(`*Prerequisite: ${fEntry.prerequisite}*`);
+                    lines.push("\n---\n", fEntry.description || "*No description available.*");
                     return lines.join("\n");
                 }
             });
@@ -2198,10 +1049,13 @@ export class DMToolsWidget {
 
         this.compendiumItems = items;
         this.compendiumLoaded = true;
+        this.loadedCompendiumRevision = currentRev;
     }
 
-    private async renderCompendiumTab(): Promise<void> {
+    private async renderCompendiumTab(tabToken: number): Promise<void> {
         await this.ensureCompendiumLoaded();
+        if (this.isStaleTabRender(tabToken)) return;
+
         const root = this.bodyContainer.createDiv({ cls: "dnd-compendium-root" });
 
         // Top Search & Category Bar
@@ -2237,7 +1091,6 @@ export class DMToolsWidget {
             { id: "items", label: "Items & Masteries" }
         ];
 
-        // Master-Detail Grid (or 2/3 & 1/3 Resizable Vertical Split in Sidebar)
         const { listPane, previewPane, setPreviewActive } = this.createMasterDetailSplitLayout(root, [controls]);
 
         const populateSubFilters = () => {
@@ -2257,15 +1110,22 @@ export class DMToolsWidget {
         };
 
         const renderPreview = async (item: CompendiumUnifiedItem | null) => {
-            previewPane.empty();
-            setPreviewActive(Boolean(item));
+            const pToken = ++this.compendiumPreviewToken;
             if (!item) {
+                previewPane.empty();
+                setPreviewActive(false);
                 previewPane.createEl("p", {
                     text: "Select any rule, class, feat, item, or trait to inspect its full details.",
                     cls: "dnd-modal-preview-empty"
                 });
                 return;
             }
+
+            const mdText = await item.renderMarkdown();
+            if (pToken !== this.compendiumPreviewToken || this.isStaleTabRender(tabToken)) return;
+
+            previewPane.empty();
+            setPreviewActive(true);
 
             const toolbar = previewPane.createDiv({ cls: "dnd-compendium-preview-toolbar" });
             toolbar.createEl("span", {
@@ -2278,10 +1138,8 @@ export class DMToolsWidget {
                 text: "Copy Markdown",
                 cls: "dnd-dm-small-btn"
             });
-            const mdText = await item.renderMarkdown();
-            copyBtn.onclick = async () => {
-                await navigator.clipboard.writeText(mdText);
-                new Notice(`Copied "${item.name}" to clipboard!`);
+            copyBtn.onclick = () => {
+                void copyTextToClipboard(mdText, `Copied "${item.name}" to clipboard!`);
             };
 
             if (this.hostMode === "sidebar") {
@@ -2302,19 +1160,27 @@ export class DMToolsWidget {
         };
 
         const renderPillsAndList = async () => {
+            if (this.isStaleTabRender(tabToken)) return;
             const q = this.compendiumQuery.trim().toLowerCase();
 
-            // Update pill counts
+            // Single-pass category count + active category/subfilter filtering
+            const counts: Record<string, number> = { all: 0 };
+            for (const c of categories) counts[c.id] = 0;
+
+            const filtered: CompendiumUnifiedItem[] = [];
+            for (const it of this.compendiumItems) {
+                if (q && !it.searchBlob.includes(q)) continue;
+                counts.all++;
+                counts[it.category] = (counts[it.category] || 0) + 1;
+                if (this.compendiumCategory !== "all" && it.category !== this.compendiumCategory) continue;
+                if (this.compendiumSubFilter !== "all" && it.subFilter !== this.compendiumSubFilter) continue;
+                filtered.push(it);
+            }
+
             pillsRow.empty();
             for (const cat of categories) {
-                const count = this.compendiumItems.filter(it => {
-                    if (cat.id !== "all" && it.category !== cat.id) return false;
-                    if (q && !it.searchBlob.includes(q)) return false;
-                    return true;
-                }).length;
-
                 const pill = pillsRow.createEl("button", {
-                    text: `${cat.label} (${count})`,
+                    text: `${cat.label} (${counts[cat.id] || 0})`,
                     cls: `dnd-compendium-pill ${this.compendiumCategory === cat.id ? "is-active" : ""}`.trim()
                 });
                 pill.onclick = async () => {
@@ -2324,14 +1190,6 @@ export class DMToolsWidget {
                     await renderPillsAndList();
                 };
             }
-
-            // Filter list
-            const filtered = this.compendiumItems.filter(it => {
-                if (this.compendiumCategory !== "all" && it.category !== this.compendiumCategory) return false;
-                if (this.compendiumSubFilter !== "all" && it.subFilter !== this.compendiumSubFilter) return false;
-                if (q && !it.searchBlob.includes(q)) return false;
-                return true;
-            });
 
             listPane.empty();
             if (filtered.length === 0) {
@@ -2365,7 +1223,7 @@ export class DMToolsWidget {
                     cls: "dnd-level-badge dnd-modal-badge-sm"
                 });
 
-                row.onclick = async () => {
+                const selectRow = async () => {
                     if (this.hostMode === "sidebar" && this.selectedCompendiumId === item.id) {
                         this.selectedCompendiumId = null;
                         row.removeClass("is-active");
@@ -2377,6 +1235,8 @@ export class DMToolsWidget {
                     row.addClass("is-active");
                     await renderPreview(item);
                 };
+                row.onclick = () => { void selectRow(); };
+                makeKeyboardClickable(row, () => { void selectRow(); });
             }
 
             if (filtered.length > 200) {
@@ -2395,13 +1255,18 @@ export class DMToolsWidget {
         populateSubFilters();
         searchInput.oninput = () => {
             this.compendiumQuery = searchInput.value;
-            void renderPillsAndList();
+            this.compendiumSearchTimer = this.clearTimer(this.compendiumSearchTimer);
+            this.compendiumSearchTimer = window.setTimeout(() => {
+                this.compendiumSearchTimer = null;
+                void renderPillsAndList();
+            }, 120);
         };
         subFilterSelect.onchange = () => {
             this.compendiumSubFilter = subFilterSelect.value;
             void renderPillsAndList();
         };
         clearBtn.onclick = () => {
+            this.compendiumSearchTimer = this.clearTimer(this.compendiumSearchTimer);
             this.compendiumQuery = "";
             this.compendiumCategory = "all";
             this.compendiumSubFilter = "all";
@@ -2418,13 +1283,17 @@ export class DMToolsWidget {
     // ========================================================================
 
     private async ensureSpellsLoaded(): Promise<void> {
-        if (this.spellsLoaded) return;
+        const currentRev = this.plugin.rulebookRevision ?? 0;
+        if (this.spellsLoaded && this.loadedSpellsRevision === currentRev) return;
         this.allSpells = await getAllCompendiumSpells(this.app, this.plugin.settings);
         this.spellsLoaded = true;
+        this.loadedSpellsRevision = currentRev;
     }
 
-    private async renderSpellBrowserTab(): Promise<void> {
+    private async renderSpellBrowserTab(tabToken: number): Promise<void> {
         await this.ensureSpellsLoaded();
+        if (this.isStaleTabRender(tabToken)) return;
+
         const root = this.bodyContainer.createDiv({ cls: "dnd-spell-browser-root" });
 
         const controls = root.createDiv({ cls: "dnd-compendium-controls" });
@@ -2481,6 +1350,9 @@ export class DMToolsWidget {
         const { listPane, previewPane, setPreviewActive } = this.createMasterDetailSplitLayout(root, [controls]);
 
         const renderSpellPreview = async (spell: CompendiumSpellEntry | null) => {
+            const pToken = ++this.spellPreviewToken;
+            if (pToken !== this.spellPreviewToken || this.isStaleTabRender(tabToken)) return;
+
             previewPane.empty();
             setPreviewActive(Boolean(spell));
             if (!spell) {
@@ -2507,11 +1379,10 @@ export class DMToolsWidget {
                 cls: "dnd-dm-small-btn",
                 attr: { title: "Copy Spell Markdown" }
             });
-            copyBtn.onclick = async () => {
+            copyBtn.onclick = () => {
                 const lvlLabel = spell.level === 0 ? `${spell.school} Cantrip` : `Level ${spell.level} ${spell.school}`;
                 const md = `### ${spell.name}\n*${lvlLabel}*\n- **Casting Time:** ${spell.castingTime}\n- **Range:** ${spell.range}\n- **Components:** ${spell.components.join(", ")}${spell.materials ? ` (${spell.materials})` : ""}\n- **Duration:** ${spell.duration}\n\n${spell.description}`;
-                await navigator.clipboard.writeText(md);
-                new Notice(`Copied "${spell.name}" to clipboard!`);
+                void copyTextToClipboard(md, `Copied "${spell.name}" to clipboard!`);
             };
 
             if (this.hostMode === "sidebar") {
@@ -2551,6 +1422,8 @@ export class DMToolsWidget {
         };
 
         const updateSpellView = async () => {
+            if (this.isStaleTabRender(tabToken)) return;
+
             // Render level pills
             levelPills.empty();
             for (const lvl of levels) {
@@ -2597,15 +1470,16 @@ export class DMToolsWidget {
                 return;
             }
 
+            const displayList = matches.slice(0, 250);
             if (this.hostMode === "sidebar") {
-                if (this.selectedSpellId && !matches.some(s => s.id === this.selectedSpellId)) {
+                if (this.selectedSpellId && !displayList.some(s => s.id === this.selectedSpellId)) {
                     this.selectedSpellId = null;
                 }
-            } else if (!this.selectedSpellId || !matches.some(s => s.id === this.selectedSpellId)) {
-                this.selectedSpellId = matches[0].id;
+            } else if (!this.selectedSpellId || !displayList.some(s => s.id === this.selectedSpellId)) {
+                this.selectedSpellId = displayList[0].id;
             }
 
-            for (const sp of matches) {
+            for (const sp of displayList) {
                 const isSelected = sp.id === this.selectedSpellId;
                 const row = listPane.createDiv({
                     cls: `dnd-modal-list-row dnd-compendium-row is-clickable ${isSelected ? "is-active" : ""}`.trim()
@@ -2626,7 +1500,7 @@ export class DMToolsWidget {
                     cls: "dnd-level-badge dnd-modal-badge-sm"
                 });
 
-                row.onclick = async () => {
+                const selectSpell = async () => {
                     if (this.hostMode === "sidebar" && this.selectedSpellId === sp.id) {
                         this.selectedSpellId = null;
                         row.removeClass("is-active");
@@ -2638,17 +1512,30 @@ export class DMToolsWidget {
                     row.addClass("is-active");
                     await renderSpellPreview(sp);
                 };
+                row.onclick = () => { void selectSpell(); };
+                makeKeyboardClickable(row, () => { void selectSpell(); });
+            }
+
+            if (matches.length > 250) {
+                listPane.createEl("div", {
+                    text: `Showing top 250 of ${matches.length} spells. Narrow your search or filters above.`,
+                    cls: "dnd-modal-empty-text"
+                });
             }
 
             const currentSpell = this.selectedSpellId
-                ? (matches.find(s => s.id === this.selectedSpellId) || null)
-                : (this.hostMode === "sidebar" ? null : matches[0]);
+                ? (displayList.find(s => s.id === this.selectedSpellId) || null)
+                : (this.hostMode === "sidebar" ? null : displayList[0]);
             await renderSpellPreview(currentSpell);
         };
 
         searchInput.oninput = () => {
             this.spellQuery = searchInput.value;
-            void updateSpellView();
+            this.spellSearchTimer = this.clearTimer(this.spellSearchTimer);
+            this.spellSearchTimer = window.setTimeout(() => {
+                this.spellSearchTimer = null;
+                void updateSpellView();
+            }, 120);
         };
         poolSelect.onchange = () => {
             this.spellPoolFilter = poolSelect.value;
@@ -2667,6 +1554,7 @@ export class DMToolsWidget {
             void updateSpellView();
         };
         resetBtn.onclick = () => {
+            this.spellSearchTimer = this.clearTimer(this.spellSearchTimer);
             this.spellQuery = "";
             this.spellLevelFilter = "all";
             this.spellPoolFilter = "all";
@@ -2697,62 +1585,96 @@ export class DMToolsWidget {
         });
     }
 
-    private async renderInitiativeTab(): Promise<void> {
+    private mirrorPartyHpIntoSavedInitiative(sourcePath: string, newHp: number, newTempHp: number): boolean {
+        const saved = this.plugin.settings?.savedInitiativeState;
+        if (!saved || saved.syncPcHpToFrontmatter === false || !Array.isArray(saved.combatants)) {
+            return false;
+        }
+        let changed = false;
+        for (const c of saved.combatants) {
+            if (c?.isPC && c.sourcePath === sourcePath) {
+                if (c.hp !== newHp || c.tempHp !== newTempHp) {
+                    c.hp = newHp;
+                    c.tempHp = newTempHp;
+                    changed = true;
+                }
+            }
+        }
+        return changed;
+    }
+
+    private async renderInitiativeTab(tabToken: number): Promise<void> {
         if (!this.monstersLoaded) {
             const res = await discoverExternalMonsters(this.app);
+            if (this.isStaleTabRender(tabToken)) return;
             this.discoveredMonsters = res.monsters;
             this.monstersMeta = res;
             this.monstersLoaded = true;
         }
 
-        const {
-            activeFolder: initPartyFolder,
-            members: partyPcs,
-            isConfigured: hasPartyFolder
-        } = await getConfiguredPartyMembersAsync(this.app, this.plugin, this.embedFilterFolder, this.embedFilterPlayers);
+        let partyResult = await getConfiguredPartyMembersAsync(
+            this.app,
+            this.plugin,
+            this.embedFilterFolder,
+            this.embedFilterPlayers
+        );
+        if (this.isStaleTabRender(tabToken)) return;
 
-        const state = this.getInitiativeState();
-        if (partyPcs.length > 0 && state.combatants.length > 0) {
-            const pcByPath = new Map(partyPcs.map(p => [p.sourcePath, p]));
-            for (const c of state.combatants) {
-                if (!c.isPC || !c.sourcePath) continue;
-                const freshPc = pcByPath.get(c.sourcePath);
-                if (freshPc) {
-                    c.dexMod = freshPc.dexMod;
-                    c.initBonus = freshPc.initBonus;
+        const refreshInitPcModifiers = () => {
+            const st = this.getInitiativeState();
+            if (partyResult.members.length > 0 && st.combatants.length > 0) {
+                const pcByPath = new Map(partyResult.members.map(p => [p.sourcePath, p]));
+                for (const c of st.combatants) {
+                    if (!c.isPC || !c.sourcePath) continue;
+                    const freshPc = pcByPath.get(c.sourcePath);
+                    if (freshPc) {
+                        c.dexMod = freshPc.dexMod;
+                        c.initBonus = freshPc.initBonus;
+                    }
                 }
             }
-        }
-        state.combatants = sortInitiativeCombatants(state.combatants);
-        if (state.combatants.length > 0 && (!state.activeCombatantId || !state.combatants.some(c => c.id === state.activeCombatantId))) {
-            state.activeCombatantId = state.combatants[0].id;
-        }
+            st.combatants = sortInitiativeCombatants(st.combatants);
+            if (st.combatants.length > 0 && (!st.activeCombatantId || !st.combatants.some(c => c.id === st.activeCombatantId))) {
+                st.activeCombatantId = st.combatants[0].id;
+            }
+            return st;
+        };
+
+        let state = refreshInitPcModifiers();
 
         const root = this.bodyContainer.createDiv({ cls: "dnd-init-root" });
 
-        // 1. Top Round & Turn Control Bar
+        // 1. Top Round & Turn Control Bar (persistent across incremental updates)
         const topBar = root.createDiv({ cls: "dnd-init-top-bar" });
         const roundGroup = topBar.createDiv({ cls: "dnd-init-round-group" });
-        roundGroup.createEl("span", {
+        const roundBadgeEl = roundGroup.createEl("span", {
             text: `Round ${state.round || 1}`,
             cls: "dnd-init-round-badge"
         });
+
+        let refreshInitiativeView!: (refreshPartyFromCache?: boolean) => Promise<void>;
 
         const prevTurnBtn = roundGroup.createEl("button", {
             text: "Prev Turn",
             cls: "dnd-dm-small-btn"
         });
         prevTurnBtn.onclick = async () => {
+            state = this.getInitiativeState();
             if (state.combatants.length === 0) return;
             const curIdx = state.combatants.findIndex(c => c.id === state.activeCombatantId);
             if (curIdx <= 0) {
-                state.round = Math.max(1, (state.round || 1) - 1);
+                if ((state.round || 1) <= 1) {
+                    state.round = 1;
+                    state.activeCombatantId = state.combatants[0].id;
+                    return;
+                }
+                state.round = (state.round || 1) - 1;
                 state.activeCombatantId = state.combatants[state.combatants.length - 1].id;
             } else {
                 state.activeCombatantId = state.combatants[curIdx - 1].id;
             }
             await this.saveInitiativeState();
-            await this.renderActiveTab();
+            await refreshInitiativeView(false);
         };
 
         const nextTurnBtn = roundGroup.createEl("button", {
@@ -2760,6 +1682,7 @@ export class DMToolsWidget {
             cls: "dnd-dm-small-btn mod-cta"
         });
         nextTurnBtn.onclick = async () => {
+            state = this.getInitiativeState();
             if (state.combatants.length === 0) return;
             const curIdx = state.combatants.findIndex(c => c.id === state.activeCombatantId);
             if (curIdx === -1 || curIdx + 1 >= state.combatants.length) {
@@ -2769,7 +1692,7 @@ export class DMToolsWidget {
                 state.activeCombatantId = state.combatants[curIdx + 1].id;
             }
             await this.saveInitiativeState();
-            await this.renderActiveTab();
+            await refreshInitiativeView(false);
         };
 
         const rightActions = topBar.createDiv({ cls: "dnd-init-top-actions" });
@@ -2782,8 +1705,47 @@ export class DMToolsWidget {
         syncCheckbox.checked = state.syncPcHpToFrontmatter !== false;
         syncLabel.createSpan({ text: "Sync PC HP" });
         syncCheckbox.onchange = async () => {
+            state = this.getInitiativeState();
             state.syncPcHpToFrontmatter = syncCheckbox.checked;
             await this.saveInitiativeState();
+        };
+
+        const syncPcsBtn = rightActions.createEl("button", {
+            text: "Sync PCs",
+            cls: "dnd-dm-small-btn",
+            attr: { title: "Update active PC combatants' AC, Max HP, HP, Temp HP, and Init Bonus from their character sheets" }
+        });
+        syncPcsBtn.onclick = async () => {
+            partyResult = await getConfiguredPartyMembersAsync(
+                this.app,
+                this.plugin,
+                this.embedFilterFolder,
+                this.embedFilterPlayers
+            );
+            if (this.isStaleTabRender(tabToken)) return;
+            state = this.getInitiativeState();
+            const pcByPath = new Map(partyResult.members.map(p => [p.sourcePath, p]));
+            let syncedCount = 0;
+            for (const c of state.combatants) {
+                if (!c.isPC || !c.sourcePath) continue;
+                const pc = pcByPath.get(c.sourcePath);
+                if (!pc) continue;
+                c.name = pc.name;
+                c.ac = pc.ac;
+                c.maxHp = pc.maxHp;
+                c.hp = pc.currentHp;
+                c.tempHp = pc.tempHp;
+                c.dexMod = pc.dexMod;
+                c.initBonus = pc.initBonus;
+                syncedCount++;
+            }
+            if (syncedCount > 0) {
+                await this.saveInitiativeState();
+                await refreshInitiativeView(false);
+                new Notice(`Synced ${syncedCount} PC(s) from character sheets!`);
+            } else {
+                new Notice("No matching PC combatants from your configured Party Folder to sync.");
+            }
         };
 
         const rerollNpcsBtn = rightActions.createEl("button", {
@@ -2792,13 +1754,14 @@ export class DMToolsWidget {
             attr: { title: "Roll 1d20 + Init Bonus for all non-PC combatants and auto-sort" }
         });
         rerollNpcsBtn.onclick = async () => {
+            state = this.getInitiativeState();
             for (const c of state.combatants) {
                 if (!c.isPC) {
                     c.initiative = rollD20() + (Number(c.initBonus) || 0);
                 }
             }
             await this.saveInitiativeState();
-            await this.renderActiveTab();
+            await refreshInitiativeView(false);
             new Notice("Re-rolled initiative for all NPCs!");
         };
 
@@ -2807,9 +1770,10 @@ export class DMToolsWidget {
             cls: "dnd-dm-small-btn"
         });
         clearNpcsBtn.onclick = async () => {
-            state.combatants = state.combatants.filter(c => c.isPC);
+            state = this.getInitiativeState();
+            removeCombatantsUpdatingTurn(state, c => c.isPC);
             await this.saveInitiativeState();
-            await this.renderActiveTab();
+            await refreshInitiativeView(false);
         };
 
         const resetBtn = rightActions.createEl("button", {
@@ -2817,14 +1781,15 @@ export class DMToolsWidget {
             cls: "dnd-dm-small-btn dnd-btn-danger"
         });
         resetBtn.onclick = async () => {
+            state = this.getInitiativeState();
             state.round = 1;
             state.activeCombatantId = null;
             state.combatants = [];
             await this.saveInitiativeState();
-            await this.renderActiveTab();
+            await refreshInitiativeView(false);
         };
 
-        // 2. Add / Import Combatant Panel (3 Modes: Vault PCs | Monster / Statblock | Custom)
+        // 2. Add / Import Combatant Panel (persistent across turn/damage updates; only form row switches on mode pill click)
         const addPanel = root.createDiv({ cls: "dnd-init-add-panel" });
         const modeSwitchRow = addPanel.createDiv({ cls: "dnd-compendium-pills dnd-init-mode-pills" });
 
@@ -2833,543 +1798,626 @@ export class DMToolsWidget {
             { id: "monster", label: "Add Monster / Statblock" },
             { id: "custom", label: "Custom Combatant" }
         ];
+
+        const addFormRow = addPanel.createDiv({ cls: "dnd-init-add-form" });
+
+        let pcSelectRef: HTMLSelectElement | null = null;
+        let importAllBtnRef: HTMLButtonElement | null = null;
+
+        const updatePcSelectControls = () => {
+            const { activeFolder: initPartyFolder, members: partyPcs, isConfigured: hasPartyFolder } = partyResult;
+            if (pcSelectRef) {
+                const prevVal = pcSelectRef.value;
+                pcSelectRef.empty();
+                if (!hasPartyFolder) {
+                    pcSelectRef.createEl("option", { text: "Select a Party Folder in Party Dashboard first...", value: "" });
+                } else if (partyPcs.length === 0) {
+                    pcSelectRef.createEl("option", { text: `No character sheets found in "${initPartyFolder}"`, value: "" });
+                } else {
+                    for (const pc of partyPcs) {
+                        pcSelectRef.createEl("option", {
+                            text: `${pc.name} (Lvl ${pc.level} ${pc.dndClass} • AC ${pc.ac} • HP ${pc.currentHp}/${pc.maxHp} • Init ${formatSignedNumber(pc.initBonus)})`,
+                            value: pc.sourcePath
+                        });
+                    }
+                    if (prevVal && partyPcs.some(p => p.sourcePath === prevVal)) {
+                        pcSelectRef.value = prevVal;
+                    }
+                }
+            }
+            if (importAllBtnRef) {
+                importAllBtnRef.setText(hasPartyFolder ? `Import All Party PCs (${partyPcs.length})` : "Import All Party PCs");
+                importAllBtnRef.setAttribute(
+                    "title",
+                    hasPartyFolder
+                        ? `Import all party PCs from "${initPartyFolder}" not yet in the tracker and auto-roll their initiative`
+                        : "Select a Party Folder in the Party Dashboard tab first"
+                );
+            }
+        };
+
+        const renderAddForm = () => {
+            addFormRow.empty();
+            pcSelectRef = null;
+            importAllBtnRef = null;
+
+            if (this.initAddMode === "pc") {
+                const pcSelect = addFormRow.createEl("select", {
+                    cls: "dnd-modal-form-input dnd-init-add-select"
+                });
+                pcSelectRef = pcSelect;
+
+                const manualInitInput = addFormRow.createEl("input", {
+                    type: "number",
+                    placeholder: "Roll (or auto)",
+                    cls: "dnd-modal-form-input dnd-init-num-input",
+                    attr: { title: "Enter the player's physical initiative total, or leave blank to auto-roll 1d20 + Init Bonus" }
+                });
+
+                const addPcBtn = addFormRow.createEl("button", {
+                    text: "+ Add PC",
+                    cls: "dnd-dm-small-btn mod-cta"
+                });
+                const handleAddSinglePc = async () => {
+                    const chosen = partyResult.members.find(p => p.sourcePath === pcSelect.value);
+                    if (!chosen) return;
+                    state = this.getInitiativeState();
+                    const manualVal = manualInitInput.value.trim();
+                    const hasManual = manualVal !== "" && !isNaN(Number(manualVal));
+                    const existing = state.combatants.find(c => c.sourcePath === chosen.sourcePath);
+
+                    if (existing) {
+                        if (hasManual) {
+                            existing.initiative = Number(manualVal);
+                            existing.initBonus = chosen.initBonus;
+                            existing.dexMod = chosen.dexMod;
+                            manualInitInput.value = "";
+                            await this.saveInitiativeState();
+                            await refreshInitiativeView(false);
+                            new Notice(`Updated initiative for ${chosen.name} to ${existing.initiative}.`);
+                        } else {
+                            new Notice(`${chosen.name} is already in Initiative. Enter an explicit roll to update or click "Sync PCs" to refresh stats.`);
+                        }
+                        return;
+                    }
+
+                    const rolledTotal = hasManual ? Number(manualVal) : undefined;
+                    state.combatants.push(createCombatantFromPartyMember(chosen, rolledTotal));
+                    manualInitInput.value = "";
+                    await this.saveInitiativeState();
+                    await refreshInitiativeView(false);
+                };
+                addPcBtn.onclick = () => { void handleAddSinglePc(); };
+                manualInitInput.onkeydown = (evt: KeyboardEvent) => {
+                    if (evt.key === "Enter") {
+                        evt.preventDefault();
+                        void handleAddSinglePc();
+                    }
+                };
+
+                const importAllBtn = addFormRow.createEl("button", {
+                    text: "Import All Party PCs",
+                    cls: "dnd-dm-small-btn"
+                });
+                importAllBtnRef = importAllBtn;
+                importAllBtn.onclick = async () => {
+                    const { activeFolder: initPartyFolder, members: partyPcs, isConfigured: hasPartyFolder } = partyResult;
+                    if (!hasPartyFolder) {
+                        new Notice("Select a Party Folder in the Party Dashboard tab first.");
+                        return;
+                    }
+                    if (partyPcs.length === 0) {
+                        new Notice(`No character sheet notes found in "${initPartyFolder}".`);
+                        return;
+                    }
+                    state = this.getInitiativeState();
+                    let added = 0;
+                    for (const pc of partyPcs) {
+                        if (state.combatants.some(c => c.sourcePath === pc.sourcePath)) continue;
+                        state.combatants.push(createCombatantFromPartyMember(pc));
+                        added++;
+                    }
+                    await this.saveInitiativeState();
+                    await refreshInitiativeView(false);
+                    new Notice(added > 0 ? `Imported ${added} PC(s) from "${initPartyFolder}" into Initiative!` : "All party PCs from that folder are already in the tracker.");
+                };
+
+                updatePcSelectControls();
+            } else if (this.initAddMode === "monster") {
+                const filterInput = addFormRow.createEl("input", {
+                    type: "text",
+                    placeholder: `Filter ${this.discoveredMonsters.length} DM Compendium monsters...`,
+                    value: this.initMonsterFilterQuery,
+                    cls: "dnd-modal-form-input dnd-init-name-input"
+                });
+
+                const monSelect = addFormRow.createEl("select", {
+                    cls: "dnd-modal-form-input dnd-init-add-select"
+                });
+
+                const populateMonsterDropdown = () => {
+                    monSelect.empty();
+                    const q = this.initMonsterFilterQuery.trim().toLowerCase();
+                    const matches = q
+                        ? this.discoveredMonsters.filter(m =>
+                            m.name.toLowerCase().includes(q)
+                            || m.sourceShort.toLowerCase().includes(q)
+                            || m.sourceCode.toLowerCase().includes(q)
+                            || m.type.toLowerCase().includes(q)
+                        )
+                        : this.discoveredMonsters;
+
+                    const capped = matches.slice(0, 250);
+                    for (const m of capped) {
+                        monSelect.createEl("option", {
+                            text: `${m.name} (${m.sourceShort} • CR ${m.cr} • AC ${m.ac} • HP ${m.hp} • DEX ${formatSignedNumber(m.dexMod)})`,
+                            value: m.id
+                        });
+                    }
+                    if (matches.length > 250) {
+                        monSelect.createEl("option", {
+                            text: `...and ${matches.length - 250} more (type above to filter)`,
+                            value: ""
+                        });
+                    } else if (matches.length === 0) {
+                        monSelect.createEl("option", {
+                            text: "No matching monsters found",
+                            value: ""
+                        });
+                    }
+                };
+
+                populateMonsterDropdown();
+                filterInput.oninput = () => {
+                    this.initMonsterFilterQuery = filterInput.value;
+                    populateMonsterDropdown();
+                };
+
+                const qtyInput = addFormRow.createEl("input", {
+                    type: "number",
+                    value: "1",
+                    cls: "dnd-modal-form-input dnd-init-qty-input",
+                    attr: { min: "1", max: "20", title: "Quantity to spawn (e.g. 3 creates Goblin 1, Goblin 2, Goblin 3)" }
+                });
+
+                const addMonBtn = addFormRow.createEl("button", {
+                    text: "Roll & Add Monster(s)",
+                    cls: "dnd-dm-small-btn mod-cta"
+                });
+                const handleAddMonster = async () => {
+                    const chosen = this.discoveredMonsters.find(m => m.id === monSelect.value);
+                    if (!chosen) return;
+                    const qty = Math.max(1, Math.min(20, Math.round(Number(qtyInput.value) || 1)));
+                    this.spawnMonsterIntoInitiative(chosen, qty);
+                    await this.saveInitiativeState();
+                    await refreshInitiativeView(false);
+                };
+                addMonBtn.onclick = () => { void handleAddMonster(); };
+                qtyInput.onkeydown = (evt: KeyboardEvent) => {
+                    if (evt.key === "Enter") {
+                        evt.preventDefault();
+                        void handleAddMonster();
+                    }
+                };
+            } else {
+                const nameInput = addFormRow.createEl("input", {
+                    type: "text",
+                    placeholder: "Combatant Name (e.g. Cultist Leader)",
+                    cls: "dnd-modal-form-input dnd-init-name-input"
+                });
+                const initInput = addFormRow.createEl("input", {
+                    type: "number",
+                    placeholder: "Init (or auto)",
+                    cls: "dnd-modal-form-input dnd-init-num-input",
+                    attr: { title: "Initiative total (leave blank to auto-roll 1d20 + Init Bonus)" }
+                });
+                const modInput = addFormRow.createEl("input", {
+                    type: "number",
+                    placeholder: "Init Bonus (+0)",
+                    cls: "dnd-modal-form-input dnd-init-num-input",
+                    attr: { title: "Initiative Modifier / DEX Mod" }
+                });
+                const hpInput = addFormRow.createEl("input", {
+                    type: "number",
+                    placeholder: "HP (25)",
+                    cls: "dnd-modal-form-input dnd-init-num-input"
+                });
+                const acInput = addFormRow.createEl("input", {
+                    type: "number",
+                    placeholder: "AC (14)",
+                    cls: "dnd-modal-form-input dnd-init-num-input"
+                });
+                const qtyInput = addFormRow.createEl("input", {
+                    type: "number",
+                    value: "1",
+                    cls: "dnd-modal-form-input dnd-init-qty-input",
+                    attr: { min: "1", max: "20", title: "Quantity" }
+                });
+                const typeSelect = addFormRow.createEl("select", {
+                    cls: "dnd-modal-form-input dnd-init-type-select"
+                });
+                typeSelect.createEl("option", { text: "NPC / Enemy", value: "npc" });
+                typeSelect.createEl("option", { text: "Player / Ally", value: "pc" });
+
+                const addCustomBtn = addFormRow.createEl("button", {
+                    text: "+ Add",
+                    cls: "dnd-dm-small-btn mod-cta"
+                });
+                const handleAddCustom = async () => {
+                    state = this.getInitiativeState();
+                    const baseName = nameInput.value.trim() || "Combatant";
+                    const bonus = Math.trunc(Number(modInput.value) || 0);
+                    const hp = Math.max(1, Math.round(Number(hpInput.value) || 20));
+                    const ac = Math.max(1, Math.round(Number(acInput.value) || 12));
+                    const qty = Math.max(1, Math.min(20, Math.round(Number(qtyInput.value) || 1)));
+                    const isPC = typeSelect.value === "pc";
+                    const manualInit = initInput.value.trim();
+
+                    const names = getNextCombatantNames(state.combatants, baseName, qty);
+                    names.forEach((finalName, i) => {
+                        const finalInit = manualInit !== "" && !isNaN(Number(manualInit))
+                            ? Number(manualInit)
+                            : (rollD20() + bonus);
+                        state.combatants.push({
+                            id: `custom-${Date.now()}-${i}-${Math.random().toString(36).slice(2, 6)}`,
+                            name: finalName,
+                            initiative: finalInit,
+                            initBonus: bonus,
+                            dexMod: bonus,
+                            hp,
+                            maxHp: hp,
+                            tempHp: 0,
+                            ac,
+                            isPC,
+                            conditions: [],
+                            concentrating: false
+                        });
+                    });
+
+                    nameInput.value = "";
+                    initInput.value = "";
+                    qtyInput.value = "1";
+                    await this.saveInitiativeState();
+                    await refreshInitiativeView(false);
+                };
+                addCustomBtn.onclick = () => { void handleAddCustom(); };
+                for (const inp of [nameInput, initInput, modInput, hpInput, acInput, qtyInput]) {
+                    inp.onkeydown = (evt: KeyboardEvent) => {
+                        if (evt.key === "Enter") {
+                            evt.preventDefault();
+                            void handleAddCustom();
+                        }
+                    };
+                }
+            }
+        };
+
         for (const m of modes) {
             const btn = modeSwitchRow.createEl("button", {
                 text: m.label,
                 cls: `dnd-compendium-pill ${this.initAddMode === m.id ? "is-active" : ""}`.trim()
             });
-            btn.onclick = async () => {
+            btn.onclick = () => {
+                if (this.initAddMode === m.id) return;
                 this.initAddMode = m.id;
-                await this.renderActiveTab();
-            };
-        }
-
-        const addFormRow = addPanel.createDiv({ cls: "dnd-init-add-form" });
-
-        if (this.initAddMode === "pc") {
-            const pcSelect = addFormRow.createEl("select", {
-                cls: "dnd-modal-form-input dnd-init-add-select"
-            });
-            if (!hasPartyFolder) {
-                pcSelect.createEl("option", { text: "Select a Party Folder in Party Dashboard first...", value: "" });
-            } else if (partyPcs.length === 0) {
-                pcSelect.createEl("option", { text: `No character sheets found in "${initPartyFolder}"`, value: "" });
-            } else {
-                for (const pc of partyPcs) {
-                    pcSelect.createEl("option", {
-                        text: `${pc.name} (Lvl ${pc.level} ${pc.dndClass} • AC ${pc.ac} • HP ${pc.currentHp}/${pc.maxHp} • Init ${formatSignedNumber(pc.initBonus)})`,
-                        value: pc.sourcePath
-                    });
-                }
-            }
-
-            const manualInitInput = addFormRow.createEl("input", {
-                type: "number",
-                placeholder: "Roll (or auto)",
-                cls: "dnd-modal-form-input dnd-init-num-input",
-                attr: { title: "Enter the player's physical initiative total, or leave blank to auto-roll 1d20 + Init Bonus" }
-            });
-
-            const addPcBtn = addFormRow.createEl("button", {
-                text: "+ Add PC",
-                cls: "dnd-dm-small-btn mod-cta"
-            });
-            addPcBtn.onclick = async () => {
-                const chosen = partyPcs.find(p => p.sourcePath === pcSelect.value);
-                if (!chosen) return;
-                const manualVal = manualInitInput.value.trim();
-                const rolledTotal = manualVal !== "" && !isNaN(Number(manualVal))
-                    ? Number(manualVal)
-                    : (rollD20() + chosen.initBonus);
-
-                const existingIdx = state.combatants.findIndex(c => c.sourcePath === chosen.sourcePath);
-                const newEntry: InitiativeCombatant = {
-                    id: existingIdx >= 0 ? state.combatants[existingIdx].id : `pc-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-                    name: chosen.name,
-                    initiative: rolledTotal,
-                    initBonus: chosen.initBonus,
-                    dexMod: chosen.dexMod,
-                    hp: chosen.currentHp,
-                    maxHp: chosen.maxHp,
-                    tempHp: chosen.tempHp,
-                    ac: chosen.ac,
-                    isPC: true,
-                    conditions: existingIdx >= 0 ? state.combatants[existingIdx].conditions : [],
-                    concentrating: existingIdx >= 0 ? state.combatants[existingIdx].concentrating : false,
-                    sourcePath: chosen.sourcePath
-                };
-
-                if (existingIdx >= 0) {
-                    state.combatants[existingIdx] = newEntry;
-                } else {
-                    state.combatants.push(newEntry);
-                }
-                await this.saveInitiativeState();
-                await this.renderActiveTab();
-            };
-
-            const importAllBtn = addFormRow.createEl("button", {
-                text: hasPartyFolder ? `Import All Party PCs (${partyPcs.length})` : "Import All Party PCs",
-                cls: "dnd-dm-small-btn",
-                attr: {
-                    title: hasPartyFolder
-                        ? `Import all party PCs from "${initPartyFolder}" not yet in the tracker and auto-roll their initiative`
-                        : "Select a Party Folder in the Party Dashboard tab first"
-                }
-            });
-            importAllBtn.onclick = async () => {
-                if (!hasPartyFolder) {
-                    new Notice("Select a Party Folder in the Party Dashboard tab first.");
-                    return;
-                }
-                if (partyPcs.length === 0) {
-                    new Notice(`No character sheet notes found in "${initPartyFolder}".`);
-                    return;
-                }
-                let added = 0;
-                for (const pc of partyPcs) {
-                    if (state.combatants.some(c => c.sourcePath === pc.sourcePath)) continue;
-                    state.combatants.push({
-                        id: `pc-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-                        name: pc.name,
-                        initiative: rollD20() + pc.initBonus,
-                        initBonus: pc.initBonus,
-                        dexMod: pc.dexMod,
-                        hp: pc.currentHp,
-                        maxHp: pc.maxHp,
-                        tempHp: pc.tempHp,
-                        ac: pc.ac,
-                        isPC: true,
-                        conditions: [],
-                        concentrating: false,
-                        sourcePath: pc.sourcePath
-                    });
-                    added++;
-                }
-                await this.saveInitiativeState();
-                await this.renderActiveTab();
-                new Notice(added > 0 ? `Imported ${added} PC(s) from "${initPartyFolder}" into Initiative!` : "All party PCs from that folder are already in the tracker.");
-            };
-        } else if (this.initAddMode === "monster") {
-            const filterInput = addFormRow.createEl("input", {
-                type: "text",
-                placeholder: `Filter ${this.discoveredMonsters.length} DM Compendium monsters...`,
-                value: this.initMonsterFilterQuery,
-                cls: "dnd-modal-form-input dnd-init-name-input"
-            });
-
-            const monSelect = addFormRow.createEl("select", {
-                cls: "dnd-modal-form-input dnd-init-add-select"
-            });
-
-            const populateMonsterDropdown = () => {
-                monSelect.empty();
-                const q = this.initMonsterFilterQuery.trim().toLowerCase();
-                const matches = q
-                    ? this.discoveredMonsters.filter(m =>
-                        m.name.toLowerCase().includes(q)
-                        || m.sourceShort.toLowerCase().includes(q)
-                        || m.sourceCode.toLowerCase().includes(q)
-                        || m.type.toLowerCase().includes(q)
-                    )
-                    : this.discoveredMonsters;
-
-                const capped = matches.slice(0, 250);
-                for (const m of capped) {
-                    monSelect.createEl("option", {
-                        text: `${m.name} (${m.sourceShort} • CR ${m.cr} • AC ${m.ac} • HP ${m.hp} • DEX ${formatSignedNumber(m.dexMod)})`,
-                        value: m.id
-                    });
-                }
-                if (matches.length > 250) {
-                    monSelect.createEl("option", {
-                        text: `...and ${matches.length - 250} more (type above to filter)`,
-                        value: ""
-                    });
-                } else if (matches.length === 0) {
-                    monSelect.createEl("option", {
-                        text: "No matching monsters found",
-                        value: ""
-                    });
-                }
-            };
-
-            populateMonsterDropdown();
-            filterInput.oninput = () => {
-                this.initMonsterFilterQuery = filterInput.value;
-                populateMonsterDropdown();
-            };
-
-            const qtyInput = addFormRow.createEl("input", {
-                type: "number",
-                value: "1",
-                cls: "dnd-modal-form-input dnd-init-qty-input",
-                attr: { min: "1", max: "20", title: "Quantity to spawn (e.g. 3 creates Goblin 1, Goblin 2, Goblin 3)" }
-            });
-
-            const addMonBtn = addFormRow.createEl("button", {
-                text: "Roll & Add Monster(s)",
-                cls: "dnd-dm-small-btn mod-cta"
-            });
-            addMonBtn.onclick = async () => {
-                const chosen = this.discoveredMonsters.find(m => m.id === monSelect.value);
-                if (!chosen) return;
-                const qty = Math.max(1, Math.min(20, Number(qtyInput.value) || 1));
-                this.spawnMonsterIntoInitiative(chosen, qty);
-                await this.saveInitiativeState();
-                await this.renderActiveTab();
-            };
-        } else {
-            const nameInput = addFormRow.createEl("input", {
-                type: "text",
-                placeholder: "Combatant Name (e.g. Cultist Leader)",
-                cls: "dnd-modal-form-input dnd-init-name-input"
-            });
-            const initInput = addFormRow.createEl("input", {
-                type: "number",
-                placeholder: "Init (or auto)",
-                cls: "dnd-modal-form-input dnd-init-num-input",
-                attr: { title: "Initiative total (leave blank to auto-roll 1d20 + Init Bonus)" }
-            });
-            const modInput = addFormRow.createEl("input", {
-                type: "number",
-                placeholder: "Init Bonus (+0)",
-                cls: "dnd-modal-form-input dnd-init-num-input",
-                attr: { title: "Initiative Modifier / DEX Mod" }
-            });
-            const hpInput = addFormRow.createEl("input", {
-                type: "number",
-                placeholder: "HP (25)",
-                cls: "dnd-modal-form-input dnd-init-num-input"
-            });
-            const acInput = addFormRow.createEl("input", {
-                type: "number",
-                placeholder: "AC (14)",
-                cls: "dnd-modal-form-input dnd-init-num-input"
-            });
-            const qtyInput = addFormRow.createEl("input", {
-                type: "number",
-                value: "1",
-                cls: "dnd-modal-form-input dnd-init-qty-input",
-                attr: { min: "1", max: "20", title: "Quantity" }
-            });
-            const typeSelect = addFormRow.createEl("select", {
-                cls: "dnd-modal-form-input dnd-init-type-select"
-            });
-            typeSelect.createEl("option", { text: "NPC / Enemy", value: "npc" });
-            typeSelect.createEl("option", { text: "Player / Ally", value: "pc" });
-
-            const addCustomBtn = addFormRow.createEl("button", {
-                text: "+ Add",
-                cls: "dnd-dm-small-btn mod-cta"
-            });
-            addCustomBtn.onclick = async () => {
-                const baseName = nameInput.value.trim() || "Combatant";
-                const bonus = Number(modInput.value) || 0;
-                const hp = Math.max(1, Number(hpInput.value) || 20);
-                const ac = Math.max(1, Number(acInput.value) || 12);
-                const qty = Math.max(1, Math.min(20, Number(qtyInput.value) || 1));
-                const isPC = typeSelect.value === "pc";
-                const manualInit = initInput.value.trim();
-
-                for (let i = 1; i <= qty; i++) {
-                    const finalName = qty > 1 ? `${baseName} ${i}` : baseName;
-                    const finalInit = manualInit !== "" && !isNaN(Number(manualInit))
-                        ? Number(manualInit)
-                        : (rollD20() + bonus);
-                    state.combatants.push({
-                        id: `custom-${Date.now()}-${i}-${Math.random().toString(36).slice(2, 6)}`,
-                        name: finalName,
-                        initiative: finalInit,
-                        initBonus: bonus,
-                        dexMod: bonus,
-                        hp,
-                        maxHp: hp,
-                        tempHp: 0,
-                        ac,
-                        isPC,
-                        conditions: [],
-                        concentrating: false
-                    });
-                }
-
-                await this.saveInitiativeState();
-                await this.renderActiveTab();
+                modeSwitchRow.querySelectorAll(".dnd-compendium-pill").forEach((el, idx) => {
+                    el.classList.toggle("is-active", modes[idx]?.id === this.initAddMode);
+                });
+                renderAddForm();
             };
         }
 
         // 3. Sorted Combatant Table / Cards
         const listContainer = root.createDiv({ cls: "dnd-init-list" });
-        if (state.combatants.length === 0) {
-            listContainer.createEl("div", {
-                text: "No combatants in the encounter yet. Import your party PCs, add monsters, or create a custom combatant above!",
-                cls: "dnd-modal-empty-text dnd-init-empty"
-            });
-            return;
-        }
 
-        for (let idx = 0; idx < state.combatants.length; idx++) {
-            const c = state.combatants[idx];
-            const isActiveTurn = c.id === state.activeCombatantId;
-            const isDefeated = !c.isPC && c.hp <= 0;
-            const hpPct = c.maxHp > 0 ? Math.max(0, Math.min(100, Math.round((c.hp / c.maxHp) * 100))) : 0;
+        const renderInitiativeList = () => {
+            state = this.getInitiativeState();
+            roundBadgeEl.setText(`Round ${state.round || 1}`);
+            syncCheckbox.checked = state.syncPcHpToFrontmatter !== false;
+            listContainer.empty();
 
-            const card = listContainer.createDiv({
-                cls: `dnd-init-card ${isActiveTurn ? "is-active-turn" : ""} ${c.isPC ? "is-pc" : "is-npc"} ${isDefeated ? "is-defeated" : ""}`.trim()
-            });
+            if (state.combatants.length === 0) {
+                listContainer.createEl("div", {
+                    text: "No combatants in the encounter yet. Import your party PCs, add monsters, or create a custom combatant above!",
+                    cls: "dnd-modal-empty-text dnd-init-empty"
+                });
+                return;
+            }
 
-            const mainRow = card.createDiv({ cls: "dnd-init-card-main" });
+            for (let idx = 0; idx < state.combatants.length; idx++) {
+                const c = state.combatants[idx];
+                const isActiveTurn = c.id === state.activeCombatantId;
+                const isDefeated = !c.isPC && c.hp <= 0;
+                const hpPct = c.maxHp > 0 ? Math.max(0, Math.min(100, Math.round((c.hp / c.maxHp) * 100))) : 0;
 
-            // Turn Indicator + Editable Initiative Score (Auto-Sorts on change!)
-            const initCol = mainRow.createDiv({ cls: "dnd-init-col-score" });
-            const turnBtn = initCol.createEl("button", {
-                text: isActiveTurn ? "▶" : String(idx + 1),
-                cls: `dnd-init-turn-indicator ${isActiveTurn ? "is-active" : ""}`.trim(),
-                attr: { title: "Click to set active turn to this combatant" }
-            });
-            turnBtn.onclick = async () => {
-                state.activeCombatantId = c.id;
-                await this.saveInitiativeState();
-                await this.renderActiveTab();
-            };
+                const card = listContainer.createDiv({
+                    cls: `dnd-init-card ${isActiveTurn ? "is-active-turn" : ""} ${c.isPC ? "is-pc" : "is-npc"} ${isDefeated ? "is-defeated" : ""}`.trim()
+                });
 
-            const initScoreInput = initCol.createEl("input", {
-                type: "number",
-                value: String(c.initiative),
-                cls: "dnd-init-score-input",
-                attr: { title: `Initiative Total (Mod: ${formatSignedNumber(c.initBonus)}). Edit to auto-sort.` }
-            });
-            initScoreInput.onchange = async () => {
-                c.initiative = Number(initScoreInput.value) || 0;
-                await this.saveInitiativeState();
-                await this.renderActiveTab();
-            };
+                const mainRow = card.createDiv({ cls: "dnd-init-card-main" });
 
-            // Name & Badges Column
-            const nameCol = mainRow.createDiv({ cls: "dnd-init-col-name" });
-            const nameHeader = nameCol.createDiv({ cls: "dnd-init-name-row" });
-
-            const nameEl = nameHeader.createEl("span", {
-                text: c.name,
-                cls: `dnd-init-name ${c.sourcePath || c.monsterId ? "is-clickable" : ""}`.trim()
-            });
-            if (c.sourcePath) {
-                nameEl.title = `Open Character Sheet (${c.sourcePath})`;
-                nameEl.onclick = async () => {
-                    await this.app.workspace.openLinkText(c.sourcePath!, "", false);
+                // Turn Indicator + Editable Initiative Score (Auto-Sorts on change!)
+                const initCol = mainRow.createDiv({ cls: "dnd-init-col-score" });
+                const turnBtn = initCol.createEl("button", {
+                    text: isActiveTurn ? "▶" : String(idx + 1),
+                    cls: `dnd-init-turn-indicator ${isActiveTurn ? "is-active" : ""}`.trim(),
+                    attr: { title: "Click to set active turn to this combatant" }
+                });
+                turnBtn.onclick = async () => {
+                    state.activeCombatantId = c.id;
+                    await this.saveInitiativeState();
+                    await refreshInitiativeView(false);
                 };
-            } else if (c.monsterId) {
-                const matchedMonster = this.discoveredMonsters.find(m => m.id === c.monsterId);
-                if (matchedMonster) {
-                    nameEl.title = "Click to inspect Creature Statblock";
-                    nameEl.onclick = () => {
-                        new StatblockPreviewModal(this.app, this.plugin, matchedMonster).open();
+
+                const initScoreInput = initCol.createEl("input", {
+                    type: "number",
+                    value: String(c.initiative),
+                    cls: "dnd-init-score-input",
+                    attr: { title: `Initiative Total (Mod: ${formatSignedNumber(c.initBonus)}). Edit to auto-sort.` }
+                });
+                initScoreInput.onchange = async () => {
+                    c.initiative = Number(initScoreInput.value) || 0;
+                    await this.saveInitiativeState();
+                    await refreshInitiativeView(false);
+                };
+
+                // Name & Badges Column
+                const nameCol = mainRow.createDiv({ cls: "dnd-init-col-name" });
+                const nameHeader = nameCol.createDiv({ cls: "dnd-init-name-row" });
+
+                const nameEl = nameHeader.createEl("span", {
+                    text: c.name,
+                    cls: `dnd-init-name ${c.sourcePath || c.monsterId ? "is-clickable" : ""}`.trim()
+                });
+                if (c.sourcePath) {
+                    nameEl.title = `Open Character Sheet (${c.sourcePath})`;
+                    const openSheet = () => {
+                        void this.app.workspace.openLinkText(c.sourcePath!, "", false);
+                    };
+                    nameEl.onclick = openSheet;
+                    makeKeyboardClickable(nameEl, openSheet);
+                } else if (c.monsterId) {
+                    const matchedMonster = this.discoveredMonsters.find(m => m.id === c.monsterId);
+                    if (matchedMonster) {
+                        nameEl.title = "Click to inspect Creature Statblock";
+                        const openStatblock = () => {
+                            new StatblockPreviewModal(this.app, this.plugin, matchedMonster).open();
+                        };
+                        nameEl.onclick = openStatblock;
+                        makeKeyboardClickable(nameEl, openStatblock);
+                    }
+                }
+
+                nameHeader.createEl("span", {
+                    text: c.isPC ? "PC" : "NPC",
+                    cls: `dnd-level-badge dnd-modal-badge-sm ${c.isPC ? "dnd-badge-pc" : "dnd-badge-npc"}`
+                });
+                nameHeader.createEl("span", {
+                    text: `Init ${formatSignedNumber(c.initBonus)}`,
+                    cls: "dnd-init-sub-hint"
+                });
+
+                // AC Column
+                const acCol = mainRow.createDiv({ cls: "dnd-init-col-ac" });
+                acCol.createEl("span", { text: "AC", cls: "dnd-init-field-label" });
+                const acInput = acCol.createEl("input", {
+                    type: "number",
+                    value: String(c.ac),
+                    cls: "dnd-init-ac-input"
+                });
+                acInput.onchange = async () => {
+                    c.ac = Math.max(0, Math.round(Number(acInput.value) || 0));
+                    await this.saveInitiativeState();
+                };
+
+                // HP Bar + Quick Damage/Heal Column
+                const hpCol = mainRow.createDiv({ cls: "dnd-init-col-hp" });
+                const hpTopRow = hpCol.createDiv({ cls: "dnd-init-hp-top" });
+
+                const hpTrack = hpTopRow.createDiv({ cls: "dnd-init-hp-bar-track" });
+                const hpFill = hpTrack.createDiv({
+                    cls: `dnd-init-hp-bar-fill ${hpPct <= 25 ? "is-critical" : (hpPct <= 50 ? "is-bloodied" : "")}`.trim()
+                });
+                hpFill.style.width = `${hpPct}%`;
+
+                const hpInputsWrap = hpTopRow.createDiv({ cls: "dnd-init-hp-inputs" });
+                const curHpInput = hpInputsWrap.createEl("input", {
+                    type: "number",
+                    value: String(c.hp),
+                    cls: "dnd-init-hp-input",
+                    attr: { title: "Current HP" }
+                });
+                hpInputsWrap.createSpan({ text: "/" });
+                const maxHpInput = hpInputsWrap.createEl("input", {
+                    type: "number",
+                    value: String(c.maxHp),
+                    cls: "dnd-init-hp-input",
+                    attr: { title: "Max HP" }
+                });
+
+                const tempWrap = hpInputsWrap.createSpan({ cls: "dnd-init-temp-wrap" });
+                tempWrap.createSpan({ text: "+Temp" });
+                const tempHpInput = tempWrap.createEl("input", {
+                    type: "number",
+                    value: String(c.tempHp || 0),
+                    cls: "dnd-init-temp-input",
+                    attr: { title: "Temporary HP" }
+                });
+
+                curHpInput.onchange = async () => {
+                    c.hp = Math.max(0, Math.round(Number(curHpInput.value) || 0));
+                    await this.syncCombatantHpToSheet(c);
+                    await this.saveInitiativeState();
+                    await refreshInitiativeView(false);
+                };
+                maxHpInput.onchange = async () => {
+                    c.maxHp = Math.max(1, Math.round(Number(maxHpInput.value) || 1));
+                    if (c.hp > c.maxHp) {
+                        c.hp = c.maxHp;
+                        await this.syncCombatantHpToSheet(c);
+                    }
+                    await this.saveInitiativeState();
+                    await refreshInitiativeView(false);
+                };
+                tempHpInput.onchange = async () => {
+                    c.tempHp = Math.max(0, Math.round(Number(tempHpInput.value) || 0));
+                    await this.syncCombatantHpToSheet(c);
+                    await this.saveInitiativeState();
+                    await refreshInitiativeView(false);
+                };
+
+                // Quick Delta Damage / Heal controls
+                const deltaWrap = hpTopRow.createDiv({ cls: "dnd-init-delta-wrap" });
+                const deltaInput = deltaWrap.createEl("input", {
+                    type: "number",
+                    placeholder: "Dmg/Heal",
+                    cls: "dnd-init-delta-input",
+                    attr: { min: "1" }
+                });
+                const dmgBtn = deltaWrap.createEl("button", {
+                    text: "- Dmg",
+                    cls: "dnd-dm-small-btn dnd-btn-dmg",
+                    attr: { title: "Apply Damage (absorbs Temp HP first)" }
+                });
+                const healBtn = deltaWrap.createEl("button", {
+                    text: "+ Heal",
+                    cls: "dnd-dm-small-btn dnd-btn-heal",
+                    attr: { title: "Apply Healing (up to Max HP)" }
+                });
+
+                const applyCombatantDamage = async () => {
+                    const dmgVal = Math.max(0, Math.round(Number(deltaInput.value) || 0));
+                    if (dmgVal <= 0) return;
+                    const res = applyDamageWithTempHp(c.hp, c.tempHp, dmgVal);
+                    c.hp = res.newHp;
+                    c.tempHp = res.newTempHp;
+                    if (c.concentrating && res.hpLost > 0) {
+                        const dc = Math.max(10, Math.min(30, Math.floor(res.hpLost / 2)));
+                        new Notice(`${c.name} is Concentrating! Roll a DC ${dc} Constitution saving throw.`);
+                    }
+                    await this.syncCombatantHpToSheet(c);
+                    await this.saveInitiativeState();
+                    await refreshInitiativeView(false);
+                };
+
+                const applyCombatantHeal = async () => {
+                    const heal = Math.max(0, Math.round(Number(deltaInput.value) || 0));
+                    if (heal <= 0) return;
+                    c.hp = c.hp >= c.maxHp ? c.hp : Math.min(c.maxHp, c.hp + heal);
+                    await this.syncCombatantHpToSheet(c);
+                    await this.saveInitiativeState();
+                    await refreshInitiativeView(false);
+                };
+
+                dmgBtn.onclick = () => { void applyCombatantDamage(); };
+                healBtn.onclick = () => { void applyCombatantHeal(); };
+
+                // Delete Combatant Column
+                const delBtn = mainRow.createEl("button", {
+                    text: "✕",
+                    cls: "dnd-modal-del-btn",
+                    attr: { title: "Remove combatant from encounter" }
+                });
+                delBtn.onclick = async () => {
+                    removeCombatantsUpdatingTurn(state, item => item.id !== c.id);
+                    await this.saveInitiativeState();
+                    await refreshInitiativeView(false);
+                };
+
+                // Second Row: Active Conditions + Concentration + Condition Selector
+                const condRow = card.createDiv({ cls: "dnd-init-card-conditions" });
+                const activeBadges = condRow.createDiv({ cls: "dnd-init-condition-badges" });
+
+                if (c.concentrating) {
+                    const concBadge = activeBadges.createEl("button", {
+                        text: "Concentrating ×",
+                        cls: "dnd-init-cond-badge is-concentration",
+                        attr: { type: "button", title: "Click to inspect Concentration rule or remove" }
+                    });
+                    concBadge.onclick = () => {
+                        new ConditionRuleModal(this.app, this.plugin, "Concentration", async () => {
+                            c.concentrating = false;
+                            await this.saveInitiativeState();
+                            await refreshInitiativeView(false);
+                        }).open();
                     };
                 }
-            }
 
-            nameHeader.createEl("span", {
-                text: c.isPC ? "PC" : "NPC",
-                cls: `dnd-level-badge dnd-modal-badge-sm ${c.isPC ? "dnd-badge-pc" : "dnd-badge-npc"}`
-            });
-            nameHeader.createEl("span", {
-                text: `Init ${formatSignedNumber(c.initBonus)}`,
-                cls: "dnd-init-sub-hint"
-            });
-
-            // AC Column
-            const acCol = mainRow.createDiv({ cls: "dnd-init-col-ac" });
-            acCol.createEl("span", { text: "AC", cls: "dnd-init-field-label" });
-            const acInput = acCol.createEl("input", {
-                type: "number",
-                value: String(c.ac),
-                cls: "dnd-init-ac-input"
-            });
-            acInput.onchange = async () => {
-                c.ac = Math.max(0, Number(acInput.value) || 0);
-                await this.saveInitiativeState();
-            };
-
-            // HP Bar + Quick Damage/Heal Column
-            const hpCol = mainRow.createDiv({ cls: "dnd-init-col-hp" });
-            const hpTopRow = hpCol.createDiv({ cls: "dnd-init-hp-top" });
-
-            const hpTrack = hpTopRow.createDiv({ cls: "dnd-init-hp-bar-track" });
-            const hpFill = hpTrack.createDiv({
-                cls: `dnd-init-hp-bar-fill ${hpPct <= 25 ? "is-critical" : (hpPct <= 50 ? "is-bloodied" : "")}`.trim()
-            });
-            hpFill.style.width = `${hpPct}%`;
-
-            const hpInputsWrap = hpTopRow.createDiv({ cls: "dnd-init-hp-inputs" });
-            const curHpInput = hpInputsWrap.createEl("input", {
-                type: "number",
-                value: String(c.hp),
-                cls: "dnd-init-hp-input",
-                attr: { title: "Current HP" }
-            });
-            hpInputsWrap.createSpan({ text: "/" });
-            const maxHpInput = hpInputsWrap.createEl("input", {
-                type: "number",
-                value: String(c.maxHp),
-                cls: "dnd-init-hp-input",
-                attr: { title: "Max HP" }
-            });
-
-            const tempWrap = hpInputsWrap.createSpan({ cls: "dnd-init-temp-wrap" });
-            tempWrap.createSpan({ text: "+Temp" });
-            const tempHpInput = tempWrap.createEl("input", {
-                type: "number",
-                value: String(c.tempHp || 0),
-                cls: "dnd-init-temp-input",
-                attr: { title: "Temporary HP" }
-            });
-
-            curHpInput.onchange = async () => {
-                c.hp = Math.max(0, Number(curHpInput.value) || 0);
-                await this.syncCombatantHpToSheet(c);
-                await this.saveInitiativeState();
-                await this.renderActiveTab();
-            };
-            maxHpInput.onchange = async () => {
-                c.maxHp = Math.max(1, Number(maxHpInput.value) || 1);
-                await this.saveInitiativeState();
-                await this.renderActiveTab();
-            };
-            tempHpInput.onchange = async () => {
-                c.tempHp = Math.max(0, Number(tempHpInput.value) || 0);
-                await this.syncCombatantHpToSheet(c);
-                await this.saveInitiativeState();
-                await this.renderActiveTab();
-            };
-
-            // Quick Delta Damage / Heal controls
-            const deltaWrap = hpTopRow.createDiv({ cls: "dnd-init-delta-wrap" });
-            const deltaInput = deltaWrap.createEl("input", {
-                type: "number",
-                placeholder: "Dmg/Heal",
-                cls: "dnd-init-delta-input",
-                attr: { min: "1" }
-            });
-            const dmgBtn = deltaWrap.createEl("button", {
-                text: "- Dmg",
-                cls: "dnd-dm-small-btn dnd-btn-dmg",
-                attr: { title: "Apply Damage (absorbs Temp HP first)" }
-            });
-            const healBtn = deltaWrap.createEl("button", {
-                text: "+ Heal",
-                cls: "dnd-dm-small-btn dnd-btn-heal",
-                attr: { title: "Apply Healing (up to Max HP)" }
-            });
-
-            dmgBtn.onclick = async () => {
-                let dmg = Math.max(0, Number(deltaInput.value) || 0);
-                if (dmg <= 0) return;
-                if (c.tempHp > 0) {
-                    const absorbed = Math.min(c.tempHp, dmg);
-                    c.tempHp -= absorbed;
-                    dmg -= absorbed;
+                for (const cond of c.conditions || []) {
+                    const badge = activeBadges.createEl("button", {
+                        text: `${cond} ×`,
+                        cls: "dnd-init-cond-badge",
+                        attr: { type: "button", title: `Click to view 5.5e rule for ${cond} or remove` }
+                    });
+                    badge.onclick = () => {
+                        new ConditionRuleModal(this.app, this.plugin, cond, async () => {
+                            c.conditions = (c.conditions || []).filter(x => x !== cond);
+                            await this.saveInitiativeState();
+                            await refreshInitiativeView(false);
+                        }).open();
+                    };
                 }
-                const oldHp = c.hp;
-                c.hp = Math.max(0, c.hp - dmg);
-                if (c.concentrating && c.hp < oldHp) {
-                    const totalTaken = oldHp - c.hp;
-                    const dc = Math.max(10, Math.min(30, Math.floor(totalTaken / 2)));
-                    new Notice(`${c.name} is Concentrating! Roll a DC ${dc} Constitution saving throw.`);
-                }
-                await this.syncCombatantHpToSheet(c);
-                await this.saveInitiativeState();
-                await this.renderActiveTab();
-            };
 
-            healBtn.onclick = async () => {
-                const heal = Math.max(0, Number(deltaInput.value) || 0);
-                if (heal <= 0) return;
-                c.hp = Math.min(c.maxHp, c.hp + heal);
-                await this.syncCombatantHpToSheet(c);
-                await this.saveInitiativeState();
-                await this.renderActiveTab();
-            };
-
-            // Delete Combatant Column
-            const delBtn = mainRow.createEl("button", {
-                text: "✕",
-                cls: "dnd-modal-del-btn",
-                attr: { title: "Remove combatant from encounter" }
-            });
-            delBtn.onclick = async () => {
-                state.combatants = state.combatants.filter(item => item.id !== c.id);
-                await this.saveInitiativeState();
-                await this.renderActiveTab();
-            };
-
-            // Second Row: Active Conditions + Concentration + Condition Selector
-            const condRow = card.createDiv({ cls: "dnd-init-card-conditions" });
-            const activeBadges = condRow.createDiv({ cls: "dnd-init-condition-badges" });
-
-            if (c.concentrating) {
-                const concBadge = activeBadges.createEl("span", {
-                    text: "Concentrating ×",
-                    cls: "dnd-init-cond-badge is-concentration",
-                    attr: { title: "Click to inspect Concentration rule or remove" }
+                const condSelect = condRow.createEl("select", {
+                    cls: "dnd-init-cond-select"
                 });
-                concBadge.onclick = () => {
-                    new ConditionRuleModal(this.app, this.plugin, "Concentration", async () => {
-                        c.concentrating = false;
-                        await this.saveInitiativeState();
-                        await this.renderActiveTab();
-                    }).open();
+                condSelect.createEl("option", { text: "+ Condition / Concentration", value: "" });
+                if (!c.concentrating) {
+                    condSelect.createEl("option", { text: "Concentrating", value: "__CONCENTRATING__" });
+                }
+                for (const condName of DND_55E_CONDITIONS) {
+                    if (!(c.conditions || []).includes(condName)) {
+                        condSelect.createEl("option", { text: condName, value: condName });
+                    }
+                }
+                condSelect.onchange = async () => {
+                    const val = condSelect.value;
+                    if (!val) return;
+                    if (val === "__CONCENTRATING__") {
+                        c.concentrating = true;
+                    } else {
+                        if (!Array.isArray(c.conditions)) c.conditions = [];
+                        if (!c.conditions.includes(val)) c.conditions.push(val);
+                    }
+                    await this.saveInitiativeState();
+                    await refreshInitiativeView(false);
                 };
             }
+        };
 
-            for (const cond of c.conditions || []) {
-                const badge = activeBadges.createEl("span", {
-                    text: `${cond} ×`,
-                    cls: "dnd-init-cond-badge",
-                    attr: { title: `Click to view 5.5e rule for ${cond} or remove` }
-                });
-                badge.onclick = () => {
-                    new ConditionRuleModal(this.app, this.plugin, cond, async () => {
-                        c.conditions = (c.conditions || []).filter(x => x !== cond);
-                        await this.saveInitiativeState();
-                        await this.renderActiveTab();
-                    }).open();
-                };
+        refreshInitiativeView = async (refreshPartyFromCache: boolean = false) => {
+            if (this.isStaleTabRender(tabToken)) return;
+            const prevBodyScroll = this.bodyContainer?.scrollTop || 0;
+
+            if (refreshPartyFromCache) {
+                const nextParty = await getConfiguredPartyMembersAsync(
+                    this.app,
+                    this.plugin,
+                    this.embedFilterFolder,
+                    this.embedFilterPlayers
+                );
+                if (this.isStaleTabRender(tabToken)) return;
+                partyResult = nextParty;
+                updatePcSelectControls();
             }
 
-            const condSelect = condRow.createEl("select", {
-                cls: "dnd-init-cond-select"
-            });
-            condSelect.createEl("option", { text: "+ Condition / Concentration", value: "" });
-            if (!c.concentrating) {
-                condSelect.createEl("option", { text: "Concentrating", value: "__CONCENTRATING__" });
+            refreshInitPcModifiers();
+            renderInitiativeList();
+            if (this.bodyContainer) {
+                this.bodyContainer.scrollTop = prevBodyScroll;
             }
-            for (const condName of DND_55E_CONDITIONS) {
-                if (!(c.conditions || []).includes(condName)) {
-                    condSelect.createEl("option", { text: condName, value: condName });
-                }
-            }
-            condSelect.onchange = async () => {
-                const val = condSelect.value;
-                if (!val) return;
-                if (val === "__CONCENTRATING__") {
-                    c.concentrating = true;
-                } else {
-                    if (!Array.isArray(c.conditions)) c.conditions = [];
-                    if (!c.conditions.includes(val)) c.conditions.push(val);
-                }
-                await this.saveInitiativeState();
-                await this.renderActiveTab();
-            };
-        }
+        };
+
+        this.activeInitRefreshHook = refreshInitiativeView;
+        renderAddForm();
+        renderInitiativeList();
     }
 
     public spawnMonsterIntoInitiative(monster: DiscoveredMonster, qty: number): void {
         const state = this.getInitiativeState();
-        const existingSameCount = state.combatants.filter(c => c.name.startsWith(monster.name)).length;
+        const names = getNextCombatantNames(state.combatants, monster.name, qty);
 
-        for (let i = 1; i <= qty; i++) {
-            const num = existingSameCount + i;
-            const displayName = (qty > 1 || existingSameCount > 0) ? `${monster.name} ${num}` : monster.name;
+        names.forEach((displayName, i) => {
             state.combatants.push({
                 id: `mon-${Date.now()}-${i}-${Math.random().toString(36).slice(2, 6)}`,
                 name: displayName,
@@ -3385,22 +2433,21 @@ export class DMToolsWidget {
                 concentrating: false,
                 monsterId: monster.id
             });
-        }
+        });
     }
 
     // ========================================================================
     // --- TAB 4: LIVE PARTY DASHBOARD ---
     // ========================================================================
 
-    private async renderPartyTab(): Promise<void> {
+    private async renderPartyTab(tabToken: number): Promise<void> {
         const root = this.bodyContainer.createDiv({ cls: "dnd-party-root" });
         const hasExplicitEmbedFilter = this.embedFilterFolder !== undefined
             || (this.embedFilterPlayers !== undefined && this.embedFilterPlayers.length > 0);
-        let saveTimer: number | null = null;
         let partyRenderVersion = 0;
-        let renderPartyContent!: () => Promise<void>;
 
         // Party Folder Input (lets DM type or paste the vault folder containing active party sheets)
+        let folderInputRef: HTMLInputElement | null = null;
         if ((this.hostMode === "modal" || this.hostMode === "sidebar") && !hasExplicitEmbedFilter) {
             const folderBar = root.createDiv({ cls: "dnd-compendium-controls dnd-party-folder-bar" });
             const folderRow = folderBar.createDiv({ cls: "dnd-compendium-search-row" });
@@ -3410,7 +2457,7 @@ export class DMToolsWidget {
             });
 
             const datalistId = `dnd-party-folders-${Math.random().toString(36).slice(2, 8)}`;
-            const folderInput = folderRow.createEl("input", {
+            folderInputRef = folderRow.createEl("input", {
                 type: "text",
                 placeholder: 'Type or paste folder path (e.g. "Campaign/Party", "/" for root)...',
                 value: this.plugin.settings.partyFolderPath || "",
@@ -3425,31 +2472,6 @@ export class DMToolsWidget {
             for (const fp of listVaultFolderPaths(this.app)) {
                 dataListEl.createEl("option", { attr: { value: fp } });
             }
-
-            const commitFolderPath = async (rerenderBody: boolean) => {
-                if (saveTimer !== null) {
-                    window.clearTimeout(saveTimer);
-                    saveTimer = null;
-                }
-                this.plugin.settings.partyFolderPath = folderInput.value.trim();
-                await this.plugin.saveSettings();
-                window.dispatchEvent(new CustomEvent("dnd-dm-party-folder-updated", { detail: { sourceWidget: this } }));
-                if (rerenderBody) await renderPartyContent();
-            };
-
-            folderInput.oninput = () => {
-                this.plugin.settings.partyFolderPath = folderInput.value.trim();
-                void renderPartyContent();
-                if (saveTimer !== null) window.clearTimeout(saveTimer);
-                saveTimer = window.setTimeout(() => { void commitFolderPath(false); }, 350);
-            };
-            folderInput.onchange = () => { void commitFolderPath(true); };
-            folderInput.onkeydown = (evt: KeyboardEvent) => {
-                if (evt.key === "Enter") {
-                    evt.preventDefault();
-                    void commitFolderPath(true);
-                }
-            };
         }
 
         const partyBody = root.createDiv({ cls: "dnd-party-body" });
@@ -3462,14 +2484,20 @@ export class DMToolsWidget {
             charisma: "CHA"
         };
 
-        renderPartyContent = async () => {
+        const renderPartyContent = async () => {
+            if (this.isStaleTabRender(tabToken)) return;
             const renderToken = ++partyRenderVersion;
             const {
                 activeFolder,
                 members: party,
                 isConfigured
-            } = await getConfiguredPartyMembersAsync(this.app, this.plugin, this.embedFilterFolder, this.embedFilterPlayers);
-            if (renderToken !== partyRenderVersion) return;
+            } = await getConfiguredPartyMembersAsync(
+                this.app,
+                this.plugin,
+                this.embedFilterFolder,
+                this.embedFilterPlayers
+            );
+            if (renderToken !== partyRenderVersion || this.isStaleTabRender(tabToken)) return;
             partyBody.empty();
 
             // Top Summary Banner
@@ -3501,29 +2529,12 @@ export class DMToolsWidget {
                     new Notice("Enter a Party Folder path above first.");
                     return;
                 }
-                if (saveTimer !== null) {
-                    window.clearTimeout(saveTimer);
-                    saveTimer = null;
-                }
+                this.partySaveTimer = this.clearTimer(this.partySaveTimer);
                 const state = this.getInitiativeState();
                 let added = 0;
                 for (const pc of party) {
                     if (state.combatants.some(c => c.sourcePath === pc.sourcePath)) continue;
-                    state.combatants.push({
-                        id: `pc-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-                        name: pc.name,
-                        initiative: rollD20() + pc.initBonus,
-                        initBonus: pc.initBonus,
-                        dexMod: pc.dexMod,
-                        hp: pc.currentHp,
-                        maxHp: pc.maxHp,
-                        tempHp: pc.tempHp,
-                        ac: pc.ac,
-                        isPC: true,
-                        conditions: [],
-                        concentrating: false,
-                        sourcePath: pc.sourcePath
-                    });
+                    state.combatants.push(createCombatantFromPartyMember(pc));
                     added++;
                 }
                 await this.saveInitiativeState();
@@ -3538,7 +2549,7 @@ export class DMToolsWidget {
                 cls: "dnd-dm-small-btn"
             });
             refreshPartyBtn.onclick = () => {
-                renderPartyContent();
+                void renderPartyContent();
             };
 
             if (party.length === 0) {
@@ -3564,9 +2575,11 @@ export class DMToolsWidget {
                     cls: "dnd-party-card-name is-clickable",
                     attr: { title: `Click to open ${pc.sourcePath}` }
                 });
-                nameLink.onclick = async () => {
-                    await this.app.workspace.openLinkText(pc.sourcePath, "", false);
+                const openPcSheet = () => {
+                    void this.app.workspace.openLinkText(pc.sourcePath, "", false);
                 };
+                nameLink.onclick = openPcSheet;
+                makeKeyboardClickable(nameLink, openPcSheet);
 
                 const subTitle = `Lvl ${pc.level} • ${pc.race} • ${pc.dndClass}${pc.subclass ? ` (${pc.subclass})` : ""}`;
                 titleCol.createEl("div", { text: subTitle, cls: "dnd-party-card-subtitle" });
@@ -3579,14 +2592,14 @@ export class DMToolsWidget {
                 });
                 hiBtn.onclick = () => {
                     this.plugin.setHeroicInspiration(pc.sourcePath, !pc.heroicInspiration);
-                    renderPartyContent();
+                    void renderPartyContent();
                 };
 
                 // HP Bar & Quick Sheet HP Editor
                 const hpPct = pc.maxHp > 0 ? Math.max(0, Math.min(100, Math.round((pc.currentHp / pc.maxHp) * 100))) : 0;
                 const hpSection = card.createDiv({ cls: "dnd-party-hp-section" });
                 const hpLabelRow = hpSection.createDiv({ cls: "dnd-party-hp-label-row" });
-                hpLabelRow.createEl("strong", {
+                const hpTextStrong = hpLabelRow.createEl("strong", {
                     text: `HP: ${pc.currentHp} / ${pc.maxHp}${pc.tempHp > 0 ? ` (+${pc.tempHp} Temp)` : ""}`
                 });
 
@@ -3599,45 +2612,64 @@ export class DMToolsWidget {
                 const dmgBtn = quickHpControls.createEl("button", {
                     text: "- Dmg",
                     cls: "dnd-dm-small-btn",
-                    attr: { title: "Damage character (updates their character sheet note)" }
+                    attr: { title: "Damage character (updates their character sheet note & active initiative)" }
                 });
                 const healBtn = quickHpControls.createEl("button", {
                     text: "+ Heal",
                     cls: "dnd-dm-small-btn",
-                    attr: { title: "Heal character (updates their character sheet note)" }
+                    attr: { title: "Heal character (updates their character sheet note & active initiative)" }
                 });
-
-                dmgBtn.onclick = async () => {
-                    let dmg = Math.max(0, Number(deltaIn.value) || 0);
-                    if (dmg <= 0) return;
-                    let newTemp = pc.tempHp;
-                    if (newTemp > 0) {
-                        const absorbed = Math.min(newTemp, dmg);
-                        newTemp -= absorbed;
-                        dmg -= absorbed;
-                    }
-                    const newHp = Math.max(0, pc.currentHp - dmg);
-                    await this.plugin.updateCharacterFrontmatter(pc.sourcePath, {
-                        "DnD_currentHealth": newHp,
-                        "DnD_tempHealth": newTemp
-                    });
-                    setTimeout(() => renderPartyContent(), 120);
-                };
-                healBtn.onclick = async () => {
-                    const heal = Math.max(0, Number(deltaIn.value) || 0);
-                    if (heal <= 0) return;
-                    const newHp = Math.min(pc.maxHp, pc.currentHp + heal);
-                    await this.plugin.updateCharacterFrontmatter(pc.sourcePath, {
-                        "DnD_currentHealth": newHp
-                    });
-                    setTimeout(() => renderPartyContent(), 120);
-                };
 
                 const hpTrack = hpSection.createDiv({ cls: "dnd-init-hp-bar-track" });
                 const hpFill = hpTrack.createDiv({
                     cls: `dnd-init-hp-bar-fill ${hpPct <= 25 ? "is-critical" : (hpPct <= 50 ? "is-bloodied" : "")}`.trim()
                 });
                 hpFill.style.width = `${hpPct}%`;
+
+                const applyPartyHpVisualUpdate = (nextHp: number, nextTemp: number) => {
+                    pc.currentHp = nextHp;
+                    pc.tempHp = nextTemp;
+                    const nextPct = pc.maxHp > 0 ? Math.max(0, Math.min(100, Math.round((nextHp / pc.maxHp) * 100))) : 0;
+                    hpTextStrong.setText(`HP: ${nextHp} / ${pc.maxHp}${nextTemp > 0 ? ` (+${nextTemp} Temp)` : ""}`);
+                    hpFill.style.width = `${nextPct}%`;
+                    hpFill.className = `dnd-init-hp-bar-fill ${nextPct <= 25 ? "is-critical" : (nextPct <= 50 ? "is-bloodied" : "")}`.trim();
+                };
+
+                dmgBtn.onclick = async () => {
+                    const dmgVal = Math.max(0, Math.round(Number(deltaIn.value) || 0));
+                    if (dmgVal <= 0) return;
+                    const { newHp, newTempHp } = applyDamageWithTempHp(pc.currentHp, pc.tempHp, dmgVal);
+                    applyPartyHpVisualUpdate(newHp, newTempHp);
+                    deltaIn.value = "";
+                    const mirrored = this.mirrorPartyHpIntoSavedInitiative(pc.sourcePath, newHp, newTempHp);
+                    await this.plugin.updateCharacterFrontmatter(pc.sourcePath, {
+                        "DnD_currentHealth": newHp,
+                        "DnD_tempHealth": newTempHp
+                    });
+                    if (mirrored) {
+                        await this.plugin.saveSettings();
+                        window.dispatchEvent(new CustomEvent("dnd-dm-initiative-updated", {
+                            detail: { sourceWidget: this, isCustomNoteState: false }
+                        }));
+                    }
+                };
+                healBtn.onclick = async () => {
+                    const heal = Math.max(0, Math.round(Number(deltaIn.value) || 0));
+                    if (heal <= 0) return;
+                    const newHp = pc.currentHp >= pc.maxHp ? pc.currentHp : Math.min(pc.maxHp, pc.currentHp + heal);
+                    applyPartyHpVisualUpdate(newHp, pc.tempHp);
+                    deltaIn.value = "";
+                    const mirrored = this.mirrorPartyHpIntoSavedInitiative(pc.sourcePath, newHp, pc.tempHp);
+                    await this.plugin.updateCharacterFrontmatter(pc.sourcePath, {
+                        "DnD_currentHealth": newHp
+                    });
+                    if (mirrored) {
+                        await this.plugin.saveSettings();
+                        window.dispatchEvent(new CustomEvent("dnd-dm-initiative-updated", {
+                            detail: { sourceWidget: this, isCustomNoteState: false }
+                        }));
+                    }
+                };
 
                 // Vitals Strip (AC, Speed, Initiative, Exhaustion)
                 const vitalsGrid = card.createDiv({ cls: "dnd-party-vitals-grid" });
@@ -3701,23 +2733,67 @@ export class DMToolsWidget {
             }
         };
 
+        if (folderInputRef) {
+            const inputEl = folderInputRef;
+            const commitFolderPath = async (rerenderBody: boolean) => {
+                this.partySaveTimer = this.clearTimer(this.partySaveTimer);
+                if (this.isWidgetUnloaded) return;
+                this.plugin.settings.partyFolderPath = inputEl.value.trim();
+                await this.plugin.saveSettings();
+                if (typeof window !== "undefined") {
+                    window.dispatchEvent(new CustomEvent("dnd-dm-party-folder-updated", { detail: { sourceWidget: this } }));
+                }
+                if (rerenderBody) await renderPartyContent();
+            };
+
+            inputEl.oninput = () => {
+                this.plugin.settings.partyFolderPath = inputEl.value.trim();
+                this.partySearchTimer = this.clearTimer(this.partySearchTimer);
+                this.partySearchTimer = window.setTimeout(() => {
+                    this.partySearchTimer = null;
+                    void renderPartyContent();
+                }, 120);
+                this.partySaveTimer = this.clearTimer(this.partySaveTimer);
+                this.partySaveTimer = window.setTimeout(() => {
+                    this.partySaveTimer = null;
+                    void commitFolderPath(false);
+                }, 350);
+            };
+            inputEl.onchange = () => { void commitFolderPath(true); };
+            inputEl.onkeydown = (evt: KeyboardEvent) => {
+                if (evt.key === "Enter") {
+                    evt.preventDefault();
+                    void commitFolderPath(true);
+                }
+            };
+        }
+
+        this.activePartyRefreshHook = async () => {
+            if (folderInputRef && document.activeElement !== folderInputRef) {
+                folderInputRef.value = this.plugin.settings.partyFolderPath || "";
+            }
+            await renderPartyContent();
+        };
+
         await renderPartyContent();
     }
 
     // ========================================================================
-    // --- TAB 5: MONSTERS & STATBLOCKS (The DM Compendium & Fantasy Statblocks Bridge) ---
+    // --- TAB 5: MONSTERS & STATBLOCKS (The DM Compendium & Vault Statblocks) ---
     // ========================================================================
 
-    private async ensureMonstersLoaded(): Promise<void> {
-        if (this.monstersLoaded) return;
-        const res = await discoverExternalMonsters(this.app);
+    private async ensureMonstersLoaded(forceReload: boolean = false): Promise<void> {
+        if (this.monstersLoaded && !forceReload) return;
+        const res = await discoverExternalMonsters(this.app, forceReload);
         this.discoveredMonsters = res.monsters;
         this.monstersMeta = res;
         this.monstersLoaded = true;
     }
 
-    private async renderMonstersTab(): Promise<void> {
+    private async renderMonstersTab(tabToken: number): Promise<void> {
         await this.ensureMonstersLoaded();
+        if (this.isStaleTabRender(tabToken)) return;
+
         const root = this.bodyContainer.createDiv({ cls: "dnd-monsters-root" });
 
         // Integration Status Banner (The DM Compendium)
@@ -3755,6 +2831,7 @@ export class DMToolsWidget {
                 if (tdcPlugin && typeof tdcPlugin.refreshCompendiumDatabase === "function") {
                     await tdcPlugin.refreshCompendiumDatabase(true);
                 }
+                clearDiscoveredMonstersCache();
                 this.monstersLoaded = false;
                 await this.renderActiveTab();
             };
@@ -3779,6 +2856,7 @@ export class DMToolsWidget {
             cls: "dnd-dm-small-btn"
         });
         rescanBtn.onclick = async () => {
+            clearDiscoveredMonstersCache();
             this.monstersLoaded = false;
             await this.renderActiveTab();
             new Notice(`Loaded ${this.discoveredMonsters.length} creature statblocks!`);
@@ -3828,6 +2906,9 @@ export class DMToolsWidget {
         const { listPane, previewPane, setPreviewActive } = this.createMasterDetailSplitLayout(root, [statusBanner, controls]);
 
         const renderMonsterPreview = async (monster: DiscoveredMonster | null) => {
+            const pToken = ++this.monsterPreviewToken;
+            if (pToken !== this.monsterPreviewToken || this.isStaleTabRender(tabToken)) return;
+
             previewPane.empty();
             setPreviewActive(Boolean(monster));
             if (!monster) {
@@ -3852,7 +2933,7 @@ export class DMToolsWidget {
                 cls: "dnd-dm-small-btn mod-cta"
             });
             addInitBtn.onclick = async () => {
-                const qty = Math.max(1, Math.min(20, Number(qtyInput.value) || 1));
+                const qty = Math.max(1, Math.min(20, Math.round(Number(qtyInput.value) || 1)));
                 this.spawnMonsterIntoInitiative(monster, qty);
                 await this.saveInitiativeState();
                 new Notice(`Rolled Initiative and added ${qty}x ${monster.name} (${monster.sourceShort}) to the Initiative Tracker!`);
@@ -3863,15 +2944,17 @@ export class DMToolsWidget {
                 text: "Insert statblock in Note",
                 cls: "dnd-dm-small-btn"
             });
-            insertBtn.onclick = async () => {
+            insertBtn.onclick = () => {
                 const yamlBlock = "```statblock\n" + buildStatblockYaml(monster) + "\n```\n";
                 const mdView = this.app.workspace.getActiveViewOfType(MarkdownView);
-                if (mdView && mdView.editor) {
+                if (mdView && mdView.editor && mdView.getMode() === "source") {
                     mdView.editor.replaceSelection(yamlBlock);
                     new Notice(`Inserted "${monster.name} (${monster.sourceShort})" statblock into ${mdView.file?.basename || "active note"}!`);
                 } else {
-                    await navigator.clipboard.writeText(yamlBlock);
-                    new Notice(`Copied "${monster.name}" statblock code block to clipboard (open a note in Editing view to insert directly).`);
+                    const reason = mdView && mdView.getMode() !== "source"
+                        ? "active note is in Reading view; switch to Editing view to insert directly"
+                        : "open a note in Editing view to insert directly";
+                    void copyTextToClipboard(yamlBlock, `Copied "${monster.name}" statblock code block to clipboard (${reason}).`);
                 }
             };
 
@@ -3893,6 +2976,8 @@ export class DMToolsWidget {
         };
 
         const updateMonsterList = async () => {
+            if (this.isStaleTabRender(tabToken)) return;
+
             const q = this.monsterQuery.trim().toLowerCase();
             const filtered = this.discoveredMonsters.filter(m => {
                 if (this.monsterSourceFilter.startsWith("source::")) {
@@ -3959,7 +3044,7 @@ export class DMToolsWidget {
                     cls: "dnd-level-badge dnd-modal-badge-sm"
                 });
 
-                row.onclick = async () => {
+                const selectMonster = async () => {
                     if (this.hostMode === "sidebar" && this.selectedMonsterId === mon.id) {
                         this.selectedMonsterId = null;
                         row.removeClass("is-active");
@@ -3971,6 +3056,8 @@ export class DMToolsWidget {
                     row.addClass("is-active");
                     await renderMonsterPreview(mon);
                 };
+                row.onclick = () => { void selectMonster(); };
+                makeKeyboardClickable(row, () => { void selectMonster(); });
             }
 
             if (filtered.length > 250) {
@@ -3988,7 +3075,11 @@ export class DMToolsWidget {
 
         searchInput.oninput = () => {
             this.monsterQuery = searchInput.value;
-            void updateMonsterList();
+            this.monsterSearchTimer = this.clearTimer(this.monsterSearchTimer);
+            this.monsterSearchTimer = window.setTimeout(() => {
+                this.monsterSearchTimer = null;
+                void updateMonsterList();
+            }, 120);
         };
         sourceSelect.onchange = () => {
             this.monsterSourceFilter = sourceSelect.value;
@@ -4135,30 +3226,16 @@ export async function processDnDInitiativeBlock(
     const useNoteFrontmatterState = String(parsed.state || "").toLowerCase() === "note";
     let customState: InitiativeState | undefined;
     let onSaveCustom: ((st: InitiativeState) => Promise<void>) | undefined;
+    let onReloadCustom: (() => InitiativeState) | undefined;
 
     if (useNoteFrontmatterState && ctx.sourcePath) {
-        const cache = plugin.app.metadataCache.getCache(ctx.sourcePath);
-        const fm = cache?.frontmatter || {};
-        if (fm["DnD_initiativeState"]) {
-            try {
-                const rawState = typeof fm["DnD_initiativeState"] === "string"
-                    ? JSON.parse(fm["DnD_initiativeState"])
-                    : fm["DnD_initiativeState"];
-                if (rawState && typeof rawState === "object" && Array.isArray(rawState.combatants)) {
-                    customState = rawState as InitiativeState;
-                }
-            } catch {
-                /* fallback to default */
-            }
-        }
-        if (!customState) {
-            customState = createDefaultInitiativeState();
-        }
+        customState = readNoteInitiativeState(plugin, ctx.sourcePath);
         onSaveCustom = async (st: InitiativeState) => {
             await plugin.updateCharacterFrontmatter(ctx.sourcePath, {
                 "DnD_initiativeState": JSON.stringify(st)
             });
         };
+        onReloadCustom = () => readNoteInitiativeState(plugin, ctx.sourcePath);
     }
 
     const filterFolder = typeof parsed.folder === "string" ? parsed.folder.trim() : undefined;
@@ -4177,7 +3254,8 @@ export async function processDnDInitiativeBlock(
         embedFilterFolder: filterFolder,
         embedFilterPlayers: filterPlayers,
         customInitiativeState: customState,
-        onSaveCustomInitiativeState: onSaveCustom
+        onSaveCustomInitiativeState: onSaveCustom,
+        onReloadCustomInitiativeState: onReloadCustom
     });
 
     await widget.render();

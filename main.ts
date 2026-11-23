@@ -6008,7 +6008,6 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
         ctx.addChild(renderChild);
 
         // Persistent session states across frontmatter re-renders
-        let tempHp = 0;
         let manualDeathSavesOpen = false;
         let manualExhaustionOpen = false;
         let deathSaveLeft: boolean[] = [false, false, false];
@@ -6068,6 +6067,13 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
             const DnD_current_health = (rawCurrentHealth !== undefined && rawCurrentHealth !== null && rawCurrentHealth !== "" && !isNaN(Number(rawCurrentHealth)))
                 ? Math.max(0, Math.min(maxHealth, Number(rawCurrentHealth)))
                 : maxHealth;
+
+            // Resolve DnD_tempHealth from frontmatter.DnD_tempHealth (or block override)
+            const targetTempHpKey = extractFrontmatterKey(blockData.tempHealth, "DnD_tempHealth");
+            const rawTempHealth = resolveValue(blockData.tempHealth) ?? frontmatter[targetTempHpKey];
+            const tempHp = (rawTempHealth !== undefined && rawTempHealth !== null && rawTempHealth !== "" && !isNaN(Number(rawTempHealth)))
+                ? Math.max(0, Math.floor(Number(rawTempHealth)))
+                : 0;
 
             // Resolve DnD_exhaustion (0..6) from frontmatter.DnD_exhaustion (or block override)
             const targetExhaustionKey = extractFrontmatterKey(blockData.exhaustion, "DnD_exhaustion");
@@ -6145,30 +6151,31 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
             };
 
             dmgBtn.onclick = async () => {
-                let remainingDmg = Math.max(0, Number(amountInput.value) || 0);
+                let remainingDmg = Math.max(0, Math.round(Number(amountInput.value) || 0));
                 if (remainingDmg <= 0) return;
 
                 // Deduct from Temp HP first
-                if (tempHp > 0) {
-                    const absorbed = Math.min(tempHp, remainingDmg);
-                    tempHp -= absorbed;
+                let nextTempHp = tempHp;
+                if (nextTempHp > 0) {
+                    const absorbed = Math.min(nextTempHp, remainingDmg);
+                    nextTempHp -= absorbed;
                     remainingDmg -= absorbed;
                 }
 
                 const newHp = Math.max(0, DnD_current_health - remainingDmg);
-                if (newHp !== DnD_current_health) {
-                    await this.updateCharacterFrontmatter(ctx.sourcePath, {
-                        [targetCurrentHpKey]: newHp
-                    });
-                } else {
-                    renderContent();
+                const updates: Record<string, any> = {};
+                if (newHp !== DnD_current_health) updates[targetCurrentHpKey] = newHp;
+                if (nextTempHp !== tempHp) updates[targetTempHpKey] = nextTempHp;
+                if (Object.keys(updates).length > 0) {
+                    await this.updateCharacterFrontmatter(ctx.sourcePath, updates);
                 }
             };
 
-            tempBtn.onclick = () => {
-                const amt = Math.max(0, Number(amountInput.value) || 0);
-                tempHp = amt;
-                renderContent();
+            tempBtn.onclick = async () => {
+                const amt = Math.max(0, Math.floor(Number(amountInput.value) || 0));
+                await this.updateCharacterFrontmatter(ctx.sourcePath, {
+                    [targetTempHpKey]: amt
+                });
             };
 
             // 3. Hit Dice Section (persisted in frontmatter as [HitDie, SpentCount])
@@ -6322,7 +6329,6 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                 attr: { value: "long-rest" }
             });
             longRestBtn.onclick = async () => {
-                tempHp = 0;
                 manualDeathSavesOpen = false;
                 deathSaveLeft = [false, false, false];
                 deathSaveRight = [false, false, false];
@@ -6336,6 +6342,7 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
 
                 await this.resetCharacterRestState(ctx.sourcePath, "long", {
                     [targetCurrentHpKey]: maxHealth,
+                    [targetTempHpKey]: 0,
                     [targetHitDiceKey]: serializeHitDiceState(DnD_hit_dice, newSpentHd),
                     [targetExhaustionKey]: newExhaustion
                 });
@@ -6515,6 +6522,9 @@ export default class DnDCharacterSheetHelperPlugin extends Plugin {
                 if (extraUpdates["DnD_exhaustion"] === undefined && fm["DnD_exhaustion"] !== undefined) {
                     const curEx = Math.max(0, Math.min(6, Math.floor(Number(fm["DnD_exhaustion"]) || 0)));
                     if (curEx > 0) fm["DnD_exhaustion"] = curEx - 1;
+                }
+                if (extraUpdates["DnD_tempHealth"] === undefined && fm["DnD_tempHealth"] !== undefined && Number(fm["DnD_tempHealth"]) > 0) {
+                    fm["DnD_tempHealth"] = 0;
                 }
                 const slotKey = fm["DnD_spellSlots"] !== undefined ? "DnD_spellSlots" : (fm["DnD_spellsSlots"] !== undefined ? "DnD_spellsSlots" : null);
                 if (slotKey) {

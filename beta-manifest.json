@@ -1,9 +1,9 @@
 {
-	"id": "dnd-character-sheet-helper-beta",
-	"name": "DnD Character Sheet Helper - Beta",
+	"id": "dnd-vault-companion",
+	"name": "DnD Vault Companion - Beta",
 	"version": "2.2.0o",
 	"minAppVersion": "1.13.7",
-	"description": "Renders D&D 5.5e widgets for a complete Character Sheet right inside your note, saving everything on frontammter, and has an easy creation wizard to create your sheet immediately.",
+	"description": "Renders D&D 5.5e widgets for a complete Character Sheet right inside your note, saving everything on frontammter, has an easy creation wizard to create your sheet immediatel, and also inlcudes DM tools to help with managing sessions and campaigns.",
 	"author": "Ionas Politis",
 	"isDesktopOnly": false
 }
